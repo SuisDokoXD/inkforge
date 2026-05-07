@@ -553,12 +553,16 @@ export type ChapterSnapshotKind =
 /** AutoWriter 多 Agent 协作中的 4 个角色。 */
 export type AutoWriterAgentRole = "planner" | "writer" | "critic" | "reflector";
 
-/** AutoWriter 一次运行的状态机。 */
+/** AutoWriter 一次运行的状态机。
+ * v22+: 加 `partial` —— 跑到一半失败但已落盘 N 段，UI 用此状态告诉用户
+ * "前 N 段保留可用"，区别于完全空跑的 `failed`。
+ */
 export type AutoWriterRunStatus =
   | "running"
   | "paused"
   | "completed"
   | "failed"
+  | "partial"
   | "stopped";
 
 export interface BookCoverRecord {
@@ -581,6 +585,22 @@ export interface ChapterLogRecord {
   chapterId: string;
   projectId: string;
   createdAt: string;
+}
+
+/**
+ * v22+: 每章一份摘要（100~200 字），AutoWriter 跨章节注入用。
+ * chapter_id 既是 PK 也是 FK，重生成走 INSERT OR REPLACE。
+ */
+export interface ChapterSummaryRecord {
+  chapterId: string;
+  projectId: string;
+  summary: string;
+  /** 哪个 model 摘要的（便于事后切主力 LLM 时一键重摘）。 */
+  model: string | null;
+  providerId: string | null;
+  /** 摘要时章节正文字数（如果章节后续被改长，可据此判断是否过期）。 */
+  sourceWordCount: number;
+  generatedAt: string;
 }
 
 export interface ChapterLogEntryRecord {

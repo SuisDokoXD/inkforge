@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAppStore } from "../../stores/app-store";
+import { HelpMenu } from "./HelpMenu";
 
 /**
  * 自定义无边框 titlebar。
@@ -77,6 +78,13 @@ export function TitleBar(): JSX.Element {
   return (
     <div
       className="relative flex h-9 shrink-0 select-none items-center justify-between border-b border-white/[0.06] bg-gradient-to-b from-[#0e1626] via-[#0b1322] to-[#0a0e1a] text-[12px] text-ink-200"
+      onDoubleClick={(e) => {
+        // Windows / Linux 默认行为：双击标题栏切换最大化。
+        // 排除点到右侧窗口控件 / 左侧状态胶囊（它们 region=no-drag）的双击。
+        const target = e.target as HTMLElement;
+        if (target.closest("[data-no-drag]") || target.closest("button")) return;
+        handleToggleMaximize();
+      }}
       style={
         // 整条作为拖拽区
         { WebkitAppRegion: "drag" } as React.CSSProperties
@@ -112,6 +120,7 @@ export function TitleBar(): JSX.Element {
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       >
         <ActiveStatusPill />
+        <HelpMenu />
         {!isMac && (
           <div className="flex h-full items-center pl-2">
             <WindowButton

@@ -9,8 +9,10 @@ import {
   insertAutoWriterRun,
   listAutoWriterRunsByChapter,
   listAutoWriterRunsByProject,
+  listChapterSummariesByProject,
   listChapters,
   listNovelCharacters,
+  listOutlines,
   listWorldEntries,
   ragSearchSampleChunks,
   readChapterFile,
@@ -54,6 +56,7 @@ import {
 import { resolveSceneBinding } from "./scene-binding-service";
 import { createSnapshot } from "./snapshot-service";
 import { appendAiEntry } from "./chapter-log-service";
+import { triggerChapterSummary } from "./chapter-summary-service";
 
 interface RuntimeController {
   runId: string;
@@ -83,12 +86,15 @@ function countWords(text: string): number {
 }
 
 /**
- * v20: Build previous-chapters context for AutoWriter.
- * Strategy: take up to 3 chapters before the current one (by `order`), read
- * their .md content, and excerpt the last ~600 chars of each (the "tail" is
- * what matters for continuation). Total cap ~3000 chars to keep prompt cheap.
+ * v22+: Build previous-chapters context with hierarchical summary memory.
  *
- * Returns "" if no preceding chapters or all empty.
+ * 之前只取前 3 章 tail × 600 字 → 写到第 30 章时人物 OOC / 世界观漂移。
+ * 新策略（受 NovelAI / NaiveLM 长文记忆方案启发）：
+ *   1. 全部前序章节摘要（chapter_summaries 表）按 order 升序拼成"长期记忆"段
+ *   2. 紧邻当前章的"最近一章"取更长的 tail（1500 字），作为"短期记忆"
+ *   3. 没摘要的中间章节降级到机械 tail（600 字），保证不留空洞
+ *
+ * 总长度做软封顶（约 8000 字），优先保留：当前章 ← 最近章 tail ← 摘要新→旧。
  */
 function buildPreviousChaptersText(
   db: DB,
@@ -98,12 +104,40 @@ function buildPreviousChaptersText(
   const all = listChapters(db, current.projectId);
   const preceding = all
     .filter((c) => c.order < current.order)
-    .sort((a, b) => a.order - b.order)
-    .slice(-3);
+    .sort((a, b) => a.order - b.order);
   if (preceding.length === 0) return "";
 
+  const summariesById = new Map(
+    listChapterSummariesByProject(db, current.projectId).map((s) => [s.chapterId, s]),
+  );
+
   const blocks: string[] = [];
+
+  // 长期记忆：所有前序章节摘要
+  const summaryLines: string[] = [];
   for (const ch of preceding) {
+    const s = summariesById.get(ch.id);
+    if (s && s.summary.trim()) {
+      summaryLines.push(`第${ch.order}章「${ch.title}」：${s.summary.trim()}`);
+    }
+  }
+  if (summaryLines.length > 0) {
+    blocks.push(`【全书摘要（长期记忆，按顺序）】\n${summaryLines.join("\n")}`);
+  }
+
+  // 短期记忆：最近 1 章长 tail；如果没摘要，再补 1-2 章 tail
+  const recentNoSummary = preceding
+    .slice()
+    .reverse()
+    .filter((ch) => !summariesById.has(ch.id))
+    .slice(0, 2)
+    .reverse();
+  const lastChapter = preceding[preceding.length - 1];
+  const recentChapters = recentNoSummary.includes(lastChapter)
+    ? recentNoSummary
+    : [...recentNoSummary, lastChapter];
+
+  for (const ch of recentChapters) {
     let body = "";
     try {
       body = readChapterFile(projectPath, ch.filePath) ?? "";
@@ -112,9 +146,10 @@ function buildPreviousChaptersText(
     }
     const trimmed = body.replace(/\s+/g, " ").trim();
     if (!trimmed) continue;
-    // Take the tail of each chapter; the head was set up earlier.
-    const tail = trimmed.length > 600 ? "…" + trimmed.slice(-600) : trimmed;
-    blocks.push(`【第${ch.order}章 · ${ch.title}（节选）】\n${tail}`);
+    // 最近一章给 1500 字（衔接需要笔触细节），更早的给 600 字
+    const tailLen = ch.id === lastChapter.id ? 1500 : 600;
+    const tail = trimmed.length > tailLen ? "…" + trimmed.slice(-tailLen) : trimmed;
+    blocks.push(`【第${ch.order}章 · ${ch.title}（节选 · 短期记忆）】\n${tail}`);
   }
   return blocks.join("\n\n");
 }
@@ -201,6 +236,24 @@ export async function startAutoWriter(
   const characters = listNovelCharacters(ctx.db, input.projectId);
   const worldEntries = listWorldEntries(ctx.db, { projectId: input.projectId });
   const existingChapterText = readChapterFile(project.path, chapter.filePath);
+
+  // v22+: 自动读取章节关联的大纲卡内容，拼到 userIdeas。
+  // 用户在 OutlinePage 维护了大纲卡时，AutoWriter 会自动遵循；如果用户写得
+  // 很简略或没维护，这一段就是空，逻辑无副作用。
+  // 找匹配方式：outline_cards.chapter_id = chapter.id（最严格）。
+  let userIdeas = input.userIdeas;
+  try {
+    const allCards = listOutlines(ctx.db, input.projectId);
+    const linkedCard = allCards.find((c) => c.chapterId === chapter.id);
+    if (linkedCard && linkedCard.content.trim()) {
+      const cardBlock = `【来自大纲卡《${linkedCard.title}》】\n${linkedCard.content.trim()}`;
+      userIdeas = userIdeas?.trim()
+        ? `${cardBlock}\n\n【用户即时思路】\n${userIdeas.trim()}`
+        : cardBlock;
+    }
+  } catch (error) {
+    logger.warn("auto-writer: read linked outline card failed", error);
+  }
 
   // ----- v20: per-book global worldview + cross-chapter context + style samples -----
   const globalWorldview = (project.globalWorldview ?? "").trim();
@@ -308,7 +361,7 @@ export async function startAutoWriter(
           runId,
           projectId: project.id,
           chapterId: chapter.id,
-          userIdeas: input.userIdeas,
+          userIdeas,
           agents: input.agents,
           targetSegmentLength,
           maxSegments,
@@ -326,9 +379,19 @@ export async function startAutoWriter(
       );
       if (controller.cancelled) status = "stopped";
     } catch (error) {
-      status = "failed";
+      // v22+: 区分"完全失败"vs"部分失败但已落盘 N 段"。
+      // 之前一律 'failed' 让用户误以为整章作废；现在如果跑完至少 1 段，
+      // 标 'partial'，UI 据此提示"前 N 段已保留可用"。
+      const partial = stats && stats.totalSegments > 0;
+      status = partial ? "partial" : "failed";
       errMsg = error instanceof Error ? error.message : String(error);
       logger.error("auto-writer pipeline error", error);
+    }
+
+    // v22+: 章节落盘后异步触发摘要生成（除完全失败外都触发；
+    // 失败章节摘要也有用，人工审稿时可见）
+    if (status !== "failed") {
+      triggerChapterSummary(chapter.id);
     }
 
     // 持久化最终状态
@@ -467,7 +530,120 @@ export function correctSegment(input: {
 // 内部：单次 agent 调用 → llm-core 流式 → 转发 chunk + 收集结果
 // =====================================================================
 
+/**
+ * v22+: 把上游 provider 抛出来的字符串错误归类。
+ * llm-core 的 OpenAIProvider 在非 2xx 时 yield `HTTP <status>: <body>`，
+ * 因此这里用正则提取状态码；其余按 message 关键词归类。
+ */
+interface ClassifiedError {
+  retryable: boolean;
+  status: number | null;
+  /** Retry-After 解析得到的等待秒数，没有则 null。 */
+  retryAfterSec: number | null;
+  reason: string;
+}
+
+function classifyAgentError(message: string): ClassifiedError {
+  const text = (message ?? "").toString();
+  const httpMatch = text.match(/HTTP\s+(\d{3})/i);
+  const status = httpMatch ? Number(httpMatch[1]) : null;
+
+  // Retry-After 可能是秒数或者 HTTP-date；我们只支持秒数（够用）
+  let retryAfterSec: number | null = null;
+  const retryAfterMatch = text.match(/retry[-_ ]?after[^0-9]{0,8}(\d{1,4})/i);
+  if (retryAfterMatch) retryAfterSec = Number(retryAfterMatch[1]);
+
+  // 网络层 / 流中断 / 超时 → 一律可重试
+  const networky =
+    /ECONNRESET|ETIMEDOUT|ENETUNREACH|EAI_AGAIN|EPIPE|aborted|socket hang up|fetch failed|network|timeout/i.test(
+      text,
+    );
+
+  if (status !== null) {
+    // 429：限流；408：超时；425：too early；500/502/503/504：服务端临时故障 → 全部可重试
+    const retryableStatus = status === 429 || status === 408 || status === 425 || (status >= 500 && status <= 599);
+    return {
+      retryable: retryableStatus,
+      status,
+      retryAfterSec,
+      reason: `HTTP ${status}`,
+    };
+  }
+  if (networky) {
+    return { retryable: true, status: null, retryAfterSec, reason: "network" };
+  }
+  return { retryable: false, status: null, retryAfterSec, reason: "other" };
+}
+
+const AUTO_WRITER_MAX_RETRY = 5;
+const AUTO_WRITER_BASE_DELAY_MS = 1500;
+const AUTO_WRITER_MAX_DELAY_MS = 30_000;
+
+function computeBackoffMs(attempt: number, retryAfterSec: number | null): number {
+  if (retryAfterSec && retryAfterSec > 0) {
+    // 上游说让等多久就等多久，最多压到 60s（避免被恶意 header 卡死）
+    return Math.min(retryAfterSec * 1000, 60_000);
+  }
+  // 指数退避 + 0~30% 抖动
+  const base = Math.min(
+    AUTO_WRITER_BASE_DELAY_MS * Math.pow(2, attempt),
+    AUTO_WRITER_MAX_DELAY_MS,
+  );
+  const jitter = base * 0.3 * Math.random();
+  return Math.floor(base + jitter);
+}
+
+async function sleepCancellable(ms: number, controller: RuntimeController): Promise<void> {
+  const step = 200;
+  let waited = 0;
+  while (waited < ms) {
+    if (controller.cancelled) return;
+    const slice = Math.min(step, ms - waited);
+    await new Promise((r) => setTimeout(r, slice));
+    waited += slice;
+  }
+}
+
 async function invokeOneAgent(args: {
+  runId: string;
+  chapterId: string;
+  agentInput: AgentCallInput;
+  getWindow: () => BrowserWindow | null;
+  controller: RuntimeController;
+}): Promise<AgentCallOutput> {
+  const { controller, agentInput } = args;
+
+  let lastError: string | null = null;
+  for (let attempt = 0; attempt <= AUTO_WRITER_MAX_RETRY; attempt += 1) {
+    if (controller.cancelled) {
+      return { text: "", tokensIn: 0, tokensOut: 0 };
+    }
+    try {
+      return await invokeOneAgentOnce(args);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      lastError = message;
+      const classified = classifyAgentError(message);
+
+      if (!classified.retryable || attempt === AUTO_WRITER_MAX_RETRY) {
+        logger.error(
+          `auto-writer agent[${agentInput.role}] gave up after ${attempt + 1} attempt(s): ${message}`,
+        );
+        throw error;
+      }
+
+      const delay = computeBackoffMs(attempt, classified.retryAfterSec);
+      logger.warn(
+        `auto-writer agent[${agentInput.role}] attempt ${attempt + 1} failed (${classified.reason}); retry in ${delay}ms`,
+      );
+      await sleepCancellable(delay, controller);
+    }
+  }
+  // 理论不会到达：上面循环要么 return 要么 throw
+  throw new Error(lastError ?? "auto-writer: unknown agent error");
+}
+
+async function invokeOneAgentOnce(args: {
   runId: string;
   chapterId: string;
   agentInput: AgentCallInput;

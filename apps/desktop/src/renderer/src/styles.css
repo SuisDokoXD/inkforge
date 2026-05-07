@@ -42,6 +42,37 @@ body,
   color: rgb(var(--ink-100));
 }
 
+/*
+ * v22+: 表单元素全局可读性兜底。
+ * 之前许多 textarea/input/select 只写了 `bg-ink-900`，没显式 text-* 颜色，
+ * 在某些 chromium / Electron 版本下 user-agent stylesheet 会把字体涂成系统默认色
+ * （常常接近黑），叠在 ink-900（rgb(11,18,32)）上几乎不可见。这里强制继承
+ * body 的 ink-100 配色，并把 placeholder 提到 ink-500 保证对比度。
+ * 个别页面想覆写仍可继续用 Tailwind 的 text-* / placeholder:* class。
+ */
+input,
+textarea,
+select {
+  color: rgb(var(--ink-100));
+  caret-color: rgb(var(--ink-100));
+}
+html.theme-light input,
+html.theme-light textarea,
+html.theme-light select {
+  color: rgb(var(--ink-100));
+}
+input::placeholder,
+textarea::placeholder {
+  color: rgb(var(--ink-500));
+  opacity: 1;
+}
+/* 选中文本的高亮兜底 */
+input::selection,
+textarea::selection {
+  background-color: rgba(245, 158, 11, 0.35); /* amber-500 / 35% */
+  color: rgb(var(--ink-50));
+}
+
 .ProseMirror {
   outline: none !important;
   min-height: 100%;

@@ -59,12 +59,91 @@ function tryParseBeats(raw: string): PlannerBeat[] {
 }
 
 /**
+ * v22+: Planner 完全失效时的兜底策略。
+ *
+ * 不再让 "Planner 抽风 → 整章 throw"。我们用 userIdeas 自身做一次很笨的均匀
+ * 切块当 beat sheet：
+ *   - 把 userIdeas 按句号 / 换行切成原子句
+ *   - 如果原子句多于 maxSegments，每 N 句合一段；少于则补空段（让 writer 自由发挥）
+ *   - 至少返回 3 段，保证一章不会太短
+ *
+ * 这是 last-resort，质量肯定不如 LLM Planner，但远胜于整章作废。
+ */
+function buildFallbackBeats(userIdeas: string, maxSegments: number): PlannerBeat[] {
+  const ideas = (userIdeas ?? "").trim();
+  const segCount = Math.max(3, Math.min(maxSegments, 8));
+  if (!ideas) {
+    // 实在没思路：生成空段，让 writer 完全靠角色 / 世界观 / 上下文发挥
+    return Array.from({ length: segCount }, (_, i) => ({
+      index: i + 1,
+      beat: `第 ${i + 1} 段：自由推进剧情，承上启下。`,
+    }));
+  }
+  const sentences = ideas
+    .split(/(?<=[。！？!?])|\n/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (sentences.length === 0) {
+    return [{ index: 1, beat: ideas }];
+  }
+  const beats: PlannerBeat[] = [];
+  const chunkSize = Math.max(1, Math.ceil(sentences.length / segCount));
+  for (let i = 0; i < sentences.length; i += chunkSize) {
+    beats.push({
+      index: beats.length + 1,
+      beat: sentences.slice(i, i + chunkSize).join(" "),
+    });
+  }
+  // 不够 segCount → 补"自由段落"占位，给 writer 自由发挥
+  while (beats.length < segCount) {
+    beats.push({
+      index: beats.length + 1,
+      beat: `第 ${beats.length + 1} 段：自然推进，与前段衔接。`,
+    });
+  }
+  return beats.slice(0, segCount);
+}
+
+/**
  * v20: 把 LLM 输出的「砖头文字」规整成有空行分段的小说体。
  * - 折叠 3+ 连续换行 → 2 个
  * - 去除中文标点前后多余空格
  * - 已经分段良好的输入幂等
  * - 对话行（"...」 / "..." / "..." 开头）前后保证空行
+ * - v22+: 每个非空段落首行自动缩进两个全角空格（中文小说排版规范）
+ *   * 已经以 \u3000\u3000 开头的段落保持原状（幂等）
+ *   * 标题行（# 开头）/ 分隔线 / Markdown 列表项不加缩进
+ *   * 对话行（「」/『』/" "）也加缩进，符合大陆出版社默认排版
  */
+const FULLWIDTH_INDENT = "\u3000\u3000";
+
+function isStructuralLine(line: string): boolean {
+  // 标题、分隔线、列表项等结构化内容不应该被加缩进
+  if (/^\s*#{1,6}\s/.test(line)) return true; // ATX 标题
+  if (/^\s*[-*_]{3,}\s*$/.test(line)) return true; // 分隔线 ---  ***
+  if (/^\s*[-*+]\s/.test(line)) return true; // 无序列表
+  if (/^\s*\d+[.、)]\s/.test(line)) return true; // 有序列表 / 中文编号
+  if (/^\s*>/.test(line)) return true; // 引用块
+  if (/^\s*```/.test(line)) return true; // 代码块栅栏
+  return false;
+}
+
+function indentParagraph(line: string): string {
+  if (!line) return line;
+  // 已经以全角空格开头则视为已缩进，幂等返回
+  if (line.startsWith(FULLWIDTH_INDENT)) return line;
+  // 单个全角空格也视为已经手动缩进，补到两个
+  if (line.startsWith("\u3000")) return "\u3000" + line;
+  // 结构化行（标题、列表、分隔线）不加缩进
+  if (isStructuralLine(line)) return line;
+  // 仅当行的首字符是中文 / 中文标点 / 引号 / 字母数字（句首）时才加缩进
+  // 避免给空行 / 已包含其他特殊前缀的行加无意义的缩进
+  if (!/^[\u4e00-\u9fffA-Za-z0-9「『（《〈“"'‘《【—─]/.test(line)) {
+    return line;
+  }
+  return FULLWIDTH_INDENT + line;
+}
+
 export function normalizeNovelParagraphs(text: string): string {
   if (!text) return "";
   let out = text.replace(/\r\n/g, "\n");
@@ -78,12 +157,18 @@ export function normalizeNovelParagraphs(text: string): string {
     /([^\n])\n([ \t]*[「『""].*?[」』""])/g,
     "$1\n\n$2",
   );
-  // 段首多余空格剔除（保留单个 ASCII 空格的情况：诗体）
+  // 段首多余的半角空格 / 制表符剔除（保留全角空格，因为后面要靠它判断是否已缩进）
   out = out
     .split("\n")
-    .map((line) =>
-      /^[\u3000\s]+[\u4e00-\u9fff]/.test(line) ? line.trimStart() : line,
-    )
+    .map((line) => {
+      // 把行首多余的 ASCII 空白吃掉，但保留全角空格 \u3000
+      return line.replace(/^[ \t]+(?=\S)/, "");
+    })
+    .join("\n");
+  // 给每个非空段落首行缩进两个全角空格
+  out = out
+    .split("\n")
+    .map((line) => (line.trim() ? indentParagraph(line) : line))
     .join("\n");
   return out.trim();
 }
@@ -93,6 +178,32 @@ function joinChapter(prev: string, segmentText: string): string {
   const cleanedSegment = normalizeNovelParagraphs(segmentText);
   if (!prev.trim()) return cleanedSegment + "\n";
   return normalizeNovelParagraphs(prev.trimEnd() + "\n\n" + cleanedSegment) + "\n";
+}
+
+/**
+ * v22+: 把 findings 折算成"质量分"——给 best-of-N 用。分越高越好。
+ *  - 每条 error: -10
+ *  - 每条 warn:  -2
+ *  - 每条 info:  -0.2（几乎不影响）
+ *  - 如果 findings 自带 score（critic 提示模型给 0-10 分），加权 0.5×。
+ *  - 全空（critic 一字未出 / 直接通过）→ +5 baseline 鼓励"什么都没说"。
+ */
+function scoreFindings(findings: { severity: string; score?: number }[]): number {
+  if (findings.length === 0) return 5;
+  let s = 0;
+  let scoreSum = 0;
+  let scoreCount = 0;
+  for (const f of findings) {
+    if (f.severity === "error") s -= 10;
+    else if (f.severity === "warn") s -= 2;
+    else s -= 0.2;
+    if (typeof f.score === "number" && Number.isFinite(f.score)) {
+      scoreSum += f.score;
+      scoreCount += 1;
+    }
+  }
+  if (scoreCount > 0) s += (scoreSum / scoreCount) * 0.5;
+  return s;
 }
 
 /**
@@ -144,9 +255,36 @@ export async function runAutoWriterPipeline(
   );
   if (deps.isCancelled()) return finish(stats);
 
-  const beats = tryParseBeats(plannerOut.text).slice(0, input.maxSegments);
+  let beats = tryParseBeats(plannerOut.text).slice(0, input.maxSegments);
+
+  // v22+: Planner 解析失败时再调一次（高温度，更碎的 JSON 也无所谓）。
+  // 仍失败 → 退到本地兜底切块，永不整章 throw。
   if (beats.length === 0) {
-    throw new Error("Planner 未返回有效 beat sheet");
+    deps.emitPhase({ phase: "planner", segmentIndex: 0 });
+    const retryOut = await callAgent(
+      deps,
+      resolveRole,
+      "planner",
+      buildPlannerSystem(),
+      buildPlannerUser({
+        userIdeas: input.userIdeas,
+        chapterTitle: input.chapterTitle,
+        existingChapterText: input.existingChapterText,
+        characters: input.characters,
+        worldEntries: input.worldEntries,
+        maxSegments: input.maxSegments,
+        recentCorrections: initialInterrupts,
+        globalWorldview: input.globalWorldview,
+        previousChaptersText: input.previousChaptersText,
+        styleSamples: input.styleSamples,
+      }),
+      stats,
+    );
+    beats = tryParseBeats(retryOut.text).slice(0, input.maxSegments);
+  }
+  if (beats.length === 0) {
+    // 再不行就用兜底，并继续；上层根据 stats.totalSegments 仍可判断 partial。
+    beats = buildFallbackBeats(input.userIdeas, input.maxSegments);
   }
 
   // ---------- Loop over beats ----------
@@ -182,6 +320,21 @@ export async function runAutoWriterPipeline(
     pendingCorrections = [...pendingCorrections, ...deps.drainInterrupts()];
 
     let segmentText = "";
+    /**
+     * v22+: best-of-N rewrite。
+     * 之前是"严格通过/失败"——耗尽 rewriteCount 后保留最后一版，可能反复在
+     * A→B→A 错误间振荡。现在每轮 critic 之后无论通过与否都把 (text, findings,
+     * score) 推进 candidates，最终：
+     *   - 一旦某轮 critic 直接通过 → 立即采纳并 break
+     *   - 全部失败 / 耗尽 rewrite → 在 candidates 里选 score 最高的版本采纳
+     */
+    interface SegmentCandidate {
+      text: string;
+      findings: ReturnType<typeof parseFindings>;
+      score: number;
+      tentativeChapter: string;
+    }
+    const candidates: SegmentCandidate[] = [];
 
     // ---------- Writer (with up to N rewrites) ----------
     while (true) {
@@ -247,38 +400,39 @@ export async function runAutoWriterPipeline(
 
       seg.status = "criticking";
       deps.emitPhase({ phase: "critic", segmentIndex: i });
-      const criticOut = await callAgent(
-        deps,
-        resolveRole,
-        "critic",
-        buildCriticSystem(),
-        buildCriticUser({
-          segmentText,
-          segmentIndex: i,
-          beat: beat.beat,
-          userIdeas: input.userIdeas,
-          characters: input.characters,
-          worldEntries: input.worldEntries,
-          recentCorrections: deps.drainInterrupts(),
-          globalWorldview: input.globalWorldview,
-          previousChaptersText: input.previousChaptersText,
-          styleSamples: input.styleSamples,
-        }),
-        stats,
-      );
 
-      // 也做轻量 ooc gate runOocGate（基于人物/世界观的额外校验）
-      let extraFindings: ReturnType<typeof parseFindings> = [];
-      try {
-        extraFindings = await deps.runOocGate({
-          chapterTitle: input.chapterTitle,
-          segmentText,
-          characters: input.characters,
-          worldEntries: input.worldEntries,
-        });
-      } catch {
-        extraFindings = [];
-      }
+      // v22+: critic（LLM 调用）和 OOC gate（同步启发式 / 也可能 LLM）并行，
+      // 节约一次来回。之前串行：每段写完要等 critic 跑完再跑 OOC gate。
+      const [criticOut, extraFindings] = await Promise.all([
+        callAgent(
+          deps,
+          resolveRole,
+          "critic",
+          buildCriticSystem(),
+          buildCriticUser({
+            segmentText,
+            segmentIndex: i,
+            beat: beat.beat,
+            userIdeas: input.userIdeas,
+            characters: input.characters,
+            worldEntries: input.worldEntries,
+            recentCorrections: deps.drainInterrupts(),
+            globalWorldview: input.globalWorldview,
+            previousChaptersText: input.previousChaptersText,
+            styleSamples: input.styleSamples,
+          }),
+          stats,
+        ),
+        deps
+          .runOocGate({
+            chapterTitle: input.chapterTitle,
+            segmentText,
+            characters: input.characters,
+            worldEntries: input.worldEntries,
+          })
+          .catch(() => [] as ReturnType<typeof parseFindings>),
+      ]);
+
       const llmFindings = parseFindings(criticOut.text);
       const findings = [...llmFindings, ...extraFindings];
       const summary = summarizeFindings(findings);
@@ -288,10 +442,17 @@ export async function runAutoWriterPipeline(
         criticSummary: summary,
       });
 
-      if (
-        shouldRewriteFromFindings(findings, { minScore: 6 }) &&
-        seg.rewriteCount < input.maxRewritesPerSegment
-      ) {
+      // 把这一版押进 candidates 池
+      candidates.push({
+        text: segmentText,
+        findings,
+        score: scoreFindings(findings),
+        tentativeChapter,
+      });
+
+      const needsRewrite = shouldRewriteFromFindings(findings, { minScore: 6 });
+
+      if (needsRewrite && seg.rewriteCount < input.maxRewritesPerSegment) {
         // ---------- Rewrite path ----------
         seg.rewriteCount += 1;
         stats.totalRewrites += 1;
@@ -316,10 +477,24 @@ export async function runAutoWriterPipeline(
         continue;
       }
 
-      // 通过或耗尽重写：保留章节当前内容
-      chapterSoFar = tentativeChapter;
-      seg.text = segmentText;
-      seg.lastCriticFindingsText = findingsToMarkdown(findings);
+      // 决定接受版本：
+      //   - critic 直接通过 → 接受当前最新版（已是 candidates 末尾）
+      //   - 耗尽 rewrite 但仍未通过 → 在所有 candidates 里选 score 最高
+      const accepted = needsRewrite
+        ? candidates.reduce((best, cur) => (cur.score > best.score ? cur : best))
+        : candidates[candidates.length - 1];
+
+      // 如果 best-of-N 选出来的不是最新版，得把章节回滚到 best 那一版
+      if (accepted.tentativeChapter !== tentativeChapter) {
+        await deps.applyChapterContent({
+          chapterText: accepted.tentativeChapter,
+          segmentIndex: i,
+        });
+      }
+
+      chapterSoFar = accepted.tentativeChapter;
+      seg.text = accepted.text;
+      seg.lastCriticFindingsText = findingsToMarkdown(accepted.findings);
       seg.status = "completed";
       break;
     }

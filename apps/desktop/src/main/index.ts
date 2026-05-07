@@ -31,14 +31,24 @@ async function bootstrap(): Promise<void> {
     initLogger();
     const ctx = getAppContext();
     initCrashMarker(ctx.userDataDir);
-    initVacuumScheduler(ctx.db, ctx.workspaceDir);
     wireCrashReasonCapture();
     buildAppMenu();
     registerIpcHandlers(getWindow);
+    // M9 Phase 2.5: open the window immediately, defer non-critical initialization
+    // (skill triggers, builtin preset seeding, vacuum scheduler) to setImmediate so
+    // the renderer paints before they run.
     mainWindow = createMainWindow();
-    initializeSkillTriggerService(getWindow);
-    seedBuiltinPresets();
-    logger.info("InkForge main process ready");
+    setImmediate(() => {
+      try {
+        initVacuumScheduler(ctx.db, ctx.workspaceDir);
+        initializeSkillTriggerService(getWindow);
+        seedBuiltinPresets();
+        logger.info("InkForge deferred init complete");
+      } catch (err) {
+        logger.error("Deferred init failed", err);
+      }
+    });
+    logger.info("InkForge main process ready (window shown)");
   } catch (error) {
     logger.error("Failed to bootstrap main process", error);
     throw error;

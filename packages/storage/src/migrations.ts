@@ -833,6 +833,36 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // ===================================================================
+    // v21 · Chapter summaries —— v22+ AutoWriter 跨章节失忆修复。
+    //
+    // 每写完一章异步生成 100~200 字摘要存进来，AutoWriter 启动时把
+    // 全部前序章摘要 + 最近 1 章细节注入到 prompt，解决长篇人物 OOC /
+    // 世界观漂移。chapter_id PK 保证一章只有一份摘要，重生成走 UPSERT。
+    //
+    // model 字段记录由哪个模型摘要的，便于事后切换主力 LLM 时一键重摘。
+    // ===================================================================
+    version: 21,
+    name: "chapter_summaries",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS chapter_summaries (
+          chapter_id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          summary TEXT NOT NULL DEFAULT '',
+          model TEXT,
+          provider_id TEXT,
+          source_word_count INTEGER NOT NULL DEFAULT 0,
+          generated_at TEXT NOT NULL,
+          FOREIGN KEY(chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
+          FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_chapter_summaries_project
+          ON chapter_summaries(project_id, generated_at DESC);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {

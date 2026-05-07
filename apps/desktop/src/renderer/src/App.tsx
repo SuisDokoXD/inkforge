@@ -1,34 +1,48 @@
-import { useEffect, useState } from "react";
+// M9 Phase 1+2.1: global shortcuts unified + 12 lazy pages + Suspense skeleton.
+import { useCallback, useEffect, useMemo, useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { dailyApi, providerApi, projectApi, settingsApi } from "./lib/api";
 import { useAppStore } from "./stores/app-store";
+import { useT } from "./lib/i18n";
+import { useGlobalShortcuts } from "./lib/use-app-shortcuts";
+
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
-import { SkillPage } from "./pages/SkillPage";
-import { CharacterPage } from "./pages/CharacterPage";
-import { TavernPage } from "./pages/TavernPage";
-import { WorldPage } from "./pages/WorldPage";
-import { OutlinePage } from "./pages/OutlinePage";
-import { ResearchPage } from "./pages/ResearchPage";
-import { ReviewPage } from "./pages/ReviewPage";
-import { AutoWriterPage } from "./pages/AutoWriterPage";
-import { MaterialsPage } from "./pages/MaterialsPage";
+
+const SkillPage = lazy(() => import("./pages/SkillPage").then((m) => ({ default: m.SkillPage })));
+const CharacterPage = lazy(() => import("./pages/CharacterPage").then((m) => ({ default: m.CharacterPage })));
+const TavernPage = lazy(() => import("./pages/TavernPage").then((m) => ({ default: m.TavernPage })));
+const WorldPage = lazy(() => import("./pages/WorldPage").then((m) => ({ default: m.WorldPage })));
+const OutlinePage = lazy(() => import("./pages/OutlinePage").then((m) => ({ default: m.OutlinePage })));
+const ResearchPage = lazy(() => import("./pages/ResearchPage").then((m) => ({ default: m.ResearchPage })));
+const ReviewPage = lazy(() => import("./pages/ReviewPage").then((m) => ({ default: m.ReviewPage })));
+const AutoWriterPage = lazy(() => import("./pages/AutoWriterPage").then((m) => ({ default: m.AutoWriterPage })));
+const MaterialsPage = lazy(() => import("./pages/MaterialsPage").then((m) => ({ default: m.MaterialsPage })));
+const AchievementHallPage = lazy(() => import("./pages/AchievementHallPage").then((m) => ({ default: m.AchievementHallPage })));
+const LetterInboxPage = lazy(() => import("./pages/LetterInboxPage").then((m) => ({ default: m.LetterInboxPage })));
+const BookshelfPage = lazy(() => import("./components/bookshelf").then((m) => ({ default: m.BookshelfPage })));
+
 import { ActivityBar } from "./components/ActivityBar";
-import { AchievementHallPage } from "./pages/AchievementHallPage";
-import { LetterInboxPage } from "./pages/LetterInboxPage";
 import { AchievementToast } from "./components/achievement";
-import { BookshelfPage } from "./components/bookshelf";
 import { Companion } from "./components/companion";
 import { ReminderToast } from "./components/log";
 import { TitleBar } from "./components/titlebar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CrashRecoveryBanner } from "./components/CrashRecoveryBanner";
+import { GlobalDropZone } from "./components/GlobalDropZone";
+import { PageSkeleton } from "./components/PageSkeleton";
+import { CommandPalette } from "./components/CommandPalette";
 
 export function App(): JSX.Element {
+  const t = useT();
   const setSettings = useAppStore((s) => s.setSettings);
   const settings = useAppStore((s) => s.settings);
   const settingsLoaded = useAppStore((s) => s.settingsLoaded);
   const mainView = useAppStore((s) => s.mainView);
+  const setMainView = useAppStore((s) => s.setMainView);
+  const openSettings = useAppStore((s) => s.openSettings);
+  const openProviderPanel = useAppStore((s) => s.openProviderPanel);
+  const toggleTerminal = useAppStore((s) => s.toggleTerminal);
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const lang = settings.uiLanguage;
 
@@ -47,33 +61,43 @@ export function App(): JSX.Element {
     document.documentElement.classList.add(theme);
   }, [settings.theme]);
 
-  // v20: 全局快捷键 — Ctrl+Shift+A → AutoWriter，Ctrl+M → 素材库
-  useEffect(() => {
-    const setMainView = useAppStore.getState().setMainView;
-    const onKey = (e: KeyboardEvent): void => {
-      // 不要拦截输入框 / textarea / contenteditable 中的按键
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable)
-      ) {
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "A" || e.key === "a")) {
-        e.preventDefault();
-        setMainView("auto-writer");
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === "M" || e.key === "m")) {
-        e.preventDefault();
-        setMainView("materials");
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const shortcutHandlers = useMemo(
+    () => ({
+      onSwitchMainView: setMainView,
+      onOpenSettings: () => openSettings(true),
+      onOpenProviders: () => openProviderPanel(true),
+      onToggleTerminal: () => toggleTerminal(),
+      onOpenCommandPalette: () => setPaletteOpen((v) => !v),
+    }),
+    [setMainView, openSettings, openProviderPanel, toggleTerminal],
+  );
+  useGlobalShortcuts(shortcutHandlers);
+
+  // M9 Phase 3.1: command palette context. copyDiag uses preload api directly.
+  const paletteCtx = useMemo(
+    () => ({
+      setMainView,
+      openSettings: () => openSettings(true),
+      openProviders: () => openProviderPanel(true),
+      toggleTerminal: () => toggleTerminal(),
+      replayOnboarding: () => {
+        void settingsApi.set({ updates: { onboardingCompleted: false } }).then((next) => {
+          setSettings(next);
+        });
+      },
+      copyDiagnostic: async () => {
+        try {
+          const r = await window.inkforge.diag.snapshot({});
+          await navigator.clipboard.writeText(r.text);
+        } catch (e) {
+          // best-effort
+          console.warn("[copyDiagnostic]", e);
+        }
+      },
+    }),
+    [setMainView, openSettings, openProviderPanel, toggleTerminal, setSettings],
+  );
 
   const providersQuery = useQuery({
     queryKey: ["providers"],
@@ -98,7 +122,12 @@ export function App(): JSX.Element {
     }
   }, [providersQuery.data, projectsQuery.data, settings.onboardingCompleted]);
 
-  const loading =    !settingsLoaded ||
+  useEffect(() => {
+    if (!settings.onboardingCompleted) setOnboarded(false);
+  }, [settings.onboardingCompleted]);
+
+  const loading =
+    !settingsLoaded ||
     providersQuery.isLoading ||
     projectsQuery.isLoading ||
     settingsQuery.isLoading;
@@ -108,7 +137,7 @@ export function App(): JSX.Element {
       <div className="flex h-full w-full flex-col">
         <TitleBar />
         <div className="flex flex-1 items-center justify-center text-ink-300">
-          <div className="animate-pulse">正在打开 InkForge…</div>
+          <div className="animate-pulse">{t("app.loading")}</div>
         </div>
       </div>
     );
@@ -134,38 +163,38 @@ export function App(): JSX.Element {
         <CrashRecoveryBanner />
         <ReminderToast />
         <AchievementToast />
+        <GlobalDropZone />
         <div className="flex min-h-0 flex-1">
           <ErrorBoundary label="ActivityBar" lang={lang}>
-            <ActivityBar />
+            <ActivityBar onOpenPalette={() => setPaletteOpen(true)} />
           </ErrorBoundary>
           <div className="flex min-w-0 flex-1 flex-col">
             <ErrorBoundary label={mainView} lang={lang}>
-              {mainView === "writing" && <WorkspacePage />}
-              {mainView === "skill" && <SkillPage />}
-              {mainView === "character" && <CharacterPage />}
-              {mainView === "tavern" && <TavernPage />}
-              {mainView === "world" && <WorldPage />}
-              {mainView === "research" && <ResearchPage />}
-              {mainView === "review" && <ReviewPage />}
-              {mainView === "bookshelf" && <BookshelfPage />}
-              {mainView === "achievement" && <AchievementHallPage />}
-              {mainView === "letters" && <LetterInboxPage />}
-              {mainView === "outline" && <OutlinePage />}
-              {mainView === "auto-writer" && <AutoWriterPage />}
-              {mainView === "materials" && <MaterialsPage />}
+              <Suspense fallback={<PageSkeleton />}>
+                {mainView === "writing" && <WorkspacePage />}
+                {mainView === "skill" && <SkillPage />}
+                {mainView === "character" && <CharacterPage />}
+                {mainView === "tavern" && <TavernPage />}
+                {mainView === "world" && <WorldPage />}
+                {mainView === "research" && <ResearchPage />}
+                {mainView === "review" && <ReviewPage />}
+                {mainView === "bookshelf" && <BookshelfPage />}
+                {mainView === "achievement" && <AchievementHallPage />}
+                {mainView === "letters" && <LetterInboxPage />}
+                {mainView === "outline" && <OutlinePage />}
+                {mainView === "auto-writer" && <AutoWriterPage />}
+                {mainView === "materials" && <MaterialsPage />}
+              </Suspense>
             </ErrorBoundary>
           </div>
         </div>
         <CompanionMount projectId={currentProjectId ?? null} />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} ctx={paletteCtx} />
       </div>
     </ErrorBoundary>
   );
 }
 
-/**
- * Companion 包装：根据 currentProjectId 拉今日字数判断是否达成日目标。
- * 抽离避免 App 组件下方再加一个 useQuery 让顶层代码冗长。
- */
 function CompanionMount({ projectId }: { projectId: string | null }): JSX.Element {
   const dailyQuery = useQuery({
     queryKey: ["daily-progress", projectId],
@@ -173,10 +202,10 @@ function CompanionMount({ projectId }: { projectId: string | null }): JSX.Elemen
     enabled: !!projectId,
     refetchInterval: 30_000,
   });
-  const dailyAchieved = (() => {
+  const dailyAchieved = useCallback(() => {
     const r = dailyQuery.data;
     if (!r) return false;
     return r.goalHit;
-  })();
+  }, [dailyQuery.data])();
   return <Companion dailyAchieved={dailyAchieved} />;
 }

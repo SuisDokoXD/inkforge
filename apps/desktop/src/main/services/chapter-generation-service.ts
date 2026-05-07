@@ -26,6 +26,7 @@ import {
   streamText,
 } from "./llm-runtime";
 import { buildRagBlock } from "./rag-service";
+import { triggerChapterSummary } from "./chapter-summary-service";
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -292,6 +293,10 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
       // Non-fatal: outline link failure shouldn't block draft commit.
     }
   }
+
+  // v22+: 章节落盘后异步触发摘要生成（不阻塞返回）。失败只 warn。
+  // 长篇写到几十章时，AutoWriter 启动会读所有摘要做跨章上下文。
+  triggerChapterSummary(chapterId);
 
   return { chapterId, filePath, wordCount };
 }

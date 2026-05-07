@@ -57,6 +57,8 @@ const EXPECTED_TABLES = [
   "world_relationships",
   // ----- v20: Materials (素材库, 独立顶级页) -----
   "materials",
+  // ----- v21: Chapter summaries (跨章节失忆修复) -----
+  "chapter_summaries",
 ];
 
 const EXPECTED_INDEXES = [
@@ -106,9 +108,11 @@ const EXPECTED_INDEXES = [
   // ----- v20: Materials -----
   "idx_materials_project_updated",
   "idx_materials_project_kind",
+  // ----- v21: Chapter summaries -----
+  "idx_chapter_summaries_project",
 ];
 
-const EXPECTED_MAX_VERSION = 20;
+const EXPECTED_MAX_VERSION = 21;
 const EXPECTED_VERSIONS = Array.from(
   { length: EXPECTED_MAX_VERSION },
   (_, i) => i + 1,

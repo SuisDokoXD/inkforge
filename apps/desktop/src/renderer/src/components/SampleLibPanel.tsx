@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   SampleLibImportResponse,
@@ -12,7 +12,10 @@ export function SampleLibPanel(): JSX.Element {
   const queryClient = useQueryClient();
 
   const [showImport, setShowImport] = useState<"text" | "epub" | null>(null);
-  const [text, setText] = useState("");
+  // v22+: title / author 仍是受控（短文本无所谓），text 用 ref 维护避免粘贴
+  // 几万字时反复触发整个面板 React 重渲染。提交时统一从 ref 读取。
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const [textCharCount, setTextCharCount] = useState(0);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -30,6 +33,7 @@ export function SampleLibPanel(): JSX.Element {
   });
 
   const onImportText = async () => {
+    const text = textRef.current?.value ?? "";
     if (!projectId || !title.trim() || !text.trim()) return;
     setBusy(true);
     try {
@@ -40,7 +44,8 @@ export function SampleLibPanel(): JSX.Element {
         text,
       });
       setLastImport(`✓ 导入成功：《${res.lib.title}》${res.chunkCount} 章`);
-      setText("");
+      if (textRef.current) textRef.current.value = "";
+      setTextCharCount(0);
       setTitle("");
       setAuthor("");
       setShowImport(null);
@@ -127,16 +132,33 @@ export function SampleLibPanel(): JSX.Element {
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
           />
+          {/*
+            非受控 textarea：value 直接由 DOM 维护，不再每次按键 / 粘贴都触发
+            React 重渲染。粘贴几万字时不会再卡。
+            字数提示用 onInput 节流到下一帧后再 setState，仅更新一个数字、
+            不会拖累整个面板（textarea 自身完全不重渲染）。
+          */}
           <textarea
+            ref={textRef}
+            defaultValue=""
             placeholder="粘贴小说全文，自动按「第 X 章」拆章"
             className="h-32 w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
+            onInput={(e) => {
+              const len = (e.target as HTMLTextAreaElement).value.length;
+              // 仅当数量级跳变时才 setState，避免每键 setState 也成为新瓶颈
+              setTextCharCount((prev) =>
+                Math.abs(prev - len) > 500 || len === 0 ? len : prev,
+              );
+            }}
           />
+          <div className="flex items-center gap-2 text-[10px] text-ink-500">
+            <span>{textCharCount.toLocaleString()} 字</span>
+            <span className="ml-auto">大文本粘贴流畅；提交时一次性读取</span>
+          </div>
           <div className="flex gap-2 text-xs">
             <button
               className="rounded-md bg-amber-500 px-3 py-1 font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
-              disabled={busy || !title.trim() || !text.trim()}
+              disabled={busy || !title.trim()}
               onClick={onImportText}
             >
               {busy ? "导入中…" : "确认导入"}

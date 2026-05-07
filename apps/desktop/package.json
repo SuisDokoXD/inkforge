@@ -23,7 +23,7 @@
     "verify:world-relationship": "node scripts/verify-world-relationship.cjs",
     "verify:export": "node scripts/verify-export.cjs",
     "verify:outline-gen": "node scripts/verify-outline-gen.cjs",
-    "verify:all": "pnpm run verify:migrations && pnpm run verify:engine && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:outline-gen",
+    "verify:all": "pnpm run verify:migrations && pnpm run verify:engine && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:outline-gen && pnpm run verify:shortcuts",
     "bench:storage": "node scripts/_run-in-electron.cjs scripts/bench-storage.cjs",
     "dist": "electron-vite build && electron-builder",
     "dist:dir": "electron-vite build && electron-builder --dir",
@@ -40,17 +40,22 @@
     "dist:all": "electron-vite build && electron-builder -mwl",
     "e2e": "electron-vite build && playwright test",
     "e2e:install": "playwright install chromium",
-    "postinstall": "node -e \"if(process.env.CI){console.log('skip install-app-deps on CI');process.exit(0)};try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'inherit'})}catch(e){console.log('skip install-app-deps');}\""
+    "postinstall": "node -e \"if(process.env.CI){console.log('skip install-app-deps on CI');process.exit(0)};try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'inherit'})}catch(e){console.log('skip install-app-deps');}\"",
+    "verify:shortcuts": "node scripts/verify-shortcuts.cjs",
+    "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "@dagrejs/dagre": "^3.0.0",
+    "@tanstack/react-virtual": "^3.13.24",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.10.2",
     "better-sqlite3": "^11.5.0",
+    "cmdk": "^1.1.1",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.9",
+    "lucide-react": "^1.14.0",
     "node-pty": "^1.0.0"
   },
   "devDependencies": {

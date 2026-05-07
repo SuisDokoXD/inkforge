@@ -6,6 +6,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), adhering to [S
 
 ---
 
+## [Unreleased] — M9 · 体验打磨与社区生态
+
+聚焦三大用户痛点：性能慢 / 找不到功能 / 新用户上手难。无破坏性数据层变更。
+
+### 🐛 修复
+
+- **虚假快捷键**：ActivityBar tooltip 承诺的 `Ctrl+1~9 / Ctrl+0 / Ctrl+\`` 共 11 个快捷键此前仅 2 个真实绑定。新增 `lib/shortcuts.ts` 单一真源 + `useGlobalShortcuts` 在 App 层注册，13 个导航键全部生效；`Ctrl+\`` 回归 outline、终端切换迁至 `Ctrl+J`
+- **新手引导一次性**：旧用户无法重看引导。SettingsDialog 增「重新观看新手引导」按钮，App 监听 `onboardingCompleted` 状态重入
+- **i18n 缺漏**：ActivityBar label 和 "正在打开 InkForge…" 加载文案此前硬编码中文，发布英 / 日语会破。补 22 个 zh/en/ja 键
+
+### 🚀 性能
+
+- **路由级代码分割**：12 个非首屏页面（Skill / Character / Tavern / World / Outline / Research / Review / AutoWriter / Materials / Achievement / Letters / Bookshelf）改 `React.lazy + Suspense`，新增 `PageSkeleton` 占位
+- **列表虚拟化**：引入 `@tanstack/react-virtual`；AI Timeline / 角色来信 / 章节树 改虚拟列表，千级条目滚动 60 fps
+- **主进程启动**：vacuum scheduler / skill triggers / 预设 seed 全部推迟到 BrowserWindow 显示后的 `setImmediate`，缩短可见首屏延迟
+
+### 🧭 信息架构
+
+- **命令面板**（`cmdk`）：`Ctrl+K` 唤起；首版覆盖 13 个跳转 + 设置/Provider/终端 + 重玩引导/复制诊断；`lib/commands.ts` 声明式注册
+- **ActivityBar 重组**：三组分隔（核心 / AI 协作 / 世界陪伴）+ 底部固定「⌘K + ⚙ 设置」工具栏；加 `role="tablist"` / `aria-current` 改善键盘可访问性
+
+### ✅ 验收
+
+- 新增 `verify-shortcuts.cjs`（接入 `verify:all`）：静态校验 ActivityBar 显示快捷键 ⊆ 已绑定，防回归
+- 新增 `bench:startup` Electron 启动耗时基线脚本
+- typecheck（18/18）+ verify:i18n（25）+ verify:catalog（22）+ verify:shortcuts（17）全过
+
+### 📦 依赖
+
+- `@tanstack/react-virtual` ^3.13
+- `cmdk` ^1.1
+- `lucide-react`（预备 Phase 3.3 emoji → SVG，未在本批次切换）
+
+---
+
 ## [Unreleased] — M7 · Bookshelf Module
 
 新增「书房」顶层模块，扩展 4 大能力，**完全旁路现有写作流程**：

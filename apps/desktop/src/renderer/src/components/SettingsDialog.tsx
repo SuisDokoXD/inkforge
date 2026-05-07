@@ -21,6 +21,19 @@ export function SettingsDialog(): JSX.Element | null {
     setThreshold(settings.analysisThreshold);
   }, [settings.analysisThreshold]);
 
+  // M9 Phase 5: Esc to close + a11y improvements.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setOpen]);
+
   const settingsMutation = useMutation({
     mutationFn: (updates: Partial<AppSettings>) => settingsApi.set({ updates }),
     onSuccess: (next) => setSettings(next),
@@ -49,11 +62,32 @@ export function SettingsDialog(): JSX.Element | null {
     }
   };
 
+  const [diagText, setDiagText] = useState<string | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
+  const handleShowDiag = async () => {
+    setDiagLoading(true);
+    try {
+      const r = await window.inkforge.diag.snapshot({});
+      setDiagText(r.text);
+    } catch (err) {
+      setDiagText(t("error.generic") + ": " + String(err));
+    } finally {
+      setDiagLoading(false);
+    }
+  };
+
+  const handleReplayOnboarding = () => {
+    // M9 Phase 1.3: 初始化完成后的用户也能重走 5 步向导。
+    settingsMutation.mutate({ onboardingCompleted: false });
+    setOpen(false);
+  };
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-8" role="dialog">
-      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-8" role="dialog" aria-modal="true" aria-label={t("settings.title")} onClick={() => setOpen(false)}>
+      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{t("settings.title")}</h2>
           <button
@@ -172,7 +206,35 @@ export function SettingsDialog(): JSX.Element | null {
                   <div className="text-xs text-ink-400">{t("settings.devModeHint")}</div>
                 </div>
               </label>
-              <div className="pt-2">
+              {/* M9 Phase 6: 诊断面板 */}
+              <div className="rounded-md border border-ink-700 bg-ink-900/40 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-ink-300">{t("settings.diag.title")}</span>
+                  <button
+                    type="button"
+                    className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-50"
+                    onClick={handleShowDiag}
+                    disabled={diagLoading}
+                  >
+                    {diagLoading ? t("common.loading") : (diagText ? t("settings.diag.refresh") : t("settings.diag.show"))}
+                  </button>
+                </div>
+                {diagText ? (
+                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900 p-2 text-[11px] leading-relaxed text-ink-300">
+                    {diagText}
+                  </pre>
+                ) : (
+                  <p className="text-[11px] text-ink-500">{t("settings.diag.hint")}</p>
+                )}
+              </div>
+              <div className="pt-2 flex flex-wrap gap-2">
+                <button
+                  className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/20"
+                  onClick={handleReplayOnboarding}
+                  title={t("settings.replayOnboarding.hint")}
+                >
+                  {t("settings.replayOnboarding")}
+                </button>
                 <button
                   className="rounded-md border border-ink-600 bg-ink-900 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700 hover:text-ink-100"
                   onClick={handleCopyDiag}

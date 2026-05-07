@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChapterRecord } from "@inkforge/shared";
 import { chapterApi, fsApi, llmApi, projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
-import { useAppShortcuts } from "../lib/use-app-shortcuts";
+import { useChapterShortcuts } from "../lib/use-app-shortcuts";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
 import { AITimeline } from "../components/AITimeline";
@@ -172,12 +172,8 @@ export function WorkspacePage(): JSX.Element {
 
   const setMainView = useAppStore((s) => s.setMainView);
 
-  useAppShortcuts({
+  useChapterShortcuts({
     onNewChapter: () => createChapter.mutate(),
-    onOpenSettings: () => openSettings(true),
-    onOpenProviders: () => openProviderPanel(true),
-    onToggleTerminal: () => toggleTerminal(),
-    onSwitchMainView: (v) => setMainView(v),
   });
 
   const resolvedProject = projectsQuery.data?.find((p) => p.id === resolvedProjectId) ?? null;

@@ -13,6 +13,8 @@ import {
   autoWriterApi,
   providerApi,
 } from "../../lib/api";
+import { useAppStore } from "../../stores/app-store";
+import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
 
 const ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
   planner: "📋 提纲师",
@@ -45,17 +47,53 @@ export function AutoWriterPanel({
   onClose,
 }: AutoWriterPanelProps): JSX.Element {
   const queryClient = useQueryClient();
+  // v22+: 配置持久化——上次选好的 provider/model/段长等下次回填
+  const remembered = useAppStore((s) => s.autoWriterConfig);
+  const setRemembered = useAppStore((s) => s.setAutoWriterConfig);
+
   const [userIdeas, setUserIdeas] = useState("");
-  const [advanced, setAdvanced] = useState(false);
-  const [primaryProviderId, setPrimaryProviderId] = useState<string>("");
-  const [primaryModel, setPrimaryModel] = useState<string>("");
+  const [advanced, setAdvanced] = useState(remembered?.advanced ?? false);
+  const [primaryProviderId, setPrimaryProviderId] = useState<string>(
+    remembered?.primaryProviderId ?? "",
+  );
+  const [primaryModel, setPrimaryModel] = useState<string>(remembered?.primaryModel ?? "");
   const [agentBindings, setAgentBindings] = useState<
     Partial<Record<AutoWriterAgentRole, { providerId: string; model: string }>>
-  >({});
-  const [targetSegmentLength, setTargetSegmentLength] = useState(400);
-  const [maxSegments, setMaxSegments] = useState(10);
-  const [maxRewrites, setMaxRewrites] = useState(3);
-  const [enableOocGate, setEnableOocGate] = useState(true);
+  >(
+    (remembered?.agentBindings as Partial<
+      Record<AutoWriterAgentRole, { providerId: string; model: string }>
+    >) ?? {},
+  );
+  const [targetSegmentLength, setTargetSegmentLength] = useState(
+    remembered?.targetSegmentLength ?? 400,
+  );
+  const [maxSegments, setMaxSegments] = useState(remembered?.maxSegments ?? 10);
+  const [maxRewrites, setMaxRewrites] = useState(remembered?.maxRewrites ?? 3);
+  const [enableOocGate, setEnableOocGate] = useState(remembered?.enableOocGate ?? true);
+
+  // 任意一个配置变化时同步到 zustand persist
+  useEffect(() => {
+    setRemembered({
+      primaryProviderId,
+      primaryModel,
+      agentBindings,
+      targetSegmentLength,
+      maxSegments,
+      maxRewrites,
+      enableOocGate,
+      advanced,
+    });
+  }, [
+    primaryProviderId,
+    primaryModel,
+    agentBindings,
+    targetSegmentLength,
+    maxSegments,
+    maxRewrites,
+    enableOocGate,
+    advanced,
+    setRemembered,
+  ]);
 
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [currentPhase, setCurrentPhase] = useState<AutoWriterPhaseEvent | null>(null);
@@ -456,22 +494,53 @@ export function AutoWriterPanel({
 
         {/* 完成 */}
         {doneEvent && (
-          <section
-            className={`mb-3 rounded-md border p-2 text-xs ${
-              doneEvent.status === "completed"
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
-                : "border-rose-500/40 bg-rose-500/10 text-rose-100"
-            }`}
-          >
-            <div className="font-semibold">运行结束：{doneEvent.status}</div>
-            <div className="mt-1 text-[11px]">
-              {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · token{" "}
-              {doneEvent.totalTokensIn} ↑ / {doneEvent.totalTokensOut} ↓
-            </div>
-            {doneEvent.error && (
-              <div className="mt-1 text-[11px] text-rose-200">错误：{doneEvent.error}</div>
+          <>
+            <section
+              className={`mb-3 rounded-md border p-2 text-xs ${
+                doneEvent.status === "completed"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+                  : doneEvent.status === "partial"
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+                    : doneEvent.status === "stopped"
+                      ? "border-sky-500/40 bg-sky-500/10 text-sky-100"
+                      : "border-rose-500/40 bg-rose-500/10 text-rose-100"
+              }`}
+            >
+              <div className="font-semibold">
+                {doneEvent.status === "completed" && "✓ 全部完成"}
+                {doneEvent.status === "partial" &&
+                  `⚠ 部分完成（已保留前 ${doneEvent.totalSegments} 段）`}
+                {doneEvent.status === "stopped" && "⏹ 已手动停止"}
+                {doneEvent.status === "failed" && "✗ 全部失败"}
+                {doneEvent.status !== "completed" &&
+                  doneEvent.status !== "partial" &&
+                  doneEvent.status !== "stopped" &&
+                  doneEvent.status !== "failed" &&
+                  `运行结束：${doneEvent.status}`}
+              </div>
+              <div className="mt-1 text-[11px]">
+                {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · token{" "}
+                {doneEvent.totalTokensIn} ↑ / {doneEvent.totalTokensOut} ↓
+              </div>
+              {doneEvent.error && (
+                <div className="mt-1 text-[11px] text-rose-200">错误：{doneEvent.error}</div>
+              )}
+            </section>
+
+            {/* v22+: 段落审改——对每段否决重写 */}
+            {(doneEvent.status === "completed" || doneEvent.status === "partial") && (
+              <PostRunSegmentRewriter
+                chapterId={chapterId}
+                projectId={projectId}
+                chapterTitle={chapterTitle}
+                onChapterUpdated={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ["chapters", projectId],
+                  })
+                }
+              />
             )}
-          </section>
+          </>
         )}
       </div>
     </div>

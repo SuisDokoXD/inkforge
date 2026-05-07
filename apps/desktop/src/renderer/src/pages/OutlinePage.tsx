@@ -12,6 +12,7 @@ import {
   projectApi,
 } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { BulkChapterGenerator } from "../components/outline/BulkChapterGenerator";
 
 interface ProjectMetaDraft {
   synopsis: string;
@@ -364,6 +365,12 @@ export function OutlinePage(): JSX.Element {
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {projectLevelCards.length > 0 && (
+              <BulkChapterGenerator
+                projectId={projectId}
+                cards={projectLevelCards}
+              />
+            )}
             {projectLevelCards.length === 0 ? (
               <p className="rounded-md border border-dashed border-ink-700 p-4 text-xs text-ink-500">
                 尚无章节大纲卡。生成总大纲后点击「AI 拆分章节」。

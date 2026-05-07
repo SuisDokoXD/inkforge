@@ -40,3 +40,5 @@ export * from "./repositories/rag-repo";
 export * from "./repositories/world-relationship-repo";
 // ----- v20: Materials (素材库, top-level inspiration store) -----
 export * from "./repositories/material-repo";
+// ----- v21: Chapter summaries (跨章节摘要记忆，AutoWriter 长篇用) -----
+export * from "./repositories/chapter-summary-repo";
