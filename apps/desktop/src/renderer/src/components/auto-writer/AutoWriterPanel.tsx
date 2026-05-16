@@ -135,7 +135,10 @@ export function AutoWriterPanel({
       }
       setStreamBuffers((prev) => ({
         ...prev,
-        [payload.agentRole]: payload.accumulatedText,
+        [payload.agentRole]:
+          payload.accumulatedText && payload.accumulatedText.length > 0
+            ? payload.accumulatedText
+            : `${prev[payload.agentRole] ?? ""}${payload.delta}`,
       }));
     });
     const unsubPhase = autoWriterApi.onPhase((payload: AutoWriterPhaseEvent) => {

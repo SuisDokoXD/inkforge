@@ -703,7 +703,7 @@ async function invokeOneAgentOnce(args: {
           agentRole: agentInput.role,
           segmentIndex,
           delta: chunk.textDelta,
-          accumulatedText: accumulated,
+          accumulatedText: "",
           emittedAt: new Date().toISOString(),
         };
         emitToWindow<AutoWriterChunkEvent>(

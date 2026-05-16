@@ -79,7 +79,13 @@ export type AppSettingKey =
   | "uiLanguage"
   | "devModeEnabled"
   | "onboardingCompleted"
-  | "sceneRoutingMode";
+  | "sceneRoutingMode"
+  | "editorFontSize"
+  | "editorLineHeight"
+  | "editorWidth"
+  | "typewriterMode"
+  | "autoIndent"
+  | "focusMode";
 
 export interface AppSettings {
   theme: "dark" | "light";
@@ -90,6 +96,12 @@ export interface AppSettings {
   devModeEnabled: boolean;
   onboardingCompleted: boolean;
   sceneRoutingMode: SceneRoutingMode;
+  editorFontSize: number;
+  editorLineHeight: number;
+  editorWidth: "narrow" | "medium" | "wide";
+  typewriterMode: boolean;
+  autoIndent: boolean;
+  focusMode: boolean;
 }
 
 // ===== Scene Bindings (ported from ainovel) =====

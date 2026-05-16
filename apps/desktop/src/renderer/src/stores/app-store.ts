@@ -145,6 +145,12 @@ const DEFAULT_SETTINGS: AppSettings = {
   devModeEnabled: false,
   onboardingCompleted: false,
   sceneRoutingMode: "basic",
+  editorFontSize: 16,
+  editorLineHeight: 2.0,
+  editorWidth: "medium",
+  typewriterMode: false,
+  autoIndent: true,
+  focusMode: false,
 };
 
 export const useAppStore = create<AppState>()(

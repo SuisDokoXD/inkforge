@@ -19,6 +19,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: workspaceExcludes })],
     build: {
       outDir: "out/main",
+      sourcemap: false,
+      minify: true,
       rollupOptions: {
         input: resolve(__dirname, "src/main/index.ts"),
       },
@@ -43,6 +45,8 @@ export default defineConfig({
     plugins: [externalizeDepsPlugin({ exclude: workspaceExcludes })],
     build: {
       outDir: "out/preload",
+      sourcemap: false,
+      minify: true,
       rollupOptions: {
         input: resolve(__dirname, "src/preload/index.ts"),
       },
@@ -68,6 +72,8 @@ export default defineConfig({
     },
     build: {
       outDir: "out/renderer",
+      sourcemap: false,
+      minify: true,
       rollupOptions: {
         input: resolve(__dirname, "src/renderer/index.html"),
       },

@@ -17,19 +17,30 @@ interface SharedBookContext {
   globalWorldview?: string;
   previousChaptersText?: string;
   styleSamples?: StyleSampleRef[];
+  detailLevel?: "full" | "compact";
 }
 
 function appendSharedBookContext(lines: string[], ctx: SharedBookContext): void {
+  const compact = ctx.detailLevel === "compact";
   if (ctx.globalWorldview && ctx.globalWorldview.trim()) {
-    lines.push(`# 本书世界观（全局）\n${ctx.globalWorldview.trim()}`);
+    const text = compact
+      ? truncateForContext(ctx.globalWorldview.trim(), 900)
+      : ctx.globalWorldview.trim();
+    lines.push(`# 本书世界观（全局）\n${text}`);
   }
   if (ctx.previousChaptersText && ctx.previousChaptersText.trim()) {
-    lines.push(`# 前情提要（已写章节摘要）\n${ctx.previousChaptersText.trim()}`);
+    const text = compact
+      ? truncateForContext(ctx.previousChaptersText.trim(), 1800)
+      : ctx.previousChaptersText.trim();
+    lines.push(`# 前情提要（已写章节摘要）\n${text}`);
   }
   if (ctx.styleSamples && ctx.styleSamples.length > 0) {
     const body = ctx.styleSamples
-      .slice(0, 5)
-      .map((s, i) => `【样本 ${i + 1}｜${s.source}】\n${s.excerpt.slice(0, 600)}`)
+      .slice(0, compact ? 2 : 5)
+      .map((s, i) => {
+        const maxExcerpt = compact ? 280 : 600;
+        return `【样本 ${i + 1}｜${s.source}】\n${s.excerpt.slice(0, maxExcerpt)}`;
+      })
       .join("\n\n");
     lines.push(`# 文笔参考样本（学习句式与意象密度，禁止照搬词组）\n${body}`);
   }
@@ -102,7 +113,7 @@ export function buildWriterUser(input: BuildWriterPromptInput): string {
   lines.push(`# 期望长度\n约 ${input.targetLength} 字`);
 
   if (input.chapterSoFar.trim()) {
-    lines.push(`# 章节已写部分\n${truncateForContext(input.chapterSoFar, 2000)}`);
+    lines.push(`# 章节已写部分\n${truncateForContext(input.chapterSoFar, 1200)}`);
   }
 
   if (input.userInterrupts.length > 0) {
@@ -124,7 +135,7 @@ export function buildWriterUser(input: BuildWriterPromptInput): string {
     );
   }
 
-  appendSharedBookContext(lines, input);
+  appendSharedBookContext(lines, { ...input, detailLevel: "compact" });
   lines.push(`# 人物档案\n${rosterToText(input.characters)}`);
   lines.push(`# 世界观\n${worldToText(input.worldEntries)}`);
   return lines.join("\n\n");
@@ -155,9 +166,9 @@ export function buildCriticUser(input: BuildCriticPromptInput): string {
         input.recentCorrections.map((c) => `- ${c.content}`).join("\n"),
     );
   }
-  appendSharedBookContext(lines, input);
-  lines.push(`# 人物档案\n${rosterToText(input.characters)}`);
-  lines.push(`# 世界观\n${worldToText(input.worldEntries)}`);
+  appendSharedBookContext(lines, { ...input, detailLevel: "compact" });
+  lines.push(`# 人物档案（摘要）\n${truncateForContext(rosterToText(input.characters), 1200)}`);
+  lines.push(`# 世界观（摘要）\n${truncateForContext(worldToText(input.worldEntries), 1000)}`);
   return lines.join("\n\n");
 }
 

@@ -61,6 +61,30 @@ export function OutlinePage(): JSX.Element {
     candidates: ChapterGenerateFromOutlineResponse["candidates"];
   } | null>(null);
   const [candidateCount, setCandidateCount] = useState<1 | 2 | 3>(1);
+  const [cardFilter, setCardFilter] = useState<"all" | "unwritten" | "written">("all");
+  const [cardSearch, setCardSearch] = useState("");
+
+  const outlineStats = useMemo(() => {
+    const written = projectLevelCards.filter((c) => c.chapterId).length;
+    return {
+      total: projectLevelCards.length,
+      written,
+      unwritten: projectLevelCards.length - written,
+    };
+  }, [projectLevelCards]);
+
+  const visibleCards = useMemo(() => {
+    const keyword = cardSearch.trim().toLowerCase();
+    return projectLevelCards.filter((card) => {
+      if (cardFilter === "written" && !card.chapterId) return false;
+      if (cardFilter === "unwritten" && card.chapterId) return false;
+      if (!keyword) return true;
+      return (
+        card.title.toLowerCase().includes(keyword) ||
+        card.content.toLowerCase().includes(keyword)
+      );
+    });
+  }, [cardFilter, cardSearch, projectLevelCards]);
 
   // Sync meta draft when project changes
   useEffect(() => {
@@ -330,6 +354,11 @@ export function OutlinePage(): JSX.Element {
         <section className="flex flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-2 border-b border-ink-700 p-3">
             <h2 className="text-sm font-semibold">章节大纲卡 ({projectLevelCards.length})</h2>
+            <div className="hidden items-center gap-1 text-[10px] text-ink-500 lg:flex">
+              <span>已写 {outlineStats.written}</span>
+              <span>·</span>
+              <span>待写 {outlineStats.unwritten}</span>
+            </div>
             <label className="ml-auto flex items-center gap-1 text-xs text-ink-400">
               目标章数
               <input
@@ -364,6 +393,25 @@ export function OutlinePage(): JSX.Element {
             </label>
           </div>
 
+          <div className="flex shrink-0 items-center gap-2 border-b border-ink-700/70 px-3 py-2">
+            <input
+              type="search"
+              value={cardSearch}
+              onChange={(e) => setCardSearch(e.target.value)}
+              className="min-w-0 flex-1 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-ink-100 placeholder:text-ink-500"
+              placeholder="搜索章名 / 大纲内容"
+            />
+            <select
+              value={cardFilter}
+              onChange={(e) => setCardFilter(e.target.value as typeof cardFilter)}
+              className="rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-ink-100"
+            >
+              <option value="all">全部</option>
+              <option value="unwritten">待写</option>
+              <option value="written">已写</option>
+            </select>
+          </div>
+
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {projectLevelCards.length > 0 && (
               <BulkChapterGenerator
@@ -376,7 +424,11 @@ export function OutlinePage(): JSX.Element {
                 尚无章节大纲卡。生成总大纲后点击「AI 拆分章节」。
               </p>
             ) : (
-              projectLevelCards.map((card) => (
+              visibleCards.length === 0 ? (
+                <p className="rounded-md border border-dashed border-ink-700 p-4 text-xs text-ink-500">
+                  没有匹配的大纲卡。
+                </p>
+              ) : visibleCards.map((card) => (
                 <div key={card.id} className="rounded-md border border-ink-700 bg-ink-900/40 p-3">
                   <div className="mb-1 flex items-center gap-2">
                     <h3 className="text-sm font-medium">{card.title}</h3>

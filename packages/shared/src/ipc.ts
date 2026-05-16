@@ -1618,7 +1618,12 @@ export interface AutoWriterChunkEvent {
   agentRole: AutoWriterAgentRole;
   segmentIndex: number;
   delta: string;
-  accumulatedText: string;
+  /**
+   * Deprecated compatibility field. New emitters should send only `delta`
+   * because repeatedly IPC-copying the full accumulated text grows O(n^2)
+   * during long AutoWriter runs.
+   */
+  accumulatedText?: string;
   emittedAt: string;
 }
 

@@ -32,6 +32,8 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
   const [recoveryPrompt, setRecoveryPrompt] = useState<
     { content: string; savedAt: number } | null
   >(null);
+  const contentRef = useRef<string>("");
+  const contentCacheRef = useRef<Map<string, string>>(new Map());
   const lastSavedRef = useRef<string>("");
   const lastAutosavedRef = useRef<string>("");
   const loadedChapterIdRef = useRef<string | null>(null);
@@ -61,7 +63,19 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
     // reference (same id) would run this effect, call setContent with the cached
     // readQuery.data.content, and overwrite unsaved keystrokes.
     if (readQuery.data && loadedChapterIdRef.current !== chapter.id) {
-      setContent(readQuery.data.content);
+      // Flush unsaved content of the previous chapter before switching
+      const prevId = loadedChapterIdRef.current;
+      if (prevId) {
+        contentCacheRef.current.set(prevId, contentRef.current);
+        if (contentRef.current !== lastSavedRef.current) {
+          const pendingContent = contentRef.current;
+          const wc = computeWordCount(pendingContent).graphemes;
+          void chapterApi.update({ id: prevId, wordCount: wc, content: pendingContent }).catch(() => {});
+        }
+      }
+      const cached = contentCacheRef.current.get(chapter.id);
+      const initialContent = cached ?? readQuery.data.content;
+      setContent(initialContent);
       lastSavedRef.current = readQuery.data.content;
       lastAutosavedRef.current = readQuery.data.content;
       setLoaded(true);
@@ -79,6 +93,8 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
         .catch(() => setRecoveryPrompt(null));
     }
   }, [readQuery.data, chapter]);
+
+  useEffect(() => { contentRef.current = content; }, [content]);
 
   const stats = useMemo(() => computeWordCount(content), [content]);
   const setCurrentChapterStats = useAppStore((s) => s.setCurrentChapterStats);
@@ -126,6 +142,24 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
     }, 1200);
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, stats.graphemes, saveMutation]);
+
+  const handleManualSave = useCallback(() => {
+    if (!chapter || !loaded) return;
+    if (content === lastSavedRef.current) return;
+    lastSavedRef.current = content;
+    saveMutation.mutate({ content, wordCount: stats.graphemes });
+  }, [chapter, loaded, content, stats.graphemes, saveMutation]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        handleManualSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [handleManualSave]);
 
   // Disk-autosave sidecar every ~5s while typing. Runs in parallel to the 1.2s
   // DB save so that a crash between DB saves still leaves a recoverable copy.
@@ -263,6 +297,24 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
     }
   };
 
+  const editorWidthClass = settings.editorWidth === "narrow" ? "max-w-2xl" : settings.editorWidth === "wide" ? "max-w-5xl" : "max-w-3xl";
+  const focusMode = settings.focusMode;
+  const patchSettings = useAppStore((s) => s.patchSettings);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "F11") {
+        e.preventDefault();
+        patchSettings({ focusMode: !focusMode });
+      }
+      if (e.key === "Escape" && focusMode) {
+        patchSettings({ focusMode: false });
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [focusMode, patchSettings]);
+
   if (!chapter) {
     return (
       <div className="flex h-full items-center justify-center text-ink-400">
@@ -273,10 +325,9 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-ink-700 bg-ink-800/50 px-6 py-2 text-sm">
+      <div className={`flex items-center justify-between border-b border-ink-700 bg-ink-800/50 px-6 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100" : ""}`}>
         <div className="flex items-center gap-3">
           <span className="font-medium">{chapter.title}</span>
-          <span className="text-ink-400">· {chapter.filePath}</span>
         </div>
         <div className="flex items-center gap-4 text-xs text-ink-300">
           <span>汉字 {stats.chinese}</span>
@@ -311,6 +362,13 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
               ↷ 重做
             </button>
           </div>
+          <button
+            className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            onClick={handleManualSave}
+            title="保存（Ctrl+S）"
+          >
+            保存
+          </button>
           <button
             className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={handleExport}
@@ -372,10 +430,17 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
                   ? "保存失败"
                   : "已保存")}
           </span>
+          <button
+            className={`rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-amber-500 text-amber-400" : "border-ink-600"}`}
+            onClick={() => patchSettings({ focusMode: !focusMode })}
+            title="专注模式（F11）"
+          >
+            {focusMode ? "退出专注" : "专注"}
+          </button>
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-        <div className="mx-auto max-w-3xl px-8 py-8">
+        <div className={`mx-auto ${editorWidthClass} px-8 py-8`}>
           {recoveryPrompt && (
             <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-amber-600/60 bg-amber-900/20 px-3 py-2 text-xs text-amber-100">
               <div>
@@ -407,10 +472,15 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
             </div>
           )}
           <NovelEditor
+            key={chapter?.id ?? "empty"}
             value={content}
             onChange={(text) => setContent(text)}
             placeholder="在这里写下第一行……"
             onEditorReady={handleEditorReady}
+            autoIndent={settings.autoIndent}
+            typewriterMode={settings.typewriterMode}
+            fontSize={settings.editorFontSize}
+            lineHeight={settings.editorLineHeight}
           />
         </div>
       </div>

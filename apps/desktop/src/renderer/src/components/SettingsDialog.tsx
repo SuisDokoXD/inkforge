@@ -177,6 +177,74 @@ export function SettingsDialog(): JSX.Element | null {
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
+              编辑器
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-ink-300">字体大小</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={14}
+                    max={24}
+                    step={1}
+                    value={settings.editorFontSize}
+                    onChange={(e) => settingsMutation.mutate({ editorFontSize: Number(e.target.value) })}
+                    className="w-24"
+                  />
+                  <span className="w-8 text-xs text-ink-400">{settings.editorFontSize}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink-300">行高</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={1.5}
+                    max={3.0}
+                    step={0.1}
+                    value={settings.editorLineHeight}
+                    onChange={(e) => settingsMutation.mutate({ editorLineHeight: Number(e.target.value) })}
+                    className="w-24"
+                  />
+                  <span className="w-8 text-xs text-ink-400">{settings.editorLineHeight.toFixed(1)}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-ink-300">编辑区宽度</span>
+                <div className="flex overflow-hidden rounded-md border border-ink-600">
+                  {(["narrow", "medium", "wide"] as const).map((w) => (
+                    <button
+                      key={w}
+                      className={`px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+                      onClick={() => settingsMutation.mutate({ editorWidth: w })}
+                    >
+                      {w === "narrow" ? "窄" : w === "medium" ? "中" : "宽"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.autoIndent}
+                  onChange={(e) => settingsMutation.mutate({ autoIndent: e.target.checked })}
+                />
+                <span className="text-ink-300">回车自动缩进两格</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={settings.typewriterMode}
+                  onChange={(e) => settingsMutation.mutate({ typewriterMode: e.target.checked })}
+                />
+                <span className="text-ink-300">打字机模式（光标行居中）</span>
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               AI 路由
             </h3>
             <SceneRoutingPanel />

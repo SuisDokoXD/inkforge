@@ -33,6 +33,7 @@ export function WorkspacePage(): JSX.Element {
   const setTerminalHeight = useAppStore((s) => s.setTerminalHeight);
   const setSettings = useAppStore((s) => s.setSettings);
   const settings = useAppStore((s) => s.settings);
+  const focusMode = settings.focusMode;
 
   const [exportOpen, setExportOpen] = useState(false);
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectApi.list() });
@@ -230,6 +231,7 @@ export function WorkspacePage(): JSX.Element {
       </header>
 
       <main className="flex min-h-0 flex-1">
+        {!focusMode && (
         <aside className="flex w-64 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
           <ChapterTree
             chapters={chapters}
@@ -244,11 +246,13 @@ export function WorkspacePage(): JSX.Element {
             importing={importMd.isPending}
           />
         </aside>
+        )}
 
         <section className="flex min-w-0 flex-1 flex-col">
           <EditorPane chapter={currentChapter} providers={providersQuery.data ?? []} />
         </section>
 
+        {!focusMode && (
         <aside className="flex w-96 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40">
           <div className="flex shrink-0 border-b border-ink-700 text-xs">
             <button
@@ -276,6 +280,7 @@ export function WorkspacePage(): JSX.Element {
             {rightPanel === "timeline" ? <AITimeline /> : <ChatPanel />}
           </div>
         </aside>
+        )}
       </main>
 
       {terminalOpen && (
