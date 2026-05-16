@@ -11,6 +11,12 @@ const DEFAULTS: AppSettings = {
   devModeEnabled: false,
   onboardingCompleted: false,
   sceneRoutingMode: "basic",
+  editorFontSize: 16,
+  editorLineHeight: 2.0,
+  editorWidth: "medium",
+  typewriterMode: false,
+  autoIndent: true,
+  focusMode: false,
 };
 
 type SettingRow = { key: string; value: string };
@@ -29,6 +35,24 @@ function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppS
       const parsed = Number.parseInt(raw, 10);
       return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULTS.analysisThreshold;
     }
+    case "editorFontSize": {
+      const parsed = Number.parseInt(raw, 10);
+      return Number.isFinite(parsed) && parsed >= 12 && parsed <= 28
+        ? parsed
+        : DEFAULTS.editorFontSize;
+    }
+    case "editorLineHeight": {
+      const parsed = Number.parseFloat(raw);
+      return Number.isFinite(parsed) && parsed >= 1.4 && parsed <= 2.6
+        ? parsed
+        : DEFAULTS.editorLineHeight;
+    }
+    case "editorWidth":
+      return raw === "narrow" || raw === "wide" ? raw : DEFAULTS.editorWidth;
+    case "typewriterMode":
+    case "autoIndent":
+    case "focusMode":
+      return raw === "true";
     case "uiLanguage":
       return coerceLang(raw, DEFAULTS.uiLanguage);
     case "sceneRoutingMode":
