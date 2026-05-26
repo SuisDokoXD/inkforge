@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo *)",
+      "Bash(git *)",
+      "Read(//c/Users/123/blog/**)",
+      "Bash(hexo clean *)",
+      "Bash(hexo generate *)",
+      "Bash(hexo deploy *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" https://suisdokoxd.github.io/posts/inkforge-devlog/)"
+    ]
+  }
+}
