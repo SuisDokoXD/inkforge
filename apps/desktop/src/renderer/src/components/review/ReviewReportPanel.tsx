@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChapterRecord,
+  ReviewApplyFixResponse,
   ReviewDimensionRecord,
   ReviewFindingRecord,
   ReviewProgressEvent,
@@ -68,6 +69,29 @@ export function ReviewReportPanel({
       reviewApi.dismissFinding(input),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["review-report", reportId] }),
+  });
+
+  // —— Audit→Fix：preview/apply 两步 ——
+  // 流程：点击"修复"→ 调用 review.applyFix({mode:"preview"})→ 展示对照 →
+  //       用户点"应用"再调用 mode:"apply" 写盘。
+  const [fixPreview, setFixPreview] = useState<{
+    findingId: string;
+    response: ReviewApplyFixResponse;
+  } | null>(null);
+  const previewMut = useMutation({
+    mutationFn: (findingId: string) =>
+      reviewApi.applyFix({ findingId, mode: "preview" }),
+    onSuccess: (res, findingId) => {
+      setFixPreview({ findingId, response: res });
+    },
+  });
+  const applyMut = useMutation({
+    mutationFn: (findingId: string) =>
+      reviewApi.applyFix({ findingId, mode: "apply" }),
+    onSuccess: () => {
+      setFixPreview(null);
+      queryClient.invalidateQueries({ queryKey: ["review-report", reportId] });
+    },
   });
 
   const data = reportQuery.data ?? null;
@@ -240,6 +264,28 @@ export function ReviewReportPanel({
                         >
                           {finding.dismissed ? "取消忽略" : "忽略"}
                         </button>
+                        {/* 仅当存在 suggestion + 章节定位时才显示"修复" */}
+                        {finding.suggestion &&
+                          finding.chapterId &&
+                          finding.excerptStart != null &&
+                          finding.excerptEnd != null && (
+                            <button
+                              type="button"
+                              onClick={() => previewMut.mutate(finding.id)}
+                              disabled={
+                                previewMut.isPending ||
+                                applyMut.isPending ||
+                                finding.dismissed
+                              }
+                              className="rounded border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+                              title="让 AI 按建议改写选段并预览"
+                            >
+                              {previewMut.isPending &&
+                              previewMut.variables === finding.id
+                                ? "生成中…"
+                                : "修复"}
+                            </button>
+                          )}
                       </div>
                     </li>
                   );
@@ -249,6 +295,74 @@ export function ReviewReportPanel({
           );
         })}
       </div>
+      {/* Fix 预览对话框：preview 成功后弹出，对照原文与 AI 修订，让用户决定是否落盘 */}
+      {fixPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setFixPreview(null)}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-950/60 px-4 py-3">
+              <h2 className="text-sm font-semibold text-ink-100">修订预览</h2>
+              <button
+                onClick={() => setFixPreview(null)}
+                className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+              >
+                ✕
+              </button>
+            </header>
+            <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto p-4">
+              <div>
+                <div className="mb-1 text-[11px] text-ink-400">原文片段</div>
+                <pre className="whitespace-pre-wrap rounded border border-ink-700 bg-ink-950/50 p-2 text-[12px] leading-5 text-ink-200">
+                  {fixPreview.response.originalExcerpt}
+                </pre>
+              </div>
+              <div>
+                <div className="mb-1 text-[11px] text-emerald-300">AI 修订</div>
+                <pre className="whitespace-pre-wrap rounded border border-emerald-500/40 bg-emerald-500/5 p-2 text-[12px] leading-5 text-ink-100">
+                  {fixPreview.response.patchedExcerpt}
+                </pre>
+              </div>
+            </div>
+            <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-ink-700 bg-ink-950/60 px-4 py-3 text-xs">
+              <span className="text-ink-400">
+                {fixPreview.response.range
+                  ? `位置：${fixPreview.response.range.start} – ${fixPreview.response.range.end}`
+                  : "未定位精确范围（无法落盘）"}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFixPreview(null)}
+                  className="rounded px-3 py-1.5 text-ink-300 hover:bg-ink-800"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => previewMut.mutate(fixPreview.findingId)}
+                  disabled={previewMut.isPending}
+                  className="rounded border border-ink-600 px-3 py-1.5 text-ink-200 hover:bg-ink-700/40 disabled:opacity-50"
+                  title="让 AI 再生成一次"
+                >
+                  重新生成
+                </button>
+                <button
+                  onClick={() => applyMut.mutate(fixPreview.findingId)}
+                  disabled={
+                    applyMut.isPending || !fixPreview.response.range
+                  }
+                  className="rounded bg-emerald-500 px-3 py-1.5 font-medium text-ink-900 hover:bg-emerald-400 disabled:opacity-50"
+                >
+                  {applyMut.isPending ? "写入中…" : "应用到原文"}
+                </button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

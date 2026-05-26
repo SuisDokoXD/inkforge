@@ -79,6 +79,8 @@ import type {
   ReviewDismissFindingResponse,
   ReviewExportInput,
   ReviewExportResponse,
+  ReviewApplyFixInput,
+  ReviewApplyFixResponse,
   ReviewGetInput,
   ReviewGetResponse,
   ReviewListInput,
@@ -335,6 +337,7 @@ export interface InkforgeApi {
     get(input: ReviewGetInput): Promise<ReviewGetResponse | null>;
     dismissFinding(input: ReviewDismissFindingInput): Promise<ReviewDismissFindingResponse>;
     export(input: ReviewExportInput): Promise<ReviewExportResponse>;
+    applyFix(input: ReviewApplyFixInput): Promise<ReviewApplyFixResponse>;
     onProgress(listener: (payload: IpcEventMap["review:progress"]) => void): Unsubscribe;
     onDone(listener: (payload: IpcEventMap["review:done"]) => void): Unsubscribe;
   };
@@ -657,5 +660,115 @@ export interface InkforgeApi {
     create(input: MaterialCreateInput): Promise<MaterialRecord>;
     update(input: MaterialUpdateInput): Promise<MaterialRecord>;
     delete(input: MaterialDeleteInput): Promise<MaterialDeleteResponse>;
+  };
+}
+
+// =====================================================================
+// v23 · Worldview Cards · InkforgeApi extension
+// =====================================================================
+
+import type {
+  WorldPackListInput,
+  WorldPackGetInput,
+  WorldPackCreateInput,
+  WorldPackUpdateInput,
+  WorldPackDeleteInput,
+  WorldPackEntryListInput,
+  WorldPackEntryCreateInput,
+  WorldPackEntryUpdateInput,
+  WorldPackEntryDeleteInput,
+  WorldPackSlotListInput,
+  WorldPackSlotAddInput,
+  WorldPackSlotRemoveInput,
+  WorldPackSlotToggleInput,
+  WorldPackSlotReorderInput,
+  WorldPackCoverWriteInput,
+  WorldPackCoverWriteResponse,
+  WorldPackCoverReadInput,
+  WorldPackCoverReadResponse,
+  WorldPackFuseInput,
+  WorldPackFuseResponse,
+  AuthorNoteGetInput,
+  AuthorNoteUpsertInput,
+  AuthorNoteDeleteInput,
+} from "./ipc";
+import type {
+  WorldPackRecord,
+  WorldPackEntryRecord,
+  ProjectWorldPackSlotRecord,
+  AuthorNoteRecord,
+  VoiceProfileRecord,
+  WorldInfoTraceRecord,
+} from "./domain";
+
+import type {
+  CharacterCardImportInput,
+  CharacterCardImportResponse,
+  CharacterCardExportInput,
+  CharacterCardExportResponse,
+  CharacterCardListImportsInput,
+  CharacterCardImportRecordLite,
+  VoiceProfileGetInput,
+  VoiceProfileUpsertInput,
+  VoiceProfileSetEnabledInput,
+  VoiceProfileDeleteInput,
+  WorldInfoTraceListRecentInput,
+  WorldInfoTraceGetInput,
+  WorldInfoTraceClearInput,
+} from "./ipc";
+
+export interface InkforgeApi {
+  worldPack: {
+    list(input: WorldPackListInput): Promise<WorldPackRecord[]>;
+    get(input: WorldPackGetInput): Promise<WorldPackRecord | null>;
+    create(input: WorldPackCreateInput): Promise<WorldPackRecord>;
+    update(input: WorldPackUpdateInput): Promise<WorldPackRecord>;
+    delete(input: WorldPackDeleteInput): Promise<{ id: string }>;
+    entryList(input: WorldPackEntryListInput): Promise<WorldPackEntryRecord[]>;
+    entryCreate(input: WorldPackEntryCreateInput): Promise<WorldPackEntryRecord>;
+    entryUpdate(input: WorldPackEntryUpdateInput): Promise<WorldPackEntryRecord>;
+    entryDelete(input: WorldPackEntryDeleteInput): Promise<{ id: string }>;
+    slotList(input: WorldPackSlotListInput): Promise<ProjectWorldPackSlotRecord[]>;
+    slotAdd(input: WorldPackSlotAddInput): Promise<ProjectWorldPackSlotRecord>;
+    slotRemove(
+      input: WorldPackSlotRemoveInput,
+    ): Promise<{ projectId: string; packId: string }>;
+    slotToggle(
+      input: WorldPackSlotToggleInput,
+    ): Promise<ProjectWorldPackSlotRecord | null>;
+    slotReorder(input: WorldPackSlotReorderInput): Promise<{ ok: true }>;
+    coverWrite(input: WorldPackCoverWriteInput): Promise<WorldPackCoverWriteResponse>;
+    coverRead(input: WorldPackCoverReadInput): Promise<WorldPackCoverReadResponse>;
+    fuse(input: WorldPackFuseInput): Promise<WorldPackFuseResponse>;
+  };
+  authorNote: {
+    get(input: AuthorNoteGetInput): Promise<AuthorNoteRecord | null>;
+    upsert(input: AuthorNoteUpsertInput): Promise<AuthorNoteRecord>;
+    delete(input: AuthorNoteDeleteInput): Promise<{ projectId: string }>;
+  };
+  // ----- v25: Character Card (CCv3) -----
+  characterCard: {
+    import(input: CharacterCardImportInput): Promise<CharacterCardImportResponse>;
+    export(input: CharacterCardExportInput): Promise<CharacterCardExportResponse>;
+    listImports(
+      input: CharacterCardListImportsInput,
+    ): Promise<CharacterCardImportRecordLite[]>;
+  };
+  // ----- v26: Voice Profile -----
+  voiceProfile: {
+    get(input: VoiceProfileGetInput): Promise<VoiceProfileRecord | null>;
+    upsert(input: VoiceProfileUpsertInput): Promise<VoiceProfileRecord>;
+    setEnabled(
+      input: VoiceProfileSetEnabledInput,
+    ): Promise<{ projectId: string; enabled: boolean }>;
+    delete(input: VoiceProfileDeleteInput): Promise<{ projectId: string }>;
+  };
+  // ----- v26: World Info Trace -----
+  worldInfoTrace: {
+    listRecent(
+      input: WorldInfoTraceListRecentInput,
+    ): Promise<WorldInfoTraceRecord[]>;
+    get(input: WorldInfoTraceGetInput): Promise<WorldInfoTraceRecord | null>;
+    clear(input: WorldInfoTraceClearInput): Promise<{ projectId: string }>;
   };
 }

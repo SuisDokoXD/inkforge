@@ -34,6 +34,10 @@ import {
 } from "./llm-runtime";
 import { resolveSceneBinding } from "./scene-binding-service";
 import { buildRagBlock } from "./rag-service";
+import { shouldRunRag } from "./rag-smart-router";
+import { buildWorldInfoContext } from "./prompt-context/world-info-context";
+import { buildAuthorNoteContext } from "./prompt-context/author-note-context";
+import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 import { RateLimiter } from "./rate-limiter";
 
 const SKILL_CHUNK_CHANNEL: typeof ipcEventChannels.skillChunk = "skill:chunk";
@@ -251,8 +255,53 @@ async function executeRun(options: ExecuteRunOptions): Promise<void> {
 
   const model = skill.binding.model ?? providerRecord.defaultModel;
   const triggerType = input.triggerType ?? "manual";
-  const ragBlock = buildRagBlock(input.projectId, renderResult.text);
-  const userMessage = ragBlock ? `${ragBlock}\n${renderResult.text}` : renderResult.text;
+
+  // 装配 prompt 上下文：World Info（自动注入设定）+ Author's Note（全局风格）+ RAG。
+  // 三段都用了"失败容错为空"的设计，任意一段读盘失败不会阻断 Skill 跑通。
+  const scanText = [
+    input.selection ?? "",
+    (input.chapterText ?? "").slice(-500),
+    renderResult.text,
+  ]
+    .filter((s) => s && s.length > 0)
+    .join("\n");
+  const worldInfo = buildWorldInfoContext({
+    db: ctx.db,
+    projectId: input.projectId,
+    scanText,
+    trace: { scene: "skill" },
+  });
+  const authorNote = buildAuthorNoteContext({
+    db: ctx.db,
+    projectId: input.projectId,
+  });
+  const voice = buildVoiceContext({
+    db: ctx.db,
+    projectId: input.projectId,
+  });
+  const ragBlock = shouldRunRag(renderResult.text)
+    ? buildRagBlock(input.projectId, renderResult.text)
+    : "";
+
+  // 最终 user message 拼装顺序：
+  //   1. Voice Profile             —— 风格约束最早进场
+  //   2. Author's Note before     —— 全局风格锚点
+  //   3. World Info before        —— 设定前置
+  //   4. RAG block                —— sample-lib 检索
+  //   5. 渲染后的 Skill prompt    —— 任务本体
+  //   6. World Info after         —— 补充背景
+  //   7. Author's Note after      —— 贴近输出的硬约束
+  const userMessage = [
+    voice.before,
+    authorNote.before,
+    worldInfo.before,
+    ragBlock,
+    renderResult.text,
+    worldInfo.after,
+    authorNote.after,
+  ]
+    .filter((s) => s && s.length > 0)
+    .join("\n\n");
   let accumulatedText = "";
   let usage: SkillDoneEvent["usage"];
 

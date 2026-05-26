@@ -302,6 +302,7 @@ export const reviewApi = {
   get: (input: import("@inkforge/shared").ReviewGetInput): Promise<import("@inkforge/shared").ReviewGetResponse | null> => api().review.get(input),
   dismissFinding: (input: import("@inkforge/shared").ReviewDismissFindingInput): Promise<import("@inkforge/shared").ReviewDismissFindingResponse> => api().review.dismissFinding(input),
   export: (input: import("@inkforge/shared").ReviewExportInput): Promise<import("@inkforge/shared").ReviewExportResponse> => api().review.export(input),
+  applyFix: (input: import("@inkforge/shared").ReviewApplyFixInput): Promise<import("@inkforge/shared").ReviewApplyFixResponse> => api().review.applyFix(input),
   onProgress: (listener: (payload: import("@inkforge/shared").IpcEventMap["review:progress"]) => void) => api().review.onProgress(listener),
   onDone: (listener: (payload: import("@inkforge/shared").IpcEventMap["review:done"]) => void) => api().review.onDone(listener),
 };
@@ -441,4 +442,66 @@ export const outlineGenApi = {
 export const chapterGenApi = {
   fromOutline: (input: import("@inkforge/shared").ChapterGenerateFromOutlineInput): Promise<import("@inkforge/shared").ChapterGenerateFromOutlineResponse> => api().chapterGen.fromOutline(input),
   commitDraft: (input: import("@inkforge/shared").ChapterCommitDraftInput): Promise<import("@inkforge/shared").ChapterCommitDraftResponse> => api().chapterGen.commitDraft(input),
+};
+
+// ----- v23: Worldview Cards (世界观卡牌库 + 插槽 + 融合) -----
+
+export const worldPackApi = {
+  list: (input: import("@inkforge/shared").WorldPackListInput) =>
+    api().worldPack.list(input),
+  get: (input: import("@inkforge/shared").WorldPackGetInput) => api().worldPack.get(input),
+  create: (input: import("@inkforge/shared").WorldPackCreateInput) => api().worldPack.create(input),
+  update: (input: import("@inkforge/shared").WorldPackUpdateInput) => api().worldPack.update(input),
+  delete: (input: import("@inkforge/shared").WorldPackDeleteInput) => api().worldPack.delete(input),
+  entryList: (input: import("@inkforge/shared").WorldPackEntryListInput) => api().worldPack.entryList(input),
+  entryCreate: (input: import("@inkforge/shared").WorldPackEntryCreateInput) => api().worldPack.entryCreate(input),
+  entryUpdate: (input: import("@inkforge/shared").WorldPackEntryUpdateInput) => api().worldPack.entryUpdate(input),
+  entryDelete: (input: import("@inkforge/shared").WorldPackEntryDeleteInput) => api().worldPack.entryDelete(input),
+  slotList: (input: import("@inkforge/shared").WorldPackSlotListInput) => api().worldPack.slotList(input),
+  slotAdd: (input: import("@inkforge/shared").WorldPackSlotAddInput) => api().worldPack.slotAdd(input),
+  slotRemove: (input: import("@inkforge/shared").WorldPackSlotRemoveInput) => api().worldPack.slotRemove(input),
+  slotToggle: (input: import("@inkforge/shared").WorldPackSlotToggleInput) => api().worldPack.slotToggle(input),
+  slotReorder: (input: import("@inkforge/shared").WorldPackSlotReorderInput) => api().worldPack.slotReorder(input),
+  coverWrite: (input: import("@inkforge/shared").WorldPackCoverWriteInput) => api().worldPack.coverWrite(input),
+  coverRead: (input: import("@inkforge/shared").WorldPackCoverReadInput) => api().worldPack.coverRead(input),
+  fuse: (input: import("@inkforge/shared").WorldPackFuseInput) => api().worldPack.fuse(input),
+};
+
+// ----- v24: Author's Note (项目级全局风格批注) -----
+export const authorNoteApi = {
+  get: (input: import("@inkforge/shared").AuthorNoteGetInput) => api().authorNote.get(input),
+  upsert: (input: import("@inkforge/shared").AuthorNoteUpsertInput) => api().authorNote.upsert(input),
+  delete: (input: import("@inkforge/shared").AuthorNoteDeleteInput) => api().authorNote.delete(input),
+};
+
+// ----- v25: Character Card (CCv3) 导入/导出 -----
+export const characterCardApi = {
+  import: (input: import("@inkforge/shared").CharacterCardImportInput) =>
+    api().characterCard.import(input),
+  export: (input: import("@inkforge/shared").CharacterCardExportInput) =>
+    api().characterCard.export(input),
+  listImports: (input: import("@inkforge/shared").CharacterCardListImportsInput) =>
+    api().characterCard.listImports(input),
+};
+
+// ----- v26: Voice Profile（写作声音档案）-----
+export const voiceProfileApi = {
+  get: (input: import("@inkforge/shared").VoiceProfileGetInput) =>
+    api().voiceProfile.get(input),
+  upsert: (input: import("@inkforge/shared").VoiceProfileUpsertInput) =>
+    api().voiceProfile.upsert(input),
+  setEnabled: (input: import("@inkforge/shared").VoiceProfileSetEnabledInput) =>
+    api().voiceProfile.setEnabled(input),
+  delete: (input: import("@inkforge/shared").VoiceProfileDeleteInput) =>
+    api().voiceProfile.delete(input),
+};
+
+// ----- v26: World Info Trace（激活诊断面板）-----
+export const worldInfoTraceApi = {
+  listRecent: (input: import("@inkforge/shared").WorldInfoTraceListRecentInput) =>
+    api().worldInfoTrace.listRecent(input),
+  get: (input: import("@inkforge/shared").WorldInfoTraceGetInput) =>
+    api().worldInfoTrace.get(input),
+  clear: (input: import("@inkforge/shared").WorldInfoTraceClearInput) =>
+    api().worldInfoTrace.clear(input),
 };

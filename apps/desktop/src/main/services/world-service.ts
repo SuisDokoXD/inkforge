@@ -44,6 +44,16 @@ export function createWorldEntry(input: WorldCreateInput): WorldEntryRecord {
     content: input.content ?? "",
     aliases: normalizeStringArray(input.aliases) ?? [],
     tags: normalizeStringArray(input.tags) ?? [],
+    // v22 World Info 字段：未传则用 repo / SQL DEFAULT 兜底
+    keys: normalizeStringArray(input.keys),
+    position: input.position,
+    probability: input.probability,
+    // v25 CCv3 兼容字段：未传则走 SQL DEFAULT
+    secondaryKeys: normalizeStringArray(input.secondaryKeys),
+    selectiveLogic: input.selectiveLogic,
+    caseSensitive: input.caseSensitive,
+    constant: input.constant,
+    extensions: input.extensions,
   });
 }
 
@@ -58,6 +68,15 @@ export function updateWorldEntryRecord(
     content: input.content,
     aliases: normalizeStringArray(input.aliases),
     tags: normalizeStringArray(input.tags),
+    keys: normalizeStringArray(input.keys),
+    position: input.position,
+    probability: input.probability,
+    // v25 CCv3 字段：未传保留原值
+    secondaryKeys: normalizeStringArray(input.secondaryKeys),
+    selectiveLogic: input.selectiveLogic,
+    caseSensitive: input.caseSensitive,
+    constant: input.constant,
+    extensions: input.extensions,
   });
 }
 

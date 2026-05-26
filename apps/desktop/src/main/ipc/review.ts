@@ -1,5 +1,7 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import type {
+  ReviewApplyFixInput,
+  ReviewApplyFixResponse,
   ReviewCancelInput,
   ReviewCancelResponse,
   ReviewDimDeleteInput,
@@ -20,6 +22,7 @@ import type {
   ipcChannels,
 } from "@inkforge/shared";
 import {
+  applyReviewFix,
   cancelReview,
   deleteReviewDimensionRecord,
   dismissReviewFinding,
@@ -42,6 +45,7 @@ const REVIEW_LIST: typeof ipcChannels.reviewList = "review:list";
 const REVIEW_GET: typeof ipcChannels.reviewGet = "review:get";
 const REVIEW_DISMISS_FINDING: typeof ipcChannels.reviewDismissFinding = "review:dismiss-finding";
 const REVIEW_EXPORT: typeof ipcChannels.reviewExport = "review:export";
+const REVIEW_APPLY_FIX: typeof ipcChannels.reviewApplyFix = "review:apply-fix";
 
 export function registerReviewHandlers(
   getWindow: () => BrowserWindow | null,
@@ -95,5 +99,10 @@ export function registerReviewHandlers(
     REVIEW_EXPORT,
     async (_event, input: ReviewExportInput): Promise<ReviewExportResponse> =>
       exportReviewReport(input),
+  );
+  ipcMain.handle(
+    REVIEW_APPLY_FIX,
+    async (_event, input: ReviewApplyFixInput): Promise<ReviewApplyFixResponse> =>
+      applyReviewFix(input),
   );
 }

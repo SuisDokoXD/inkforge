@@ -7,3 +7,4 @@ export * from "./types";
 export * from "./validate";
 export * from "./presets";
 export * from "./market";
+export * from "./world-info-activator";

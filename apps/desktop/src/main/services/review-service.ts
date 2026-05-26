@@ -12,6 +12,7 @@ import {
   deleteReviewDimension,
   deleteReviewReport,
   getReviewDimensionById,
+  getReviewFindingById,
   getReviewReportById,
   insertReviewFinding,
   insertReviewReport,
@@ -26,9 +27,12 @@ import {
   setReviewFindingDismissed,
   updateReviewReport,
   upsertReviewDimension,
+  writeChapterFile,
 } from "@inkforge/storage";
 import type {
   ChapterRecord,
+  ReviewApplyFixInput,
+  ReviewApplyFixResponse,
   ReviewCancelInput,
   ReviewCancelResponse,
   ReviewDimDeleteInput,
@@ -519,4 +523,134 @@ export function exportReviewReport(input: ReviewExportInput): ReviewExportRespon
   const content = lines.join("\n");
   const fileName = `review-${report.id}.md`;
   return { fileName, content, format: "md" };
+}
+
+// =============================================================================
+// Audit → Fix（两步审查的"修复"阶段）
+// =============================================================================
+// Audit 阶段在 startReview/runReview 里完成：识别问题、给出建议。
+// Fix 阶段在这里：根据已有 finding，让 LLM 改写选段并按 mode 决定是否落盘。
+//
+// 设计要点：
+//   - 永远先输出 patchedExcerpt 让 UI 做 diff 预览；mode="apply" 才真正写回
+//   - 找不到 excerpt range 时也允许 preview，但 apply 会报错（避免误改无关位置）
+//   - 调用方传 mode 字符串，方便一个 API 同时撑起"试试看"和"我确定要改"两步
+// =============================================================================
+export async function applyReviewFix(
+  input: ReviewApplyFixInput,
+): Promise<ReviewApplyFixResponse> {
+  const ctx = getAppContext();
+  const finding = getReviewFindingById(ctx.db, input.findingId);
+  if (!finding) {
+    throw new Error(`finding not found: ${input.findingId}`);
+  }
+  if (!finding.chapterId) {
+    throw new Error("finding has no chapter; cannot apply fix");
+  }
+  if (!finding.suggestion?.trim()) {
+    throw new Error("finding has no suggestion text; nothing to apply");
+  }
+
+  // 找到 chapter 文件位置（review_findings 里没存 projectId，先回到 report）
+  const report = getReviewReportById(ctx.db, finding.reportId);
+  if (!report) throw new Error("parent report missing");
+  const projectRow = ctx.db
+    .prepare(`SELECT path FROM projects WHERE id = ?`)
+    .get(report.projectId) as { path: string } | undefined;
+  if (!projectRow?.path) throw new Error("project path missing");
+
+  const chapter = listChapters(ctx.db, report.projectId).find(
+    (c) => c.id === finding.chapterId,
+  );
+  if (!chapter) throw new Error("chapter not found in project");
+
+  const fullText = readChapterFile(projectRow.path, chapter.filePath);
+  // 先决定 originalExcerpt：优先用 range，其次回退到 finding.excerpt
+  const hasRange =
+    finding.excerptStart != null &&
+    finding.excerptEnd != null &&
+    finding.excerptEnd > finding.excerptStart &&
+    finding.excerptEnd <= fullText.length;
+  const originalExcerpt = hasRange
+    ? fullText.slice(finding.excerptStart!, finding.excerptEnd!)
+    : finding.excerpt;
+
+  // 解析 provider（与 audit 阶段同一 scene_key=review）
+  const resolvedScene = resolveSceneBinding("review", {
+    explicitProviderId: input.providerId,
+  });
+  const providerRecord = resolveProviderRecord(
+    resolvedScene.providerId ?? input.providerId,
+  );
+  if (!providerRecord) throw new Error("provider_not_configured");
+  const apiKey = await resolveApiKey(providerRecord);
+  if (!apiKey) throw new Error("api_key_missing");
+
+  // 跑 LLM：让它"基于建议改写选段"，并且不要带额外解释
+  const systemPrompt =
+    "你是小说修订助手。基于编辑给出的修订建议改写读者标出的选段。" +
+    "严格遵守：1) 只输出修订后的新片段本身，不要附加任何解释、不要加引号、" +
+    "不要加 markdown 标题；2) 保持长度与原段相近（±30%），除非建议明确要求扩写/缩写；" +
+    "3) 不改动角色名、地点名、设定专名。";
+  const userMessage = [
+    `【原文片段】`,
+    originalExcerpt,
+    "",
+    `【修订建议】`,
+    finding.suggestion,
+    "",
+    `请输出修订后的新片段：`,
+  ].join("\n");
+
+  const stream = streamText({
+    providerRecord,
+    apiKey,
+    model: input.model ?? resolvedScene.model ?? providerRecord.defaultModel,
+    systemPrompt,
+    userMessage,
+    temperature: 0.4,
+    maxTokens: 1500,
+  });
+
+  let patched = "";
+  for await (const chunk of stream) {
+    if (chunk.type === "delta" && chunk.textDelta) patched += chunk.textDelta;
+    if (chunk.type === "error") {
+      throw new Error(chunk.error ?? "review_fix_stream_error");
+    }
+  }
+  patched = patched.trim();
+  if (!patched) throw new Error("empty_patched_excerpt");
+
+  // preview 模式：不落盘，仅返回结果
+  if (input.mode === "preview") {
+    return {
+      findingId: finding.id,
+      originalExcerpt,
+      patchedExcerpt: patched,
+      applied: false,
+      range: hasRange
+        ? { start: finding.excerptStart!, end: finding.excerptEnd! }
+        : null,
+    };
+  }
+
+  // apply 模式：必须有可靠 range，否则拒绝（避免误伤）
+  if (!hasRange) {
+    throw new Error(
+      "cannot apply: finding has no precise range; use preview and manual edit",
+    );
+  }
+  const newFullText =
+    fullText.slice(0, finding.excerptStart!) +
+    patched +
+    fullText.slice(finding.excerptEnd!);
+  writeChapterFile(projectRow.path, chapter.filePath, newFullText);
+  return {
+    findingId: finding.id,
+    originalExcerpt,
+    patchedExcerpt: patched,
+    applied: true,
+    range: { start: finding.excerptStart!, end: finding.excerptEnd! },
+  };
 }

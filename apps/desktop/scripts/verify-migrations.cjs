@@ -59,6 +59,17 @@ const EXPECTED_TABLES = [
   "materials",
   // ----- v21: Chapter summaries (跨章节失忆修复) -----
   "chapter_summaries",
+  // ----- v23: Worldview Cards (世界观卡牌库 + 插槽) -----
+  "world_packs",
+  "world_pack_entries",
+  "project_world_pack_slots",
+  // ----- v24: Author's Note (项目级全局风格批注) -----
+  "author_notes",
+  // ----- v25: CCv3 角色卡导入指纹表 -----
+  "character_card_imports",
+  // ----- v26: Voice Profile + World Info Trace -----
+  "voice_profiles",
+  "world_info_traces",
 ];
 
 const EXPECTED_INDEXES = [
@@ -110,9 +121,19 @@ const EXPECTED_INDEXES = [
   "idx_materials_project_kind",
   // ----- v21: Chapter summaries -----
   "idx_chapter_summaries_project",
+  // ----- v23: Worldview Cards -----
+  "idx_world_packs_updated",
+  "idx_world_pack_entries_pack",
+  "idx_project_world_pack_slots_project",
+  // ----- v24: Author's Note -----
+  "idx_author_notes_project",
+  // ----- v25: CCv3 角色卡导入指纹索引 -----
+  "idx_card_imports_hash",
+  // ----- v26: World Info Trace 按项目+时间倒序查的复合索引 -----
+  "idx_world_info_traces_project_time",
 ];
 
-const EXPECTED_MAX_VERSION = 21;
+const EXPECTED_MAX_VERSION = 26;
 const EXPECTED_VERSIONS = Array.from(
   { length: EXPECTED_MAX_VERSION },
   (_, i) => i + 1,

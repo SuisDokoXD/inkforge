@@ -194,6 +194,7 @@ const api: InkforgeApi = {
     get: (input) => ipcRenderer.invoke(ipcChannels.reviewGet, input),
     dismissFinding: (input) => ipcRenderer.invoke(ipcChannels.reviewDismissFinding, input),
     export: (input) => ipcRenderer.invoke(ipcChannels.reviewExport, input),
+    applyFix: (input) => ipcRenderer.invoke(ipcChannels.reviewApplyFix, input),
     onProgress: (listener) => subscribe(ipcEventChannels.reviewProgress, listener),
     onDone: (listener) => subscribe(ipcEventChannels.reviewDone, listener),
   },
@@ -328,6 +329,52 @@ const api: InkforgeApi = {
     create: (input) => ipcRenderer.invoke(ipcChannels.materialCreate, input),
     update: (input) => ipcRenderer.invoke(ipcChannels.materialUpdate, input),
     delete: (input) => ipcRenderer.invoke(ipcChannels.materialDelete, input),
+  },
+  worldPack: {
+    list: (input) => ipcRenderer.invoke(ipcChannels.worldPackList, input),
+    get: (input) => ipcRenderer.invoke(ipcChannels.worldPackGet, input),
+    create: (input) => ipcRenderer.invoke(ipcChannels.worldPackCreate, input),
+    update: (input) => ipcRenderer.invoke(ipcChannels.worldPackUpdate, input),
+    delete: (input) => ipcRenderer.invoke(ipcChannels.worldPackDelete, input),
+    entryList: (input) => ipcRenderer.invoke(ipcChannels.worldPackEntryList, input),
+    entryCreate: (input) => ipcRenderer.invoke(ipcChannels.worldPackEntryCreate, input),
+    entryUpdate: (input) => ipcRenderer.invoke(ipcChannels.worldPackEntryUpdate, input),
+    entryDelete: (input) => ipcRenderer.invoke(ipcChannels.worldPackEntryDelete, input),
+    slotList: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotList, input),
+    slotAdd: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotAdd, input),
+    slotRemove: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotRemove, input),
+    slotToggle: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotToggle, input),
+    slotReorder: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotReorder, input),
+    coverWrite: (input) => ipcRenderer.invoke(ipcChannels.worldPackCoverWrite, input),
+    coverRead: (input) => ipcRenderer.invoke(ipcChannels.worldPackCoverRead, input),
+    fuse: (input) => ipcRenderer.invoke(ipcChannels.worldPackFuse, input),
+  },
+  authorNote: {
+    get: (input) => ipcRenderer.invoke(ipcChannels.authorNoteGet, input),
+    upsert: (input) => ipcRenderer.invoke(ipcChannels.authorNoteUpsert, input),
+    delete: (input) => ipcRenderer.invoke(ipcChannels.authorNoteDelete, input),
+  },
+  // ----- v25: Character Card (CCv3) -----
+  characterCard: {
+    import: (input) => ipcRenderer.invoke(ipcChannels.characterCardImport, input),
+    export: (input) => ipcRenderer.invoke(ipcChannels.characterCardExport, input),
+    listImports: (input) =>
+      ipcRenderer.invoke(ipcChannels.characterCardListImports, input),
+  },
+  // ----- v26: Voice Profile -----
+  voiceProfile: {
+    get: (input) => ipcRenderer.invoke(ipcChannels.voiceProfileGet, input),
+    upsert: (input) => ipcRenderer.invoke(ipcChannels.voiceProfileUpsert, input),
+    setEnabled: (input) =>
+      ipcRenderer.invoke(ipcChannels.voiceProfileSetEnabled, input),
+    delete: (input) => ipcRenderer.invoke(ipcChannels.voiceProfileDelete, input),
+  },
+  // ----- v26: World Info Trace -----
+  worldInfoTrace: {
+    listRecent: (input) =>
+      ipcRenderer.invoke(ipcChannels.worldInfoTraceListRecent, input),
+    get: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceGet, input),
+    clear: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceClear, input),
   },
 };
 

@@ -42,3 +42,12 @@ export * from "./repositories/world-relationship-repo";
 export * from "./repositories/material-repo";
 // ----- v21: Chapter summaries (跨章节摘要记忆，AutoWriter 长篇用) -----
 export * from "./repositories/chapter-summary-repo";
+// ----- v23: Worldview Cards (世界观卡牌库 + 插槽) -----
+export * from "./repositories/world-pack-repo";
+// ----- v24: Author's Note (项目级全局风格批注) -----
+export * from "./repositories/author-note-repo";
+// ----- v25: CCv3 兼容（角色卡导入指纹）-----
+export * from "./repositories/character-card-import-repo";
+// ----- v26: Voice Profile + World Info Trace -----
+export * from "./repositories/voice-profile-repo";
+export * from "./repositories/world-info-trace-repo";

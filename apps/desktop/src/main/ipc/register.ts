@@ -35,6 +35,9 @@ import { registerWorldRelationshipHandlers } from "./world-relationship";
 import { registerProjectExportHandlers } from "./project-export";
 import { registerOutlineGenerationHandlers } from "./outline-generation";
 import { registerMaterialHandlers } from "./material";
+import { registerWorldPackHandlers } from "./world-pack";
+import { registerAuthorNoteHandlers } from "./author-note";
+import { registerCharacterCardHandlers } from "./character-card";
 import { startDailyReminder } from "../services/chapter-log-service";
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
@@ -83,4 +86,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerOutlineGenerationHandlers();
   // ----- v20: Materials (素材库) -----
   registerMaterialHandlers();
+  // ----- v23: Worldview Cards (世界观卡牌库 + 插槽 + 融合) -----
+  registerWorldPackHandlers();
+  // ----- v24: Author's Note (项目级全局风格批注) -----
+  registerAuthorNoteHandlers();
+  // ----- v25/v26: Character Card 导入导出 + Voice Profile + World Info Trace -----
+  registerCharacterCardHandlers();
 }

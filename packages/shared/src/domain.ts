@@ -371,6 +371,12 @@ export interface CompactResult {
 
 export type WorldEntryCategory = string;
 
+// 世界观条目的注入位置（v22 起）。
+//   before：拼到 user prompt 之前（默认，最常见用法 —— 让 LLM 先看到设定再读任务）
+//   after：拼到 user prompt 之后（用于"补充背景"，影响轻于 before）
+//   at_depth：保留接口，未来用于 chat-history 倒数第 N 条注入（SillyTavern AT_DEPTH 语义）
+export type WorldEntryPosition = "before" | "after" | "at_depth";
+
 export interface WorldEntryRecord {
   id: string;
   projectId: string;
@@ -379,8 +385,161 @@ export interface WorldEntryRecord {
   content: string;
   aliases: string[];
   tags: string[];
+  // ----- v22 · World Info 自动注入触发字段 -----
+  // 额外关键词（除 title + aliases 之外）。activator 扫文本时把
+  // [title, ...aliases, ...keys] 合并去重后作为触发集。
+  keys: string[];
+  // 注入位置，决定本条 entry 拼到 prompt 的哪一段。
+  position: WorldEntryPosition;
+  // 命中关键词后的注入概率（0-100），100 = 永远注入。
+  probability: number;
+  // ----- v25 · CCv3 兼容字段 -----
+  secondaryKeys: string[];
+  selectiveLogic: "and_any" | "not_all" | "not_any" | "and_all";
+  caseSensitive: boolean;
+  constant: boolean;             // 绕过关键词命中，永远激活（用于"必读设定"）
+  extensions: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
+}
+
+// ---------- v23 · 世界观卡牌（Worldview Cards） ----------
+
+// 卡牌来源：
+//   user     —— 用户从零创建
+//   fused    —— 多张卡 LLM 融合产物（parentPackIds 记录祖先链）
+//   imported —— 从外部 JSON / SillyTavern lorebook 导入
+export type WorldPackOrigin = "user" | "fused" | "imported";
+
+// 卡牌（跨项目的世界观预设）。
+// 卡内 World Info 配置（scan_depth / token_budget / recursion）在卡牌级别共享，
+// 一张卡内所有 entries 用同一组触发策略——符合"卡牌作为完整世界观单位"的直觉。
+export interface WorldPackRecord {
+  id: string;
+  name: string;
+  tagline: string;        // 一句话副标题（卡面用）
+  description: string;    // 长描述（详情页用）
+  coverPath: string | null;  // 相对工作区路径，如 ".world-packs/<id>.png"
+  coverMime: string | null;
+  tags: string[];
+  scanDepth: number;
+  tokenBudget: number;
+  recursionEnabled: boolean;
+  origin: WorldPackOrigin;
+  parentPackIds: string[];   // 融合卡的源卡 id 列表，便于追溯
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 卡牌内的世界观条目。
+// 结构与 WorldEntryRecord 平行（含 keys/position/probability），但归属于卡牌而非项目。
+// activator 消费时会投影为 WorldEntryRecord 形态。
+export interface WorldPackEntryRecord {
+  id: string;
+  packId: string;
+  category: string;
+  title: string;
+  content: string;
+  aliases: string[];
+  tags: string[];
+  keys: string[];
+  position: WorldEntryPosition;
+  probability: number;
+  order: number;
+  // ----- v25 · CCv3 兼容字段（同 WorldEntryRecord）-----
+  secondaryKeys: string[];
+  selectiveLogic: "and_any" | "not_all" | "not_any" | "and_all";
+  caseSensitive: boolean;
+  constant: boolean;
+  extensions: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 项目-卡牌插槽（多对多）。
+// 引用模式：删除插槽不影响卡牌本体；删除卡牌通过 FK ON DELETE CASCADE 自动清理所有引用它的插槽。
+// enabled=false 表示"插着但临时禁用"，slot_order 控制 activator 注入顺序与重复时的优先级。
+export interface ProjectWorldPackSlotRecord {
+  projectId: string;
+  packId: string;
+  slotOrder: number;
+  enabled: boolean;
+  addedAt: string;
+}
+
+// ---------- v24 · Author's Note ----------
+
+// Author's Note 注入位置：
+//   before —— 拼到 user prompt 前（适合做"全局风格/世界观锚点"，让 LLM 一开始就知道）
+//   after  —— 拼到 user prompt 后（适合做"严格遵守"指令，靠近输出更不易被忽略）
+export type AuthorNotePosition = "before" | "after";
+
+// 项目级 Author's Note。每项目最多一条（DB UNIQUE 约束）。
+// enabled=false 时本条不参与注入但保留内容，便于"草稿态/线上态"快速切换。
+export interface AuthorNoteRecord {
+  id: string;
+  projectId: string;
+  text: string;
+  position: AuthorNotePosition;
+  enabled: boolean;
+  updatedAt: string;
+}
+
+// ---------- v25 · CCv3 兼容字段 ----------
+
+// 多关键词命中后的判定逻辑（对齐 SillyTavern world_info_logic）。
+//   and_any  —— 主 keys 任一命中 且 secondaryKeys 任一命中（默认）
+//   not_all  —— 主 keys 任一命中 且 不全部 secondaryKeys 命中
+//   not_any  —— 主 keys 任一命中 且 secondaryKeys 一个都没命中
+//   and_all  —— 主 keys 任一命中 且 secondaryKeys 全部命中
+// 注：当 secondaryKeys 为空时，always 退化为"仅判主 keys"，不影响旧行为。
+export type WorldEntrySelectiveLogic = "and_any" | "not_all" | "not_any" | "and_all";
+
+// ---------- v26 · Voice Profile + World Info Trace ----------
+
+// 写作声音档案（Novel Engine 启发）。answers 是问卷原始答案，
+// promptBlock 是把答案模板化后的注入文本（缓存避免每次重渲）。
+export interface VoiceProfileRecord {
+  id: string;
+  projectId: string;
+  answers: Record<string, string>;
+  promptBlock: string;
+  enabled: boolean;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+// 单条 entry 在某次激活中的命中详情（来自 activator 的 trace 数组）。
+export interface WorldInfoEntryTrace {
+  entryId: string;
+  packId: string | null;
+  title: string;
+  category: string;
+  matched: boolean;
+  matchedKeys: string[];
+  selectiveLogic: WorldEntrySelectiveLogic;
+  secondaryMatched: string[];
+  rolled: number | null;
+  probability: number;
+  passedProbability: boolean;
+  constant: boolean;
+  injected: boolean;
+  droppedReason: "logic_failed" | "prob_failed" | "budget_exceeded" | null;
+  approxChars: number;
+}
+
+// 一次完整 World Info 激活的快照，落 world_info_traces 表，UI 诊断面板用。
+export interface WorldInfoTraceRecord {
+  id: string;
+  projectId: string;
+  runId: string | null;
+  scene: string;
+  scanTextPreview: string;
+  entries: WorldInfoEntryTrace[];
+  charsUsed: number;
+  charBudget: number;
+  createdAt: string;
 }
 
 // ---------- M4 · Research ----------

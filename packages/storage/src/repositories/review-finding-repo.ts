@@ -107,6 +107,18 @@ export function setReviewFindingDismissed(
   return row ? rowToRecord(row) : null;
 }
 
+// 单条查询：Audit→Fix 二步审查需要按 findingId 取出原始 finding 才能定位
+// chapterId / excerpt / suggestion 三件套，再喂给 fix LLM 通道。
+export function getReviewFindingById(
+  db: DB,
+  id: string,
+): ReviewFindingRecord | null {
+  const row = db
+    .prepare(`SELECT * FROM review_findings WHERE id = ?`)
+    .get(id) as ReviewFindingRow | undefined;
+  return row ? rowToRecord(row) : null;
+}
+
 export function countReviewFindings(
   db: DB,
   reportId: string,

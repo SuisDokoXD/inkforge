@@ -863,6 +863,259 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // ===================================================================
+    // v22 · World Info 自动注入触发字段（SillyTavern Lorebook 风格最小集）
+    //
+    // 原 world_entries 只是被动展示库；Skill / 写作流程里要查相关设定
+    // 全靠人去翻。本迁移给每条 entry 加三列，让 skill-engine 的
+    // world-info-activator 能在用户选段 / 章节文本里扫到关键词后自动注入。
+    //
+    //   - keys：额外触发关键词（JSON 数组）。注意 title + aliases 也会
+    //     被 activator 自动当作关键词使用，所以本字段留空也能工作；
+    //     用于设定"按概念触发"（如条目"魔法体系"被"施法/灵气"触发）。
+    //   - position：注入位置，before=拼到 user prompt 前 / after=拼到后 /
+    //     at_depth=保留接口（未来 chat-history 倒数注入）。
+    //   - probability：命中后再掷一次的概率（0-100）。默认 100 = 永远注入。
+    //
+    // 卡牌级配置（scan_depth / token_budget / recursion / timed_effects）
+    // 见 Phase 3 world_packs 表，不在此处展开。
+    // ===================================================================
+    version: 22,
+    name: "world_info_triggers",
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE world_entries
+          ADD COLUMN keys TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(keys));
+        ALTER TABLE world_entries
+          ADD COLUMN position TEXT NOT NULL DEFAULT 'before'
+          CHECK(position IN ('before','after','at_depth'));
+        ALTER TABLE world_entries
+          ADD COLUMN probability INTEGER NOT NULL DEFAULT 100
+          CHECK(probability >= 0 AND probability <= 100);
+      `);
+    },
+  },
+  {
+    // ===================================================================
+    // v23 · 世界观卡牌系统（Worldview Cards）
+    //
+    // 用户痛点：原 world_entries 只能在单个项目内组织世界观，无法跨项目
+    // 复用，更没法"准备好几套完整世界观，需要时挑一张/融合多张"。
+    //
+    // 本迁移建三张表实现"卡牌库 + 插槽"模型：
+    //   - world_packs：跨项目的卡牌主表，一张卡 = 一套世界观预设
+    //   - world_pack_entries：卡牌内部的世界观条目，结构与 world_entries
+    //     相似但独立存储（避免给 world_entries 加 nullable project_id）
+    //   - project_world_pack_slots：项目的卡牌插槽（多对多），引用而不复制
+    //
+    // 引用式（reference）：插槽只存"用了哪张卡"，卡的 entries 留在卡库中。
+    // skill-engine 的 world-info-activator 在调用时把"项目自有 entries +
+    // 已插槽卡牌的 entries"合并喂入即可。
+    //
+    // origin/parent_pack_ids：fused 卡可追溯到源卡的祖先链，便于"看看
+    // 这张卡是哪几张融合来的"。
+    // ===================================================================
+    version: 23,
+    name: "worldview_cards",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS world_packs (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          tagline TEXT NOT NULL DEFAULT '',
+          description TEXT NOT NULL DEFAULT '',
+          cover_path TEXT,
+          cover_mime TEXT,
+          tags TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(tags)),
+          scan_depth INTEGER NOT NULL DEFAULT 3,
+          token_budget INTEGER NOT NULL DEFAULT 1500,
+          recursion_enabled INTEGER NOT NULL DEFAULT 0,
+          origin TEXT NOT NULL DEFAULT 'user'
+            CHECK(origin IN ('user','fused','imported')),
+          parent_pack_ids TEXT NOT NULL DEFAULT '[]'
+            CHECK(json_valid(parent_pack_ids)),
+          version INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_world_packs_updated
+          ON world_packs(updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS world_pack_entries (
+          id TEXT PRIMARY KEY,
+          pack_id TEXT NOT NULL REFERENCES world_packs(id) ON DELETE CASCADE,
+          category TEXT NOT NULL,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL DEFAULT '',
+          aliases TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(aliases)),
+          tags TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(tags)),
+          keys TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(keys)),
+          position TEXT NOT NULL DEFAULT 'before'
+            CHECK(position IN ('before','after','at_depth')),
+          probability INTEGER NOT NULL DEFAULT 100
+            CHECK(probability >= 0 AND probability <= 100),
+          "order" INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_world_pack_entries_pack
+          ON world_pack_entries(pack_id, "order");
+
+        CREATE TABLE IF NOT EXISTS project_world_pack_slots (
+          project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+          pack_id TEXT NOT NULL REFERENCES world_packs(id) ON DELETE CASCADE,
+          slot_order INTEGER NOT NULL DEFAULT 0,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          added_at TEXT NOT NULL,
+          PRIMARY KEY (project_id, pack_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_project_world_pack_slots_project
+          ON project_world_pack_slots(project_id, slot_order);
+      `);
+    },
+  },
+  {
+    // ===================================================================
+    // v24 · Author's Note（作者口吻/全局风格批注）
+    //
+    // 给每个项目挂一段"永远注入"的指令文本，控制 LLM 整体口吻 / 风格 /
+    // 禁忌词等。比 system_prompt 灵活：position=before 拼在 user prompt
+    // 前，after 拼在后；enabled 可临时关掉而不删内容。
+    //
+    // 一项目一条（UNIQUE project_id）。后续若要章节级覆盖，加新表
+    // chapter_author_notes 即可，不影响这张表。
+    // ===================================================================
+    version: 24,
+    name: "author_notes",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS author_notes (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL UNIQUE
+            REFERENCES projects(id) ON DELETE CASCADE,
+          text TEXT NOT NULL DEFAULT '',
+          position TEXT NOT NULL DEFAULT 'before'
+            CHECK(position IN ('before','after')),
+          enabled INTEGER NOT NULL DEFAULT 1,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_author_notes_project
+          ON author_notes(project_id);
+      `);
+    },
+  },
+  {
+    // ===================================================================
+    // v25 · CCv3 兼容字段（Character Card V3 character_book 对齐）
+    //
+    // Character Card V3 (kwaroran/character-card-spec-v3) 是当下角色卡 +
+    // 嵌入式 Lorebook 的事实标准（RisuAI/SillyTavern/Chub 都吃这一套）。
+    // 对齐这套 schema 后，InkForge 卡牌可以与全网 50k+ 角色卡 / lorebook
+    // 互通——卡牌库瞬间扩容到外部生态。
+    //
+    // 新加字段（同时给 world_entries 和 world_pack_entries）：
+    //   secondary_keys  —— 次级关键词。配合 selective_logic 做多关键词组合判定
+    //   selective_logic —— and_any/not_all/not_any/and_all（SillyTavern 同名）
+    //   case_sensitive  —— 关键词是否区分大小写（CCv3 字段）
+    //   constant        —— 永远激活（绕过关键词命中），用于"必读设定"
+    //   extensions      —— CCv3 自定义扩展字段（JSON 对象，存第三方扩展数据）
+    //
+    // character_card_imports：记录导入指纹（hash + 源路径 + 导入时间），
+    //   避免用户重复拖入同一张卡造成卡库噪声。
+    // ===================================================================
+    version: 25,
+    name: "ccv3_compat_fields",
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE world_pack_entries
+          ADD COLUMN secondary_keys TEXT NOT NULL DEFAULT '[]'
+            CHECK(json_valid(secondary_keys));
+        ALTER TABLE world_pack_entries
+          ADD COLUMN selective_logic TEXT NOT NULL DEFAULT 'and_any'
+            CHECK(selective_logic IN ('and_any','not_all','not_any','and_all'));
+        ALTER TABLE world_pack_entries
+          ADD COLUMN case_sensitive INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE world_pack_entries
+          ADD COLUMN constant INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE world_pack_entries
+          ADD COLUMN extensions TEXT NOT NULL DEFAULT '{}'
+            CHECK(json_valid(extensions));
+
+        ALTER TABLE world_entries
+          ADD COLUMN secondary_keys TEXT NOT NULL DEFAULT '[]'
+            CHECK(json_valid(secondary_keys));
+        ALTER TABLE world_entries
+          ADD COLUMN selective_logic TEXT NOT NULL DEFAULT 'and_any'
+            CHECK(selective_logic IN ('and_any','not_all','not_any','and_all'));
+        ALTER TABLE world_entries
+          ADD COLUMN case_sensitive INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE world_entries
+          ADD COLUMN constant INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE world_entries
+          ADD COLUMN extensions TEXT NOT NULL DEFAULT '{}'
+            CHECK(json_valid(extensions));
+
+        CREATE TABLE IF NOT EXISTS character_card_imports (
+          id TEXT PRIMARY KEY,
+          source_path TEXT NOT NULL,
+          content_hash TEXT NOT NULL UNIQUE,
+          pack_id TEXT REFERENCES world_packs(id) ON DELETE SET NULL,
+          imported_at TEXT NOT NULL,
+          spec TEXT NOT NULL DEFAULT 'ccv3'
+            CHECK(spec IN ('ccv3','ccv2','tavernai','sillytavern_lorebook','inkcard'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_card_imports_hash
+          ON character_card_imports(content_hash);
+      `);
+    },
+  },
+  {
+    // ===================================================================
+    // v26 · Voice Profile（写作声音档案）+ World Info Trace（激活诊断）
+    //
+    // voice_profiles：一项目一条"声音档案"——把用户的句法节奏、词汇登记、
+    //   对话风格、情感温度等以结构化 JSON 存下来，所有 AI 生成 prompt
+    //   都自动注入这段，避免"AI 用通用 GPT 口吻写你的小说"。
+    //   灵感来自 Novel Engine 的 Voice Profile 问卷设计。
+    //
+    // world_info_traces：每次 World Info 激活的诊断快照。SillyTavern 一直
+    //   只 console.log，用户问"为啥这条没生效"基本靠猜。我们把每条 entry
+    //   是否命中、命中哪个 key、概率掷骰结果、token 占用都存下来，UI 上做
+    //   面板可视化。每项目只保留最近 30 条（应用层定期清理）。
+    // ===================================================================
+    version: 26,
+    name: "voice_profile_and_traces",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS voice_profiles (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL UNIQUE
+            REFERENCES projects(id) ON DELETE CASCADE,
+          answers TEXT NOT NULL DEFAULT '{}'
+            CHECK(json_valid(answers)),
+          prompt_block TEXT NOT NULL DEFAULT '',
+          enabled INTEGER NOT NULL DEFAULT 1,
+          completed_at TEXT,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS world_info_traces (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL
+            REFERENCES projects(id) ON DELETE CASCADE,
+          run_id TEXT,
+          scene TEXT NOT NULL DEFAULT 'skill',
+          scan_text_preview TEXT NOT NULL DEFAULT '',
+          payload TEXT NOT NULL
+            CHECK(json_valid(payload)),
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_world_info_traces_project_time
+          ON world_info_traces(project_id, created_at DESC);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {
