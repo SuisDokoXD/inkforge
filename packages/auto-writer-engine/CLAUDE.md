@@ -1,6 +1,6 @@
 # packages/auto-writer-engine — 4-Agent Novel Writing Pipeline
 
-> Orchestrates Writer / Critic / Director / Editor LLM agents to produce a chapter from user ideas. Engine is provider-agnostic; the desktop wrapper supplies the LLM call adapter.
+> Orchestrates Planner / Writer / Critic / Reflector LLM agents to produce a chapter from user ideas. Engine is provider-agnostic; the desktop wrapper supplies the LLM call adapter.
 
 ## Public API
 
@@ -9,21 +9,23 @@ import {
   runAutoWriterPipeline,           // main entry
   UserInterruptQueue,
   makeRoleResolver,
-  type AutoWriterAgentRole,        // 'writer' | 'critic' | 'director' | 'editor'
+  type AutoWriterAgentRole,        // 'planner' | 'writer' | 'critic' | 'reflector'
   type AutoWriterAgentBinding,     // {role, providerId, model, temperature, maxTokens}
   type AgentCallInput,             // {role, binding, systemPrompt, userPrompt}
   type AgentCallOutput,            // {text, tokensIn, tokensOut}
 } from "@inkforge/auto-writer-engine";
 ```
 
+(Canonical role names live in `packages/shared/src/domain.ts` as `AutoWriterAgentRole`. System prompts per role live in `packages/auto-writer-engine/src/agent-roles.ts` `AGENT_SYSTEM_PROMPTS`.)
+
 ## Pipeline Flow
 
-1. **Director (Planner)** — given user ideas + chapter context → emits beat plan (segments to write)
-2. **Writer** — for each beat, generates a draft segment (~targetSegmentLength chars)
-3. **Critic** — reads segment, scores 0-10. Below threshold → loop back to Writer (max `maxRewritesPerSegment` retries)
-4. **Editor** — final polish pass on full assembled text
+1. **Planner**（提纲师）— given user ideas + chapter context → emits beat plan (segments to write)
+2. **Writer**（写手）— for each beat, generates a draft segment (~targetSegmentLength chars)
+3. **Critic**（审稿员）— reads segment, scores 0-10. Below threshold → loop back to Writer (max `maxRewritesPerSegment` retries)
+4. **Reflector**（反思员）— after the chapter is assembled, updates long-term memory (chapter summary, character state hints) so the next chapter inherits context
 
-OOC gate (when enabled): semantic check on character voice consistency.
+OOC gate (when enabled): semantic check on character voice consistency, runs alongside Critic.
 
 ## Inputs (apps/desktop side)
 

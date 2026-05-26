@@ -6,13 +6,13 @@
 
 File: `src/migrations.ts`. Array of `{ version: number, name: string, up: (db) => void }` objects.
 
-**Current head version: v18.**
+**Current head version: v26.** (46 tables total.)
 
 Append new migration at end of array. Never edit existing entries.
 
 ```ts
 {
-  version: 19,           // next available
+  version: 27,           // next available
   name: "your_feature",
   up: (db) => {
     db.exec(`
@@ -26,11 +26,28 @@ Append new migration at end of array. Never edit existing entries.
 
 Verify pattern: `apps/desktop/scripts/verify-migrations.cjs` validates table list + index list + version count. **Bump `EXPECTED_MAX_VERSION`** + add expected tables/indexes when adding migration.
 
+## Migration milestones (read for context)
+
+| Range | Theme |
+|---|---|
+| v1 | Core: `projects`, `chapters`, `providers`, `ai_feedbacks` |
+| v2 | `outline_cards`, `daily_logs`, `app_settings` |
+| v3-v4 | `skills`, `tavern_cards`, `characters` |
+| v5-v6 | Tavern wiring: `character_sync_log`, `tavern_sessions`, `tavern_messages` |
+| v8-v10 | `world_entries`, `research_notes`, review trio (`review_dimensions/reports/findings`) |
+| v12 | `provider_keys` — multi-key strategy with cooldown |
+| v13-v18 | Bookshelf cluster: `book_cover`, `chapter_log`, `chapter_snapshot`, `auto_writer_run`, `achievements`, `character_letter`, `scene_binding`, `sample_lib`, `world_relationship` |
+| **v19-v20** | **Projects table augmented**: `synopsis/genre/sub_genre/tags/master_outline/pre_refine_master_outline` (v19) + `global_worldview` + `materials` table (v20) |
+| v21 | `chapter_summaries` — cross-chapter memory for AutoWriter |
+| v22 | `world_entries` triggers (`keys/position/probability`) for SillyTavern-style world-info activation |
+| v23-v26 | World Pack system (`world_pack`, `world_pack_entries`, `project_world_pack_slots`), `author_note`, `character_card_import` fingerprinting, `voice_profile`, `world_info_trace` |
+
 ## Critical Schemas (verbatim — DO NOT GUESS)
 
-### `projects`
+### `projects` (v1 + v19 + v20)
 
 ```sql
+-- v1 base
 CREATE TABLE projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,           -- NOT 'title'
@@ -39,11 +56,20 @@ CREATE TABLE projects (
   daily_goal INTEGER NOT NULL DEFAULT 1000,
   last_opened TEXT
 );
+-- v19 additions (ALTER TABLE)
+ALTER TABLE projects ADD COLUMN synopsis TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN genre TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN sub_genre TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN tags TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(tags));
+ALTER TABLE projects ADD COLUMN master_outline TEXT NOT NULL DEFAULT '';
+ALTER TABLE projects ADD COLUMN pre_refine_master_outline TEXT;
+-- v20 addition
+ALTER TABLE projects ADD COLUMN global_worldview TEXT NOT NULL DEFAULT '';
 ```
 
-`ProjectRecord` (camelCase): `{id, name, path, createdAt, dailyGoal, lastOpened}`.
+`ProjectRecord` (camelCase): `{id, name, path, createdAt, dailyGoal, lastOpened, synopsis, genre, subGenre, tags, masterOutline, preRefineMasterOutline, globalWorldview}`.
 
-**NO `title/synopsis/genre/sub_genre/tags/summary/target_word_count` fields.** Any AI-generation feature needing these must add columns via new migration.
+**Historical note**: v1 projects was bare-bones (no creative metadata). The ainovel port in early May 2026 assumed `title/synopsis/genre/tags/masterOutline` already existed and broke verify-scripts. v19/v20 retrofitted them via `ALTER TABLE` with safe defaults. **When adding fields to existing tables, always default to `''` / `'[]'` / `0` so older rows remain valid.**
 
 ### `chapters`
 
