@@ -7,6 +7,7 @@
   "scripts": {
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "dev": "pnpm --filter @inkforge/desktop dev",
     "icons": "node scripts/build-icons.cjs",
     "clean": "turbo run clean"
