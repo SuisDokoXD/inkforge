@@ -23,7 +23,11 @@
     "verify:world-relationship": "node scripts/verify-world-relationship.cjs",
     "verify:export": "node scripts/verify-export.cjs",
     "verify:outline-gen": "node scripts/verify-outline-gen.cjs",
-    "verify:all": "pnpm run verify:migrations && pnpm run verify:engine && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:outline-gen && pnpm run verify:shortcuts",
+    "verify:skill": "node scripts/verify-skill.cjs",
+    "sqlite:status": "node scripts/swap-sqlite-abi.cjs status",
+    "sqlite:node": "node scripts/swap-sqlite-abi.cjs node",
+    "sqlite:electron": "node scripts/swap-sqlite-abi.cjs electron",
+    "verify:all": "pnpm run verify:migrations && pnpm run verify:engine && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:outline-gen && pnpm run verify:skill && pnpm run verify:shortcuts",
     "bench:storage": "node scripts/_run-in-electron.cjs scripts/bench-storage.cjs",
     "dist": "electron-vite build && electron-builder",
     "dist:dir": "electron-vite build && electron-builder --dir",
@@ -45,7 +49,7 @@
     "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "latest",
+    "@anthropic-ai/sdk": "^0.90.0",
     "@dagrejs/dagre": "^3.0.0",
     "@tanstack/react-virtual": "^3.13.24",
     "@xterm/addon-fit": "^0.10.0",
@@ -55,7 +59,9 @@
     "cmdk": "^1.1.1",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.9",
+    "lottie-react": "^2.4.1",
     "lucide-react": "^1.14.0",
+    "motion": "^12.40.0",
     "node-pty": "^1.0.0"
   },
   "devDependencies": {

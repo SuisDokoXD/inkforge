@@ -5,7 +5,7 @@ import { CompanionChat } from "./CompanionChat";
 import { CompanionFestiveOverlay } from "./CompanionFestiveOverlay";
 import { CompanionParticles } from "./CompanionParticles";
 import { CompanionPomodoroRing } from "./CompanionPomodoroRing";
-import { PetSprite } from "./PetSprite";
+import { CompanionLottie } from "./CompanionLottie";
 import {
   pickFestivalLine,
   pickLine,
@@ -55,7 +55,6 @@ export function Companion({
 }): JSX.Element | null {
   // 持久化
   const enabled = useCompanionStore((s) => s.enabled);
-  const pet = useCompanionStore((s) => s.pet);
   const name = useCompanionStore((s) => s.name);
   const opacity = useCompanionStore((s) => s.opacity);
   const posXPct = useCompanionStore((s) => s.posXPct);
@@ -79,7 +78,6 @@ export function Companion({
   const setPosition = useCompanionStore((s) => s.setPosition);
   const setOpacity = useCompanionStore((s) => s.setOpacity);
   const setEnabled = useCompanionStore((s) => s.setEnabled);
-  const setPet = useCompanionStore((s) => s.setPet);
   const setName = useCompanionStore((s) => s.setName);
   const setUserBirthday = useCompanionStore((s) => s.setUserBirthday);
   const setParticlesEnabled = useCompanionStore((s) => s.setParticlesEnabled);
@@ -217,22 +215,34 @@ export function Companion({
       raw = pickFestivalLine(festival);
     }
     if (!raw) raw = pickLine(kind);
-    setBubble(applyPersona(raw, pet, name));
+    setBubble(applyPersona(raw, name));
     const t = setTimeout(() => setBubble(null), BUBBLE_VISIBLE_MS);
     return () => clearTimeout(t);
-  }, [hovered, state, festival, pet, name]);
+  }, [hovered, state, festival, name]);
 
   // ----- 实时计算精灵屏幕坐标 -----
   useEffect(() => {
+    let raf = 0;
     const compute = (): void => {
       setAnchor({
         x: posXPct * window.innerWidth,
         y: posYPct * window.innerHeight,
       });
     };
+    // resize 用 rAF 合并到每帧一次，避免连续缩放时同步重算导致布局抖动。
+    const onResize = (): void => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        compute();
+      });
+    };
     compute();
-    window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
   }, [posXPct, posYPct]);
 
   /** 处理 5 连击 → dizzy */
@@ -424,7 +434,7 @@ export function Companion({
           title="左键点 / 双击番茄钟 / Alt+点聊天 / 长按抚摸 / 右键设置"
         >
           <div className="relative">
-            <PetSprite pet={pet} state={state} hovered={hovered} />
+            <CompanionLottie state={state} hovered={hovered} />
             <CompanionFestiveOverlay
               festival={festival}
               rainbow={rainbowUnlocked}
@@ -436,7 +446,6 @@ export function Companion({
         {/* 偏好菜单 */}
         {menuOpen && (
           <PrefMenu
-            pet={pet}
             opacity={opacity}
             mood={mood}
             petCount={petCount}
@@ -446,7 +455,6 @@ export function Companion({
             pomodoroMode={pomodoro.mode}
             pomodoroDoneCount={pomodoro.doneCount}
             rainbowUnlocked={rainbowUnlocked}
-            onSetPet={setPet}
             onSetOpacity={setOpacity}
             onSetParticles={setParticlesEnabled}
             onRename={() => {
@@ -484,7 +492,6 @@ export function Companion({
       {/* AI 聊天 */}
       <CompanionChat
         open={chatOpen}
-        pet={pet}
         petName={name}
         anchorX={anchor.x}
         anchorY={anchor.y}
@@ -495,7 +502,7 @@ export function Companion({
       {renameDialogOpen && (
         <RenameDialog
           currentName={name}
-          defaultName={PET_DEFAULT_NAME[pet]}
+          defaultName={PET_DEFAULT_NAME}
           currentBirthday={userBirthday}
           onSave={(newName, newBirthday) => {
             setName(newName);
@@ -514,7 +521,6 @@ export function Companion({
  * ============================================================ */
 
 function PrefMenu({
-  pet,
   opacity,
   mood,
   petCount,
@@ -524,7 +530,6 @@ function PrefMenu({
   pomodoroMode,
   pomodoroDoneCount,
   rainbowUnlocked,
-  onSetPet,
   onSetOpacity,
   onSetParticles,
   onRename,
@@ -533,7 +538,6 @@ function PrefMenu({
   onClose,
   onHide,
 }: {
-  pet: "cat" | "fox" | "owl" | "octopus";
   opacity: number;
   mood: number;
   petCount: number;
@@ -543,7 +547,6 @@ function PrefMenu({
   pomodoroMode: "idle" | "work" | "break";
   pomodoroDoneCount: number;
   rainbowUnlocked: boolean;
-  onSetPet: (p: "cat" | "fox" | "owl" | "octopus") => void;
   onSetOpacity: (v: number) => void;
   onSetParticles: (v: boolean) => void;
   onRename: () => void;
@@ -578,7 +581,7 @@ function PrefMenu({
           <div className="text-ink-500">抚摸</div>
         </div>
         <div className="rounded bg-ink-800/60 p-1.5">
-          <div className="text-amber-300">{Math.round(mood)}</div>
+          <div className="text-accent-300">{Math.round(mood)}</div>
           <div className="text-ink-500">心情</div>
         </div>
         <div className="rounded bg-ink-800/60 p-1.5">
@@ -604,7 +607,7 @@ function PrefMenu({
           onClick={onTogglePomodoro}
           className={`w-full rounded-md py-1.5 text-[11px] font-medium ring-1 ${
             pomodoroMode === "idle"
-              ? "bg-amber-500/20 text-amber-200 ring-amber-400/30 hover:bg-amber-500/30"
+              ? "bg-accent-500/20 text-accent-200 ring-accent-400/30 hover:bg-accent-500/30"
               : "bg-rose-500/20 text-rose-200 ring-rose-400/30 hover:bg-rose-500/30"
           }`}
         >
@@ -622,32 +625,8 @@ function PrefMenu({
         onClick={onChat}
         className="mb-2 w-full rounded-md bg-sky-500/15 py-1.5 text-[11px] text-sky-200 ring-1 ring-sky-400/30 hover:bg-sky-500/25"
       >
-        💬 找{pet === "cat" ? "猫" : pet === "fox" ? "狐" : pet === "owl" ? "鸮" : "章鱼"}聊天
+        💬 找伙伴聊天
       </button>
-
-      <div className="mb-2">
-        <div className="mb-1 text-ink-400">伙伴</div>
-        <div className="grid grid-cols-4 gap-1">
-          {(["cat", "fox", "owl", "octopus"] as const).map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => onSetPet(p)}
-              className={`rounded-lg px-1 py-1.5 text-base transition-all ${
-                pet === p
-                  ? "bg-amber-500/20 ring-1 ring-amber-400/40 scale-110"
-                  : "hover:bg-ink-700/60"
-              }`}
-              title={p}
-            >
-              {p === "cat" && "🐱"}
-              {p === "fox" && "🦊"}
-              {p === "owl" && "🦉"}
-              {p === "octopus" && "🐙"}
-            </button>
-          ))}
-        </div>
-      </div>
 
       <div className="mb-2">
         <div className="mb-1 flex justify-between text-ink-400">
@@ -661,7 +640,7 @@ function PrefMenu({
           step={5}
           value={Math.round(opacity * 100)}
           onChange={(e) => onSetOpacity(Number(e.target.value) / 100)}
-          className="w-full accent-amber-400"
+          className="w-full accent-accent-400"
         />
       </div>
 
@@ -670,7 +649,7 @@ function PrefMenu({
           type="checkbox"
           checked={particlesEnabled}
           onChange={(e) => onSetParticles(e.target.checked)}
-          className="accent-amber-400"
+          className="accent-accent-400"
         />
         <span className="text-ink-300">✨ 环境粒子</span>
       </label>
@@ -684,7 +663,7 @@ function PrefMenu({
       </button>
 
       {rainbowUnlocked && (
-        <div className="mb-2 rounded bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-violet-500/10 p-1.5 text-center text-[10px] text-amber-200 ring-1 ring-amber-400/30">
+        <div className="mb-2 rounded bg-gradient-to-r from-rose-500/10 via-accent-500/10 to-violet-500/10 p-1.5 text-center text-[10px] text-accent-200 ring-1 ring-accent-400/30">
           🌈 已解锁彩虹皮肤
         </div>
       )}
@@ -743,7 +722,7 @@ function RenameDialog({
             onChange={(e) => setLocalName(e.target.value)}
             placeholder={defaultName}
             maxLength={12}
-            className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-400/40 focus:outline-none"
+            className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
           />
         </label>
         <label className="mb-4 block">
@@ -756,7 +735,7 @@ function RenameDialog({
             onChange={(e) => setLocalBirthday(e.target.value)}
             placeholder="例如 09-12"
             maxLength={5}
-            className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-400/40 focus:outline-none"
+            className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
           />
           <div className="mt-1 text-[10px] text-ink-500">
             生日当天桌宠会戴尖帽 + 蛋糕
@@ -779,7 +758,7 @@ function RenameDialog({
                   : null;
               onSave(name.trim(), validBirthday);
             }}
-            className="rounded-md bg-amber-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-amber-400"
+            className="rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400"
           >
             保存
           </button>

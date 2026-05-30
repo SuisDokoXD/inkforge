@@ -1,5 +1,5 @@
 export { Companion } from "./Companion";
-export { PetSprite } from "./PetSprite";
+export { CompanionLottie } from "./CompanionLottie";
 export { CompanionBubble } from "./CompanionBubble";
 export { CompanionChat } from "./CompanionChat";
 export { CompanionParticles } from "./CompanionParticles";

@@ -29,8 +29,6 @@ export type CompanionState =
   | "dizzy"
   | "wishing";
 
-export type CompanionPet = "cat" | "fox" | "owl" | "octopus";
-
 /** 番茄钟模式 */
 export type PomodoroMode = "idle" | "work" | "break";
 
@@ -54,9 +52,6 @@ const POMODORO_INIT: PomodoroState = {
 export interface CompanionStore {
   /** ===== 持久化 ===== */
   enabled: boolean;
-  pet: CompanionPet;
-  /** 第二只桌宠（多桌宠模式预留；本次未实装） */
-  secondaryPet: CompanionPet | null;
   posXPct: number;
   posYPct: number;
   opacity: number;
@@ -95,8 +90,6 @@ export interface CompanionStore {
 
   /** ===== actions ===== */
   setEnabled: (v: boolean) => void;
-  setPet: (pet: CompanionPet) => void;
-  setSecondaryPet: (pet: CompanionPet | null) => void;
   setPosition: (xPct: number, yPct: number) => void;
   setOpacity: (op: number) => void;
   setState: (s: CompanionState) => void;
@@ -137,8 +130,6 @@ export const useCompanionStore = create<CompanionStore>()(
     (set, get) => ({
       // 持久化字段默认值
       enabled: true,
-      pet: "cat",
-      secondaryPet: null,
       posXPct: 0.92,
       posYPct: 0.86,
       opacity: 0.95,
@@ -165,8 +156,6 @@ export const useCompanionStore = create<CompanionStore>()(
           enabled: v,
           birthDate: s.birthDate ?? new Date().toISOString().slice(0, 10),
         })),
-      setPet: (pet) => set({ pet }),
-      setSecondaryPet: (pet) => set({ secondaryPet: pet }),
       setPosition: (xPct, yPct) =>
         set({
           posXPct: clamp(xPct, 0.02, 0.98),
@@ -247,8 +236,6 @@ export const useCompanionStore = create<CompanionStore>()(
       name: "inkforge-companion",
       partialize: (state) => ({
         enabled: state.enabled,
-        pet: state.pet,
-        secondaryPet: state.secondaryPet,
         posXPct: state.posXPct,
         posYPct: state.posYPct,
         opacity: state.opacity,

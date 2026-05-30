@@ -1,45 +1,23 @@
-import type { CompanionPet } from "../../stores/companion-store";
+/**
+ * 单一吉祥物的"第一人称"人格设定。
+ * 收敛自原 4 物种（猫/狐/鸮/章鱼）映射——现在只有一个吉祥物，故用常量。
+ * 用法：将气泡 / 聊天文本中的占位符 {self} {sound} {name} 替换为对应值。
+ */
+export const PET_PRONOUN = "我";
+export const PET_SOUND = "唔";
+/** 默认名字（未起名时备用，可在桌宠菜单里改） */
+export const PET_DEFAULT_NAME = "墨墨";
+/** 聊天/气泡里对吉祥物自身的称呼 */
+export const PET_LABEL = "可爱的写作伙伴";
 
 /**
- * 不同桌宠的"第一人称"代词映射 + 称呼后缀。
- * 用法：将气泡 / 聊天文本中的占位符 {self} 替换为对应代词。
+ * 把模板里的 {self} {sound} {name} 占位符替换成代词/音效/名字。
+ * 没起名 → 用默认名；外部传入 customName 优先。
  */
-export const PET_PRONOUN: Record<CompanionPet, string> = {
-  cat: "本喵",
-  fox: "本狐",
-  owl: "本鸮",
-  octopus: "本喵八腿", // 章鱼自称"喵八腿"，反差萌
-};
-
-export const PET_SOUND: Record<CompanionPet, string> = {
-  cat: "喵",
-  fox: "嗷呜",
-  owl: "咕～",
-  octopus: "啵啵",
-};
-
-/** 默认名字（未起名时备用） */
-export const PET_DEFAULT_NAME: Record<CompanionPet, string> = {
-  cat: "团子",
-  fox: "小白",
-  owl: "夜书",
-  octopus: "墨墨",
-};
-
-/**
- * 把模板里的 {self} {sound} {name} 占位符替换成对应代词/音效/名字。
- * 没起名 → 用代词代替名字；外部传入 name 优先。
- */
-export function applyPersona(
-  template: string,
-  pet: CompanionPet,
-  customName: string,
-): string {
-  const self = PET_PRONOUN[pet];
-  const sound = PET_SOUND[pet];
-  const name = customName || PET_DEFAULT_NAME[pet];
+export function applyPersona(template: string, customName: string): string {
+  const name = customName || PET_DEFAULT_NAME;
   return template
-    .replaceAll("{self}", self)
-    .replaceAll("{sound}", sound)
+    .replaceAll("{self}", PET_PRONOUN)
+    .replaceAll("{sound}", PET_SOUND)
     .replaceAll("{name}", name);
 }

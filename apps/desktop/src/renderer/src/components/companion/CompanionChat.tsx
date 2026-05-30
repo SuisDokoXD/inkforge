@@ -6,12 +6,11 @@ import { llmApi } from "../../lib/api";
 import {
   applyPersona,
   PET_DEFAULT_NAME,
+  PET_LABEL,
 } from "./companion-persona";
-import type { CompanionPet } from "../../stores/companion-store";
 
 interface CompanionChatProps {
   open: boolean;
-  pet: CompanionPet;
   petName: string;
   /** 精灵中心屏幕坐标 */
   anchorX: number;
@@ -39,7 +38,6 @@ const GAP = 18;
  */
 export function CompanionChat({
   open,
-  pet,
   petName,
   anchorX,
   anchorY,
@@ -51,7 +49,6 @@ export function CompanionChat({
       role: "assistant",
       content: applyPersona(
         "{sound}~ {self}是 {name}，有什么想聊的吗？",
-        pet,
         petName,
       ),
     },
@@ -67,7 +64,7 @@ export function CompanionChat({
           ...messages.map((m) => ({ role: m.role, content: m.content })),
           { role: "user", content: text },
         ],
-        systemPrompt: buildSystemPrompt(pet, petName),
+        systemPrompt: buildSystemPrompt(petName),
         temperature: 0.85,
         maxTokens: 380,
       }),
@@ -113,7 +110,7 @@ export function CompanionChat({
   if (top < margin) top = margin;
   if (top + CHAT_PANEL_H > vh - margin) top = vh - margin - CHAT_PANEL_H;
 
-  const display = (raw: string): string => applyPersona(raw, pet, petName);
+  const display = (raw: string): string => applyPersona(raw, petName);
 
   const handleSend = (): void => {
     const text = input.trim();
@@ -134,15 +131,10 @@ export function CompanionChat({
       {/* 顶栏 */}
       <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-b from-ink-800/80 to-ink-900/80 px-3 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-base">
-            {pet === "cat" && "🐱"}
-            {pet === "fox" && "🦊"}
-            {pet === "owl" && "🦉"}
-            {pet === "octopus" && "🐙"}
-          </span>
+          <span className="text-base">🐾</span>
           <div>
             <div className="text-[12.5px] font-semibold text-ink-100">
-              {petName || PET_DEFAULT_NAME[pet]}
+              {petName || PET_DEFAULT_NAME}
             </div>
             <div className="text-[10px] text-emerald-300/80">● 在线</div>
           </div>
@@ -184,15 +176,15 @@ export function CompanionChat({
                 handleSend();
               }
             }}
-            placeholder={`和 ${petName || PET_DEFAULT_NAME[pet]} 说点什么…（Enter 发送）`}
+            placeholder={`和 ${petName || PET_DEFAULT_NAME} 说点什么…（Enter 发送）`}
             rows={2}
-            className="flex-1 resize-none rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[12px] text-ink-100 placeholder:text-ink-500 focus:border-amber-400/40 focus:outline-none"
+            className="flex-1 resize-none rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[12px] text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
           />
           <button
             type="button"
             disabled={!input.trim() || sendMut.isPending}
             onClick={handleSend}
-            className="self-end rounded-md bg-amber-500 px-3 py-1.5 text-[11px] font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+            className="self-end rounded-md bg-accent-500 px-3 py-1.5 text-[11px] font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
           >
             发送
           </button>
@@ -218,7 +210,7 @@ function MessageBubble({
       <div
         className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[12px] leading-relaxed ${
           isAssistant
-            ? "rounded-bl-sm bg-amber-100/90 text-stone-800"
+            ? "rounded-bl-sm bg-accent-500/15 text-ink-100"
             : "rounded-br-sm bg-sky-500/30 text-sky-50"
         }`}
       >
@@ -233,7 +225,7 @@ function MessageBubble({
   );
 }
 
-function buildSystemPrompt(pet: CompanionPet, name: string): string {
+function buildSystemPrompt(name: string): string {
   const persona = applyPersona(
     [
       "你叫「{name}」，是一只{petLabel}，正在陪一位作者写小说。",
@@ -247,11 +239,7 @@ function buildSystemPrompt(pet: CompanionPet, name: string): string {
       "- 偶尔用一次拟声词「{sound}」点缀",
       "- 不要用 emoji，除非情境特别合适（每次最多 1-2 个）",
     ].join("\n"),
-    pet,
     name,
-  ).replace(
-    "{petLabel}",
-    pet === "cat" ? "可爱的小猫" : pet === "fox" ? "聪明的小狐狸" : pet === "owl" ? "睿智的小猫头鹰" : "粉色的小章鱼",
-  );
+  ).replace("{petLabel}", PET_LABEL);
   return persona;
 }
