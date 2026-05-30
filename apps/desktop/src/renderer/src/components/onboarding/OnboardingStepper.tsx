@@ -25,9 +25,9 @@ export function OnboardingStepper({ currentStep }: StepperProps): JSX.Element {
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${
                   isCompleted
-                    ? "bg-amber-500 text-ink-900"
+                    ? "bg-accent-500 text-ink-900"
                     : isCurrent
-                    ? "bg-amber-500/20 text-amber-300 ring-2 ring-amber-500/40"
+                    ? "bg-accent-500/20 text-accent-300 ring-2 ring-accent-500/40"
                     : "bg-ink-700 text-ink-400"
                 }`}
               >
@@ -35,7 +35,7 @@ export function OnboardingStepper({ currentStep }: StepperProps): JSX.Element {
               </div>
               <span
                 className={`mt-2 text-xs font-medium ${
-                  isCurrent ? "text-amber-300" : isCompleted ? "text-ink-200" : "text-ink-500"
+                  isCurrent ? "text-accent-300" : isCompleted ? "text-ink-200" : "text-ink-500"
                 }`}
               >
                 {step}
@@ -44,7 +44,7 @@ export function OnboardingStepper({ currentStep }: StepperProps): JSX.Element {
             {index < STEPS.length - 1 && (
               <div
                 className={`h-[2px] flex-1 mx-4 transition-colors ${
-                  isCompleted ? "bg-amber-500" : "bg-ink-700"
+                  isCompleted ? "bg-accent-500" : "bg-ink-700"
                 }`}
               />
             )}

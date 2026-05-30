@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { findCatalogEntry, type ProviderVendor } from "@inkforge/shared";
 import { projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
+import { fadeSlideUp, fadeOnly } from "../lib/motion-tokens";
 import { OnboardingStepper } from "../components/onboarding/OnboardingStepper";
 import { OnboardingStepWorkspace } from "../components/onboarding/OnboardingStepWorkspace";
 import { OnboardingStepProvider } from "../components/onboarding/OnboardingStepProvider";
@@ -56,6 +58,7 @@ const DRAFT_KEY = "inkforge:onboarding:draft";
 
 export function OnboardingPage({ onFinish }: OnboardingPageProps): JSX.Element {
   const t = useT();
+  const reduce = useReducedMotion();
   const [draft, setDraft] = useState<OnboardingDraft>(() => {
     try {
       const saved = sessionStorage.getItem(DRAFT_KEY);
@@ -172,16 +175,29 @@ export function OnboardingPage({ onFinish }: OnboardingPageProps): JSX.Element {
       <div className="w-full max-w-2xl rounded-2xl bg-ink-800/80 p-8 shadow-2xl ring-1 ring-ink-600/40 backdrop-blur">
         <OnboardingStepper currentStep={draft.step} />
 
+        {/* 步骤切换用 AnimatePresence mode="wait"：旧步骤淡出后新步骤淡入+轻微上移，
+            与全局页面过渡同一套动效；reduced-motion 下退化为纯淡入淡出。
+            key 绑定 draft.step，切步即触发进出场。 */}
         <div className="mt-8 min-h-[300px]">
-          {draft.step === 0 && <OnboardingStepWorkspace draft={draft} updateDraft={updateDraft} />}
-          {draft.step === 1 && (
-            <OnboardingStepProvider draft={draft} updateDraft={updateDraft} errorMessage={errorMessage} />
-          )}
-          {draft.step === 2 && <OnboardingStepSkills />}
-          {draft.step === 3 && (
-            <OnboardingStepProject draft={draft} updateDraft={updateDraft} errorMessage={errorMessage} />
-          )}
-          {draft.step === 4 && <OnboardingStepComplete />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={draft.step}
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {draft.step === 0 && <OnboardingStepWorkspace draft={draft} updateDraft={updateDraft} />}
+              {draft.step === 1 && (
+                <OnboardingStepProvider draft={draft} updateDraft={updateDraft} errorMessage={errorMessage} />
+              )}
+              {draft.step === 2 && <OnboardingStepSkills />}
+              {draft.step === 3 && (
+                <OnboardingStepProject draft={draft} updateDraft={updateDraft} errorMessage={errorMessage} />
+              )}
+              {draft.step === 4 && <OnboardingStepComplete />}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <div className="mt-8 flex justify-between border-t border-ink-700 pt-6">
@@ -196,7 +212,7 @@ export function OnboardingPage({ onFinish }: OnboardingPageProps): JSX.Element {
           </button>
 
           <button
-            className="flex min-w-[120px] items-center justify-center rounded-lg bg-amber-500 px-6 py-2 font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-60"
+            className="flex min-w-[120px] items-center justify-center rounded-lg bg-accent-500 px-6 py-2 font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
             onClick={handleNext}
             disabled={isPending}
           >

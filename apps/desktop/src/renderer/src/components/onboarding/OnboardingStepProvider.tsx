@@ -57,7 +57,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
   };
 
   return (
-    <div className="animate-in fade-in space-y-5">
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-semibold text-ink-100">{t("onboarding.provider.title")}</h2>
         <p className="mt-1 text-sm text-ink-300">
@@ -71,7 +71,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
             {t("onboarding.provider.preset")}
           </label>
           <select
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             value={draft.catalogId}
             onChange={(e) => applyCatalog(e.target.value)}
           >
@@ -87,7 +87,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
               {resolveCatalogDescription(selectedCatalog.id, selectedCatalog.description)}{" "}
               {selectedCatalog.signupUrl && (
                 <a
-                  className="text-amber-300 underline hover:text-amber-200"
+                  className="text-accent-300 underline hover:text-accent-200"
                   href={selectedCatalog.signupUrl}
                   target="_blank"
                   rel="noreferrer"
@@ -102,7 +102,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
         <label className="block space-y-2">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.name")}</span>
           <input
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             value={draft.providerLabel}
             onChange={(e) => updateDraft({ providerLabel: e.target.value })}
           />
@@ -112,7 +112,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
           <label className="space-y-2">
             <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.vendor")}</span>
             <select
-              className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
               value={draft.vendor}
               onChange={(e) => {
                 const vendor = e.target.value as ProviderVendor;
@@ -138,7 +138,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
             </span>
             <input
               list="onboarding-provider-models"
-              className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+              className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
               value={draft.defaultModel}
               onChange={(e) => updateDraft({ defaultModel: e.target.value })}
             />
@@ -155,7 +155,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
         <label className="block space-y-2">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.apiKey")}</span>
           <input
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             type="password"
             placeholder={
               draft.vendor === "anthropic"
@@ -170,7 +170,7 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
         <label className="block space-y-2">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.baseUrl")}</span>
           <input
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             placeholder={
               draft.vendor === "openai-compat"
                 ? t("onboarding.provider.baseUrlPlaceholderCompat")

@@ -1,7 +1,7 @@
 export function OnboardingStepComplete(): JSX.Element {
   return (
-    <div className="flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in-95 duration-500">
-      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-amber-500/20 text-amber-500 text-4xl">
+    <div className="flex flex-col items-center justify-center text-center space-y-6">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-500/20 text-accent-500 text-4xl">
         ✍
       </div>
       <div>
@@ -13,7 +13,7 @@ export function OnboardingStepComplete(): JSX.Element {
 
       <div className="w-full grid grid-cols-2 gap-4 text-left">
         <div className="p-4 rounded-xl border border-ink-700 bg-ink-900/40">
-          <div className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">快捷键</div>
+          <div className="text-xs font-semibold text-accent-400 uppercase tracking-wider mb-2">快捷键</div>
           <ul className="space-y-2 text-sm text-ink-200">
             <li className="flex justify-between">
               <span>写作视图</span>
@@ -26,14 +26,14 @@ export function OnboardingStepComplete(): JSX.Element {
           </ul>
         </div>
         <div className="p-4 rounded-xl border border-ink-700 bg-ink-900/40">
-          <div className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">贴士</div>
+          <div className="text-xs font-semibold text-accent-400 uppercase tracking-wider mb-2">贴士</div>
           <p className="text-xs text-ink-400 leading-relaxed">
             你可以在技能页 (Ctrl+2) 发现更多 AI 插件。在侧边栏右键章节点击“导入”可快速迁移旧稿。
           </p>
         </div>
       </div>
       
-      <p className="text-sm text-amber-500 font-medium">
+      <p className="text-sm text-accent-500 font-medium">
         点击下方按钮，进入你的写作空间。
       </p>
     </div>

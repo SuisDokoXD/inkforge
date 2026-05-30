@@ -15,20 +15,76 @@ html.theme-dark {
   --ink-700: 30 41 59;
   --ink-800: 15 23 42;
   --ink-900: 11 18 32;
+  /* 强调色：深色主题下用更亮的苹果系统蓝 (#0A84FF)，在暗底上对比更舒服。 */
+  --accent-50: 235 244 255;
+  --accent-100: 209 230 255;
+  --accent-200: 174 211 255;
+  --accent-300: 122 184 255;
+  --accent-400: 64 150 255;
+  --accent-500: 10 132 255;
+  --accent-600: 0 113 227;
+  --accent-700: 0 95 204;
+  --accent-800: 0 78 173;
+  --accent-900: 12 58 130;
+  /* 语义状态色 100/200/300（深色主题 = Tailwind 原值，外观不变）。 */
+  --c-rose-100: 255 228 230; --c-rose-200: 254 205 211; --c-rose-300: 253 164 175;
+  --c-red-100: 254 226 226; --c-red-200: 254 202 202; --c-red-300: 252 165 165;
+  --c-emerald-100: 209 250 229; --c-emerald-200: 167 243 208; --c-emerald-300: 110 231 183;
+  --c-green-100: 220 252 231; --c-green-200: 187 247 208; --c-green-300: 134 239 172;
+  --c-sky-100: 224 242 254; --c-sky-200: 186 230 253; --c-sky-300: 125 211 252;
+  --c-blue-100: 219 234 254; --c-blue-200: 191 219 254; --c-blue-300: 147 197 253;
+  --c-violet-100: 237 233 254; --c-violet-200: 221 214 254; --c-violet-300: 196 181 253;
+  --c-fuchsia-100: 250 232 255; --c-fuchsia-200: 245 208 254; --c-fuchsia-300: 240 171 252;
+  --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
+  --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
+  --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
 }
 
+/*
+ * 浅色主题：参考苹果 (Apple HIG) 的浅色系统外观。
+ * 底色走白 / 灰白并带极淡的天蓝倾向 (systemBackground #F5F5F7 系)，
+ * 文字用近黑 (#1D1D1F)，分隔线/占位用苹果中性灰，强调色用系统蓝 #007AFF。
+ * 注意：本主题下 ink 刻度是「反向」的——ink-900 是最浅的背景，ink-100 是最深的文字。
+ */
 html.theme-light {
   color-scheme: light;
-  --ink-50: 15 23 42;
-  --ink-100: 30 41 59;
-  --ink-200: 51 65 85;
-  --ink-300: 71 85 105;
-  --ink-400: 100 116 139;
-  --ink-500: 148 163 184;
-  --ink-600: 203 213 225;
-  --ink-700: 226 232 240;
-  --ink-800: 241 245 249;
-  --ink-900: 248 250 252;
+  --ink-50: 10 10 12;       /* 最强文字/极深 */
+  --ink-100: 29 29 31;      /* 主要文字 #1D1D1F */
+  --ink-200: 51 53 60;      /* 次级标题 */
+  --ink-300: 84 88 98;      /* 次要文字（白底约 6.3:1） */
+  --ink-400: 108 112 124;   /* 弱化文字（白底约 4.8:1，过 AA） */
+  --ink-500: 134 138 150;   /* 更弱文字 / 占位符（白底约 3.9:1） */
+  --ink-600: 200 206 218;   /* 边框（带极淡冷色） */
+  --ink-700: 224 229 238;   /* 分隔线 / hover 底 */
+  --ink-800: 240 244 250;   /* 面板 / 卡片背景（淡天蓝白） */
+  --ink-900: 247 250 254;   /* 主背景（白 + 极淡天蓝） */
+  /* 强调色：浅色主题用经典苹果系统蓝 #007AFF。
+   * 注意：色阶「反转」——浅编号(50-300)是深蓝（给文字用，在白底上可读），
+   * 深编号(700-900)是浅蓝（给背景/描边用）。500 保持纯 #007AFF 不变。
+   * 这样历史代码里大量 text-accent-100/200/300（原为深底浅字设计）在白底上自动变可读。 */
+  --accent-50: 12 58 128;
+  --accent-100: 7 71 158;
+  --accent-200: 0 88 194;
+  --accent-300: 0 105 224;
+  --accent-400: 0 113 235;
+  --accent-500: 0 122 255;
+  --accent-600: 64 156 255;
+  --accent-700: 130 185 255;
+  --accent-800: 191 219 254;
+  --accent-900: 219 234 254;
+  /* 语义状态色 100/200/300（浅色主题：反转成深色，让 text-<color>-100/200/300
+   * 在白底/浅色徽章上清晰可读；映射 100→Tailwind-800, 200→700, 300→600）。 */
+  --c-rose-100: 159 18 57; --c-rose-200: 190 18 60; --c-rose-300: 225 29 72;
+  --c-red-100: 153 27 27; --c-red-200: 185 28 28; --c-red-300: 220 38 38;
+  --c-emerald-100: 6 95 70; --c-emerald-200: 4 120 87; --c-emerald-300: 5 150 105;
+  --c-green-100: 22 101 52; --c-green-200: 21 128 61; --c-green-300: 22 163 74;
+  --c-sky-100: 7 89 133; --c-sky-200: 3 105 161; --c-sky-300: 2 132 199;
+  --c-blue-100: 30 64 175; --c-blue-200: 29 78 216; --c-blue-300: 37 99 235;
+  --c-violet-100: 91 33 182; --c-violet-200: 109 40 217; --c-violet-300: 124 58 237;
+  --c-fuchsia-100: 134 25 143; --c-fuchsia-200: 162 28 175; --c-fuchsia-300: 192 38 211;
+  --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
+  --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
+  --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
 }
 
 html,
@@ -66,10 +122,10 @@ textarea::placeholder {
   color: rgb(var(--ink-500));
   opacity: 1;
 }
-/* 选中文本的高亮兜底 */
+/* 选中文本的高亮兜底（苹果系统蓝） */
 input::selection,
 textarea::selection {
-  background-color: rgba(245, 158, 11, 0.35); /* amber-500 / 35% */
+  background-color: rgba(0, 122, 255, 0.28);
   color: rgb(var(--ink-50));
 }
 
@@ -88,7 +144,7 @@ textarea::selection {
 }
 
 .ProseMirror ::selection {
-  background-color: rgba(245, 158, 11, 0.25);
+  background-color: rgba(0, 122, 255, 0.22);
 }
 
 .ProseMirror h1,
@@ -156,3 +212,33 @@ button:disabled {
   90%  { opacity: 0.6; }
   100% { transform: translate(-6px, -68px) rotate(360deg); opacity: 0; }
 }
+
+/*
+ * 无障碍：尊重系统"减弱动态效果"(prefers-reduced-motion)。
+ * 关掉所有 CSS keyframes 动画与 transition（含桌宠/Tailwind animate-* 类）。
+ * motion 库侧的进出场动画由各组件用 useReducedMotion 单独降级（见 motion-tokens.ts）。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * 性能：窗口缩放进行时临时停用毛玻璃（backdrop-filter）。
+ * 该效果在连续 resize 重绘时开销极大，是拖拽放大/缩小卡顿的主因。
+ * 由 use-window-resize-perf.ts 在缩放期间挂/撤 `win-resizing` 类，
+ * 缩放停止后恢复，故空闲时观感不变。
+ */
+html.win-resizing *,
+html.win-resizing *::before,
+html.win-resizing *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+

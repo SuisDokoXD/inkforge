@@ -8,7 +8,7 @@ const BUILTIN_SKILLS = [
 
 export function OnboardingStepSkills(): JSX.Element {
   return (
-    <div className="space-y-6 animate-in fade-in">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-ink-100">预装写作辅助技能</h2>
         <p className="mt-2 text-sm text-ink-300">
@@ -19,7 +19,7 @@ export function OnboardingStepSkills(): JSX.Element {
       <div className="space-y-3">
         {BUILTIN_SKILLS.map((skill) => (
           <div key={skill.name} className="flex items-start gap-3 p-3 rounded-lg border border-ink-700 bg-ink-900/40">
-            <div className="mt-1 h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+            <div className="mt-1 h-2 w-2 rounded-full bg-accent-500 shadow-[0_0_8px_rgba(0,122,255,0.5)]" />
             <div>
               <div className="text-sm font-medium text-ink-100">{skill.name}</div>
               <div className="text-xs text-ink-400 mt-1 leading-relaxed">{skill.desc}</div>

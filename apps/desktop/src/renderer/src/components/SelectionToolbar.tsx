@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
 import type {
@@ -6,8 +7,12 @@ import type {
   LLMQuickActionKind,
   LLMQuickActionResponse,
   SkillDefinition,
+  SkillOutputTarget,
 } from "@inkforge/shared";
 import { llmApi, skillApi } from "../lib/api";
+import { AnimatedDialog } from "./AnimatedDialog";
+import { SPRING_SNAPPY } from "../lib/motion-tokens";
+import { applySkillOutputToEditor, type SkillApplyRange } from "../lib/skill-output";
 
 const CONTEXT_WINDOW = 400;
 
@@ -54,6 +59,7 @@ interface QuickResult {
 
 export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | null {
   const { editor, projectId, chapterId, chapterTitle, providerId, onPushFeedback, onAfterApply } = props;
+  const reduce = useReducedMotion();
   const [rect, setRect] = useState<Rect | null>(null);
   const [selectionText, setSelectionText] = useState<string>("");
   const [result, setResult] = useState<QuickResult | null>(null);
@@ -61,7 +67,12 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
   const [skillStatus, setSkillStatus] = useState<string | null>(null);
   const [candidateCount, setCandidateCount] = useState<1 | 2 | 3>(1);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
-  const activeSkillRunRef = useRef<{ runId: string; skillName: string } | null>(null);
+  const activeSkillRunRef = useRef<{
+    runId: string;
+    skillName: string;
+    output: SkillOutputTarget;
+    range: SkillApplyRange;
+  } | null>(null);
 
   const selectionSkillsQuery = useQuery({
     queryKey: ["skills", "selection", projectId ?? null],
@@ -119,14 +130,24 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         }
       }, 150);
     });
-    const onScroll = () => updatePosition();
-    const onResize = () => updatePosition();
+    // scroll/resize 用 rAF 合并，避免连续事件里同步重算工具条位置造成抖动。
+    let raf = 0;
+    const scheduleUpdate = (): void => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        updatePosition();
+      });
+    };
+    const onScroll = () => scheduleUpdate();
+    const onResize = () => scheduleUpdate();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onResize);
     return () => {
       editor.off("selectionUpdate", handleUpdate);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
+      if (raf) window.cancelAnimationFrame(raf);
     };
   }, [editor, updatePosition]);
 
@@ -260,8 +281,17 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       const active = activeSkillRunRef.current;
       if (!active || payload.runId !== active.runId) return;
       if (payload.status === "completed") {
-        setSkillStatus(`「${active.skillName}」已写入时间线`);
-        onPushFeedback?.("", "skill");
+        // 按 Skill 输出方式落地：非时间线输出直接写回正文（用运行时记录的选区）。
+        const applied =
+          active.output !== "ai-feedback" &&
+          applySkillOutputToEditor(editor, active.output, payload.text ?? "", active.range);
+        if (applied) {
+          setSkillStatus(`「${active.skillName}」已写入正文`);
+          onAfterApply?.();
+        } else {
+          setSkillStatus(`「${active.skillName}」已写入时间线`);
+          onPushFeedback?.("", "skill");
+        }
       } else if (payload.status === "failed") {
         setSkillStatus(`「${active.skillName}」失败：${payload.error ?? "unknown"}`);
       } else if (payload.status === "cancelled") {
@@ -271,7 +301,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       window.setTimeout(() => setSkillStatus(null), 3500);
     });
     return () => offDone();
-  }, [onPushFeedback]);
+  }, [onPushFeedback, onAfterApply, editor]);
 
   const runSelectionSkill = async (skill: SkillDefinition) => {
     if (!editor || !projectId || !chapterId) return;
@@ -283,6 +313,13 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       "\n",
       "\n",
     );
+    // 记录运行时的选区，done 时即便用户已移动光标也能写回原处。
+    const { from, to } = editor.state.selection;
+    // 用变量默认值组装 manualVariables，让 {{vars.xxx}} 在选中运行时可用。
+    const manualVariables: Record<string, string> = {};
+    for (const v of skill.variables ?? []) {
+      if (v.defaultValue !== undefined) manualVariables[v.key] = v.defaultValue;
+    }
     try {
       const response = await skillApi.run({
         skillId: skill.id,
@@ -292,8 +329,16 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         chapterText,
         selection: selectionText,
         triggerType: "selection",
+        manualVariables: Object.keys(manualVariables).length > 0 ? manualVariables : undefined,
+        // 非时间线输出无需落库（结果直接写进正文）。
+        persist: skill.output === "ai-feedback",
       });
-      activeSkillRunRef.current = { runId: response.runId, skillName: skill.name };
+      activeSkillRunRef.current = {
+        runId: response.runId,
+        skillName: skill.name,
+        output: skill.output,
+        range: { from, to },
+      };
     } catch (err) {
       setSkillStatus(
         `「${skill.name}」启动失败：${err instanceof Error ? err.message : String(err)}`,
@@ -307,13 +352,18 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
   return (
     <>
       {rect && (
-        <div
+        <motion.div
           data-selection-toolbar
-          className="fixed z-40 flex -translate-x-1/2 gap-1 rounded-lg border border-ink-600 bg-ink-800/95 px-1.5 py-1 text-xs text-ink-100 shadow-xl backdrop-blur"
+          className="fixed z-40 flex gap-1 rounded-lg border border-ink-600 bg-ink-800/95 px-1.5 py-1 text-xs text-ink-100 shadow-xl backdrop-blur"
           style={{
             top: Math.max(8, rect.top - 42),
             left: rect.left + rect.width / 2,
           }}
+          // 工具条出现时轻微弹入。注意：motion 的内联 transform 会覆盖 Tailwind 的
+          // -translate-x-1/2，所以这里改由 motion 的 x:"-50%" 负责水平居中。
+          initial={reduce ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.92, x: "-50%" }}
+          animate={{ opacity: 1, scale: 1, x: "-50%" }}
+          transition={SPRING_SNAPPY}
         >
           {ACTIONS.map((action) => (
             <button
@@ -365,7 +415,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           <label className="flex items-center gap-1 px-1 text-ink-400" title="一次生成几个候选 (并发调用)">
             候选
             <select
-              className="rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-xs text-ink-100 focus:border-amber-500 focus:outline-none"
+              className="rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
               value={candidateCount}
               onChange={(e) => setCandidateCount(Number(e.target.value) as 1 | 2 | 3)}
               onMouseDown={(e) => e.stopPropagation()}
@@ -375,7 +425,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
               <option value={3}>3</option>
             </select>
           </label>
-        </div>
+        </motion.div>
       )}
       {skillStatus && !rect && (
         <div
@@ -411,66 +461,64 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
   const options = response?.options ?? (response?.text ? [response.text] : []);
 
   return (
-    <div
-      data-selection-toolbar
-      role="dialog"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/50 px-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <AnimatedDialog
+      open
+      onClose={onClose}
+      ariaLabel={title}
+      overlayClassName="flex items-center justify-center px-4"
+      zClassName="z-50"
+      panelClassName="w-full max-w-xl rounded-xl border border-ink-600 bg-ink-800 p-4 shadow-2xl"
     >
-      <div className="w-full max-w-xl rounded-xl border border-ink-600 bg-ink-800 p-4 shadow-2xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink-100">{title}</h3>
-          <button
-            className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
-            onClick={onClose}
-          >
-            关闭
-          </button>
-        </div>
-        {loading && (
-          <div className="py-6 text-center text-sm text-ink-400">Claude 正在生成，请稍候…</div>
-        )}
-        {!loading && error && <div className="text-sm text-red-400">失败：{error}</div>}
-        {!loading && response?.status === "failed" && (
-          <div className="text-sm text-red-400">失败：{response.error}</div>
-        )}
-        {!loading && response?.status === "completed" && options.length > 0 && (
-          <ul className="space-y-3">
-            {options.map((text, idx) => (
-              <li
-                key={idx}
-                className="rounded-lg border border-ink-700 bg-ink-900/40 px-3 py-2 text-[13px] leading-6 text-ink-100"
-              >
-                <div className="whitespace-pre-wrap">{text}</div>
-                <div className="mt-2 flex items-center justify-between text-xs text-ink-400">
-                  <span>
-                    {options.length > 1 ? `方案 ${idx + 1}` : ""}
-                    {response.durationMs > 0 && ` · ${(response.durationMs / 1000).toFixed(1)}s`}
-                  </span>
-                  <div className="flex gap-2">
-                    <button
-                      className="rounded border border-ink-600 px-2 py-1 hover:bg-ink-700"
-                      onClick={() => navigator.clipboard.writeText(text)}
-                    >
-                      复制
-                    </button>
-                    {action.placement !== "timeline" && (
-                      <button
-                        className="rounded bg-amber-500 px-2 py-1 font-medium text-ink-900 hover:bg-amber-400"
-                        onClick={() => onApply(text)}
-                      >
-                        {action.placement === "insert-after" ? "追加" : "替换"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-ink-100">{title}</h3>
+        <button
+          className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+          onClick={onClose}
+        >
+          关闭
+        </button>
       </div>
-    </div>
+      {loading && (
+        <div className="py-6 text-center text-sm text-ink-400">Claude 正在生成，请稍候…</div>
+      )}
+      {!loading && error && <div className="text-sm text-red-400">失败：{error}</div>}
+      {!loading && response?.status === "failed" && (
+        <div className="text-sm text-red-400">失败：{response.error}</div>
+      )}
+      {!loading && response?.status === "completed" && options.length > 0 && (
+        <ul className="space-y-3">
+          {options.map((text, idx) => (
+            <li
+              key={idx}
+              className="rounded-lg border border-ink-700 bg-ink-900/40 px-3 py-2 text-[13px] leading-6 text-ink-100"
+            >
+              <div className="whitespace-pre-wrap">{text}</div>
+              <div className="mt-2 flex items-center justify-between text-xs text-ink-400">
+                <span>
+                  {options.length > 1 ? `方案 ${idx + 1}` : ""}
+                  {response.durationMs > 0 && ` · ${(response.durationMs / 1000).toFixed(1)}s`}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded border border-ink-600 px-2 py-1 hover:bg-ink-700"
+                    onClick={() => navigator.clipboard.writeText(text)}
+                  >
+                    复制
+                  </button>
+                  {action.placement !== "timeline" && (
+                    <button
+                      className="rounded bg-accent-500 px-2 py-1 font-medium text-ink-900 hover:bg-accent-400"
+                      onClick={() => onApply(text)}
+                    >
+                      {action.placement === "insert-after" ? "追加" : "替换"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </AnimatedDialog>
   );
 }

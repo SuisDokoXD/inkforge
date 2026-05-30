@@ -83,7 +83,9 @@ export function createMainWindow(): BrowserWindow {
     y: saved.y,
     minWidth: 1000,
     minHeight: 640,
-    backgroundColor: "#0a0e1a",
+    // 窗口底色：取浅色主题主背景，避免 resize/最大化时新露出的边缘闪深色。
+    // （深色主题用户会在缩放瞬间看到一帧浅色；如需主题感知可改为 setBackgroundColor IPC。）
+    backgroundColor: "#f7fafe",
     title: "InkForge",
     show: false,
     // 自定义无边框 titlebar：Windows/Linux 完全自画；macOS 保留交通灯但隐藏标题栏

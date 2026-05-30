@@ -31,10 +31,10 @@ export function OnboardingStepWorkspace({ draft, updateDraft }: Props): JSX.Elem
       </div>
 
       <div className="space-y-4">
-        <label className="flex items-center gap-3 p-4 rounded-xl border border-ink-600 bg-ink-900/40 cursor-pointer hover:border-amber-500/50 transition-colors">
+        <label className="flex items-center gap-3 p-4 rounded-xl border border-ink-600 bg-ink-900/40 cursor-pointer hover:border-accent-500/50 transition-colors">
           <input
             type="checkbox"
-            className="h-5 w-5 rounded border-ink-600 bg-ink-900 text-amber-500 focus:ring-amber-500/40"
+            className="h-5 w-5 rounded border-ink-600 bg-ink-900 text-accent-500 focus:ring-accent-500/40"
             checked={draft.useDefaultWorkspace}
             onChange={(e) => updateDraft({ useDefaultWorkspace: e.target.checked })}
           />
@@ -45,11 +45,11 @@ export function OnboardingStepWorkspace({ draft, updateDraft }: Props): JSX.Elem
         </label>
 
         {!draft.useDefaultWorkspace && (
-          <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+          <div className="space-y-2">
             <label className="block text-sm font-medium text-ink-300">自定义路径</label>
             <div className="flex gap-2">
               <input
-                className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+                className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
                 value={draft.workspacePath}
                 onChange={(e) => updateDraft({ workspacePath: e.target.value })}
                 placeholder="例如 D:/InkForgeWorkspace"

@@ -8,7 +8,7 @@ interface Props {
 
 export function OnboardingStepProject({ draft, updateDraft, errorMessage }: Props): JSX.Element {
   return (
-    <div className="space-y-6 animate-in fade-in">
+    <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-ink-100">创建首个项目</h2>
         <p className="mt-2 text-sm text-ink-300">
@@ -19,7 +19,7 @@ export function OnboardingStepProject({ draft, updateDraft, errorMessage }: Prop
       <div className="space-y-4">
         <label className="block text-sm font-medium text-ink-300">项目名称</label>
         <input
-          className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+          className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
           value={draft.projectName}
           onChange={(e) => updateDraft({ projectName: e.target.value })}
           placeholder="例如：银河帝国指南"
@@ -30,7 +30,7 @@ export function OnboardingStepProject({ draft, updateDraft, errorMessage }: Prop
           <span className="ml-2 text-xs font-normal text-ink-500">留空则自动生成</span>
         </label>
         <input
-          className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+          className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
           placeholder="例如：my-novel"
           value={draft.projectPath}
           onChange={(e) => updateDraft({ projectPath: e.target.value })}
@@ -38,7 +38,7 @@ export function OnboardingStepProject({ draft, updateDraft, errorMessage }: Prop
 
         <label className="block text-sm font-medium text-ink-300">每日写作目标 (字数)</label>
         <input
-          className="w-32 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-amber-500 focus:outline-none"
+          className="w-32 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
           type="number"
           min={100}
           step={100}
