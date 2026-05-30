@@ -86,17 +86,3 @@ export function useChapterShortcuts(handlers: ChapterShortcutHandlers): void {
     return () => window.removeEventListener("keydown", onKey);
   }, [handlers]);
 }
-
-// ----- 兼容旧接口（WorkspagePage 已有 useAppShortcuts 调用，平稳迁移） -----
-export interface ShortcutHandlers extends GlobalShortcutHandlers, ChapterShortcutHandlers {}
-
-/**
- * @deprecated 使用 useGlobalShortcuts（App.tsx）+ useChapterShortcuts（WorkspacePage）替代。
- * 暂时保留以避免破坏旧调用点。下一个 minor 删除。
- */
-export function useAppShortcuts(handlers: Partial<ShortcutHandlers>): void {
-  useChapterShortcuts({
-    onNewChapter: handlers.onNewChapter,
-    onForceAnalyze: handlers.onForceAnalyze,
-  });
-}
