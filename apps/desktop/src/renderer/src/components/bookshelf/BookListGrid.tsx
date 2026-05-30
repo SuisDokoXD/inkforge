@@ -1,5 +1,7 @@
 import type { BookSummary } from "@inkforge/shared";
+import { motion, useReducedMotion } from "motion/react";
 import { CoverUploader } from "./CoverUploader";
+import { staggerContainer, staggerItem, fadeOnly, hoverLift, SPRING_SNAPPY } from "../../lib/motion-tokens";
 
 interface BookListGridProps {
   books: BookSummary[];
@@ -36,6 +38,7 @@ export function BookListGrid({
   onDeleteBook,
   onOpenSettings,
 }: BookListGridProps): JSX.Element {
+  const reduce = useReducedMotion();
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-4 py-2">
@@ -45,7 +48,7 @@ export function BookListGrid({
             <button
               type="button"
               onClick={onCreateBook}
-              className="rounded-md bg-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/40"
+              className="rounded-md bg-accent-500/30 px-3 py-1 text-xs font-semibold text-accent-100 hover:bg-accent-500/40"
             >
               ➕ 新建书籍
             </button>
@@ -69,23 +72,31 @@ export function BookListGrid({
               <button
                 type="button"
                 onClick={onCreateBook}
-                className="rounded-md bg-amber-500/30 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/40"
+                className="rounded-md bg-accent-500/30 px-4 py-2 text-sm font-semibold text-accent-100 hover:bg-accent-500/40"
               >
                 ➕ 创建第一本书
               </button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4">
+          <motion.div
+            className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4"
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
             {books.map((book) => {
               const opened = openIds.has(book.project.id);
               return (
-                <div
+                <motion.div
                   key={book.project.id}
+                  variants={reduce ? fadeOnly : staggerItem}
+                  whileHover={reduce ? undefined : hoverLift}
+                  transition={SPRING_SNAPPY}
                   className={`group relative flex flex-col items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
                     opened
-                      ? "border-amber-500/40 bg-amber-500/10"
-                      : "border-ink-700 bg-ink-900/40 hover:border-amber-500/30 hover:bg-ink-800/60"
+                      ? "border-accent-500/40 bg-accent-500/10"
+                      : "border-ink-700 bg-ink-900/40 hover:border-accent-500/30 hover:bg-ink-800/60"
                   }`}
                 >
                   <button
@@ -125,7 +136,7 @@ export function BookListGrid({
                         )}
                       </div>
                       {opened && (
-                        <div className="mt-1 text-[10px] text-amber-300">已在 Tab 中打开</div>
+                        <div className="mt-1 text-[10px] text-accent-300">已在 Tab 中打开</div>
                       )}
                     </div>
                   </button>
@@ -140,7 +151,7 @@ export function BookListGrid({
                             e.stopPropagation();
                             onOpenSettings(book);
                           }}
-                          className="rounded bg-ink-900/80 px-1.5 py-0.5 text-[12px] text-ink-200 hover:bg-amber-500/30 hover:text-amber-100"
+                          className="rounded bg-ink-900/80 px-1.5 py-0.5 text-[12px] text-ink-200 hover:bg-accent-500/30 hover:text-accent-100"
                         >
                           ⚙
                         </button>
@@ -173,10 +184,10 @@ export function BookListGrid({
                       )}
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

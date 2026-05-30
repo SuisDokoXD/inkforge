@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MarketSkillMetaDTO } from "@inkforge/shared";
+import { AnimatedDialog } from "./AnimatedDialog";
 
 interface SkillMarketDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JSX.Element | null {
+export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JSX.Element {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<MarketSkillMetaDTO | null>(null);
@@ -28,8 +29,6 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
     },
   });
 
-  if (!open) return null;
-
   const skills = registryQuery.data?.skills ?? [];
   const filtered = query
     ? skills.filter(
@@ -41,8 +40,14 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
     : skills;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" role="dialog">
-      <div className="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl">
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel="Skill 市场"
+      overlayClassName="flex items-center justify-center p-6"
+      zClassName="z-40"
+      panelClassName="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl"
+    >
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
           <h2 className="text-base font-semibold">🛒 Skill 市场</h2>
           <button
@@ -129,7 +134,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
                 </div>
                 <div className="mt-2 flex gap-2">
                   <button
-                    className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-amber-500 disabled:opacity-50"
+                    className="rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-500 disabled:opacity-50"
                     disabled={installMutation.isPending}
                     onClick={() => installMutation.mutate(selected)}
                   >
@@ -159,7 +164,6 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </AnimatedDialog>
   );
 }

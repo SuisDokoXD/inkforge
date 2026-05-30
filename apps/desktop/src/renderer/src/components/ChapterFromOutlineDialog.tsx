@@ -7,6 +7,7 @@ import type {
 } from "@inkforge/shared";
 import { chapterGenApi, outlineApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { AnimatedDialog } from "./AnimatedDialog";
 
 interface ChapterFromOutlineDialogProps {
   chapter: ChapterRecord;
@@ -55,8 +56,6 @@ export function ChapterFromOutlineDialog({
       setSelectedCardId(availableCards[0].id);
     }
   }, [linkedCard, availableCards, selectedCardId]);
-
-  if (!open) return null;
 
   const handleGenerate = async () => {
     if (!selectedCardId) return;
@@ -115,14 +114,17 @@ export function ChapterFromOutlineDialog({
   const selectedCard: OutlineCardRecord | undefined = availableCards.find((c) => c.id === selectedCardId);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
-      role="dialog"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
+    <AnimatedDialog
+      open={open}
+      // 生成进行中（busy）时禁止通过点遮罩/Esc 关闭，避免中断写入。
+      onClose={() => {
+        if (!busy) onClose();
       }}
+      ariaLabel="基于大纲生成本章正文"
+      overlayClassName="flex items-center justify-center p-6"
+      zClassName="z-50"
+      panelClassName="flex max-h-[88vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-5 text-ink-100 shadow-2xl"
     >
-      <div className="flex max-h-[88vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-5 text-ink-100 shadow-2xl">
         <div className="mb-3 flex items-center gap-3">
           <h2 className="text-base font-semibold">📋 基于大纲生成本章正文</h2>
           <span className="text-xs text-ink-400">写入「{chapter.title}」</span>
@@ -160,7 +162,7 @@ export function ChapterFromOutlineDialog({
                         type="button"
                         className={`w-full rounded-md px-2 py-1.5 text-left text-xs ${
                           c.id === selectedCardId
-                            ? "bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/40"
+                            ? "bg-accent-500/20 text-accent-200 ring-1 ring-accent-500/40"
                             : "text-ink-200 hover:bg-ink-700/60"
                         }`}
                         onClick={() => setSelectedCardId(c.id)}
@@ -192,7 +194,7 @@ export function ChapterFromOutlineDialog({
                   </select>
                 </label>
                 <button
-                  className="ml-auto rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+                  className="ml-auto rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
                   disabled={busy || !selectedCardId}
                   onClick={handleGenerate}
                 >
@@ -245,7 +247,7 @@ export function ChapterFromOutlineDialog({
                   </pre>
                   <div className="flex gap-2 border-t border-ink-700 p-2">
                     <button
-                      className="flex-1 rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+                      className="flex-1 rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
                       disabled={busy}
                       onClick={() => handleAdopt(c.text)}
                     >
@@ -263,7 +265,6 @@ export function ChapterFromOutlineDialog({
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </AnimatedDialog>
   );
 }

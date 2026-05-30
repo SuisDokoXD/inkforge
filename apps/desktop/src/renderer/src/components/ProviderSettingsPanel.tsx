@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { AnimatedDialog } from "./AnimatedDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   findCatalogEntry,
@@ -233,16 +234,19 @@ export function ProviderSettingsPanel(): JSX.Element | null {
     onSuccess: (next) => setSettings(next),
   });
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-8" role="dialog">
-      <div className="flex h-full max-h-[680px] w-full max-w-5xl overflow-hidden rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl">
+    <AnimatedDialog
+      open={open}
+      onClose={() => setOpen(false)}
+      overlayClassName="flex items-center justify-center p-8"
+      zClassName="z-40"
+      panelClassName="flex h-full max-h-[680px] w-full max-w-5xl overflow-hidden rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl"
+    >
         <aside className="flex w-80 shrink-0 flex-col border-r border-ink-700">
           <div className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
             <span className="text-sm font-semibold">{t("provider.panel.listTitle")}</span>
             <button
-              className="rounded bg-amber-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400"
+              className="rounded bg-accent-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
               onClick={() => setForm(EMPTY_FORM)}
             >
               + {t("common.new")}
@@ -259,7 +263,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 <li key={p.id}>
                   <button
                     className={`flex w-full flex-col items-start px-4 py-2 text-left text-sm transition-colors ${
-                      selected ? "bg-amber-500/20 text-amber-200" : "hover:bg-ink-700/70"
+                      selected ? "bg-accent-500/20 text-accent-200" : "hover:bg-ink-700/70"
                     }`}
                     onClick={() => setForm(toForm(p))}
                   >
@@ -301,7 +305,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.preset")}</span>
                 <select
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.catalogId}
                   onChange={(e) => setForm((prev) => applyCatalogToForm(prev, e.target.value))}
                 >
@@ -319,7 +323,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       <>
                         {" "}
                         <a
-                          className="text-amber-300 underline hover:text-amber-200"
+                          className="text-accent-300 underline hover:text-accent-200"
                           href={selectedCatalog.signupUrl}
                           target="_blank"
                           rel="noreferrer"
@@ -335,7 +339,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.displayName")}</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.label}
                   onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 />
@@ -345,7 +349,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 <label className="block">
                   <span className="text-ink-300">{t("provider.panel.vendor")}</span>
                   <select
-                    className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                    className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                     value={form.vendor}
                     onChange={(e) => {
                       const vendor = e.target.value as ProviderVendor;
@@ -370,7 +374,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                   <div className="mt-1 flex gap-2">
                     <input
                       list="provider-settings-models"
-                      className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                      className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                       value={form.defaultModel}
                       onChange={(e) => setForm((f) => ({ ...f, defaultModel: e.target.value }))}
                     />
@@ -409,7 +413,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                         <button
                           key={m}
                           type="button"
-                          className="rounded-md border border-ink-700 px-1.5 py-0.5 text-[11px] text-ink-300 hover:border-amber-500 hover:bg-ink-700"
+                          className="rounded-md border border-ink-700 px-1.5 py-0.5 text-[11px] text-ink-300 hover:border-accent-500 hover:bg-ink-700"
                           onClick={() => setForm((f) => ({ ...f, defaultModel: m }))}
                         >
                           {m}
@@ -426,7 +430,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.baseUrl")}</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.baseUrl}
                   placeholder={
                     form.vendor === "openai-compat"
@@ -445,7 +449,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                   )}
                 </span>
                 <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm focus:border-amber-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm focus:border-accent-500 focus:outline-none"
                   type="password"
                   value={form.apiKey}
                   placeholder={form.id ? "******" : "sk-..."}
@@ -456,7 +460,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.tags")}</span>
                 <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.tags}
                   onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                 />
@@ -512,7 +516,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 {t("common.new")}
               </button>
               <button
-                className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-60"
+                className="rounded-md bg-accent-500 px-4 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending}
               >
@@ -525,7 +529,6 @@ export function ProviderSettingsPanel(): JSX.Element | null {
             </div>
           </footer>
         </section>
-      </div>
-    </div>
+    </AnimatedDialog>
   );
 }

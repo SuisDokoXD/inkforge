@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import { NovelCharacterRecord } from "@inkforge/shared";
 import { novelCharacterApi } from "../../lib/api";
+import { staggerContainer, staggerItem, fadeOnly } from "../../lib/motion-tokens";
 
 interface NovelCharacterListProps {
   projectId: string;
@@ -16,6 +18,7 @@ export function NovelCharacterList({
   onSelect,
 }: NovelCharacterListProps): JSX.Element {
   const queryClient = useQueryClient();
+  const reduce = useReducedMotion();
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -35,19 +38,25 @@ export function NovelCharacterList({
   return (
     <div className="flex h-full flex-col bg-ink-800/40">
       <div className="flex items-center justify-between border-b border-ink-700 p-3">
-        <h2 className="text-sm font-medium text-amber-300">书中角色</h2>
+        <h2 className="text-sm font-medium text-accent-300">书中角色</h2>
         <button
           onClick={() => createMut.mutate()}
-          className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/30"
+          className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30"
           disabled={createMut.isPending}
         >
           + 新建
         </button>
       </div>
-      <div className="flex-1 overflow-auto scrollbar-thin">
+      <motion.div
+        className="flex-1 overflow-auto scrollbar-thin"
+        variants={staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
         {characters.map((char) => (
-          <button
+          <motion.button
             key={char.id}
+            variants={reduce ? fadeOnly : staggerItem}
             onClick={() => onSelect(char.id)}
             className={`flex w-full flex-col p-3 text-left transition-colors border-b border-ink-700/50 ${
               activeId === char.id ? "bg-ink-700/50" : "hover:bg-ink-700/20"
@@ -68,12 +77,12 @@ export function NovelCharacterList({
             <div className="mt-1 truncate text-xs text-ink-400">
               {char.backstory || "暂无背景..."}
             </div>
-          </button>
+          </motion.button>
         ))}
         {characters.length === 0 && (
           <div className="p-8 text-center text-xs text-ink-500">暂无书中人物</div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { AnimatedDialog } from "./AnimatedDialog";
 
 interface SkillPublishDialogProps {
   open: boolean;
@@ -10,7 +11,7 @@ export function SkillPublishDialog({
   open,
   onClose,
   skillId,
-}: SkillPublishDialogProps): JSX.Element | null {
+}: SkillPublishDialogProps): JSX.Element {
   const bundleQuery = useQuery({
     queryKey: ["market-publish-bundle", skillId],
     queryFn: () =>
@@ -21,13 +22,17 @@ export function SkillPublishDialog({
     retry: false,
   });
 
-  if (!open) return null;
-
   const bundle = bundleQuery.data;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-6" role="dialog">
-      <div className="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl">
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel="发布到 Skill 市场"
+      overlayClassName="flex items-center justify-center p-6"
+      zClassName="z-40"
+      panelClassName="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl"
+    >
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
           <h2 className="text-base font-semibold">📤 发布到 Skill 市场</h2>
           <button
@@ -55,7 +60,7 @@ export function SkillPublishDialog({
                 />
                 <div className="mt-2 flex gap-2">
                   <button
-                    className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-amber-500"
+                    className="rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-500"
                     onClick={() => navigator.clipboard.writeText(bundle.skillJson)}
                   >
                     复制 JSON
@@ -71,7 +76,7 @@ export function SkillPublishDialog({
                 </pre>
                 <div className="mt-2 flex gap-2">
                   <button
-                    className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-amber-500"
+                    className="rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-500"
                     onClick={() =>
                       navigator.clipboard.writeText(bundle.prInstructions)
                     }
@@ -83,7 +88,6 @@ export function SkillPublishDialog({
             </>
           )}
         </div>
-      </div>
-    </div>
+    </AnimatedDialog>
   );
 }

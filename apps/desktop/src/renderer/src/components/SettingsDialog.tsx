@@ -7,6 +7,7 @@ import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
 import { SceneRoutingPanel } from "./SceneRoutingPanel";
 import { SampleLibPanel } from "./SampleLibPanel";
+import { AnimatedDialog } from "./AnimatedDialog";
 
 export function SettingsDialog(): JSX.Element | null {
   const open = useAppStore((s) => s.settingsPanelOpen);
@@ -21,18 +22,7 @@ export function SettingsDialog(): JSX.Element | null {
     setThreshold(settings.analysisThreshold);
   }, [settings.analysisThreshold]);
 
-  // M9 Phase 5: Esc to close + a11y improvements.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        setOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, setOpen]);
+  // M9 Phase 5: Esc 关闭 + 遮罩点击关闭统一由 AnimatedDialog 处理。
 
   const settingsMutation = useMutation({
     mutationFn: (updates: Partial<AppSettings>) => settingsApi.set({ updates }),
@@ -83,10 +73,14 @@ export function SettingsDialog(): JSX.Element | null {
     setOpen(false);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-8" role="dialog" aria-modal="true" aria-label={t("settings.title")} onClick={() => setOpen(false)}>
+    <AnimatedDialog
+      open={open}
+      onClose={() => setOpen(false)}
+      ariaLabel={t("settings.title")}
+      overlayClassName="flex items-center justify-center p-8"
+      zClassName="z-40"
+    >
       <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-base font-semibold">{t("settings.title")}</h2>
@@ -120,7 +114,7 @@ export function SettingsDialog(): JSX.Element | null {
                   type="number"
                   min={50}
                   step={50}
-                  className="w-24 rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none"
+                  className="w-24 rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
                   value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value) || settings.analysisThreshold)}
                   onBlur={() => {
@@ -136,7 +130,7 @@ export function SettingsDialog(): JSX.Element | null {
               <label className="flex items-center gap-3">
                 <span className="text-ink-300">{t("settings.uiLanguage")}</span>
                 <select
-                  className="rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-amber-500 focus:outline-none"
+                  className="rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
                   value={settings.uiLanguage}
                   onChange={(e) => handleLanguageChange(e.target.value as Lang)}
                 >
@@ -157,7 +151,7 @@ export function SettingsDialog(): JSX.Element | null {
               <div className="flex overflow-hidden rounded-md border border-ink-600">
                 <button
                   className={`px-3 py-1 text-xs ${
-                    settings.theme === "dark" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
+                    settings.theme === "dark" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
                   }`}
                   onClick={() => settingsMutation.mutate({ theme: "dark" })}
                 >
@@ -165,7 +159,7 @@ export function SettingsDialog(): JSX.Element | null {
                 </button>
                 <button
                   className={`px-3 py-1 text-xs ${
-                    settings.theme === "light" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
+                    settings.theme === "light" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
                   }`}
                   onClick={() => settingsMutation.mutate({ theme: "light" })}
                 >
@@ -216,7 +210,7 @@ export function SettingsDialog(): JSX.Element | null {
                   {(["narrow", "medium", "wide"] as const).map((w) => (
                     <button
                       key={w}
-                      className={`px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+                      className={`px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
                       onClick={() => settingsMutation.mutate({ editorWidth: w })}
                     >
                       {w === "narrow" ? "窄" : w === "medium" ? "中" : "宽"}
@@ -297,7 +291,7 @@ export function SettingsDialog(): JSX.Element | null {
               </div>
               <div className="pt-2 flex flex-wrap gap-2">
                 <button
-                  className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-500/20"
+                  className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-1.5 text-xs text-accent-200 hover:bg-accent-500/20"
                   onClick={handleReplayOnboarding}
                   title={t("settings.replayOnboarding.hint")}
                 >
@@ -315,6 +309,6 @@ export function SettingsDialog(): JSX.Element | null {
 
         </div>
       </div>
-    </div>
+    </AnimatedDialog>
   );
 }
