@@ -11,9 +11,11 @@
 //        {{random:a,b,c}} {{roll:NdM}}
 //        {{time}} {{date}} {{datetime}}
 //        {{newline}} {{//任意注释}} {{pipe}}
-//   3. 世界观 / 卡牌宏（未来 Phase 2/3）：
+//   3. 世界观 / 卡牌宏（尚未实现，规划中）：
 //        {{world.search:q}} {{world.entry:title}} {{card.active}} 等
-//        ——由 skill-service 在调用本模块前预处理替换；本模块保持纯函数、无 I/O。
+//        ——目前这些占位不会被本模块识别，会按"未知占位"处理（strict=false 时擦除）。
+//        注意：skill-service 是通过独立的 World Info 上下文装配（buildWorldInfoContext）
+//        在 prompt 外层注入设定的，并非在此解析这些宏。实现前不要在 UI 文案里宣传它们。
 //
 // 渲染策略：
 //   - emptyOnMissing=true（默认）：未知占位符替换为空字符串
