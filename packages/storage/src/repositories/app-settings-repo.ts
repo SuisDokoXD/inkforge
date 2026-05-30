@@ -3,7 +3,7 @@ import type { AppSettings, SceneRoutingMode } from "@inkforge/shared";
 import { coerceLang } from "@inkforge/shared";
 
 const DEFAULTS: AppSettings = {
-  theme: "dark",
+  theme: "light",
   activeProviderId: null,
   analysisEnabled: true,
   analysisThreshold: 200,

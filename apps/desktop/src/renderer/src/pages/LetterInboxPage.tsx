@@ -7,10 +7,11 @@ import type {
 } from "@inkforge/shared";
 import { letterApi, novelCharacterApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { EmptyState } from "../components/EmptyState";
 
 const TONE_LABEL: Record<CharacterLetterTone, { label: string; color: string }> = {
   grateful: { label: "🌸 感激", color: "bg-rose-500/15 text-rose-200 ring-rose-400/30" },
-  complaint: { label: "😤 抱怨", color: "bg-amber-500/15 text-amber-200 ring-amber-400/30" },
+  complaint: { label: "😤 抱怨", color: "bg-accent-500/15 text-accent-200 ring-accent-400/30" },
   curious: { label: "🤔 好奇", color: "bg-sky-500/15 text-sky-200 ring-sky-400/30" },
   encouraging: {
     label: "💪 鼓励",
@@ -89,7 +90,7 @@ export function LetterInboxPage(): JSX.Element {
           <button
             type="button"
             onClick={() => setShowGen(true)}
-            className="rounded-md bg-amber-500/20 px-2 py-1 text-[11px] text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-500/30"
+            className="rounded-md bg-accent-500/20 px-2 py-1 text-[11px] text-accent-200 ring-1 ring-accent-400/30 hover:bg-accent-500/30"
           >
             ✨ 生成新信
           </button>
@@ -120,9 +121,11 @@ export function LetterInboxPage(): JSX.Element {
             }}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-ink-500">
-            选择一封信查看
-          </div>
+          <EmptyState
+            icon="✉"
+            title="选择一封信查看"
+            description="左侧列表里点开任意一封，角色写给你的信会展开在这里。"
+          />
         )}
       </div>
 
@@ -170,7 +173,7 @@ function LetterRow({
       }}
       className={`group mb-1 flex cursor-pointer flex-col rounded-md border px-2.5 py-2 transition-colors ${
         active
-          ? "border-amber-400/40 bg-amber-500/10"
+          ? "border-accent-400/40 bg-accent-500/10"
           : "border-transparent hover:bg-ink-800/60"
       }`}
     >
@@ -178,7 +181,7 @@ function LetterRow({
         {!letter.read && (
           <span
             aria-label="未读"
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"
+            className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400"
           />
         )}
         {letter.pinned && <span aria-hidden>📌</span>}
@@ -203,7 +206,7 @@ function LetterRow({
               e.stopPropagation();
               onPin();
             }}
-            className="text-[10px] text-ink-500 hover:text-amber-300"
+            className="text-[10px] text-ink-500 hover:text-accent-300"
           >
             {letter.pinned ? "取消" : "📌"}
           </button>
@@ -254,8 +257,8 @@ function LetterDetail({
         <h1 className="mb-1 text-2xl font-semibold text-ink-50">{letter.subject}</h1>
         <div className="mb-6 text-sm text-ink-400">来自：{characterName}</div>
 
-        <div className="rounded-2xl border border-amber-100/10 bg-gradient-to-br from-amber-50/[0.06] to-transparent p-6 shadow-inner">
-          <div className="mb-3 text-xs italic text-amber-200/70">
+        <div className="rounded-2xl border border-accent-100/10 bg-gradient-to-br from-accent-50/[0.06] to-transparent p-6 shadow-inner">
+          <div className="mb-3 text-xs italic text-accent-200/70">
             亲爱的作者：
           </div>
           <div className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink-100">
@@ -450,7 +453,7 @@ function GenerateLetterDialog({
               setError(null);
               genMut.mutate();
             }}
-            className="rounded-md bg-amber-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
           >
             {genMut.isPending ? "生成中…" : "生成"}
           </button>

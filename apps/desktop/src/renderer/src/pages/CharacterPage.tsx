@@ -5,6 +5,7 @@ import { NovelCharacterList } from "../components/character/NovelCharacterList";
 import { NovelCharacterDetail } from "../components/character/NovelCharacterDetail";
 import { TavernCardList } from "../components/character/TavernCardList";
 import { SyncDiffDialog } from "../components/character/SyncDiffDialog";
+import { EmptyState } from "../components/EmptyState";
 
 export function CharacterPage(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
@@ -30,7 +31,7 @@ export function CharacterPage(): JSX.Element {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">未选择项目</div>
+          <div className="mb-2 text-lg text-accent-300">未选择项目</div>
           <p className="text-sm text-ink-300">请先在侧边栏选择或创建一个项目以管理人物。</p>
         </div>
       </div>
@@ -59,9 +60,11 @@ export function CharacterPage(): JSX.Element {
             tavernCards={tavernCardsQuery.data || []}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-ink-500 text-sm italic">
-            请从左侧选择一个角色开始编辑
-          </div>
+          <EmptyState
+            icon="👤"
+            title="选择一个角色开始编辑"
+            description="从左侧列表选中角色查看详情，或在右侧导入角色卡为其绑定人格设定。"
+          />
         )}
       </main>
 

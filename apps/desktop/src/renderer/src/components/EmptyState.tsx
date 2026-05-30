@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, description, action, secondary }: Empt
               type="button"
               onClick={action.onClick}
               disabled={action.disabled}
-              className="rounded-md bg-amber-500 px-4 py-1.5 text-sm font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-4 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
             >
               {action.label}
             </button>

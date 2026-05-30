@@ -1,21 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ChapterRecord, ProviderRecord, SkillDefinition } from "@inkforge/shared";
+import type { ChapterRecord, ProviderRecord, SkillDefinition, SkillOutputTarget } from "@inkforge/shared";
 import { computeWordStats } from "@inkforge/shared";
 import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/editor";
 import type { Editor } from "@tiptap/react";
 import { chapterApi, fsApi, llmApi, skillApi } from "../lib/api";
+import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
+import { EmptyState } from "./EmptyState";
 
 interface EditorPaneProps {
   chapter: ChapterRecord | null;
   providers: ProviderRecord[];
+  // 无选中章节时的空状态引导：把"新建章节"动作交给空状态的主 CTA，
+  // 让原本只有一行灰字的空旷编辑区变成有指引、有落点的画面。
+  onCreateChapter?: () => void;
+  creatingChapter?: boolean;
 }
 
-export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element {
+export function EditorPane({ chapter, providers, onCreateChapter, creatingChapter }: EditorPaneProps): JSX.Element {
   const queryClient = useQueryClient();
   const settings = useAppStore((s) => s.settings);
   const activeProviderId = settings.activeProviderId;
@@ -39,7 +45,7 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
   const loadedChapterIdRef = useRef<string | null>(null);
   const activeAnalysisChapterRef = useRef<string | null>(null);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
-  const activeSkillRunRef = useRef<{ runId: string; skillName: string } | null>(null);
+  const activeSkillRunRef = useRef<{ runId: string; skillName: string; output: SkillOutputTarget } | null>(null);
   const handleEditorReady = useCallback((editor: Editor | null) => {
     setEditorInstance(editor);
   }, []);
@@ -260,9 +266,17 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
       const active = activeSkillRunRef.current;
       if (!active || payload.runId !== active.runId) return;
       if (payload.status === "completed") {
-        setSkillStatus(`「${active.skillName}」已写入时间线`);
-        if (chapter) {
-          void queryClient.invalidateQueries({ queryKey: ["feedbacks", chapter.id] });
+        // 按 Skill 的输出方式落地：ai-feedback 进时间线；其余直接写入正文。
+        const applied =
+          active.output !== "ai-feedback" &&
+          applySkillOutputToEditor(editorInstance, active.output, payload.text ?? "");
+        if (applied) {
+          setSkillStatus(`「${active.skillName}」已写入正文`);
+        } else {
+          setSkillStatus(`「${active.skillName}」已写入时间线`);
+          if (chapter) {
+            void queryClient.invalidateQueries({ queryKey: ["feedbacks", chapter.id] });
+          }
         }
       } else if (payload.status === "failed") {
         setSkillStatus(`「${active.skillName}」失败：${payload.error ?? "unknown"}`);
@@ -273,12 +287,17 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
       window.setTimeout(() => setSkillStatus(null), 3500);
     });
     return () => offDone();
-  }, [chapter, queryClient]);
+  }, [chapter, queryClient, editorInstance]);
 
   const runManualSkill = async (skill: SkillDefinition) => {
     if (!chapter) return;
     setSkillMenuOpen(false);
     setSkillStatus(`「${skill.name}」运行中…`);
+    // 用变量定义的默认值组装 manualVariables，让 {{vars.xxx}} 在手动运行时也能取到值。
+    const manualVariables: Record<string, string> = {};
+    for (const v of skill.variables ?? []) {
+      if (v.defaultValue !== undefined) manualVariables[v.key] = v.defaultValue;
+    }
     try {
       const response = await skillApi.run({
         skillId: skill.id,
@@ -287,8 +306,11 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
         chapterTitle: chapter.title,
         chapterText: content,
         triggerType: "manual",
+        manualVariables: Object.keys(manualVariables).length > 0 ? manualVariables : undefined,
+        // 非时间线输出无需落库，避免重复（结果会直接写进正文）。
+        persist: skill.output === "ai-feedback",
       });
-      activeSkillRunRef.current = { runId: response.runId, skillName: skill.name };
+      activeSkillRunRef.current = { runId: response.runId, skillName: skill.name, output: skill.output };
     } catch (err) {
       setSkillStatus(
         `「${skill.name}」启动失败：${err instanceof Error ? err.message : String(err)}`,
@@ -317,9 +339,20 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
 
   if (!chapter) {
     return (
-      <div className="flex h-full items-center justify-center text-ink-400">
-        选一章开始创作，或在左侧新建。
-      </div>
+      <EmptyState
+        icon="✍"
+        title="开始你的第一章"
+        description="左侧可新建、导入或拖入章节。选中一章即可进入沉浸式写作，AI 会在你停笔时给出建议。"
+        action={
+          onCreateChapter
+            ? {
+                label: creatingChapter ? "新建中…" : "新建本章",
+                onClick: onCreateChapter,
+                disabled: creatingChapter,
+              }
+            : undefined
+        }
+      />
     );
   }
 
@@ -431,7 +464,7 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
                   : "已保存")}
           </span>
           <button
-            className={`rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-amber-500 text-amber-400" : "border-ink-600"}`}
+            className={`rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-accent-500 text-accent-400" : "border-ink-600"}`}
             onClick={() => patchSettings({ focusMode: !focusMode })}
             title="专注模式（F11）"
           >
@@ -442,14 +475,14 @@ export function EditorPane({ chapter, providers }: EditorPaneProps): JSX.Element
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
         <div className={`mx-auto ${editorWidthClass} px-8 py-8`}>
           {recoveryPrompt && (
-            <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-amber-600/60 bg-amber-900/20 px-3 py-2 text-xs text-amber-100">
+            <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-accent-600/60 bg-accent-900/20 px-3 py-2 text-xs text-accent-100">
               <div>
                 检测到未保存的自动备份（{new Date(recoveryPrompt.savedAt).toLocaleString()}），
                 可能来自上次异常退出。是否恢复？
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
-                  className="rounded border border-amber-500 px-2 py-0.5 hover:bg-amber-800/40"
+                  className="rounded border border-accent-500 px-2 py-0.5 hover:bg-accent-800/40"
                   onClick={() => {
                     if (!recoveryPrompt) return;
                     setContent(recoveryPrompt.content);

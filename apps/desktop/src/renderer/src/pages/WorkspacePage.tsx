@@ -183,9 +183,9 @@ export function WorkspacePage(): JSX.Element {
     <div className="flex h-full w-full flex-col bg-ink-900 text-ink-100">
       <header className="flex items-center justify-between border-b border-ink-700 bg-ink-800/70 px-4 py-2">
         <div className="flex items-center gap-3">
-          <span className="text-amber-300">墨炉</span>
+          <span className="text-accent-300">墨炉</span>
           <select
-            className="max-w-xs rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-sm text-ink-200 focus:border-amber-500 focus:outline-none"
+            className="max-w-xs rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-sm text-ink-200 focus:border-accent-500 focus:outline-none"
             value={resolvedProjectId ?? ""}
             onChange={(e) => switchProject.mutate(e.target.value)}
           >
@@ -204,7 +204,7 @@ export function WorkspacePage(): JSX.Element {
           <button
             className={`rounded-md border px-2 py-1 text-xs transition-colors ${
               terminalOpen
-                ? "border-amber-500/60 bg-amber-500/20 text-amber-200"
+                ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
                 : "border-ink-600 text-ink-300 hover:bg-ink-700"
             }`}
             onClick={() => toggleTerminal()}
@@ -249,7 +249,12 @@ export function WorkspacePage(): JSX.Element {
         )}
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <EditorPane chapter={currentChapter} providers={providersQuery.data ?? []} />
+          <EditorPane
+            chapter={currentChapter}
+            providers={providersQuery.data ?? []}
+            onCreateChapter={() => createChapter.mutate()}
+            creatingChapter={createChapter.isPending}
+          />
         </section>
 
         {!focusMode && (
@@ -258,7 +263,7 @@ export function WorkspacePage(): JSX.Element {
             <button
               className={`flex-1 py-2 transition-colors ${
                 rightPanel === "timeline"
-                  ? "border-b-2 border-amber-500 text-amber-300"
+                  ? "border-b-2 border-accent-500 text-accent-300"
                   : "text-ink-400 hover:text-ink-200"
               }`}
               onClick={() => setRightPanel("timeline")}
@@ -268,7 +273,7 @@ export function WorkspacePage(): JSX.Element {
             <button
               className={`flex-1 py-2 transition-colors ${
                 rightPanel === "chat"
-                  ? "border-b-2 border-amber-500 text-amber-300"
+                  ? "border-b-2 border-accent-500 text-accent-300"
                   : "text-ink-400 hover:text-ink-200"
               }`}
               onClick={() => setRightPanel("chat")}

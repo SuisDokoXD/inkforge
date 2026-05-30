@@ -77,7 +77,7 @@ export function TitleBar(): JSX.Element {
 
   return (
     <div
-      className="relative flex h-9 shrink-0 select-none items-center justify-between border-b border-white/[0.06] bg-gradient-to-b from-[#0e1626] via-[#0b1322] to-[#0a0e1a] text-[12px] text-ink-200"
+      className="relative flex h-9 shrink-0 select-none items-center justify-between border-b border-ink-700 bg-ink-800 text-[12px] text-ink-200 dark:border-white/[0.06] dark:bg-gradient-to-b dark:from-[#0e1626] dark:via-[#0b1322] dark:to-[#0a0e1a]"
       onDoubleClick={(e) => {
         // Windows / Linux 默认行为：双击标题栏切换最大化。
         // 排除点到右侧窗口控件 / 左侧状态胶囊（它们 region=no-drag）的双击。
@@ -93,7 +93,7 @@ export function TitleBar(): JSX.Element {
       {/* 顶部一根极淡的高光，模拟 Linear/Notion 的玻璃质感 */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/[0.06] to-transparent dark:via-white/15"
       />
 
       {/* ===== 左：LOGO 区 ===== */}
@@ -101,11 +101,11 @@ export function TitleBar(): JSX.Element {
         className={`flex h-full items-center gap-2 ${isMac ? "pl-[80px]" : "pl-3"}`}
       >
         <BrandMark />
-        <span className="hidden font-semibold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-300 to-fuchsia-300 sm:inline">
+        <span className="hidden font-semibold tracking-wide text-accent-500 sm:inline">
           InkForge
         </span>
-        <span className="ml-1 hidden h-3.5 w-px bg-white/10 sm:inline" />
-        <span className="hidden items-center gap-1 rounded-full bg-white/[0.04] px-2 py-0.5 text-[11px] text-ink-300 ring-1 ring-white/5 sm:inline-flex">
+        <span className="ml-1 hidden h-3.5 w-px bg-ink-600/40 dark:bg-white/10 sm:inline" />
+        <span className="hidden items-center gap-1 rounded-full bg-ink-700/50 px-2 py-0.5 text-[11px] text-ink-300 ring-1 ring-ink-600/40 dark:bg-white/[0.04] dark:ring-white/5 sm:inline-flex">
           <span aria-hidden>{viewMeta.icon}</span>
           <span>{viewMeta.label}</span>
         </span>
@@ -149,17 +149,16 @@ export function TitleBar(): JSX.Element {
  * 子组件
  * ============================================================ */
 
-/** 多色渐变笔尖 LOGO（向 Vercel/Linear 借鉴） */
+/** 系统蓝 squircle LOGO（苹果 App 图标风：单色 + 白色笔尖，浅深底都干净） */
 function BrandMark(): JSX.Element {
   return (
     <span
       aria-hidden
-      className="relative flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-amber-400 via-orange-500 to-fuchsia-500 shadow-[0_0_12px_rgba(245,158,11,0.35)]"
+      className="relative flex h-5 w-5 items-center justify-center rounded-[7px] bg-gradient-to-br from-accent-400 to-accent-600 shadow-sm ring-1 ring-black/5 dark:ring-white/10"
     >
-      <span className="absolute inset-[1px] rounded-[5px] bg-[#0a0e1a]/40" />
       <svg
         viewBox="0 0 24 24"
-        className="relative h-3 w-3 text-amber-200"
+        className="relative h-3 w-3 text-white"
         fill="none"
         stroke="currentColor"
         strokeWidth="2.4"
@@ -192,7 +191,7 @@ function ActiveStatusPill(): JSX.Element {
     );
   }
   return (
-    <div className="mr-2 hidden items-center gap-1 rounded-full border border-white/5 bg-white/[0.03] px-2 py-0.5 text-[10.5px] text-ink-400 sm:inline-flex">
+    <div className="mr-2 hidden items-center gap-1 rounded-full border border-ink-600/40 bg-ink-700/40 px-2 py-0.5 text-[10.5px] text-ink-400 dark:border-white/5 dark:bg-white/[0.03] sm:inline-flex">
       <span>InkForge</span>
       <span className="text-ink-500">·</span>
       <span className="text-ink-300">beta</span>
@@ -227,7 +226,7 @@ function WindowButton({
       className={`group flex h-9 w-[46px] items-center justify-center text-ink-200 transition-colors ${
         isClose
           ? "hover:bg-[#e81123] hover:text-white"
-          : "hover:bg-white/10 hover:text-white"
+          : "hover:bg-ink-700/60 hover:text-ink-100 dark:hover:bg-white/10 dark:hover:text-white"
       }`}
     >
       <ButtonIcon kind={kind} />
