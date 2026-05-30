@@ -25,7 +25,7 @@ function severityBadge(severity: string): { color: string; icon: string } {
   if (severity === "info") {
     return { color: "bg-sky-500/20 text-sky-200 border-sky-500/40", icon: "ℹ" };
   }
-  return { color: "bg-amber-500/20 text-amber-200 border-amber-500/50", icon: "⚠" };
+  return { color: "bg-accent-500/20 text-accent-200 border-accent-500/50", icon: "⚠" };
 }
 
 export function ReviewReportPanel({
@@ -152,7 +152,7 @@ export function ReviewReportPanel({
             <span className="rounded bg-red-500/15 px-2 py-[1px] text-red-200">
               ❗ {totals.error}
             </span>
-            <span className="rounded bg-amber-500/15 px-2 py-[1px] text-amber-200">
+            <span className="rounded bg-accent-500/15 px-2 py-[1px] text-accent-200">
               ⚠ {totals.warn}
             </span>
             <span className="rounded bg-sky-500/15 px-2 py-[1px] text-sky-200">
@@ -172,7 +172,7 @@ export function ReviewReportPanel({
           <div className="mt-2 flex items-center gap-2 text-[11px] text-ink-400">
             <div className="h-1.5 flex-1 rounded-full bg-ink-700 overflow-hidden">
               <div
-                className="h-full rounded-full bg-amber-400 transition-all"
+                className="h-full rounded-full bg-accent-400 transition-all"
                 style={{ width: `${percent}%` }}
               />
             </div>

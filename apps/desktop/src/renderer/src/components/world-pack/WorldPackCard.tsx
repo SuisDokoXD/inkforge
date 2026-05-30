@@ -27,7 +27,7 @@ interface WorldPackCardProps {
 function originRing(origin: WorldPackRecord["origin"]): string {
   if (origin === "fused") return "ring-fuchsia-400/60";
   if (origin === "imported") return "ring-sky-400/60";
-  return "ring-amber-400/50";
+  return "ring-accent-400/50";
 }
 
 function originBadgeStyle(origin: WorldPackRecord["origin"]): {
@@ -38,7 +38,7 @@ function originBadgeStyle(origin: WorldPackRecord["origin"]): {
     return { label: "融合", cls: "bg-fuchsia-500/90 text-white" };
   if (origin === "imported")
     return { label: "导入", cls: "bg-sky-500/90 text-white" };
-  return { label: "原创", cls: "bg-amber-500/90 text-ink-900" };
+  return { label: "原创", cls: "bg-accent-500/90 text-ink-900" };
 }
 
 // 卡名 → 稳定渐变背景（缺封面时降级）—— 见 ./visual-hash
@@ -91,8 +91,8 @@ export function WorldPackCard({
         border border-ink-700/80 bg-ink-800/60 text-left
         ring-1 ${originRing(pack.origin)}
         transition-[box-shadow,transform] duration-200 ease-out will-change-transform
-        hover:shadow-2xl hover:shadow-amber-500/20
-        ${selected ? "ring-2 ring-amber-400 shadow-xl shadow-amber-500/30" : ""}
+        hover:shadow-2xl hover:shadow-accent-500/20
+        ${selected ? "ring-2 ring-accent-400 shadow-xl shadow-accent-500/30" : ""}
       `}
       style={{
         backgroundImage: bg,
@@ -135,7 +135,7 @@ export function WorldPackCard({
       {/* 右上角徽章组 */}
       <span className="absolute right-2 top-2 z-10 flex items-center gap-1.5">
         {selectionIndex !== undefined && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-ink-900 shadow-lg ring-2 ring-ink-900">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-400 text-sm font-bold text-ink-900 shadow-lg ring-2 ring-ink-900">
             {selectionIndex + 1}
           </span>
         )}
@@ -148,7 +148,7 @@ export function WorldPackCard({
 
       {/* 左上角：已插槽指示 */}
       {selected && selectionIndex === undefined && (
-        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
+        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
           ✓ 已插槽
         </span>
       )}
@@ -174,7 +174,7 @@ export function WorldPackCard({
             {pack.tags.slice(0, 4).map((t) => (
               <span
                 key={t}
-                className="rounded-full bg-ink-900/60 px-2 py-0.5 text-[10px] text-amber-200 ring-1 ring-amber-400/40 backdrop-blur-sm"
+                className="rounded-full bg-ink-900/60 px-2 py-0.5 text-[10px] text-accent-200 ring-1 ring-accent-400/40 backdrop-blur-sm"
               >
                 {t}
               </span>

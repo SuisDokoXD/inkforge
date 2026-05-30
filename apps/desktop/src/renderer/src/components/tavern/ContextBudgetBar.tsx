@@ -28,8 +28,8 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
     textColor = "text-red-300";
     ring = "animate-pulse";
   } else if (remainPct <= 30) {
-    color = "bg-amber-400";
-    textColor = "text-amber-300";
+    color = "bg-accent-400";
+    textColor = "text-accent-300";
   }
 
   return (
@@ -48,7 +48,7 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
         <span className="text-ink-500">· {percent.toFixed(0)}%</span>
       </div>
       {budget.shouldWarn && (
-        <div className="mt-1 text-[10px] text-amber-300/80">
+        <div className="mt-1 text-[10px] text-accent-300/80">
           ⚠ 预算吃紧，建议下一轮前压缩历史
         </div>
       )}

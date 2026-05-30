@@ -64,9 +64,9 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
       {/* 顶部 */}
       <div className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-900/60 px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-amber-400" />
+          <Layers className="h-4 w-4 text-accent-400" />
           <span className="text-sm font-medium text-ink-100">
-            已插槽 <span className="text-amber-300">{slots.length}</span>
+            已插槽 <span className="text-accent-300">{slots.length}</span>
           </span>
         </div>
         <button
@@ -154,7 +154,7 @@ function SlotRow({
     <div
       className={`mb-2 flex items-center gap-2 rounded-lg border border-ink-700/60 bg-ink-800/40 p-2 transition-all ${
         enabled
-          ? "hover:border-amber-500/30"
+          ? "hover:border-accent-500/30"
           : "opacity-50 grayscale hover:opacity-70"
       }`}
     >
@@ -163,7 +163,7 @@ function SlotRow({
         <button
           onClick={onMoveUp}
           disabled={isFirst}
-          className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-amber-300 disabled:opacity-20 disabled:hover:bg-transparent"
+          className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
           title="上移（优先级 +）"
         >
           <ChevronUp className="h-3 w-3" />
@@ -171,7 +171,7 @@ function SlotRow({
         <button
           onClick={onMoveDown}
           disabled={isLast}
-          className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-amber-300 disabled:opacity-20 disabled:hover:bg-transparent"
+          className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
           title="下移"
         >
           <ChevronDown className="h-3 w-3" />
@@ -207,7 +207,7 @@ function SlotRow({
       {/* 控件 */}
       <button
         onClick={onToggle}
-        className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-amber-300"
+        className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-accent-300"
         title={enabled ? "禁用此卡（保留槽位）" : "启用此卡"}
       >
         {enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}

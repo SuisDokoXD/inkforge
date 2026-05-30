@@ -62,7 +62,7 @@ export function TavernPage(): JSX.Element {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">🎭 酒馆舞台</div>
+          <div className="mb-2 text-lg text-accent-300">🎭 酒馆舞台</div>
           <p className="text-sm text-ink-300">请先在侧边栏选择或创建一个项目以开启酒馆会话。</p>
         </div>
       </div>

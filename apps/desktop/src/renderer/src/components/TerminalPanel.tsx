@@ -189,7 +189,7 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
       style={{ height }}
     >
       <div
-        className="h-1.5 cursor-row-resize bg-ink-700/80 hover:bg-amber-500/60"
+        className="h-1.5 cursor-row-resize bg-ink-700/80 hover:bg-accent-500/60"
         onMouseDown={onDragStart}
         title="拖动调整高度"
       />
@@ -197,7 +197,7 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
         <div className="flex items-center gap-3">
           <span className="font-medium text-ink-200">终端</span>
           <span className="truncate text-ink-500">{shellLabel || "…"}</span>
-          {status === "exited" && <span className="text-amber-400">已结束</span>}
+          {status === "exited" && <span className="text-accent-400">已结束</span>}
           {status === "error" && <span className="text-red-400">启动失败{errorText ? `：${errorText}` : ""}</span>}
         </div>
         <div className="flex items-center gap-2">

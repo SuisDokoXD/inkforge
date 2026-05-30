@@ -93,7 +93,7 @@ export function ResearchCredentialsDialog({
     >
       <div className="w-full max-w-lg rounded-xl border border-ink-700 bg-ink-800 p-5 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-amber-300">资料检索凭证</h2>
+          <h2 className="text-sm font-semibold text-accent-300">资料检索凭证</h2>
           <button
             onClick={onClose}
             type="button"
@@ -151,7 +151,7 @@ export function ResearchCredentialsDialog({
                         apiKey: draft.trim(),
                       })
                     }
-                    className="rounded bg-amber-500 px-3 py-1 text-[12px] font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+                    className="rounded bg-accent-500 px-3 py-1 text-[12px] font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
                   >
                     保存
                   </button>

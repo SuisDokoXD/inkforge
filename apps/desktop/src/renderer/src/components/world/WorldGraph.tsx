@@ -333,7 +333,7 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
             重排布局
           </button>
           {pendingSrcId ? (
-            <span className="rounded-md bg-amber-500/90 px-2 py-1 text-ink-900">
+            <span className="rounded-md bg-accent-500/90 px-2 py-1 text-ink-900">
               点击目标节点完成连线 ESC 取消
             </span>
           ) : null}
@@ -343,7 +343,7 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
       <aside className="w-[300px] shrink-0 border-l border-ink-700 bg-ink-900 p-3 text-xs text-ink-100">
         {showCreateForm ? (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-amber-300">建立关系</h3>
+            <h3 className="text-sm font-semibold text-accent-300">建立关系</h3>
             <div className="text-ink-300">
               <span className="font-medium">{showCreateForm.src.label}</span> →{" "}
               <span className="font-medium">{showCreateForm.dst.label}</span>
@@ -368,7 +368,7 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
             </label>
             <div className="flex gap-2">
               <button
-                className="rounded-md bg-amber-500 px-3 py-1 text-ink-900 hover:bg-amber-400"
+                className="rounded-md bg-accent-500 px-3 py-1 text-ink-900 hover:bg-accent-400"
                 onClick={handleCreateRelationship}
               >
                 创建
@@ -383,7 +383,7 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
           </div>
         ) : selectedEdgeId ? (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-amber-300">编辑关系</h3>
+            <h3 className="text-sm font-semibold text-accent-300">编辑关系</h3>
             <input
               type="text"
               placeholder="关系类型"
@@ -404,7 +404,7 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
             </label>
             <div className="flex gap-2">
               <button
-                className="rounded-md bg-amber-500 px-3 py-1 text-ink-900 hover:bg-amber-400"
+                className="rounded-md bg-accent-500 px-3 py-1 text-ink-900 hover:bg-accent-400"
                 onClick={handleUpdateRelationship}
               >
                 保存
@@ -419,14 +419,14 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
           </div>
         ) : selectedNode ? (
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-amber-300">
+            <h3 className="text-sm font-semibold text-accent-300">
               {selectedNode.data.label}
             </h3>
             <p className="text-ink-400">
               {selectedNode.data.kind === "character" ? "人物" : `世界条目 (${selectedNode.data.category ?? "—"})`}
             </p>
             <button
-              className="rounded-md bg-amber-500 px-3 py-1 text-ink-900 hover:bg-amber-400"
+              className="rounded-md bg-accent-500 px-3 py-1 text-ink-900 hover:bg-accent-400"
               onClick={handleStartLink}
             >
               开始建立关系

@@ -114,7 +114,7 @@ export function SceneRoutingPanel(): JSX.Element {
         <td className="py-1.5 pr-3 text-ink-300">{label}</td>
         <td className="py-1.5 pr-3">
           <select
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-accent-500 focus:outline-none"
             value={providerId}
             onChange={(e) => handleProviderChange(targetMode, sceneKey, e.target.value)}
           >
@@ -130,7 +130,7 @@ export function SceneRoutingPanel(): JSX.Element {
           <input
             type="text"
             list={knownModels.length ? `models-${targetMode}-${sceneKey}` : undefined}
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-amber-500 focus:outline-none disabled:cursor-not-allowed"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed"
             value={model}
             placeholder={provider?.defaultModel ?? ""}
             disabled={!providerId}
@@ -154,13 +154,13 @@ export function SceneRoutingPanel(): JSX.Element {
         <span className="text-ink-300">路由粒度</span>
         <div className="flex overflow-hidden rounded-md border border-ink-600">
           <button
-            className={`px-3 py-1 ${mode === "basic" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+            className={`px-3 py-1 ${mode === "basic" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "basic" })}
           >
             基础（5 大类）
           </button>
           <button
-            className={`px-3 py-1 ${mode === "advanced" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+            className={`px-3 py-1 ${mode === "advanced" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "advanced" })}
           >
             高级（9 种）

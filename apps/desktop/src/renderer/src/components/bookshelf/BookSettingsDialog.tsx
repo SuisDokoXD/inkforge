@@ -121,7 +121,7 @@ export function BookSettingsDialog({
 
         <label className="block">
           <span className="mb-1 flex items-center gap-2 text-xs text-ink-400">
-            <span className="rounded bg-amber-500/30 px-1.5 py-0.5 text-amber-100">
+            <span className="rounded bg-accent-500/30 px-1.5 py-0.5 text-accent-100">
               🌍 全局世界观
             </span>
             <span>
@@ -138,7 +138,7 @@ export function BookSettingsDialog({
           <span className="mt-1 block text-[11px] text-ink-500">
             {globalWorldview.length} 字
             {globalWorldview.length > 4000 && (
-              <span className="ml-2 text-amber-300">
+              <span className="ml-2 text-accent-300">
                 ⚠ 内容偏长，AI 调用成本上升；建议控制在 2000 字内
               </span>
             )}
@@ -163,7 +163,7 @@ export function BookSettingsDialog({
             type="button"
             onClick={() => saveMut.mutate()}
             disabled={saveMut.isPending}
-            className="rounded-md bg-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+            className="rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
           >
             {saveMut.isPending ? "保存中…" : "保存"}
           </button>

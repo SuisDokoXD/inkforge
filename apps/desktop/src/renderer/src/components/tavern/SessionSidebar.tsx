@@ -38,11 +38,11 @@ export function SessionSidebar({
   return (
     <div className="flex h-full flex-col bg-ink-800/40">
       <div className="flex items-center justify-between border-b border-ink-700 p-3">
-        <h2 className="text-sm font-medium text-amber-300">酒馆会话</h2>
+        <h2 className="text-sm font-medium text-accent-300">酒馆会话</h2>
         <button
           type="button"
           onClick={() => setDialogOpen(true)}
-          className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/30"
+          className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30"
         >
           + 新建
         </button>

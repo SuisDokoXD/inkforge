@@ -24,7 +24,7 @@ type FilterOrigin = "all" | WorldPackOrigin;
 
 const ORIGIN_FILTERS: Array<{ key: FilterOrigin; label: string; cls: string }> = [
   { key: "all", label: "全部", cls: "ring-ink-600/60" },
-  { key: "user", label: "原创", cls: "ring-amber-400/60" },
+  { key: "user", label: "原创", cls: "ring-accent-400/60" },
   { key: "fused", label: "融合", cls: "ring-fuchsia-400/60" },
   { key: "imported", label: "导入", cls: "ring-sky-400/60" },
 ];
@@ -118,7 +118,7 @@ export function WorldPackLibrary(): JSX.Element {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索卡牌名 / 简介 / 标签"
-              className="w-full rounded-lg border border-ink-700 bg-ink-800/70 py-1.5 pl-9 pr-3 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-500/60 focus:bg-ink-800 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+              className="w-full rounded-lg border border-ink-700 bg-ink-800/70 py-1.5 pl-9 pr-3 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:bg-ink-800 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
             />
             {search && (
               <button
@@ -136,8 +136,8 @@ export function WorldPackLibrary(): JSX.Element {
                 onClick={() => setShowSlotPanel((v) => !v)}
                 className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
                   showSlotPanel
-                    ? "bg-amber-500 text-ink-900 shadow-lg shadow-amber-500/20"
-                    : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-amber-500/40 hover:bg-ink-800"
+                    ? "bg-accent-500 text-ink-900 shadow-lg shadow-accent-500/20"
+                    : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-accent-500/40 hover:bg-ink-800"
                 }`}
                 title="管理当前项目的卡牌插槽"
               >
@@ -147,8 +147,8 @@ export function WorldPackLibrary(): JSX.Element {
                   <span
                     className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
                       showSlotPanel
-                        ? "bg-ink-900 text-amber-300"
-                        : "bg-amber-500 text-ink-900"
+                        ? "bg-ink-900 text-accent-300"
+                        : "bg-accent-500 text-ink-900"
                     }`}
                   >
                     {slottedIds.size}
@@ -181,7 +181,7 @@ export function WorldPackLibrary(): JSX.Element {
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-ink-900 shadow-lg shadow-amber-500/20 hover:bg-amber-400 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-lg bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 shadow-lg shadow-accent-500/20 hover:bg-accent-400 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" /> 新建卡牌
             </button>
@@ -306,7 +306,7 @@ function EmptyState({
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4">
       <div className="relative">
-        <Sparkles className="h-20 w-20 text-amber-500/30" />
+        <Sparkles className="h-20 w-20 text-accent-500/30" />
         <Sparkles className="absolute left-2 top-2 h-12 w-12 text-fuchsia-500/30" />
       </div>
       <div className="text-center">
@@ -319,7 +319,7 @@ function EmptyState({
       </div>
       <button
         onClick={onCreate}
-        className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-5 py-2 text-sm font-medium text-ink-900 shadow-lg shadow-amber-500/20 hover:bg-amber-400"
+        className="flex items-center gap-1.5 rounded-lg bg-accent-500 px-5 py-2 text-sm font-medium text-ink-900 shadow-lg shadow-accent-500/20 hover:bg-accent-400"
       >
         <Plus className="h-4 w-4" /> 建第一张卡
       </button>

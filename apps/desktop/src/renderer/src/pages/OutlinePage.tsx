@@ -117,7 +117,7 @@ export function OutlinePage(): JSX.Element {
     return (
       <div className="flex h-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">📋 大纲生成</div>
+          <div className="mb-2 text-lg text-accent-300">📋 大纲生成</div>
           <p className="text-sm">请先选择或创建一个项目。</p>
         </div>
       </div>
@@ -300,7 +300,7 @@ export function OutlinePage(): JSX.Element {
           <div className="mb-3 flex items-center gap-2">
             <h2 className="text-sm font-semibold">总大纲</h2>
             <button
-              className="ml-auto rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+              className="ml-auto rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
               disabled={busy !== null || (!project.synopsis && !project.genre && project.tags.length === 0)}
               onClick={handleGenerateMaster}
             >
@@ -330,7 +330,7 @@ export function OutlinePage(): JSX.Element {
               />
               <div className="flex gap-2">
                 <button
-                  className="rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+                  className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
                   disabled={busy !== null || !refineIntent.trim()}
                   onClick={handleRefineMaster}
                 >
@@ -372,7 +372,7 @@ export function OutlinePage(): JSX.Element {
               />
             </label>
             <button
-              className="rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
               disabled={busy !== null || !project.masterOutline}
               onClick={handleGenerateChapters}
               title={!project.masterOutline ? "先生成总大纲" : undefined}
@@ -436,7 +436,7 @@ export function OutlinePage(): JSX.Element {
                       <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-300">已写</span>
                     ) : null}
                     <button
-                      className="ml-auto rounded-md bg-amber-500 px-2 py-0.5 text-[11px] font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+                      className="ml-auto rounded-md bg-accent-500 px-2 py-0.5 text-[11px] font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
                       disabled={busy !== null}
                       onClick={() => handleGenerateChapter(card)}
                     >
@@ -529,7 +529,7 @@ export function OutlinePage(): JSX.Element {
             </div>
             <div className="mt-4 flex gap-2">
               <button
-                className="rounded-md bg-amber-500 px-3 py-1 text-sm font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+                className="rounded-md bg-accent-500 px-3 py-1 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
                 disabled={busy !== null}
                 onClick={handleSaveMeta}
               >
@@ -573,7 +573,7 @@ export function OutlinePage(): JSX.Element {
                   </pre>
                   <div className="flex gap-2 border-t border-ink-700 p-2">
                     <button
-                      className="flex-1 rounded-md bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400"
+                      className="flex-1 rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
                       onClick={() => handleAdoptCandidate(c.text)}
                     >
                       采用此版本

@@ -18,7 +18,7 @@ type DisplayItem = {
 
 const TYPE_META: Record<string, { label: string; badgeClass: string }> = {
   analysis: { label: "静默分析", badgeClass: "bg-sky-500/20 text-sky-300" },
-  critique: { label: "选中审查", badgeClass: "bg-amber-500/20 text-amber-300" },
+  critique: { label: "选中审查", badgeClass: "bg-accent-500/20 text-accent-300" },
 };
 
 function summarize(text: string, max = 60): string {

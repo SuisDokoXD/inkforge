@@ -201,9 +201,9 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
   const showResumeHint = status === "idle" && hasPending && written.length > 0;
 
   return (
-    <section className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+    <section className="rounded-md border border-accent-500/30 bg-accent-500/5 p-3">
       <header className="mb-2 flex flex-wrap items-center gap-3">
-        <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-100">
+        <span className="rounded-md bg-accent-500/20 px-2 py-0.5 text-xs font-semibold text-accent-100">
           📚 批量生成
         </span>
         <span className="text-xs text-ink-300">
@@ -212,7 +212,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
           {hasPending && (
             <>
               {" "}
-              · 剩余 <strong className="text-amber-300">{pending.length}</strong> 张
+              · 剩余 <strong className="text-accent-300">{pending.length}</strong> 张
             </>
           )}
         </span>
@@ -233,7 +233,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
       </header>
 
       {showResumeHint && (
-        <p className="mb-2 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">
+        <p className="mb-2 rounded-md bg-accent-500/10 px-2 py-1 text-[11px] text-accent-200">
           🕒 检测到上次还有 {pending.length} 张未写完。点击「继续 / 启动」会从第{" "}
           {pending[0].order} 张「{pending[0].title}」接着写。
         </p>
@@ -245,7 +245,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
             type="button"
             disabled={!hasPending}
             onClick={() => void start()}
-            className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-amber-400 disabled:opacity-40"
+            className="rounded-md bg-accent-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-accent-400 disabled:opacity-40"
           >
             {written.length > 0 ? `▶ 继续批量（从第 ${pending[0]?.order ?? 1} 章）` : "🚀 启动批量生成"}
           </button>
@@ -263,7 +263,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
           <button
             type="button"
             onClick={resume}
-            className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-amber-400"
+            className="rounded-md bg-accent-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-accent-400"
           >
             ▶ 继续
           </button>
@@ -284,7 +284,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
               : status === "done"
                 ? "text-emerald-300"
                 : status === "running"
-                  ? "text-amber-300"
+                  ? "text-accent-300"
                   : "text-ink-400"
           }`}
         >
@@ -314,7 +314,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
                     : p.status === "failed"
                       ? "text-rose-300"
                       : p.status === "running"
-                        ? "text-amber-300"
+                        ? "text-accent-300"
                         : "text-ink-400"
                 }
               >

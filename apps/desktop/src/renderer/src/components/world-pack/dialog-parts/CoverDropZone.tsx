@@ -37,7 +37,7 @@ export function CoverDropZone({ coverUrl, uploading, onPickFile }: Props): JSX.E
       onDrop={handleDrop}
       className={`relative aspect-[3/4] overflow-hidden rounded-xl border-2 border-dashed transition-all ${
         dragOver
-          ? "border-amber-400 bg-amber-500/10 ring-2 ring-amber-400/40"
+          ? "border-accent-400 bg-accent-500/10 ring-2 ring-accent-400/40"
           : "border-ink-700 bg-ink-800"
       }`}
     >
@@ -50,11 +50,11 @@ export function CoverDropZone({ coverUrl, uploading, onPickFile }: Props): JSX.E
         </div>
       )}
       {dragOver && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-amber-500/20 backdrop-blur-sm">
-          <span className="text-base font-medium text-amber-100">松开上传封面</span>
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-accent-500/20 backdrop-blur-sm">
+          <span className="text-base font-medium text-accent-100">松开上传封面</span>
         </div>
       )}
-      <label className="absolute inset-x-2 bottom-2 flex cursor-pointer items-center justify-center gap-1 rounded-md bg-ink-900/80 px-3 py-1.5 text-xs text-ink-100 ring-1 ring-amber-500/30 backdrop-blur transition-colors hover:bg-ink-900 hover:ring-amber-400/60">
+      <label className="absolute inset-x-2 bottom-2 flex cursor-pointer items-center justify-center gap-1 rounded-md bg-ink-900/80 px-3 py-1.5 text-xs text-ink-100 ring-1 ring-accent-500/30 backdrop-blur transition-colors hover:bg-ink-900 hover:ring-accent-400/60">
         {uploading ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (

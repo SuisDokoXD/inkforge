@@ -36,7 +36,7 @@ export function BookTabsBar({
             key={tab.projectId}
             className={`group flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors ${
               active
-                ? "bg-amber-500/20 text-amber-200 ring-1 ring-amber-500/40"
+                ? "bg-accent-500/20 text-accent-200 ring-1 ring-accent-500/40"
                 : "text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
             }`}
           >
@@ -80,7 +80,7 @@ export function BookTabsBar({
         <button
           type="button"
           onClick={onCreateBook}
-          className="flex items-center gap-1 rounded-md bg-amber-500/20 px-2 py-1 text-xs text-amber-200 hover:bg-amber-500/30"
+          className="flex items-center gap-1 rounded-md bg-accent-500/20 px-2 py-1 text-xs text-accent-200 hover:bg-accent-500/30"
           title="新建一本书"
         >
           <span aria-hidden>📖</span>

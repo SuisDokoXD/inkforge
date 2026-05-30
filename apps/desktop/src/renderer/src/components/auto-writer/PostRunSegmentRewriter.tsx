@@ -145,7 +145,7 @@ export function PostRunSegmentRewriter({
               key={p.index}
               className={`rounded border p-2 text-[11px] leading-5 ${
                 active
-                  ? "border-amber-500/50 bg-amber-500/10"
+                  ? "border-accent-500/50 bg-accent-500/10"
                   : "border-ink-700 bg-ink-900/60"
               }`}
             >
@@ -164,7 +164,7 @@ export function PostRunSegmentRewriter({
                 </button>
               </div>
               {active && (
-                <div className="mt-2 space-y-1 border-t border-amber-500/20 pt-2">
+                <div className="mt-2 space-y-1 border-t border-accent-500/20 pt-2">
                   <textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
@@ -177,7 +177,7 @@ export function PostRunSegmentRewriter({
                       type="button"
                       disabled={rewriteMut.isPending}
                       onClick={() => rewriteMut.mutate(p)}
-                      className="rounded bg-amber-500/30 px-2 py-0.5 text-[11px] text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+                      className="rounded bg-accent-500/30 px-2 py-0.5 text-[11px] text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
                     >
                       {rewriteMut.isPending ? "重写中…" : "提交并重写"}
                     </button>

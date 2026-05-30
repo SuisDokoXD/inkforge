@@ -55,10 +55,10 @@ export function AchievementHallPage(): JSX.Element {
     <div className="flex h-full flex-col overflow-y-auto bg-gradient-to-br from-ink-900 via-ink-800/40 to-ink-900 p-6">
       <div className="mx-auto w-full max-w-4xl">
         {/* ID 卡 */}
-        <div className="relative mb-6 overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/10 p-6 shadow-2xl">
+        <div className="relative mb-6 overflow-hidden rounded-2xl border border-accent-500/20 bg-gradient-to-br from-accent-500/10 via-fuchsia-500/5 to-sky-500/10 p-6 shadow-2xl">
           <div
             aria-hidden
-            className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/10 blur-3xl"
+            className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-400/10 blur-3xl"
           />
           <div
             aria-hidden
@@ -66,11 +66,11 @@ export function AchievementHallPage(): JSX.Element {
           />
 
           <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-fuchsia-500 text-4xl shadow-lg">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-400 via-orange-500 to-fuchsia-500 text-4xl shadow-lg">
               ✒
             </div>
             <div className="flex-1">
-              <div className="text-[11px] uppercase tracking-widest text-amber-300/80">
+              <div className="text-[11px] uppercase tracking-widest text-accent-300/80">
                 InkForge · 作家 ID 卡
               </div>
               <div className="mt-1 text-2xl font-bold text-ink-50">
@@ -84,7 +84,7 @@ export function AchievementHallPage(): JSX.Element {
               type="button"
               onClick={() => checkMut.mutate()}
               disabled={checkMut.isPending}
-              className="rounded-md bg-amber-500/20 px-3 py-1.5 text-xs text-amber-200 ring-1 ring-amber-400/30 hover:bg-amber-500/30 disabled:opacity-60"
+              className="rounded-md bg-accent-500/20 px-3 py-1.5 text-xs text-accent-200 ring-1 ring-accent-400/30 hover:bg-accent-500/30 disabled:opacity-60"
             >
               {checkMut.isPending ? "扫描中…" : "🔍 重新扫描"}
             </button>
@@ -202,7 +202,7 @@ function Stat({
       <div className="text-[10px] text-ink-500">{label}</div>
       <div
         className={`mt-0.5 text-base font-semibold ${
-          accent ? "text-amber-300" : "text-ink-100"
+          accent ? "text-accent-300" : "text-ink-100"
         }`}
       >
         {value}

@@ -49,9 +49,9 @@ export function TavernCardList({
   return (
     <div className="flex h-full flex-col bg-ink-800/40 border-l border-ink-700">
       <div className="flex items-center justify-between border-b border-ink-700 p-3">
-        <h2 className="text-sm font-medium text-amber-300">酒馆卡 (AI)</h2>
+        <h2 className="text-sm font-medium text-accent-300">酒馆卡 (AI)</h2>
         <div className="relative group">
-          <button className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/30">
+          <button className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30">
             从书中创建
           </button>
           <div className="absolute right-0 top-full mt-1 hidden group-hover:block z-10 w-48 rounded-md border border-ink-700 bg-ink-800 shadow-xl py-1">

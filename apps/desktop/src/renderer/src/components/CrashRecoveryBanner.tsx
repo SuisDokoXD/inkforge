@@ -39,17 +39,17 @@ export function CrashRecoveryBanner(): JSX.Element | null {
   return (
     <div
       role="alert"
-      className="border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-100"
+      className="border-b border-accent-500/40 bg-accent-500/10 px-4 py-2 text-sm text-accent-100"
     >
       <div className="flex items-start gap-3">
         <span className="font-semibold">{t("crashBanner.title")}</span>
-        <span className="flex-1 text-amber-200/80">
+        <span className="flex-1 text-accent-200/80">
           {t("crashBanner.body")}
-          {when && <span className="ml-1 text-amber-200/60">({when})</span>}
+          {when && <span className="ml-1 text-accent-200/60">({when})</span>}
         </span>
         {state.reason && (
           <button
-            className="rounded border border-amber-400/40 px-2 py-0.5 text-xs hover:bg-amber-500/20"
+            className="rounded border border-accent-400/40 px-2 py-0.5 text-xs hover:bg-accent-500/20"
             onClick={() =>
               setState((s) => (s.kind === "visible" ? { ...s, expanded: !s.expanded } : s))
             }
@@ -58,7 +58,7 @@ export function CrashRecoveryBanner(): JSX.Element | null {
           </button>
         )}
         <button
-          className="rounded border border-amber-400/40 px-2 py-0.5 text-xs hover:bg-amber-500/20"
+          className="rounded border border-accent-400/40 px-2 py-0.5 text-xs hover:bg-accent-500/20"
           onClick={() => {
             void diagApi.crashDismiss();
             setState({ kind: "hidden" });
@@ -68,7 +68,7 @@ export function CrashRecoveryBanner(): JSX.Element | null {
         </button>
       </div>
       {state.expanded && state.reason && (
-        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-amber-100/80">
+        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-black/30 p-2 text-xs text-accent-100/80">
           {state.reason}
         </pre>
       )}

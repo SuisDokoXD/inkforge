@@ -10,7 +10,7 @@ const KIND_BADGE: Record<ChapterLogEntryKind, { label: string; cls: string }> = 
   progress: { label: "📈 进度", cls: "bg-emerald-500/20 text-emerald-200" },
   "ai-run": { label: "🤖 AI 运行", cls: "bg-violet-500/20 text-violet-200" },
   manual: { label: "✍ 手记", cls: "bg-sky-500/20 text-sky-200" },
-  "daily-reminder": { label: "⏰ 每日", cls: "bg-amber-500/20 text-amber-200" },
+  "daily-reminder": { label: "⏰ 每日", cls: "bg-accent-500/20 text-accent-200" },
 };
 
 interface ChapterLogDrawerProps {
@@ -82,14 +82,14 @@ export function ChapterLogDrawer({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="今天写到这里有什么想记录的？"
-          className="h-20 resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs text-ink-100 placeholder:text-ink-500 focus:border-amber-500 focus:outline-none"
+          className="h-20 resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none"
         />
         <div className="flex items-center gap-2">
           <button
             type="button"
             disabled={!draft.trim() || appendMut.isPending}
             onClick={handleSubmit}
-            className="rounded-md bg-amber-500/20 px-3 py-1 text-xs text-amber-200 hover:bg-amber-500/30 disabled:opacity-40"
+            className="rounded-md bg-accent-500/20 px-3 py-1 text-xs text-accent-200 hover:bg-accent-500/30 disabled:opacity-40"
           >
             {appendMut.isPending ? "记录中…" : "✍ 记录一笔"}
           </button>

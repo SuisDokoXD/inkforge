@@ -46,7 +46,7 @@ export function WorldCategorySidebar({
         onClick={() => onSelect(value)}
         className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm transition ${
           active
-            ? "bg-amber-500/20 text-amber-200"
+            ? "bg-accent-500/20 text-accent-200"
             : "text-ink-300 hover:bg-ink-700/40"
         }`}
       >
@@ -65,7 +65,7 @@ export function WorldCategorySidebar({
 
   return (
     <div className="flex h-full flex-col bg-ink-800/40">
-      <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-amber-300">
+      <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-accent-300">
         世界观分类
       </div>
       <div className="flex-1 overflow-auto scrollbar-thin p-2">

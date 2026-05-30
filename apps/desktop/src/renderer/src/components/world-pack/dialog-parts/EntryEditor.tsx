@@ -51,7 +51,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
             onBlur={(e) =>
               e.target.value !== entry.title && onUpdate({ title: e.target.value })
             }
-            className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+            className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
           />
         </div>
         <div>
@@ -62,7 +62,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
             onBlur={(e) =>
               e.target.value !== entry.category && onUpdate({ category: e.target.value })
             }
-            className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+            className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
             placeholder="人物 / 地点 / 物件 / 概念..."
           />
           <datalist id={dataListId}>
@@ -80,7 +80,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
         onBlur={(e) =>
           e.target.value !== entry.content && onUpdate({ content: e.target.value })
         }
-        className="resize-none rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm leading-relaxed text-ink-100 focus:border-amber-500/60 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+        className="resize-none rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm leading-relaxed text-ink-100 focus:border-accent-500/60 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
         placeholder="完整描述这个设定。激活时会被注入到 LLM 上下文。"
       />
 
@@ -95,7 +95,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
           if (next.join(",") !== entry.aliases.join(","))
             onUpdate({ aliases: next });
         }}
-        className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none"
+        className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
         placeholder="同义名 / 称呼，如：林晚, 小晚"
       />
 
@@ -110,7 +110,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
           if (next.join(",") !== entry.keys.join(","))
             onUpdate({ keys: next });
         }}
-        className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none"
+        className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
         placeholder="非名字但希望命中本条的词，如：施法, 灵气"
       />
 
@@ -168,7 +168,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
                 type="checkbox"
                 checked={entry.constant}
                 onChange={(e) => onUpdate({ constant: e.target.checked })}
-                className="h-3.5 w-3.5 accent-amber-500"
+                className="h-3.5 w-3.5 accent-accent-500"
               />
               <span>
                 <strong className="text-ink-100">永远激活（constant）</strong>
@@ -182,7 +182,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
                 type="checkbox"
                 checked={entry.caseSensitive}
                 onChange={(e) => onUpdate({ caseSensitive: e.target.checked })}
-                className="h-3.5 w-3.5 accent-amber-500"
+                className="h-3.5 w-3.5 accent-accent-500"
               />
               <span>
                 <strong className="text-ink-100">大小写敏感</strong>
@@ -205,7 +205,7 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
                 if (next.join(",") !== entry.secondaryKeys.join(","))
                   onUpdate({ secondaryKeys: next });
               }}
-              className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
               placeholder="需要与主关键词组合判断的词，如：战斗, 紧张"
             />
             <p className="mt-1 text-[11px] text-ink-400">

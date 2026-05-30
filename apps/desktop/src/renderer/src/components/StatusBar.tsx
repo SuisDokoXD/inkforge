@@ -45,7 +45,7 @@ export function StatusBar(): JSX.Element {
             <div className="h-1.5 w-40 overflow-hidden rounded-full bg-ink-700">
               <div
                 className={`h-full rounded-full transition-all ${
-                  progress.goalHit ? "bg-green-400" : "bg-amber-400"
+                  progress.goalHit ? "bg-green-400" : "bg-accent-400"
                 }`}
                 style={{ width: `${percent}%` }}
               />

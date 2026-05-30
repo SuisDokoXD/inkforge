@@ -150,7 +150,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
         <header className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-950/60 px-4 py-3">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold text-ink-100">
-              <Settings className="h-4 w-4 text-amber-400" />
+              <Settings className="h-4 w-4 text-accent-400" />
               写作声音档案
             </h2>
             <p className="mt-0.5 text-xs text-ink-400">
@@ -171,7 +171,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              className="h-4 w-4 accent-amber-500"
+              className="h-4 w-4 accent-accent-500"
             />
             <span className="text-ink-100">
               启用本档案 — 让 AI 生成跟随这套写作声音
@@ -201,7 +201,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                           onClick={() => setAnswer(q.key, active ? "" : preset)}
                           className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition ${
                             active
-                              ? "bg-amber-500 text-ink-900"
+                              ? "bg-accent-500 text-ink-900"
                               : "bg-ink-800 text-ink-300 hover:bg-ink-700"
                           }`}
                         >
@@ -217,14 +217,14 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                     value={answers[q.key] ?? ""}
                     onChange={(e) => setAnswer(q.key, e.target.value)}
                     rows={2}
-                    className="w-full resize-none rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none"
+                    className="w-full resize-none rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
                     placeholder="自由填写，逗号分隔"
                   />
                 ) : (
                   <input
                     value={answers[q.key] ?? ""}
                     onChange={(e) => setAnswer(q.key, e.target.value)}
-                    className="w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none"
+                    className="w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
                     placeholder="预设之外可自行输入"
                   />
                 )}
@@ -247,7 +247,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
             <button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="flex items-center gap-1.5 rounded-md bg-amber-500 px-3 py-1.5 text-sm font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
             >
               {saveMutation.isPending && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

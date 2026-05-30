@@ -132,7 +132,7 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
                   onClick={() => setSelectedTraceId(t.id)}
                   className={`flex w-full flex-col items-start gap-1 border-b border-ink-800/50 px-3 py-2 text-left text-xs transition ${
                     (selected?.id ?? "") === t.id
-                      ? "bg-amber-500/10 text-amber-100"
+                      ? "bg-accent-500/10 text-accent-100"
                       : "text-ink-300 hover:bg-ink-800/50"
                   }`}
                 >

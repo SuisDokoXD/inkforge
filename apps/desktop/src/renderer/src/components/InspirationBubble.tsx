@@ -150,7 +150,7 @@ export function InspirationBubble(props: InspirationBubbleProps): JSX.Element | 
           {options.map((text, idx) => (
             <li key={idx}>
               <button
-                className="block w-full rounded-lg border border-ink-700 bg-ink-900/40 px-3 py-2 text-left text-[13px] leading-6 hover:border-amber-500/50 hover:bg-ink-900/70"
+                className="block w-full rounded-lg border border-ink-700 bg-ink-900/40 px-3 py-2 text-left text-[13px] leading-6 hover:border-accent-500/50 hover:bg-ink-900/70"
                 onClick={() => insert(text)}
                 title="点击在光标处插入"
               >

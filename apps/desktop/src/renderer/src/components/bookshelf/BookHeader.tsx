@@ -48,7 +48,7 @@ export function BookHeader({
               <button
                 type="button"
                 onClick={onOpenSettings}
-                className="rounded border border-ink-700 px-2 py-0.5 text-ink-300 hover:border-amber-500/40 hover:text-amber-200"
+                className="rounded border border-ink-700 px-2 py-0.5 text-ink-300 hover:border-accent-500/40 hover:text-accent-200"
                 title="设定 / 全局世界观"
               >
                 ⚙ 设定
@@ -70,7 +70,7 @@ export function BookHeader({
           </div>
         )}
         {project.globalWorldview && project.globalWorldview.trim().length > 0 && (
-          <div className="text-[11px] text-amber-300/80">
+          <div className="text-[11px] text-accent-300/80">
             🌍 已设定全局世界观（{project.globalWorldview.length} 字，AutoWriter 会自动注入）
           </div>
         )}

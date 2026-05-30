@@ -113,7 +113,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="flex items-center gap-2 text-base font-semibold text-ink-100">
-              <Pin className="h-4 w-4 text-amber-400" />
+              <Pin className="h-4 w-4 text-accent-400" />
               作者批注
             </h3>
             <p className="mt-0.5 text-xs text-ink-400">
@@ -128,7 +128,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
             }}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
               enabled
-                ? "bg-amber-500 text-ink-900 shadow-md shadow-amber-500/20"
+                ? "bg-accent-500 text-ink-900 shadow-md shadow-accent-500/20"
                 : "border border-ink-700 bg-ink-800/60 text-ink-400 hover:text-ink-200"
             }`}
             title={enabled ? "当前生效（点击禁用）" : "当前禁用（点击启用）"}
@@ -142,19 +142,19 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         <div className="relative">
           <button
             onClick={() => setPresetOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-800/60 px-3 py-1.5 text-sm text-ink-200 hover:border-amber-500/40 hover:bg-ink-800"
+            className="flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-800/60 px-3 py-1.5 text-sm text-ink-200 hover:border-accent-500/40 hover:bg-ink-800"
           >
-            <Sparkles className="h-4 w-4 text-amber-400" />
+            <Sparkles className="h-4 w-4 text-accent-400" />
             插入预设模板
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${presetOpen ? "rotate-180" : ""}`} />
           </button>
           {presetOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-ink-700 bg-ink-800 shadow-xl ring-1 ring-amber-500/20">
+            <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-ink-700 bg-ink-800 shadow-xl ring-1 ring-accent-500/20">
               {PRESET_TEMPLATES.map((p) => (
                 <button
                   key={p.name}
                   onClick={() => insertPreset(p)}
-                  className="block w-full border-b border-ink-700/60 px-3 py-2 text-left last:border-b-0 hover:bg-amber-500/10"
+                  className="block w-full border-b border-ink-700/60 px-3 py-2 text-left last:border-b-0 hover:bg-accent-500/10"
                 >
                   <div className="text-sm font-medium text-ink-100">{p.name}</div>
                   <div className="mt-0.5 line-clamp-2 text-[11px] text-ink-400">
@@ -179,7 +179,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
 - 整体基调偏向冷峻、节制
 
 或点上方"插入预设模板"快速开始`}
-            className="h-full w-full resize-none rounded-lg border border-ink-700 bg-ink-800/60 p-4 font-mono text-sm leading-relaxed text-ink-100 placeholder:text-ink-500 focus:border-amber-500/60 focus:bg-ink-800/80 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+            className="h-full w-full resize-none rounded-lg border border-ink-700 bg-ink-800/60 p-4 font-mono text-sm leading-relaxed text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:bg-ink-800/80 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
           />
           {/* 字符计数 */}
           <div
@@ -261,8 +261,8 @@ function PositionRadio({
   onChange(v: AuthorNotePosition): void;
 }): JSX.Element {
   const active = current === value;
-  const accentRing = accent === "rose" ? "ring-rose-400/60" : "ring-amber-400/60";
-  const accentBg = accent === "rose" ? "bg-rose-500/15" : "bg-amber-500/15";
+  const accentRing = accent === "rose" ? "ring-rose-400/60" : "ring-accent-400/60";
+  const accentBg = accent === "rose" ? "bg-rose-500/15" : "bg-accent-500/15";
   return (
     <label
       className={`flex cursor-pointer gap-2 rounded-lg border p-3 transition-all ${
@@ -275,7 +275,7 @@ function PositionRadio({
         type="radio"
         checked={active}
         onChange={() => onChange(value)}
-        className={accent === "rose" ? "mt-0.5 accent-rose-500" : "mt-0.5 accent-amber-500"}
+        className={accent === "rose" ? "mt-0.5 accent-rose-500" : "mt-0.5 accent-accent-500"}
       />
       <div>
         <div className={`text-sm font-medium ${active ? "text-ink-100" : "text-ink-200"}`}>

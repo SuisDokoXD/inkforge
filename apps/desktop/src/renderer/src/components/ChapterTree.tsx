@@ -164,7 +164,7 @@ export function ChapterTree({
               >
                 <div
                   className={`group flex items-center px-3 py-1.5 text-sm transition-colors ${
-                    active ? "bg-amber-500/20 text-amber-200" : "text-ink-200 hover:bg-ink-700/60"
+                    active ? "bg-accent-500/20 text-accent-200" : "text-ink-200 hover:bg-ink-700/60"
                   }`}
                   style={{ paddingLeft: `${12 + depth * 12}px` }}
                   onContextMenu={(e) => {
@@ -175,7 +175,7 @@ export function ChapterTree({
                   {isRenaming ? (
                     <input
                       ref={renameInputRef}
-                      className="flex-1 rounded border border-amber-400 bg-ink-900 px-2 py-0.5 text-sm text-ink-100 outline-none"
+                      className="flex-1 rounded border border-accent-400 bg-ink-900 px-2 py-0.5 text-sm text-ink-100 outline-none"
                       value={renameValue}
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {

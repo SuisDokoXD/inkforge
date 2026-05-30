@@ -252,7 +252,7 @@ export function AutoWriterPanel({
             onChange={(e) => setUserIdeas(e.target.value)}
             placeholder="比如：主角在密林遭遇敌袭，意外发现身世线索；情绪由警觉转为震惊；伏笔：陌生人留下的青铜令牌"
             disabled={isRunning}
-            className="h-32 w-full resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs placeholder:text-ink-500 focus:border-amber-500 focus:outline-none disabled:opacity-60"
+            className="h-32 w-full resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs placeholder:text-ink-500 focus:border-accent-500 focus:outline-none disabled:opacity-60"
           />
           <div className="mt-1 text-[10px] text-ink-500">{userIdeas.length} 字</div>
         </section>
@@ -291,7 +291,7 @@ export function AutoWriterPanel({
           <button
             type="button"
             onClick={() => setAdvanced((v) => !v)}
-            className="mt-1 text-[10px] text-amber-300 hover:underline"
+            className="mt-1 text-[10px] text-accent-300 hover:underline"
           >
             {advanced ? "收起高级" : "高级：为各角色分别绑定模型"}
           </button>
@@ -396,7 +396,7 @@ export function AutoWriterPanel({
               type="button"
               disabled={!canStart || startMut.isPending}
               onClick={() => startMut.mutate()}
-              className="flex-1 rounded-md bg-amber-500/30 px-3 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+              className="flex-1 rounded-md bg-accent-500/30 px-3 py-2 text-sm font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
             >
               {startMut.isPending ? "启动中…" : "🚀 启动 AutoWriter"}
             </button>
@@ -420,7 +420,7 @@ export function AutoWriterPanel({
         {currentPhase && (
           <section className="mb-3 rounded-md border border-ink-700 bg-ink-900/40 p-2 text-xs">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-amber-500/30 px-1.5 py-0.5 text-[10px] text-amber-100">
+              <span className="rounded bg-accent-500/30 px-1.5 py-0.5 text-[10px] text-accent-100">
                 Phase
               </span>
               <span>{PHASE_LABELS[currentPhase.phase]}</span>
@@ -436,7 +436,7 @@ export function AutoWriterPanel({
                 <span className="text-rose-300">
                   🔴 {currentPhase.criticSummary.errorCount}
                 </span>
-                <span className="text-amber-300">
+                <span className="text-accent-300">
                   🟡 {currentPhase.criticSummary.warnCount}
                 </span>
                 <span className="text-sky-300">
@@ -503,7 +503,7 @@ export function AutoWriterPanel({
                 doneEvent.status === "completed"
                   ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
                   : doneEvent.status === "partial"
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+                    ? "border-accent-500/40 bg-accent-500/10 text-accent-100"
                     : doneEvent.status === "stopped"
                       ? "border-sky-500/40 bg-sky-500/10 text-sky-100"
                       : "border-rose-500/40 bg-rose-500/10 text-rose-100"

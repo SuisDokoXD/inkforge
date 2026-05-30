@@ -33,7 +33,7 @@ export function ChapterOriginTabs({
             onClick={() => onChange(item.key === "all" ? null : item.key)}
             className={`flex items-center gap-2 rounded-t-md px-3 py-1.5 text-xs transition-colors ${
               isActive
-                ? "bg-ink-800 text-ink-100 ring-1 ring-amber-500/40"
+                ? "bg-ink-800 text-ink-100 ring-1 ring-accent-500/40"
                 : "text-ink-400 hover:bg-ink-800/40 hover:text-ink-100"
             }`}
           >

@@ -33,7 +33,7 @@ export function EntryListItem({
     <div
       className={`group flex items-center gap-1 border-b border-ink-800/60 px-2 py-2 transition-colors ${
         active
-          ? "bg-amber-500/10 ring-1 ring-inset ring-amber-500/30"
+          ? "bg-accent-500/10 ring-1 ring-inset ring-accent-500/30"
           : "hover:bg-ink-800/40"
       }`}
     >
@@ -41,7 +41,7 @@ export function EntryListItem({
         <button
           disabled={isFirst}
           onClick={onMoveUp}
-          className="rounded p-0.5 text-ink-400 hover:text-amber-300 disabled:opacity-30"
+          className="rounded p-0.5 text-ink-400 hover:text-accent-300 disabled:opacity-30"
           title="上移"
         >
           <ChevronUp className="h-3 w-3" />
@@ -49,7 +49,7 @@ export function EntryListItem({
         <button
           disabled={isLast}
           onClick={onMoveDown}
-          className="rounded p-0.5 text-ink-400 hover:text-amber-300 disabled:opacity-30"
+          className="rounded p-0.5 text-ink-400 hover:text-accent-300 disabled:opacity-30"
           title="下移"
         >
           <ChevronDown className="h-3 w-3" />
@@ -60,7 +60,7 @@ export function EntryListItem({
         className="flex-1 truncate text-left text-sm"
       >
         <span className="text-ink-500">[{entry.category}]</span>{" "}
-        <span className={active ? "text-amber-100" : "text-ink-200"}>
+        <span className={active ? "text-accent-100" : "text-ink-200"}>
           {entry.title}
         </span>
       </button>

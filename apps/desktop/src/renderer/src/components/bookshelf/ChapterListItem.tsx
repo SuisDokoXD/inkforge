@@ -94,7 +94,7 @@ export function ChapterListItem({
                 setRenaming(false);
               }
             }}
-            className="flex-1 rounded border border-amber-500/40 bg-ink-900 px-2 py-1 text-sm text-ink-100 focus:outline-none"
+            className="flex-1 rounded border border-accent-500/40 bg-ink-900 px-2 py-1 text-sm text-ink-100 focus:outline-none"
           />
         ) : (
           <button
@@ -104,7 +104,7 @@ export function ChapterListItem({
               setRenameDraft(chapter.title);
               setRenaming(true);
             }}
-            className="flex-1 truncate text-left text-sm text-ink-100 hover:text-amber-200"
+            className="flex-1 truncate text-left text-sm text-ink-100 hover:text-accent-200"
             title={`${chapter.title}（双击改名）`}
           >
             {chapter.title || "（未命名）"}
@@ -133,7 +133,7 @@ export function ChapterListItem({
           <button
             type="button"
             onClick={() => setAutoWriterOpen(true)}
-            className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] text-amber-200 hover:bg-amber-500/30"
+            className="rounded bg-accent-500/20 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-500/30"
             title="AI 自动写作"
           >
             🤖 AI 写

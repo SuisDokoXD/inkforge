@@ -170,7 +170,7 @@ export function ChatPanel(): JSX.Element {
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            className="h-3 w-3 accent-amber-500"
+            className="h-3 w-3 accent-accent-500"
             checked={attachExcerpt}
             onChange={(e) => setAttachExcerpt(e.target.checked)}
           />
@@ -199,7 +199,7 @@ export function ChatPanel(): JSX.Element {
             key={msg.id}
             className={`rounded-lg border px-3 py-2 text-[13px] leading-6 ${
               msg.role === "user"
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-100"
+                ? "border-accent-500/30 bg-accent-500/10 text-accent-100"
                 : msg.status === "failed"
                   ? "border-red-500/40 bg-red-500/10 text-red-200"
                   : "border-ink-700 bg-ink-800/60 text-ink-100"
@@ -224,7 +224,7 @@ export function ChatPanel(): JSX.Element {
       <div className="border-t border-ink-700 bg-ink-800/40 px-3 py-2">
         <textarea
           ref={textareaRef}
-          className="min-h-[56px] w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1.5 text-[13px] text-ink-100 placeholder:text-ink-500 focus:border-amber-500 focus:outline-none"
+          className="min-h-[56px] w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1.5 text-[13px] text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none"
           placeholder={pending ? "生成中…" : "问点什么，比如：这段怎么改更紧凑？"}
           value={input}
           disabled={pending}
@@ -235,7 +235,7 @@ export function ChatPanel(): JSX.Element {
         <div className="mt-1 flex items-center justify-between text-[11px] text-ink-500">
           <span>Enter 发送 · Shift+Enter 换行</span>
           <button
-            className="rounded-md border border-amber-500/40 bg-amber-500/20 px-3 py-0.5 text-amber-200 hover:bg-amber-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-accent-500/40 bg-accent-500/20 px-3 py-0.5 text-accent-200 hover:bg-accent-500/30 disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => void submit()}
             disabled={!canSend}
           >

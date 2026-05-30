@@ -149,7 +149,7 @@ export function WorldEntryDetail({
       <div className="flex items-center justify-between gap-3 border-b border-ink-700 px-4 py-2 text-sm">
         <span className="text-ink-300">
           {entry ? "编辑条目" : "新建条目"}
-          {isDirty && <span className="ml-2 text-amber-300">● 未保存</span>}
+          {isDirty && <span className="ml-2 text-accent-300">● 未保存</span>}
         </span>
         <div className="flex items-center gap-2 text-xs text-ink-400">
           {saveStatus && <span>{saveStatus}</span>}
@@ -171,7 +171,7 @@ export function WorldEntryDetail({
             type="button"
             onClick={() => upsertMut.mutate()}
             disabled={!isDirty || upsertMut.isPending}
-            className="rounded bg-amber-500 px-3 py-1 text-ink-950 font-medium hover:bg-amber-400 disabled:opacity-50"
+            className="rounded bg-accent-500 px-3 py-1 text-ink-950 font-medium hover:bg-accent-400 disabled:opacity-50"
           >
             {upsertMut.isPending ? "保存中…" : entry ? "保存" : "创建"}
           </button>
@@ -259,7 +259,7 @@ export function WorldEntryDetail({
               {parsedTags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded bg-amber-500/20 px-2 py-[1px] text-[11px] text-amber-200"
+                  className="rounded bg-accent-500/20 px-2 py-[1px] text-[11px] text-accent-200"
                 >
                   #{tag}
                 </span>

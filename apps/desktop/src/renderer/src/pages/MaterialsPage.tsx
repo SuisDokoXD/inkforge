@@ -94,7 +94,7 @@ function TabBtn({
       onClick={onClick}
       className={`rounded-md border px-2 py-1 ${
         active
-          ? "border-amber-500/50 bg-amber-500/15 text-amber-100"
+          ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
           : "border-ink-700 text-ink-300 hover:bg-ink-700"
       }`}
     >
@@ -168,7 +168,7 @@ function NotesTab({ projectId }: { projectId: string }): JSX.Element {
             type="button"
             disabled={!draftTitle.trim() || createMut.isPending}
             onClick={() => createMut.mutate()}
-            className="rounded bg-amber-500/30 px-2 py-0.5 text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+            className="rounded bg-accent-500/30 px-2 py-0.5 text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
           >
             {createMut.isPending ? "保存中…" : "保存"}
           </button>
@@ -187,7 +187,7 @@ function NotesTab({ projectId }: { projectId: string }): JSX.Element {
         <button
           type="button"
           onClick={() => setFilterKind("")}
-          className={`rounded px-2 py-0.5 ${filterKind === "" ? "bg-amber-500/30 text-amber-100" : "border border-ink-700"}`}
+          className={`rounded px-2 py-0.5 ${filterKind === "" ? "bg-accent-500/30 text-accent-100" : "border border-ink-700"}`}
         >
           全部 ({items.length})
         </button>
@@ -196,7 +196,7 @@ function NotesTab({ projectId }: { projectId: string }): JSX.Element {
             key={o.value}
             type="button"
             onClick={() => setFilterKind(o.value)}
-            className={`rounded px-2 py-0.5 ${filterKind === o.value ? "bg-amber-500/30 text-amber-100" : "border border-ink-700"}`}
+            className={`rounded px-2 py-0.5 ${filterKind === o.value ? "bg-accent-500/30 text-accent-100" : "border border-ink-700"}`}
           >
             {o.icon} {o.label}
           </button>
@@ -256,7 +256,7 @@ function MaterialRow({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="flex-1 rounded border border-amber-500/40 bg-ink-900 px-2 py-0.5"
+            className="flex-1 rounded border border-accent-500/40 bg-ink-900 px-2 py-0.5"
           />
         ) : (
           <span className="flex-1 truncate font-medium text-ink-100">{item.title}</span>
@@ -268,7 +268,7 @@ function MaterialRow({
           <button
             type="button"
             onClick={() => saveMut.mutate()}
-            className="rounded bg-amber-500/30 px-2 py-0.5 text-[11px] text-amber-100 hover:bg-amber-500/40"
+            className="rounded bg-accent-500/30 px-2 py-0.5 text-[11px] text-accent-100 hover:bg-accent-500/40"
           >
             保存
           </button>
@@ -334,7 +334,7 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-100/90">
+      <div className="rounded-md border border-accent-500/30 bg-accent-500/5 p-3 text-xs text-accent-100/90">
         🌍 这里写的内容会作为「全局世界观」被 AutoWriter 在每段开始前注入到 prompt
         中。建议写 <strong>时代背景 / 力量体系 / 政治格局 / 关键禁忌</strong>。
       </div>
@@ -349,14 +349,14 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
         <span>
           {draft.length} 字
           {draft.length > 4000 && (
-            <span className="ml-2 text-amber-300">⚠ 偏长，建议控制在 2000 字内</span>
+            <span className="ml-2 text-accent-300">⚠ 偏长，建议控制在 2000 字内</span>
           )}
         </span>
         <button
           type="button"
           disabled={!dirty || saveMut.isPending}
           onClick={() => saveMut.mutate()}
-          className="rounded-md bg-amber-500/30 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+          className="rounded-md bg-accent-500/30 px-3 py-1 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
         >
           {saveMut.isPending ? "保存中…" : dirty ? "保存" : "已保存"}
         </button>

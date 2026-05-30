@@ -54,7 +54,7 @@ export function SyncDiffDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="w-full max-w-3xl rounded-xl border border-ink-700 bg-ink-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="border-b border-ink-700 px-6 py-4">
-          <h2 className="text-lg font-bold text-amber-300">人物同步冲突</h2>
+          <h2 className="text-lg font-bold text-accent-300">人物同步冲突</h2>
           <p className="text-xs text-ink-400 mt-1">检测到书中人物与酒馆卡内容不一致，请选择保留哪一方的数据。</p>
         </div>
         
@@ -68,13 +68,13 @@ export function SyncDiffDialog({
                   onClick={() => setResolutions(prev => ({ ...prev, [row.field]: { winner: "novel" } }))}
                   className={`cursor-pointer rounded-lg border p-4 transition-all ${
                     resolutions[row.field]?.winner === "novel" 
-                      ? "border-amber-500 bg-amber-500/10" 
+                      ? "border-accent-500 bg-accent-500/10" 
                       : "border-ink-700 bg-ink-900/40 hover:border-ink-600"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">书中值</span>
-                    {resolutions[row.field]?.winner === "novel" && <span className="text-amber-500 text-xs">✓</span>}
+                    <span className="text-[10px] font-bold text-accent-500 uppercase tracking-tighter">书中值</span>
+                    {resolutions[row.field]?.winner === "novel" && <span className="text-accent-500 text-xs">✓</span>}
                   </div>
                   <div className="text-xs text-ink-300 line-clamp-6 font-mono leading-relaxed whitespace-pre-wrap">
                     {String(row.novelValue)}
@@ -86,13 +86,13 @@ export function SyncDiffDialog({
                   onClick={() => setResolutions(prev => ({ ...prev, [row.field]: { winner: "card" } }))}
                   className={`cursor-pointer rounded-lg border p-4 transition-all ${
                     resolutions[row.field]?.winner === "card" 
-                      ? "border-amber-500 bg-amber-500/10" 
+                      ? "border-accent-500 bg-accent-500/10" 
                       : "border-ink-700 bg-ink-900/40 hover:border-ink-600"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">酒馆卡值</span>
-                    {resolutions[row.field]?.winner === "card" && <span className="text-amber-500 text-xs">✓</span>}
+                    <span className="text-[10px] font-bold text-accent-500 uppercase tracking-tighter">酒馆卡值</span>
+                    {resolutions[row.field]?.winner === "card" && <span className="text-accent-500 text-xs">✓</span>}
                   </div>
                   <div className="text-xs text-ink-300 line-clamp-6 font-mono leading-relaxed whitespace-pre-wrap">
                     {String(row.cardValue)}
@@ -113,7 +113,7 @@ export function SyncDiffDialog({
           <button 
             onClick={() => applyMut.mutate()}
             disabled={applyMut.isPending}
-            className="rounded-md bg-amber-500 px-6 py-2 text-sm font-bold text-ink-950 hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+            className="rounded-md bg-accent-500 px-6 py-2 text-sm font-bold text-ink-950 hover:bg-accent-400 transition-all shadow-lg shadow-accent-500/20 disabled:opacity-50"
           >
             {applyMut.isPending ? "应用中..." : "应用更改"}
           </button>

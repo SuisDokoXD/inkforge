@@ -30,7 +30,7 @@ const KIND_LABELS: Record<ChapterSnapshotKind, string> = {
 };
 
 const KIND_COLORS: Record<ChapterSnapshotKind, string> = {
-  manual: "bg-amber-500/20 text-amber-200",
+  manual: "bg-accent-500/20 text-accent-200",
   "pre-ai": "bg-sky-500/20 text-sky-200",
   "post-ai": "bg-emerald-500/20 text-emerald-200",
   "pre-rewrite": "bg-orange-500/20 text-orange-200",

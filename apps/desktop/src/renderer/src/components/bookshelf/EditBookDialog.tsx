@@ -72,7 +72,7 @@ export function EditBookDialog({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={80}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none"
+            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && canSubmit && dirty) updateMut.mutate();
             }}
@@ -113,7 +113,7 @@ export function EditBookDialog({
             type="button"
             onClick={() => updateMut.mutate()}
             disabled={!canSubmit || !dirty}
-            className="rounded-md bg-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-500/40 disabled:opacity-40"
+            className="rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
           >
             {updateMut.isPending ? "保存中…" : "保存"}
           </button>

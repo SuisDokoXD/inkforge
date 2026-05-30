@@ -36,7 +36,7 @@ function statusBadge(
   const hp = health?.keys.find((k) => k.keyId === key.id);
   if (hp?.cooldownUntil && formatCooldown(hp.cooldownUntil)) {
     return {
-      color: "bg-amber-500/20 text-amber-200",
+      color: "bg-accent-500/20 text-accent-200",
       text: `冷却 ${formatCooldown(hp.cooldownUntil)}`,
     };
   }
@@ -280,7 +280,7 @@ export function ProviderKeyManager({
           type="button"
           disabled={!canAdd}
           onClick={() => addMut.mutate()}
-          className="rounded bg-amber-500 px-3 py-1 text-[12px] font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+          className="rounded bg-accent-500 px-3 py-1 text-[12px] font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
         >
           添加
         </button>

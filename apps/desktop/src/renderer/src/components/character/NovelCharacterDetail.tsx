@@ -86,7 +86,7 @@ export function NovelCharacterDetail({
     <div className="flex h-full flex-col bg-ink-900/40 p-6 overflow-auto scrollbar-thin">
       <div className="mb-6 flex items-center justify-between">
         <input
-          className="bg-transparent text-2xl font-bold text-amber-300 outline-none border-b border-transparent focus:border-amber-500/50 w-full"
+          className="bg-transparent text-2xl font-bold text-accent-300 outline-none border-b border-transparent focus:border-accent-500/50 w-full"
           value={localData.name}
           onChange={(e) => handleFieldChange("name", e.target.value)}
           placeholder="角色名称"
@@ -109,7 +109,7 @@ export function NovelCharacterDetail({
         <section>
           <label className="mb-2 block text-xs font-medium text-ink-400 uppercase tracking-wider">人设 (Persona)</label>
           <textarea
-            className="w-full h-32 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-amber-500/50 focus:outline-none"
+            className="w-full h-32 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-accent-500/50 focus:outline-none"
             value={localData.persona || ""}
             onChange={(e) => handleFieldChange("persona", e.target.value)}
             placeholder="核心性格、外貌特征等..."
@@ -119,7 +119,7 @@ export function NovelCharacterDetail({
         <section>
           <label className="mb-2 block text-xs font-medium text-ink-400 uppercase tracking-wider">背景 (Backstory)</label>
           <textarea
-            className="w-full h-40 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-amber-500/50 focus:outline-none"
+            className="w-full h-40 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-accent-500/50 focus:outline-none"
             value={localData.backstory || ""}
             onChange={(e) => handleFieldChange("backstory", e.target.value)}
             placeholder="过往经历、成长环境..."
@@ -143,7 +143,7 @@ export function NovelCharacterDetail({
           {linkedCard ? (
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <div className="text-sm text-amber-200">{linkedCard.name}</div>
+                <div className="text-sm text-accent-200">{linkedCard.name}</div>
                 <div className="text-[10px] text-ink-500">同步模式: {linkedCard.syncMode}</div>
               </div>
               <button

@@ -97,7 +97,7 @@ export function AutoWriterPage(): JSX.Element {
                     onClick={() => setActiveChapterId(ch.id)}
                     className={`flex w-full flex-col items-start gap-0.5 border-b border-ink-700/50 px-3 py-2 text-left text-xs transition-colors ${
                       activeChapterId === ch.id
-                        ? "bg-amber-500/10 text-amber-100"
+                        ? "bg-accent-500/10 text-accent-100"
                         : "text-ink-200 hover:bg-ink-800/40"
                     }`}
                   >

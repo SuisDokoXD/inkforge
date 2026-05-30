@@ -26,7 +26,7 @@ export function DialogShell({
 }: DialogShellProps): JSX.Element {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="relative h-[88vh] w-[1080px] max-w-[96vw] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl ring-1 ring-amber-500/20">
+      <div className="relative h-[88vh] w-[1080px] max-w-[96vw] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl ring-1 ring-accent-500/20">
         {title && (
           <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 border-b border-ink-700/80 bg-ink-900/85 px-4 py-2.5 backdrop-blur-md">
             <div className="min-w-0 flex-1">

@@ -150,9 +150,9 @@ export function GlobalDropZone(): JSX.Element | null {
     <>
       {active && (
         <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/70 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-amber-400/60 bg-ink-800/90 px-10 py-8 text-center shadow-2xl">
+          <div className="rounded-2xl border-2 border-dashed border-accent-400/60 bg-ink-800/90 px-10 py-8 text-center shadow-2xl">
             <div className="text-4xl">📥</div>
-            <div className="mt-2 text-base font-semibold text-amber-100">
+            <div className="mt-2 text-base font-semibold text-accent-100">
               松开 → 导入素材库
             </div>
             <div className="mt-1 text-xs text-ink-300">
@@ -164,7 +164,7 @@ export function GlobalDropZone(): JSX.Element | null {
       {(busyText || toasts.length > 0) && (
         <div className="pointer-events-none fixed bottom-6 right-6 z-[55] flex max-w-sm flex-col items-end gap-2">
           {busyText && (
-            <div className="rounded-md border border-amber-500/40 bg-ink-800/95 px-3 py-2 text-xs text-amber-100 shadow-lg">
+            <div className="rounded-md border border-accent-500/40 bg-ink-800/95 px-3 py-2 text-xs text-accent-100 shadow-lg">
               {busyText}
             </div>
           )}

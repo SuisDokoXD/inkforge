@@ -83,7 +83,7 @@ export function WorldEntryList({
         <button
           type="button"
           onClick={onCreate}
-          className="rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-300 hover:bg-amber-500/30"
+          className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30"
           title="新建条目"
         >
           + 新建
@@ -118,7 +118,7 @@ export function WorldEntryList({
               }}
               className={`relative cursor-pointer border-b border-ink-700/50 px-3 py-2 pl-3.5 transition ${
                 active && !multiSelectMode ? "bg-ink-700/60" : "hover:bg-ink-700/20"
-              } ${multiSelectMode && selected ? "bg-amber-500/10" : ""}`}
+              } ${multiSelectMode && selected ? "bg-accent-500/10" : ""}`}
             >
               <span
                 aria-hidden
@@ -132,7 +132,7 @@ export function WorldEntryList({
                     checked={selected}
                     onChange={() => onToggleSelected?.(entry.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="h-3.5 w-3.5 shrink-0 accent-amber-500"
+                    className="h-3.5 w-3.5 shrink-0 accent-accent-500"
                   />
                 )}
                 <span className="truncate text-sm text-ink-100">{entry.title}</span>

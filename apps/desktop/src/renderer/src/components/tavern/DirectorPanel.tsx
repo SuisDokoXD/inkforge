@@ -95,7 +95,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             name="tavern-mode"
             checked={mode === "director"}
             onChange={() => setMode("director")}
-            className="accent-amber-500"
+            className="accent-accent-500"
           />
           <span className="text-ink-200">导演</span>
         </label>
@@ -105,7 +105,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             name="tavern-mode"
             checked={mode === "auto"}
             onChange={() => setMode("auto")}
-            className="accent-amber-500"
+            className="accent-accent-500"
           />
           <span className="text-ink-200">自动</span>
         </label>
@@ -137,7 +137,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
               onClick={() => toggleParticipant(card.id)}
               className={`rounded px-2 py-1 text-xs transition ${
                 selected
-                  ? "bg-amber-500/20 text-amber-200 border border-amber-500/50"
+                  ? "bg-accent-500/20 text-accent-200 border border-accent-500/50"
                   : "bg-ink-900/60 text-ink-400 border border-ink-700 hover:bg-ink-900"
               }`}
               title={`${card.providerId}/${card.model}`}
@@ -173,7 +173,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             type="button"
             onClick={() => runMut.mutate()}
             disabled={!canRun}
-            className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-40"
+            className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
           >
             ▶ {runMut.isPending ? "启动中…" : "推进"}
           </button>
@@ -200,7 +200,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
       {compactOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-sm rounded-lg border border-ink-700 bg-ink-800 p-5 shadow-xl">
-            <h3 className="text-sm font-medium text-amber-300 mb-3">压缩历史</h3>
+            <h3 className="text-sm font-medium text-accent-300 mb-3">压缩历史</h3>
             <label className="block text-xs text-ink-300 mb-2">保留最近 K 条完整消息</label>
             <input
               type="number"
@@ -224,7 +224,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
                 type="button"
                 onClick={() => compactMut.mutate(compactKeepLastK)}
                 disabled={compactMut.isPending}
-                className="rounded bg-amber-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+                className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
               >
                 {compactMut.isPending ? "压缩中…" : "开始压缩"}
               </button>

@@ -155,7 +155,7 @@ export function ReviewPage(): JSX.Element {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">📊 全文审查</div>
+          <div className="mb-2 text-lg text-accent-300">📊 全文审查</div>
           <p className="text-sm">请先在侧边栏选择或创建一个项目。</p>
         </div>
       </div>
@@ -165,7 +165,7 @@ export function ReviewPage(): JSX.Element {
   return (
     <div className="flex h-full w-full bg-ink-900">
       <aside className="flex w-[320px] shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
-        <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-amber-300">
+        <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-accent-300">
           审查维度
           <span className="ml-2 text-[11px] text-ink-500">
             {enabledDimensions.length}/{dimensions.length} 启用
@@ -185,7 +185,7 @@ export function ReviewPage(): JSX.Element {
                     type="checkbox"
                     checked={dim.enabled}
                     onChange={() => toggleDimMut.mutate(dim)}
-                    className="accent-amber-500"
+                    className="accent-accent-500"
                   />
                   <span className="flex-1 text-ink-100">{dim.name}</span>
                   <select
@@ -199,9 +199,9 @@ export function ReviewPage(): JSX.Element {
                     onClick={(e) => e.stopPropagation()}
                     className="rounded border border-ink-700 bg-ink-900 px-1.5 py-0.5 text-[10px] text-ink-200"
                   >
-                    <option value="info">info</option>
-                    <option value="warn">warn</option>
-                    <option value="error">error</option>
+                    <option value="info">提示</option>
+                    <option value="warn">警告</option>
+                    <option value="error">错误</option>
                   </select>
                 </label>
                 <div className="mt-0.5 pl-6 text-[10px] text-ink-500">
@@ -222,7 +222,7 @@ export function ReviewPage(): JSX.Element {
                 name="review-range"
                 checked={rangeKind === "book"}
                 onChange={() => setRangeKind("book")}
-                className="accent-amber-500"
+                className="accent-accent-500"
               />
               <span>全书</span>
             </label>
@@ -232,7 +232,7 @@ export function ReviewPage(): JSX.Element {
                 name="review-range"
                 checked={rangeKind === "chapter"}
                 onChange={() => setRangeKind("chapter")}
-                className="accent-amber-500"
+                className="accent-accent-500"
               />
               <span>选章</span>
             </label>
@@ -245,14 +245,14 @@ export function ReviewPage(): JSX.Element {
                   <label
                     key={chapter.id}
                     className={`flex items-center gap-2 rounded px-2 py-1 cursor-pointer ${
-                      selected ? "bg-amber-500/10" : "hover:bg-ink-700/30"
+                      selected ? "bg-accent-500/10" : "hover:bg-ink-700/30"
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={selected}
                       onChange={() => toggleChapter(chapter.id)}
-                      className="accent-amber-500"
+                      className="accent-accent-500"
                     />
                     <span className="truncate text-ink-100">{chapter.title}</span>
                     <span className="ml-auto text-[10px] text-ink-500">
@@ -272,7 +272,7 @@ export function ReviewPage(): JSX.Element {
               !!runningReportId ||
               (rangeKind === "chapter" && selectedChapterIds.length === 0)
             }
-            className="w-full rounded bg-amber-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+            className="w-full rounded bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
           >
             {runMut.isPending ? "启动中…" : runningReportId ? "运行中…" : "🚀 开始审查"}
           </button>
@@ -317,7 +317,7 @@ export function ReviewPage(): JSX.Element {
                         report.status === "completed"
                           ? "bg-green-500/20 text-green-300"
                           : report.status === "running"
-                            ? "bg-amber-500/20 text-amber-300"
+                            ? "bg-accent-500/20 text-accent-300"
                             : report.status === "failed"
                               ? "bg-red-500/20 text-red-300"
                               : "bg-ink-700 text-ink-300"

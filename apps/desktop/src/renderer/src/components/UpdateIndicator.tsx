@@ -26,10 +26,10 @@ export function UpdateIndicator(): JSX.Element | null {
   if (status.state === "available") {
     return (
       <div className="flex items-center gap-1">
-        <span className="text-amber-300">⬆ 新版本 v{status.version}</span>
+        <span className="text-accent-300">⬆ 新版本 v{status.version}</span>
         <button
           type="button"
-          className="rounded border border-amber-600/50 bg-amber-900/30 px-2 py-0.5 text-[11px] text-amber-200 hover:bg-amber-800/40"
+          className="rounded border border-accent-600/50 bg-accent-900/30 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-800/40"
           onClick={() => void window.inkforge.update.download()}
         >
           下载
@@ -48,7 +48,7 @@ export function UpdateIndicator(): JSX.Element | null {
 
   if (status.state === "downloading") {
     return (
-      <span className="text-amber-300">
+      <span className="text-accent-300">
         ⇣ 下载中 {status.percent}%
       </span>
     );

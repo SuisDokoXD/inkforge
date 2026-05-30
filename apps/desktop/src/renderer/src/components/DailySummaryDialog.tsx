@@ -99,7 +99,7 @@ export function DailySummaryDialog({
       <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-800 shadow-2xl">
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-amber-300">📝 每日写作总结</h2>
+            <h2 className="text-sm font-semibold text-accent-300">📝 每日写作总结</h2>
             <input
               type="date"
               value={date}
@@ -151,7 +151,7 @@ export function DailySummaryDialog({
             <article className="whitespace-pre-wrap rounded-md border border-ink-700 bg-ink-900/60 px-4 py-3 text-sm leading-7 text-ink-100">
               {displayed}
               {streaming !== null && (
-                <span className="ml-0.5 animate-pulse text-amber-300">▋</span>
+                <span className="ml-0.5 animate-pulse text-accent-300">▋</span>
               )}
             </article>
           )}
@@ -172,7 +172,7 @@ export function DailySummaryDialog({
               type="button"
               onClick={() => generateMut.mutate()}
               disabled={generateMut.isPending || streaming !== null}
-              className="rounded bg-amber-500 px-3 py-1 font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+              className="rounded bg-accent-500 px-3 py-1 font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
             >
               {streaming !== null
                 ? "生成中…"

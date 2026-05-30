@@ -171,7 +171,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
               const v = e.target.value.trim();
               if (v && v !== pack.name) updateMutation.mutate({ id: pack.id, name: v });
             }}
-            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-amber-500/60 focus:outline-none focus:ring-1 focus:ring-amber-500/30"
+            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
           />
 
           <FieldLabel>副标题</FieldLabel>
@@ -183,7 +183,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
               updateMutation.mutate({ id: pack.id, tagline: e.target.value })
             }
             placeholder="一句话副标（卡面用）"
-            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-500/60 focus:outline-none"
+            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:outline-none"
           />
 
           <FieldLabel>长描述</FieldLabel>
@@ -196,7 +196,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
               updateMutation.mutate({ id: pack.id, description: e.target.value })
             }
             placeholder="详细介绍这套世界观"
-            className="resize-none rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-500/60 focus:outline-none"
+            className="resize-none rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:outline-none"
           />
 
           <FieldLabel>标签（逗号分隔）</FieldLabel>
@@ -212,7 +212,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
                 updateMutation.mutate({ id: pack.id, tags: next });
             }}
             placeholder="修真, 高武, 冷峻..."
-            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-amber-500/60 focus:outline-none"
+            className="rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:outline-none"
           />
 
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -261,7 +261,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
             </span>
             <button
               onClick={() => entryCreateMutation.mutate()}
-              className="flex items-center gap-1 rounded-md bg-amber-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400"
+              className="flex items-center gap-1 rounded-md bg-accent-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
             >
               <Plus className="h-3 w-3" /> 新条目
             </button>

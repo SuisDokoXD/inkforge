@@ -124,7 +124,7 @@ export function RoleBubble({
             }
           >
             {message.content}
-            {isStreaming && <span className="ml-0.5 animate-pulse text-amber-300">▋</span>}
+            {isStreaming && <span className="ml-0.5 animate-pulse text-accent-300">▋</span>}
           </div>
         </div>
         {isDirector && (

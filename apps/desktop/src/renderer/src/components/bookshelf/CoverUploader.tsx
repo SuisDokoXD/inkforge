@@ -123,9 +123,9 @@ export function CoverUploader({
         }
         className={`group relative overflow-hidden border bg-ink-800 transition-all ${dimensions} ${radius} ${
           isEditable
-            ? "cursor-pointer border-dashed hover:border-amber-400/60 hover:shadow-lg hover:shadow-amber-500/10"
+            ? "cursor-pointer border-dashed hover:border-accent-400/60 hover:shadow-lg hover:shadow-accent-500/10"
             : "border-ink-700"
-        } ${dragOver ? "border-amber-400 ring-2 ring-amber-400/40" : "border-ink-700"}`}
+        } ${dragOver ? "border-accent-400 ring-2 ring-accent-400/40" : "border-ink-700"}`}
       >
         {dataUrl ? (
           <>
@@ -144,7 +144,7 @@ export function CoverUploader({
           <div
             className={`flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center transition-colors ${
               isEditable
-                ? "bg-gradient-to-br from-ink-700/40 to-ink-800 text-ink-300 group-hover:from-amber-500/10 group-hover:to-fuchsia-500/10 group-hover:text-amber-200"
+                ? "bg-gradient-to-br from-ink-700/40 to-ink-800 text-ink-300 group-hover:from-accent-500/10 group-hover:to-fuchsia-500/10 group-hover:text-accent-200"
                 : "text-ink-500"
             }`}
           >
@@ -203,7 +203,7 @@ export function CoverUploader({
         </div>
       )}
       {uploadMut.isPending && (
-        <div className="text-[10px] text-amber-300">上传中…</div>
+        <div className="text-[10px] text-accent-300">上传中…</div>
       )}
       {uploadMut.isSuccess && (
         <div className="text-[10px] text-emerald-300">已更新 ✓</div>

@@ -141,7 +141,7 @@ export function ResearchPage(): JSX.Element {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">📚 资料检索</div>
+          <div className="mb-2 text-lg text-accent-300">📚 资料检索</div>
           <p className="text-sm">请先在侧边栏选择或创建一个项目。</p>
         </div>
       </div>
@@ -179,7 +179,7 @@ export function ResearchPage(): JSX.Element {
             type="button"
             onClick={() => searchMut.mutate()}
             disabled={!query.trim() || searchMut.isPending}
-            className="rounded bg-amber-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-amber-400 disabled:opacity-50"
+            className="rounded bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
           >
             {searchMut.isPending ? "检索中…" : "🔍 搜索"}
           </button>
@@ -279,7 +279,7 @@ export function ResearchPage(): JSX.Element {
       </section>
 
       <aside className="w-[300px] shrink-0 border-l border-ink-700 bg-ink-800/40">
-        <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-amber-300">
+        <div className="border-b border-ink-700 px-3 py-2 text-sm font-medium text-accent-300">
           我的笔记
           <span className="ml-2 text-[11px] text-ink-500">
             {(notesQuery.data ?? []).length} 条

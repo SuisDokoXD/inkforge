@@ -157,7 +157,7 @@ export function WorldPage(): JSX.Element {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-amber-300">🌍 世界观设定库</div>
+          <div className="mb-2 text-lg text-accent-300">🌍 世界观设定库</div>
           <p className="text-sm text-ink-300">
             请先在侧边栏选择或创建一个项目以管理设定条目。
           </p>
@@ -170,33 +170,33 @@ export function WorldPage(): JSX.Element {
     <div className="flex h-full w-full flex-col bg-ink-900">
       <div className="flex shrink-0 items-center gap-1 border-b border-ink-700 px-3 py-1.5 text-xs">
         <button
-          className={`rounded-md px-3 py-1 ${tab === "entries" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
+          className={`rounded-md px-3 py-1 ${tab === "entries" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("entries")}
         >
           条目
         </button>
         <button
-          className={`rounded-md px-3 py-1 ${tab === "graph" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
+          className={`rounded-md px-3 py-1 ${tab === "graph" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("graph")}
         >
           关系图
         </button>
         <button
-          className={`rounded-md px-3 py-1 ${tab === "packs" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
+          className={`rounded-md px-3 py-1 ${tab === "packs" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("packs")}
           title="跨项目卡牌库：保存好几套完整世界观，需要时挑一张或融合多张"
         >
           🃏 卡牌库
         </button>
         <button
-          className={`rounded-md px-3 py-1 ${tab === "note" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
+          className={`rounded-md px-3 py-1 ${tab === "note" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("note")}
           title="全局风格批注：每次 LLM 调用都会注入"
         >
           📌 作者批注
         </button>
         <button
-          className={`rounded-md px-3 py-1 ${tab === "diag" ? "bg-amber-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
+          className={`rounded-md px-3 py-1 ${tab === "diag" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("diag")}
           title="World Info 激活诊断面板"
         >
@@ -231,14 +231,14 @@ export function WorldPage(): JSX.Element {
           <section className="flex w-[300px] shrink-0 flex-col">
             {/* 批量操作条：仅在批量模式下显示 */}
             {multiSelectMode && (
-              <div className="flex items-center justify-between border-b border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-200">
+              <div className="flex items-center justify-between border-b border-accent-500/40 bg-accent-500/10 px-2 py-1.5 text-xs text-accent-200">
                 <span>已选 {selectedIds.size} 项</span>
                 <div className="flex gap-1">
                   <button
                     type="button"
                     onClick={handleBatchSetCategory}
                     disabled={selectedIds.size === 0 || batchSetCategoryMutation.isPending}
-                    className="rounded bg-amber-500/20 px-2 py-0.5 hover:bg-amber-500/30 disabled:opacity-50"
+                    className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
                   >
                     改类别
                   </button>

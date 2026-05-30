@@ -232,7 +232,7 @@ function MiniPackChip({ pack }: { pack: WorldPackRecord }): JSX.Element {
           {pack.tags.slice(0, 3).map((t) => (
             <span
               key={t}
-              className="rounded-full bg-ink-700/60 px-1.5 py-0 text-[9px] text-amber-200"
+              className="rounded-full bg-ink-700/60 px-1.5 py-0 text-[9px] text-accent-200"
             >
               {t}
             </span>
@@ -362,7 +362,7 @@ function PreviewBody({
         <button
           onClick={onSave}
           disabled={saving}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-ink-900 shadow-lg shadow-amber-500/20 hover:bg-amber-400 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-500 px-4 py-2.5 text-sm font-medium text-ink-900 shadow-lg shadow-accent-500/20 hover:bg-accent-400 disabled:opacity-50"
         >
           {saving ? (
             <>

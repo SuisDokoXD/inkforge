@@ -29,7 +29,7 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
   if (providers.length === 0) {
     return (
       <button
-        className="rounded-full bg-amber-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-amber-400"
+        className="rounded-full bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
         onClick={() => openProviderPanel(true)}
       >
         配置 Provider
@@ -40,7 +40,7 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
   return (
     <div className="flex items-center gap-2 text-xs">
       <select
-        className="rounded-full border border-ink-600 bg-ink-800 px-2 py-1 text-ink-200 focus:border-amber-500 focus:outline-none"
+        className="rounded-full border border-ink-600 bg-ink-800 px-2 py-1 text-ink-200 focus:border-accent-500 focus:outline-none"
         value={active?.id ?? ""}
         onChange={(e) => setActive.mutate(e.target.value)}
       >

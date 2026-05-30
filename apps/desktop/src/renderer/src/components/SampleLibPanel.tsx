@@ -157,7 +157,7 @@ export function SampleLibPanel(): JSX.Element {
           </div>
           <div className="flex gap-2 text-xs">
             <button
-              className="rounded-md bg-amber-500 px-3 py-1 font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-1 font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
               disabled={busy || !title.trim()}
               onClick={onImportText}
             >
@@ -191,7 +191,7 @@ export function SampleLibPanel(): JSX.Element {
           />
           <div className="flex gap-2 text-xs">
             <button
-              className="rounded-md bg-amber-500 px-3 py-1 font-medium text-ink-900 hover:bg-amber-400 disabled:opacity-50"
+              className="rounded-md bg-accent-500 px-3 py-1 font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
               disabled={busy}
               onClick={onImportEpub}
             >
