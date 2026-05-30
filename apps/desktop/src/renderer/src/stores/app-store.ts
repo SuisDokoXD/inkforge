@@ -137,7 +137,7 @@ export interface AppState {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
-  theme: "dark",
+  theme: "light",
   activeProviderId: null,
   analysisEnabled: true,
   analysisThreshold: 200,
