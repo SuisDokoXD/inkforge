@@ -838,6 +838,8 @@ export interface SkillDoneEvent {
   status: "completed" | "failed" | "cancelled";
   error?: string;
   feedbackId?: string;
+  /** 完成时的最终输出文本，供前端按 output target 写入编辑器（非时间线输出场景）。 */
+  text?: string;
   usage?: SkillRunUsage;
   finishedAt: string;
 }

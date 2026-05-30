@@ -64,6 +64,9 @@ export default defineConfig({
       alias: {
         "@inkforge/shared": resolve(__dirname, "../../packages/shared/src/index.ts"),
         "@inkforge/editor": resolve(__dirname, "../../packages/editor/src/index.ts"),
+        // skill-engine 的模板渲染器在渲染进程里被 SkillPage 用于本地预览；
+        // 指向 src（ESM/TS）以便 rollup 能静态分析具名导出（dist 是 CJS export *，无法被追踪）。
+        "@inkforge/skill-engine": resolve(__dirname, "../../packages/skill-engine/src/index.ts"),
         "@renderer": resolve(__dirname, "src/renderer/src"),
       },
     },

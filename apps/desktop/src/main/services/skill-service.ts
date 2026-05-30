@@ -7,6 +7,7 @@ import {
 import {
   createSkill,
   deleteSkill,
+  getAppSettings,
   getSkill,
   insertFeedback,
   listSkills,
@@ -49,6 +50,23 @@ const skillRateLimiter = new RateLimiter<{ skillId: string }>({
   keyer: (input) => input.skillId,
 });
 const runState = new Map<string, { cancelled: boolean }>();
+
+// Skill 执行助手的 system prompt——随 UI 语言本地化，避免对非中文用户固定中文指令。
+const SKILL_SYSTEM_PROMPT: Record<string, string> = {
+  zh: "你是小说写作技能执行助手。严格执行技能指令，输出简洁、可直接使用的结果。",
+  en: "You are a fiction-writing skill executor. Follow the skill instructions strictly and return concise, ready-to-use output.",
+  ja: "あなたは小説執筆スキルの実行アシスタントです。スキルの指示を厳密に守り、簡潔でそのまま使える結果を返してください。",
+};
+
+function resolveSkillSystemPrompt(): string {
+  try {
+    const ctx = getAppContext();
+    const lang = getAppSettings(ctx.db).uiLanguage;
+    return SKILL_SYSTEM_PROMPT[lang] ?? SKILL_SYSTEM_PROMPT.zh!;
+  } catch {
+    return SKILL_SYSTEM_PROMPT.zh!;
+  }
+}
 
 function emitChunk(window: BrowserWindow | null, payload: SkillChunkEvent): void {
   if (!window || window.isDestroyed()) return;
@@ -309,7 +327,7 @@ async function executeRun(options: ExecuteRunOptions): Promise<void> {
     const stream = streamText({
       providerRecord,
       apiKey,
-      systemPrompt: "你是小说写作技能执行助手。严格执行技能指令，输出简洁、可直接使用的结果。",
+      systemPrompt: resolveSkillSystemPrompt(),
       userMessage,
       temperature: skill.binding.temperature,
       maxTokens: skill.binding.maxTokens,
@@ -383,6 +401,7 @@ async function executeRun(options: ExecuteRunOptions): Promise<void> {
       chapterId: input.chapterId,
       status: "completed",
       feedbackId,
+      text: accumulatedText,
       usage,
       finishedAt: new Date().toISOString(),
     });
