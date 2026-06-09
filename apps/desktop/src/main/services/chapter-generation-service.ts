@@ -27,6 +27,7 @@ import {
 } from "./llm-runtime";
 import { buildRagBlock } from "./rag-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
+import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -42,6 +43,7 @@ interface ChapterPromptArgs {
   cardContent: string;
   prevTail: string;
   ragBlock: string;
+  voiceBlock: string;
 }
 
 function buildChapterPrompt(args: ChapterPromptArgs): { system: string; user: string } {
@@ -54,13 +56,17 @@ function buildChapterPrompt(args: ChapterPromptArgs): { system: string; user: st
     .join(" · ");
   return {
     system: [
-      "你是一位中文小说作者，正在写正文。",
-      "输出仅本章正文：纯文本（无 Markdown 标题、无 ```），段落之间空行分隔。",
+      "你是一位中文小说作者，也熟悉中国现代散文、游记散文与古典山水文章的写法。",
+      "输出仅本章正文：可以使用 Markdown 二级小标题（## 小标题）组织段落；不要使用一级标题、代码块或解释性说明。",
       "保持人物口吻与世界观连贯；自然推进情节；避免重复前文已写过的事件细节。",
+      "如果本章偏游记、见闻、散文或抒情叙述，请写得更细：分 3-6 个小节，每节有明确的小标题。",
+      "散文小节要有层次：先交代行踪或触发物，再写可感的景物细节，再落到人的心绪、记忆或顿悟；避免只堆砌形容词。",
+      "学习中国文学的气息，但不要仿写具体作家的原句：可取汪曾祺的清淡、沈从文的水气、郁达夫的行旅情绪、古典山水文的留白与节制。",
       "正文长度建议 1500-2500 字。",
       "禁止任何分析、说明、章末总结之类的元文字。",
     ].join("\n"),
     user: [
+      args.voiceBlock || "",
       args.ragBlock || "",
       `作品：${args.projectName}`,
       meta,
@@ -187,6 +193,10 @@ export async function generateChapterFromOutline(
   // RAG: query = card content + master outline tail
   const ragQuery = [cardRow.content, project.masterOutline].filter(Boolean).join("\n").slice(-600);
   const ragBlock = buildRagBlock(project.id, ragQuery);
+  const voiceBlock = buildVoiceContext({
+    db: ctx.db,
+    projectId: project.id,
+  }).before;
 
   const { providerRecord, apiKey, model } = await resolveProvider("main_generation", {
     providerId: input.providerId,
@@ -202,6 +212,7 @@ export async function generateChapterFromOutline(
     cardContent: cardRow.content,
     prevTail,
     ragBlock,
+    voiceBlock,
   });
 
   const count = Math.min(3, Math.max(1, input.candidates ?? 1));

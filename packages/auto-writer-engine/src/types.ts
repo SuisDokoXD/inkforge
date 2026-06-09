@@ -61,6 +61,8 @@ export interface PipelineRunInput {
   previousChaptersText?: string;
   /** 文风参考样本（来自 sample_libs / 用户手动选定）。 */
   styleSamples?: StyleSampleRef[];
+  /** 写作声音档案渲染出的风格约束。 */
+  voiceBlock?: string;
 }
 
 export interface StyleSampleRef {

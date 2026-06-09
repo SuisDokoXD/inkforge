@@ -586,16 +586,16 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   return (
     <div className="flex h-full flex-col">
       <div className={`flex min-h-11 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/50 px-4 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="truncate font-medium" title={chapter.title}>{chapter.title}</span>
-          <div className="hidden items-center gap-2 text-xs text-ink-400 lg:flex">
-            <span className="inline-flex items-center gap-1" title="正文有效字符数">
-              <FileText className="h-3.5 w-3.5" />
+        <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+          <span className="min-w-0 truncate font-medium" title={chapter.title}>{chapter.title}</span>
+          <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap text-xs text-ink-400 lg:flex">
+            <span className="inline-flex shrink-0 items-center gap-1" title="正文有效字符数">
+              <FileText className="h-3.5 w-3.5 shrink-0" />
               {stats.graphemes}
             </span>
-            <span title="非空段落">段落 {paragraphCount}</span>
-            <span className="inline-flex items-center gap-1" title="按约 500 字/分钟估算">
-              <BookOpen className="h-3.5 w-3.5" />
+            <span className="hidden shrink-0 xl:inline" title="非空段落">段落 {paragraphCount}</span>
+            <span className="hidden shrink-0 items-center gap-1 2xl:inline-flex" title="按约 500 字/分钟估算">
+              <BookOpen className="h-3.5 w-3.5 shrink-0" />
               {readingMinutes === 0 ? "未开始" : `约 ${readingMinutes} 分钟`}
             </span>
           </div>

@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { usePackCover } from "../../hooks/usePackCover";
 import { fallbackGradient } from "./visual-hash";
 import type { WorldPackRecord } from "@inkforge/shared";
@@ -21,6 +22,7 @@ interface WorldPackCardProps {
   selectionIndex?: number;
   onClick?(pack: WorldPackRecord): void;
   onDoubleClick?(pack: WorldPackRecord): void;
+  onDelete?(pack: WorldPackRecord): void;
 }
 
 // origin → 卡边色调：user=琥珀；fused=洋红；imported=天青
@@ -49,13 +51,14 @@ export function WorldPackCard({
   selectionIndex,
   onClick,
   onDoubleClick,
+  onDelete,
 }: WorldPackCardProps): JSX.Element {
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const [hovering, setHovering] = useState(false);
   const { dataUrl: coverUrl } = usePackCover(pack);
 
   // 鼠标位置 → 3D tilt + 径向高光定位
-  function handleMove(e: React.MouseEvent<HTMLButtonElement>): void {
+  function handleMove(e: React.MouseEvent<HTMLDivElement>): void {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -79,11 +82,18 @@ export function WorldPackCard({
   const isFused = pack.origin === "fused";
 
   return (
-    <button
+    <div
       ref={ref}
-      type="button"
+      role="button"
+      tabIndex={0}
       onClick={() => onClick?.(pack)}
       onDoubleClick={() => onDoubleClick?.(pack)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.(pack);
+        }
+      }}
       onMouseEnter={() => setHovering(true)}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
@@ -102,6 +112,21 @@ export function WorldPackCard({
       }}
       title={pack.tagline || pack.name}
     >
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(pack);
+          }}
+          className="absolute left-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-ink-900/70 text-ink-200 opacity-0 shadow-lg ring-1 ring-ink-50/15 backdrop-blur-sm transition hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
+          title={`删除卡牌「${pack.name}」`}
+          aria-label={`删除卡牌「${pack.name}」`}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       {/* 鼠标跟随径向高光 */}
       <span
         aria-hidden
@@ -148,7 +173,7 @@ export function WorldPackCard({
 
       {/* 左上角：已插槽指示 */}
       {selected && selectionIndex === undefined && (
-        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
+        <span className="absolute left-2 top-10 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
           ✓ 已插槽
         </span>
       )}
@@ -187,7 +212,7 @@ export function WorldPackCard({
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 

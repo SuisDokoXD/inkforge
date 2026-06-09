@@ -80,6 +80,34 @@ const QUESTIONS: QuestionSpec[] = [
     presets: ["几乎不用比喻", "常规比喻", "大量原创比喻"],
   },
   {
+    key: "prose_preference",
+    label: "散文偏好",
+    hint: "决定正文更像故事推进还是散文铺陈",
+    presets: ["游记散文", "抒情散文", "生活随笔", "山水小品", "叙事散文"],
+  },
+  {
+    key: "section_structure",
+    label: "结构偏好",
+    hint: "需要小标题和分节时写在这里",
+    presets: [
+      "使用 3-6 个小标题分节",
+      "每节先写所见，再写所感",
+      "按行踪推进：起程、入景、驻足、回望",
+      "不用小标题，只靠段落呼吸",
+    ],
+  },
+  {
+    key: "literary_inheritance",
+    label: "文学气息",
+    hint: "不是仿写原句，而是吸收气质",
+    presets: [
+      "中国现代散文的清淡克制",
+      "古典山水文的留白与节制",
+      "游记传统里的行踪、景物、心绪并重",
+      "白描为主，少用网络腔",
+    ],
+  },
+  {
     key: "forbidden_words",
     label: "禁用词",
     hint: "AI 写作时坚决避免使用的词（逗号分隔）",

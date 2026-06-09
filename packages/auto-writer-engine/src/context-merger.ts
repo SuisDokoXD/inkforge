@@ -17,11 +17,15 @@ interface SharedBookContext {
   globalWorldview?: string;
   previousChaptersText?: string;
   styleSamples?: StyleSampleRef[];
+  voiceBlock?: string;
   detailLevel?: "full" | "compact";
 }
 
 function appendSharedBookContext(lines: string[], ctx: SharedBookContext): void {
   const compact = ctx.detailLevel === "compact";
+  if (ctx.voiceBlock && ctx.voiceBlock.trim()) {
+    lines.push(`# 写作声音档案\n${ctx.voiceBlock.trim()}`);
+  }
   if (ctx.globalWorldview && ctx.globalWorldview.trim()) {
     const text = compact
       ? truncateForContext(ctx.globalWorldview.trim(), 900)
@@ -176,7 +180,7 @@ export function buildReflectorSystem(): string {
   return AGENT_SYSTEM_PROMPTS.reflector;
 }
 
-export interface BuildReflectorPromptInput {
+export interface BuildReflectorPromptInput extends SharedBookContext {
   segmentText: string;
   segmentIndex: number;
   criticFindingsText: string;
@@ -193,6 +197,7 @@ export function buildReflectorUser(input: BuildReflectorPromptInput): string {
         input.recentCorrections.map((c) => `- ${c.content}`).join("\n"),
     );
   }
+  appendSharedBookContext(lines, { ...input, detailLevel: "compact" });
   return lines.join("\n\n");
 }
 

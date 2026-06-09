@@ -14,6 +14,9 @@
 //   description_density    —— 极简 / 中等 / 浓墨重彩
 //   emotional_temperature  —— 冷峻 / 温和 / 热烈
 //   metaphor_style         —— 极少用比喻 / 常规比喻 / 大量原创比喻
+//   prose_preference       —— 偏爱的散文类型 / 叙述气质
+//   section_structure      —— 是否使用小标题、分节与层次推进
+//   literary_inheritance   —— 希望吸收的中国文学传统
 //   forbidden_words        —— 自由文本，逗号分隔
 //   loved_words            —— 自由文本，逗号分隔
 //   inspiration_authors    —— 自由文本，逗号分隔（"参考某某的笔调"）
@@ -42,6 +45,9 @@ const FIELD_LABELS: Record<string, string> = {
   description_density: "描写密度",
   emotional_temperature: "情感温度",
   metaphor_style: "比喻习惯",
+  prose_preference: "散文偏好",
+  section_structure: "结构偏好",
+  literary_inheritance: "文学气息",
   forbidden_words: "禁用词",
   loved_words: "偏爱词",
   inspiration_authors: "参考笔调",

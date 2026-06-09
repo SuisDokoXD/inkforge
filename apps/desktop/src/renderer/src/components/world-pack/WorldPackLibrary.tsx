@@ -76,6 +76,16 @@ export function WorldPackLibrary(): JSX.Element {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (packId: string) => worldPackApi.delete({ id: packId }),
+    onSuccess: ({ id }) => {
+      queryClient.invalidateQueries({ queryKey: ["world-packs"] });
+      queryClient.invalidateQueries({ queryKey: ["world-pack-slots"] });
+      setFusionSourceIds((cur) => cur.filter((packId) => packId !== id));
+      if (editingPackId === id) setEditingPackId(null);
+    },
+  });
+
   function handleCardClick(pack: WorldPackRecord): void {
     if (fusionMode) {
       setFusionSourceIds((cur) =>
@@ -101,6 +111,15 @@ export function WorldPackLibrary(): JSX.Element {
     if (fusionMode || !currentProjectId) return;
     if (slottedIds.has(pack.id)) return;
     slotMutation.mutate({ packId: pack.id });
+  }
+
+  function handleCardDelete(pack: WorldPackRecord): void {
+    if (deleteMutation.isPending) return;
+    const slottedHint = slottedIds.has(pack.id)
+      ? "此卡当前已插槽到项目，删除后会同时从插槽中移除。"
+      : "此操作不可撤销。";
+    if (!confirm(`删除卡牌「${pack.name}」？\n\n${slottedHint}`)) return;
+    deleteMutation.mutate(pack.id);
   }
 
   const packs = packsQuery.data ?? [];
@@ -245,6 +264,7 @@ export function WorldPackLibrary(): JSX.Element {
                     selectionIndex={fusionMode && idx >= 0 ? idx : undefined}
                     onClick={handleCardClick}
                     onDoubleClick={handleCardDoubleClick}
+                    onDelete={handleCardDelete}
                   />
                 );
               })}

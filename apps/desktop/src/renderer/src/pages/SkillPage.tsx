@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   SkillDefinition,
@@ -41,6 +41,53 @@ const ALL_TRIGGERS: SkillTriggerType[] = [
   "on-save",
   "on-chapter-end",
   "manual",
+];
+
+const TRIGGER_DESCRIPTIONS: Record<SkillTriggerType, string> = {
+  selection: "选中文本后从悬浮工具条运行，适合润色、改写、局部审校。",
+  "every-n-chars": "写到一定字数后自动运行，适合轻量提醒；不建议绑定重型生成。",
+  "on-save": "保存章节时运行，适合审校、摘要、风格检查。",
+  "on-chapter-end": "章节到末尾时运行，适合章末建议、伏笔检查。",
+  manual: "只在编辑器里手动点击运行，最稳妥，适合多数写作工具。",
+};
+
+const PROMPT_TEMPLATES = [
+  {
+    name: "温柔润色",
+    prompt: "请温柔润色以下选中文本，保留原意、语气和主要信息，只输出润色后的正文：\n\n{{selection}}",
+  },
+  {
+    name: "散文细化",
+    prompt:
+      "请把以下文字改写得更像细腻的中文散文：保留原意，增加景物、感官和心绪层次；避免空泛形容词，只输出改写结果。\n\n{{selection}}",
+  },
+  {
+    name: "续写一段",
+    prompt:
+      "请接着当前章节往下写一小段，保持人物口吻、叙事节奏和世界观一致，不要总结，不要解释。\n\n章节标题：{{chapter.title}}\n\n前文：\n{{context_before_1200}}",
+  },
+  {
+    name: "审校建议",
+    prompt:
+      "请审校以下选中文本，指出最影响阅读的 3 个问题，并给出可直接修改的建议。不要重写全文。\n\n{{selection}}",
+  },
+];
+
+const CORE_PLACEHOLDERS = [
+  { label: "选中文本", token: "{{selection}}" },
+  { label: "章节标题", token: "{{chapter.title}}" },
+  { label: "全文", token: "{{chapter.text}}" },
+  { label: "前文 1200 字", token: "{{context_before_1200}}" },
+  { label: "角色名", token: "{{character.name}}" },
+];
+
+const ADVANCED_MACROS = [
+  "{{random:雨,雪,风}}",
+  "{{roll:1d6}}",
+  "{{date}}",
+  "{{time}}",
+  "{{datetime}}",
+  "{{newline}}",
 ];
 
 interface EditorState {
@@ -119,6 +166,7 @@ export function SkillPage(): JSX.Element {
   const [previewText, setPreviewText] = useState<string>("");
   const [marketOpen, setMarketOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const skillsQuery = useQuery({
     queryKey: ["skills", filterScope],
@@ -310,6 +358,27 @@ export function SkillPage(): JSX.Element {
     setPreviewText(res.text + missingNote);
   };
 
+  const insertPromptText = (text: string) => {
+    const textarea = promptTextareaRef.current;
+    const prompt = editor.prompt ?? "";
+    const start = textarea?.selectionStart ?? prompt.length;
+    const end = textarea?.selectionEnd ?? prompt.length;
+    const nextPrompt = `${prompt.slice(0, start)}${text}${prompt.slice(end)}`;
+    setEditor({ ...editor, prompt: nextPrompt });
+    requestAnimationFrame(() => {
+      const next = promptTextareaRef.current;
+      if (!next) return;
+      const cursor = start + text.length;
+      next.focus();
+      next.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  const applyPromptTemplate = (prompt: string) => {
+    setEditor({ ...editor, prompt });
+    requestAnimationFrame(() => promptTextareaRef.current?.focus());
+  };
+
   return (
     <div className="flex h-full w-full bg-ink-900 text-ink-100">
       <aside className="flex w-72 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
@@ -466,137 +535,240 @@ export function SkillPage(): JSX.Element {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-          <div className="flex flex-col gap-5 p-4">
-            <div>
-              <label className="mb-1 block text-xs text-ink-400">
-                Prompt（占位：{"{{selection}} {{chapter.title}} {{chapter.text}} {{context_before_N}} {{character.name}} {{vars.xxx}}"}；工具宏：{"{{random:a,b,c}} {{roll:NdM}} {{time}} {{date}} {{datetime}} {{newline}}"}）
-              </label>
+          <div className="flex flex-col gap-4 p-4">
+            <section className="rounded-xl border border-ink-700/70 bg-ink-800/35 p-4 shadow-sm">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-ink-100">写作指令</h2>
+                  <p className="mt-1 text-xs text-ink-400">
+                    写清楚它要怎么处理文本。常用占位符可以点按钮插入，不需要背宏语法。
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {PROMPT_TEMPLATES.map((tpl) => (
+                    <button
+                      key={tpl.name}
+                      type="button"
+                      className="rounded-full border border-ink-600 bg-ink-900/40 px-3 py-1 text-xs text-ink-200 transition hover:border-accent-500/70 hover:bg-accent-500/15 hover:text-accent-200"
+                      onClick={() => applyPromptTemplate(tpl.prompt)}
+                    >
+                      {tpl.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <textarea
-                className="h-56 w-full resize-y rounded-md border border-ink-600 bg-ink-800 p-2 font-mono text-sm leading-relaxed focus:border-accent-500 focus:outline-none"
+                ref={promptTextareaRef}
+                className="h-64 w-full resize-y rounded-xl border border-ink-600 bg-ink-900/80 p-3 font-mono text-sm leading-relaxed shadow-inner focus:border-accent-500 focus:outline-none"
                 value={editor.prompt}
                 onChange={(e) => setEditor({ ...editor, prompt: e.target.value })}
-                placeholder="例：请温柔润色以下文字，保留原意：{{selection}}"
+                placeholder={"例：请温柔润色以下文字，保留原意，只输出改写结果：\n\n{{selection}}"}
+                aria-label="Skill Prompt"
               />
-            </div>
 
-            <div>
-              <div className="mb-2 flex items-center justify-between text-xs text-ink-400">
-                <span>变量（在 Prompt 里用 {"{{vars.<key>}}"} 引用；运行时取默认值）</span>
-                <button
-                  className="rounded-md border border-ink-600 px-2 py-0.5 hover:bg-ink-700"
-                  onClick={() =>
-                    setEditor({
-                      ...editor,
-                      variables: [
-                        ...editor.variables,
-                        { key: "", label: "", required: false, defaultValue: "" },
-                      ],
-                    })
-                  }
-                >
-                  + 添加变量
-                </button>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-ink-500">插入上下文</span>
+                {CORE_PLACEHOLDERS.map((item) => (
+                  <button
+                    key={item.token}
+                    type="button"
+                    className="rounded-full border border-ink-700 bg-ink-900/50 px-2.5 py-1 text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
+                    onClick={() => insertPromptText(item.token)}
+                    title={item.token}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
-              <div className="flex flex-col gap-2 rounded-md border border-ink-700 bg-ink-800/40 p-3">
+
+              <details className="mt-3 rounded-lg border border-ink-700/70 bg-ink-900/30 px-3 py-2">
+                <summary className="cursor-pointer text-xs text-ink-400">
+                  高级宏：随机、骰子、日期、换行
+                </summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ADVANCED_MACROS.map((macro) => (
+                    <button
+                      key={macro}
+                      type="button"
+                      className="rounded-md border border-ink-700 bg-ink-950/60 px-2 py-1 font-mono text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
+                      onClick={() => insertPromptText(macro)}
+                    >
+                      {macro}
+                    </button>
+                  ))}
+                </div>
+              </details>
+            </section>
+
+            <details
+              className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4"
+              open={editor.variables.length > 0}
+            >
+              <summary className="cursor-pointer text-sm font-semibold text-ink-200">
+                自定义变量
+                <span className="ml-2 rounded-full bg-ink-900/70 px-2 py-0.5 text-xs font-normal text-ink-400">
+                  {editor.variables.length}
+                </span>
+              </summary>
+              <div className="mt-3 rounded-lg border border-ink-700 bg-ink-900/35 p-3">
+                <div className="mb-3 flex items-center justify-between gap-3 text-xs text-ink-400">
+                  <span>只有需要可复用参数时再加，例如情绪、语气、目标字数。</span>
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-md border border-ink-600 px-2 py-1 hover:bg-ink-700"
+                    onClick={() =>
+                      setEditor({
+                        ...editor,
+                        variables: [
+                          ...editor.variables,
+                          { key: "", label: "", required: false, defaultValue: "" },
+                        ],
+                      })
+                    }
+                  >
+                    + 添加变量
+                  </button>
+                </div>
                 {editor.variables.length === 0 && (
-                  <div className="text-xs text-ink-500">暂无变量。</div>
+                  <div className="rounded-md border border-dashed border-ink-700 px-3 py-4 text-center text-xs text-ink-500">
+                    多数写作 Skill 不需要变量。直接用上面的占位符就够了。
+                  </div>
                 )}
-                {editor.variables.map((v, idx) => (
-                  <div key={idx} className="flex flex-wrap items-center gap-2 text-sm">
-                    <input
-                      className="w-28 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
-                      placeholder="变量名"
-                      value={v.key}
-                      onChange={(e) => {
-                        const next = [...editor.variables];
-                        next[idx] = { ...next[idx]!, key: e.target.value };
-                        setEditor({ ...editor, variables: next });
-                      }}
-                    />
-                    <input
-                      className="w-32 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
-                      placeholder="显示名"
-                      value={v.label}
-                      onChange={(e) => {
-                        const next = [...editor.variables];
-                        next[idx] = { ...next[idx]!, label: e.target.value };
-                        setEditor({ ...editor, variables: next });
-                      }}
-                    />
-                    <input
-                      className="flex-1 rounded border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
-                      placeholder="默认值"
-                      value={v.defaultValue ?? ""}
-                      onChange={(e) => {
-                        const next = [...editor.variables];
-                        next[idx] = { ...next[idx]!, defaultValue: e.target.value };
-                        setEditor({ ...editor, variables: next });
-                      }}
-                    />
-                    <label className="flex items-center gap-1 text-xs text-ink-400">
+                <div className="flex flex-col gap-2">
+                  {editor.variables.map((v, idx) => (
+                    <div key={idx} className="flex flex-wrap items-center gap-2 text-sm">
                       <input
-                        type="checkbox"
-                        checked={v.required}
+                        className="w-28 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
+                        placeholder="变量名"
+                        value={v.key}
+                        aria-label="变量名"
                         onChange={(e) => {
                           const next = [...editor.variables];
-                          next[idx] = { ...next[idx]!, required: e.target.checked };
+                          next[idx] = { ...next[idx]!, key: e.target.value };
                           setEditor({ ...editor, variables: next });
                         }}
                       />
-                      必填
-                    </label>
-                    <button
-                      className="rounded border border-red-600/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/30"
-                      onClick={() =>
-                        setEditor({
-                          ...editor,
-                          variables: editor.variables.filter((_, i) => i !== idx),
-                        })
-                      }
-                    >
-                      删除
-                    </button>
-                  </div>
-                ))}
+                      <input
+                        className="w-32 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
+                        placeholder="显示名"
+                        value={v.label}
+                        aria-label="变量显示名"
+                        onChange={(e) => {
+                          const next = [...editor.variables];
+                          next[idx] = { ...next[idx]!, label: e.target.value };
+                          setEditor({ ...editor, variables: next });
+                        }}
+                      />
+                      <input
+                        className="min-w-40 flex-1 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
+                        placeholder="默认值"
+                        value={v.defaultValue ?? ""}
+                        aria-label="变量默认值"
+                        onChange={(e) => {
+                          const next = [...editor.variables];
+                          next[idx] = { ...next[idx]!, defaultValue: e.target.value };
+                          setEditor({ ...editor, variables: next });
+                        }}
+                      />
+                      {v.key.trim() && (
+                        <button
+                          type="button"
+                          className="rounded border border-ink-700 px-2 py-1 font-mono text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
+                          onClick={() => insertPromptText(`{{vars.${v.key.trim()}}}`)}
+                        >
+                          插入
+                        </button>
+                      )}
+                      <label className="flex items-center gap-1 text-xs text-ink-400">
+                        <input
+                          type="checkbox"
+                          checked={v.required}
+                          onChange={(e) => {
+                            const next = [...editor.variables];
+                            next[idx] = { ...next[idx]!, required: e.target.checked };
+                            setEditor({ ...editor, variables: next });
+                          }}
+                        />
+                        必填
+                      </label>
+                      <button
+                        type="button"
+                        className="rounded border border-red-600/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/30"
+                        onClick={() =>
+                          setEditor({
+                            ...editor,
+                            variables: editor.variables.filter((_, i) => i !== idx),
+                          })
+                        }
+                      >
+                        删除
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            </details>
 
-            <div>
-              <div className="mb-2 text-xs text-ink-400">触发规则</div>
-              <div className="flex flex-col gap-2 rounded-md border border-ink-700 bg-ink-800/40 p-3">
+            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-ink-100">触发方式</h2>
+                <p className="mt-1 text-xs text-ink-400">
+                  默认建议只开“手动触发”。自动触发适合审校提醒，不适合长生成。
+                </p>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                 {ALL_TRIGGERS.map((type) => {
                   const existing = editor.triggers.find((t) => t.type === type);
                   return (
-                    <div key={type} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={!!existing}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setEditor({
-                              ...editor,
-                              triggers: upsertTrigger(editor.triggers, type, {
-                                enabled: true,
-                                everyNChars: type === "every-n-chars" ? 200 : undefined,
-                                debounceMs: type === "every-n-chars" ? 10_000 : undefined,
-                                cooldownMs: type === "every-n-chars" ? 30_000 : undefined,
-                              }),
-                            });
-                          } else {
-                            setEditor({ ...editor, triggers: removeTrigger(editor.triggers, type) });
-                          }
-                        }}
-                      />
-                      <span className="w-24">{TRIGGER_LABELS[type]}</span>
+                    <div
+                      key={type}
+                      className={`rounded-lg border p-3 transition ${
+                        existing
+                          ? "border-accent-500/50 bg-accent-500/10"
+                          : "border-ink-700 bg-ink-900/30"
+                      }`}
+                    >
+                      <label className="flex cursor-pointer items-start gap-2">
+                        <input
+                          className="mt-1"
+                          type="checkbox"
+                          checked={!!existing}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditor({
+                                ...editor,
+                                triggers: upsertTrigger(editor.triggers, type, {
+                                  enabled: true,
+                                  everyNChars: type === "every-n-chars" ? 200 : undefined,
+                                  debounceMs: type === "every-n-chars" ? 10_000 : undefined,
+                                  cooldownMs: type === "every-n-chars" ? 30_000 : undefined,
+                                }),
+                              });
+                            } else {
+                              setEditor({ ...editor, triggers: removeTrigger(editor.triggers, type) });
+                            }
+                          }}
+                        />
+                        <span>
+                          <span className="block text-sm font-medium text-ink-100">
+                            {TRIGGER_LABELS[type]}
+                          </span>
+                          <span className="mt-1 block text-xs leading-relaxed text-ink-400">
+                            {TRIGGER_DESCRIPTIONS[type]}
+                          </span>
+                        </span>
+                      </label>
                       {type === "every-n-chars" && existing && (
-                        <div className="flex items-center gap-2 text-xs text-ink-400">
+                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-ink-700/70 pt-3 text-xs text-ink-400">
                           每
                           <input
-                            className="w-16 rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-right text-ink-100"
+                            className="w-16 rounded border border-ink-600 bg-ink-950/70 px-1 py-0.5 text-right text-ink-100"
                             type="number"
                             value={existing.everyNChars ?? 200}
                             min={50}
                             max={5000}
+                            aria-label="自动触发字数间隔"
                             onChange={(e) =>
                               setEditor({
                                 ...editor,
@@ -606,13 +778,14 @@ export function SkillPage(): JSX.Element {
                               })
                             }
                           />
-                          字 · debounce
+                          字触发，至少间隔
                           <input
-                            className="w-20 rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-right text-ink-100"
+                            className="w-20 rounded border border-ink-600 bg-ink-950/70 px-1 py-0.5 text-right text-ink-100"
                             type="number"
                             value={existing.debounceMs ?? 10_000}
                             min={0}
                             step={1000}
+                            aria-label="自动触发防抖毫秒"
                             onChange={(e) =>
                               setEditor({
                                 ...editor,
@@ -629,7 +802,7 @@ export function SkillPage(): JSX.Element {
                   );
                 })}
               </div>
-            </div>
+            </section>
 
             <div>
               <div className="mb-2 text-xs text-ink-400">模型绑定 / 输出</div>

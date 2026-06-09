@@ -57,6 +57,7 @@ import { resolveSceneBinding } from "./scene-binding-service";
 import { createSnapshot } from "./snapshot-service";
 import { appendAiEntry } from "./chapter-log-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
+import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 
 interface RuntimeController {
   runId: string;
@@ -263,6 +264,10 @@ export async function startAutoWriter(
     chapter,
   );
   const styleSamples = buildStyleSamples(ctx.db, project.id, input.userIdeas);
+  const voiceBlock = buildVoiceContext({
+    db: ctx.db,
+    projectId: project.id,
+  }).before;
 
   const deps: PipelineDeps = {
     invokeAgent: async (agentInput, _onDelta) => {
@@ -374,6 +379,7 @@ export async function startAutoWriter(
           globalWorldview,
           previousChaptersText,
           styleSamples,
+          voiceBlock,
         },
         deps,
       );
