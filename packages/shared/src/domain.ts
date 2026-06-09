@@ -85,6 +85,7 @@ export type AppSettingKey =
   | "editorWidth"
   | "typewriterMode"
   | "autoIndent"
+  | "spellcheck"
   | "focusMode";
 
 export interface AppSettings {
@@ -101,6 +102,7 @@ export interface AppSettings {
   editorWidth: "narrow" | "medium" | "wide";
   typewriterMode: boolean;
   autoIndent: boolean;
+  spellcheck: boolean;
   focusMode: boolean;
 }
 

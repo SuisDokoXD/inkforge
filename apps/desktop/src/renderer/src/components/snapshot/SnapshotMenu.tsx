@@ -12,6 +12,8 @@ export interface SnapshotMenuProps {
   projectId: string;
   /** 还原后回调：上层用它刷新编辑器内容 / chapter store。 */
   onRestored?: (response: SnapshotRestoreResponse) => void;
+  /** 创建快照或还原快照前调用；编辑器可借此先落盘当前未保存正文。 */
+  onBeforeSnapshotAction?: () => Promise<void> | void;
   /** 关闭菜单。父组件控制打开状态。 */
   onClose?: () => void;
   /** 列表上限，默认 50。 */
@@ -60,12 +62,14 @@ export function SnapshotMenu({
   chapterId,
   projectId,
   onRestored,
+  onBeforeSnapshotAction,
   onClose,
   limit = 50,
   kinds,
 }: SnapshotMenuProps): JSX.Element {
   const queryClient = useQueryClient();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
   const listQuery = useQuery({
     queryKey: ["snapshots", chapterId, kinds, limit],
@@ -99,18 +103,34 @@ export function SnapshotMenu({
 
   const items = useMemo(() => listQuery.data ?? [], [listQuery.data]);
 
-  const handleManualBackup = () => {
+  const runBeforeSnapshotAction = async (): Promise<boolean> => {
+    if (!onBeforeSnapshotAction) return true;
+    setPreparing(true);
+    try {
+      await onBeforeSnapshotAction();
+      return true;
+    } catch (error) {
+      window.alert(`当前正文保存失败，无法继续快照操作：${error instanceof Error ? error.message : String(error)}`);
+      return false;
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const handleManualBackup = async () => {
     const label = window.prompt("为这次手动备份命名（可留空）：", "");
     if (label === null) return;
+    if (!(await runBeforeSnapshotAction())) return;
     createMut.mutate(label.trim() || null);
   };
 
-  const handleRestore = (snap: ChapterSnapshotRecord) => {
+  const handleRestore = async (snap: ChapterSnapshotRecord) => {
     const ok = window.confirm(
       `还原到「${snap.label || KIND_LABELS[snap.kind]}」？\n\n` +
         `当前正文将先打一个 pre-restore 快照，可再次撤销。`,
     );
     if (!ok) return;
+    if (!(await runBeforeSnapshotAction())) return;
     setRestoringId(snap.id);
     restoreMut.mutate(snap.id);
   };
@@ -142,11 +162,11 @@ export function SnapshotMenu({
 
       <button
         type="button"
-        onClick={handleManualBackup}
-        disabled={createMut.isPending}
+        onClick={() => void handleManualBackup()}
+        disabled={createMut.isPending || preparing}
         className="rounded-md border border-ink-600 bg-ink-700 px-3 py-2 text-left text-sm hover:bg-ink-600 disabled:opacity-50"
       >
-        {createMut.isPending ? "保存中…" : "📌 手动备份当前章节"}
+        {preparing ? "同步正文中…" : createMut.isPending ? "保存中…" : "📌 手动备份当前章节"}
       </button>
 
       <div className="max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
@@ -191,8 +211,8 @@ export function SnapshotMenu({
                 <div className="ml-auto flex gap-1">
                   <button
                     type="button"
-                    onClick={() => handleRestore(snap)}
-                    disabled={restoreMut.isPending}
+                    onClick={() => void handleRestore(snap)}
+                    disabled={restoreMut.isPending || preparing}
                     className="rounded bg-sky-500/20 px-2 py-0.5 text-sky-200 hover:bg-sky-500/30 disabled:opacity-50"
                   >
                     {restoringId === snap.id ? "还原中…" : "↶ 还原"}

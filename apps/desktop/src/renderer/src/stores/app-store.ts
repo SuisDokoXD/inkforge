@@ -150,6 +150,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   editorWidth: "medium",
   typewriterMode: false,
   autoIndent: true,
+  spellcheck: true,
   focusMode: false,
 };
 

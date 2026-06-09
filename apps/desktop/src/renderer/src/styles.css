@@ -133,10 +133,25 @@ textarea::selection {
   outline: none !important;
   min-height: 100%;
   padding: 1.5rem 0;
+  position: relative;
+  tab-size: 2;
+  text-rendering: optimizeLegibility;
+  caret-color: rgb(var(--accent-400));
+  overflow-wrap: anywhere;
+}
+
+.ProseMirror[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  left: 0;
+  top: 1.5rem;
+  color: rgb(var(--ink-500));
+  pointer-events: none;
 }
 
 .ProseMirror p {
   margin: 0 0 0.5em 0;
+  min-height: 1.2em;
 }
 
 .ProseMirror p:last-child {
@@ -241,4 +256,3 @@ html.win-resizing *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-

@@ -1,5 +1,6 @@
 import * as crypto from "crypto";
 import * as fs from "fs";
+import { createRequire } from "module";
 import * as path from "path";
 
 const SERVICE = "inkforge";
@@ -12,15 +13,15 @@ type KeytarModule = {
 };
 
 let keytarPromise: Promise<KeytarModule | null> | null = null;
+const optionalRequire = createRequire(__filename);
 
 function loadKeytar(): Promise<KeytarModule | null> {
   if (keytarPromise) return keytarPromise;
   keytarPromise = (async () => {
     try {
-      // Dynamic require so typecheck does not fail when keytar is absent.
+      // Optional require so typecheck does not fail when keytar is absent.
       // Also tolerates native-module load failure on systems without a keychain.
-      const req = eval("require") as NodeRequire;
-      const mod = req("keytar") as KeytarModule & { default?: KeytarModule };
+      const mod = optionalRequire("keytar") as KeytarModule & { default?: KeytarModule };
       return mod.default ?? mod;
     } catch {
       return null;

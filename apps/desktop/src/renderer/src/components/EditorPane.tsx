@@ -1,9 +1,31 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ChapterRecord, ProviderRecord, SkillDefinition, SkillOutputTarget } from "@inkforge/shared";
+import type {
+  ChapterRecord,
+  ProviderRecord,
+  SkillDefinition,
+  SkillOutputTarget,
+  SnapshotRestoreResponse,
+} from "@inkforge/shared";
 import { computeWordStats } from "@inkforge/shared";
 import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/editor";
 import type { Editor } from "@tiptap/react";
+import {
+  Archive,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileText,
+  Focus,
+  RefreshCw,
+  RotateCcw,
+  RotateCw,
+  Save,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { chapterApi, fsApi, llmApi, skillApi } from "../lib/api";
 import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
@@ -11,6 +33,7 @@ import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
 import { EmptyState } from "./EmptyState";
+import { SnapshotMenu } from "./snapshot";
 
 interface EditorPaneProps {
   chapter: ChapterRecord | null;
@@ -19,6 +42,15 @@ interface EditorPaneProps {
   // 让原本只有一行灰字的空旷编辑区变成有指引、有落点的画面。
   onCreateChapter?: () => void;
   creatingChapter?: boolean;
+}
+
+type SavePhase = "saved" | "queued" | "saving" | "error";
+
+interface SaveRequest {
+  chapterId: string;
+  projectId: string;
+  content: string;
+  wordCount: number;
 }
 
 export function EditorPane({ chapter, providers, onCreateChapter, creatingChapter }: EditorPaneProps): JSX.Element {
@@ -35,6 +67,12 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
   const [skillStatus, setSkillStatus] = useState<string | null>(null);
   const [outlineDialogOpen, setOutlineDialogOpen] = useState(false);
+  const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findText, setFindText] = useState("");
+  const [savePhase, setSavePhase] = useState<SavePhase>("saved");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [recoveryPrompt, setRecoveryPrompt] = useState<
     { content: string; savedAt: number } | null
   >(null);
@@ -45,6 +83,10 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   const loadedChapterIdRef = useRef<string | null>(null);
   const activeAnalysisChapterRef = useRef<string | null>(null);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
+  const snapshotMenuRef = useRef<HTMLDivElement | null>(null);
+  const findInputRef = useRef<HTMLInputElement | null>(null);
+  const saveQueueRef = useRef<SaveRequest | null>(null);
+  const saveLoopPromiseRef = useRef<Promise<void> | null>(null);
   const activeSkillRunRef = useRef<{ runId: string; skillName: string; output: SkillOutputTarget } | null>(null);
   const handleEditorReady = useCallback((editor: Editor | null) => {
     setEditorInstance(editor);
@@ -62,6 +104,9 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
       setLoaded(false);
       loadedChapterIdRef.current = null;
       setRecoveryPrompt(null);
+      setSavePhase("saved");
+      setSaveError(null);
+      setLastSavedAt(null);
       return;
     }
     // Only (re)seed content when we actually switch chapters. Without this guard
@@ -84,6 +129,11 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
       setContent(initialContent);
       lastSavedRef.current = readQuery.data.content;
       lastAutosavedRef.current = readQuery.data.content;
+      setSavePhase(initialContent === readQuery.data.content ? "saved" : "queued");
+      setSaveError(null);
+      setLastSavedAt(
+        readQuery.data.chapter.updatedAt ? new Date(readQuery.data.chapter.updatedAt).getTime() : Date.now(),
+      );
       setLoaded(true);
       loadedChapterIdRef.current = chapter.id;
       // Peek autosave sidecar; if newer than DB copy, offer recovery.
@@ -121,40 +171,139 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
 
   useEffect(() => () => setCurrentChapterStats(null), [setCurrentChapterStats]);
 
-  const saveMutation = useMutation({
-    mutationFn: (payload: { content: string; wordCount: number }) => {
-      if (!chapter) return Promise.reject(new Error("No chapter"));
-      return chapterApi.update({
-        id: chapter.id,
-        wordCount: payload.wordCount,
-        content: payload.content,
-      });
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["chapters"] });
-      if (chapter) {
-        void queryClient.invalidateQueries({ queryKey: ["daily-progress", chapter.projectId] });
-        void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
+  const drainSaveQueue = useCallback((): Promise<void> => {
+    if (saveLoopPromiseRef.current) return saveLoopPromiseRef.current;
+
+    const loop = async (): Promise<void> => {
+      while (saveQueueRef.current) {
+        const request = saveQueueRef.current;
+        saveQueueRef.current = null;
+        setSavePhase("saving");
+        setSaveError(null);
+        try {
+          await chapterApi.update({
+            id: request.chapterId,
+            wordCount: request.wordCount,
+            content: request.content,
+          });
+          if (loadedChapterIdRef.current === request.chapterId) {
+            lastSavedRef.current = request.content;
+            setLastSavedAt(Date.now());
+            if (contentRef.current === request.content) {
+              lastAutosavedRef.current = request.content;
+              setSavePhase("saved");
+              void chapterApi.autosaveClear({ id: request.chapterId }).catch(() => {});
+            } else {
+              setSavePhase("queued");
+            }
+          }
+          void queryClient.invalidateQueries({ queryKey: ["chapters", request.projectId] });
+          void queryClient.invalidateQueries({ queryKey: ["daily-progress", request.projectId] });
+        } catch (err) {
+          if (!saveQueueRef.current) {
+            saveQueueRef.current = request;
+          }
+          setSavePhase("error");
+          setSaveError(err instanceof Error ? err.message : String(err));
+          throw err;
+        }
       }
+    };
+
+    const promise = loop().finally(() => {
+      saveLoopPromiseRef.current = null;
+    });
+    saveLoopPromiseRef.current = promise;
+    return promise;
+  }, [queryClient]);
+
+  const queueSave = useCallback(
+    (request: SaveRequest): Promise<void> => {
+      saveQueueRef.current = request;
+      setSaveError(null);
+      setSavePhase("queued");
+      return drainSaveQueue();
     },
-  });
+    [drainSaveQueue],
+  );
+
+  const buildCurrentSaveRequest = useCallback((): SaveRequest | null => {
+    if (!chapter || !loaded) return null;
+    const snapshot = contentRef.current;
+    return {
+      chapterId: chapter.id,
+      projectId: chapter.projectId,
+      content: snapshot,
+      wordCount: computeWordCount(snapshot).graphemes,
+    };
+  }, [chapter, loaded]);
+
+  const flushCurrentContent = useCallback(async (): Promise<void> => {
+    const request = buildCurrentSaveRequest();
+    if (!request) return;
+    if (request.content === lastSavedRef.current && !saveQueueRef.current) return;
+    await queueSave(request);
+  }, [buildCurrentSaveRequest, queueSave]);
 
   useEffect(() => {
     if (!chapter || !loaded) return;
     if (content === lastSavedRef.current) return;
+    setSavePhase("queued");
+    const snapshot = content;
     const handle = setTimeout(() => {
-      lastSavedRef.current = content;
-      saveMutation.mutate({ content, wordCount: stats.graphemes });
+      void queueSave({
+        chapterId: chapter.id,
+        projectId: chapter.projectId,
+        content: snapshot,
+        wordCount: computeWordCount(snapshot).graphemes,
+      }).catch(() => {});
     }, 1200);
     return () => clearTimeout(handle);
-  }, [content, chapter, loaded, stats.graphemes, saveMutation]);
+  }, [content, chapter, loaded, queueSave]);
 
   const handleManualSave = useCallback(() => {
-    if (!chapter || !loaded) return;
-    if (content === lastSavedRef.current) return;
-    lastSavedRef.current = content;
-    saveMutation.mutate({ content, wordCount: stats.graphemes });
-  }, [chapter, loaded, content, stats.graphemes, saveMutation]);
+    void flushCurrentContent().catch(() => {});
+  }, [flushCurrentContent]);
+
+  const runFind = useCallback(
+    (backwards = false) => {
+      const term = findText.trim();
+      if (!term) return;
+      editorInstance?.commands.focus();
+      const finder = (window as unknown as {
+        find?: (
+          searchString: string,
+          caseSensitive?: boolean,
+          backwards?: boolean,
+          wrapAround?: boolean,
+          wholeWord?: boolean,
+          searchInFrames?: boolean,
+          showDialog?: boolean,
+        ) => boolean;
+      }).find;
+      finder?.(term, false, backwards, true, false, false, false);
+    },
+    [editorInstance, findText],
+  );
+
+  useEffect(() => {
+    if (!findOpen) return;
+    window.setTimeout(() => {
+      findInputRef.current?.focus();
+      findInputRef.current?.select();
+    }, 0);
+  }, [findOpen]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFindOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -167,22 +316,41 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
     return () => window.removeEventListener("keydown", handler);
   }, [handleManualSave]);
 
+  const writeAutosaveSidecar = useCallback(() => {
+    if (!chapter || !loaded) return;
+    const snapshot = contentRef.current;
+    if (snapshot === lastSavedRef.current || snapshot === lastAutosavedRef.current) return;
+    void chapterApi
+      .autosaveWrite({ id: chapter.id, content: snapshot })
+      .then(() => {
+        lastAutosavedRef.current = snapshot;
+      })
+      .catch(() => {});
+  }, [chapter, loaded]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => writeAutosaveSidecar();
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") writeAutosaveSidecar();
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [writeAutosaveSidecar]);
+
   // Disk-autosave sidecar every ~5s while typing. Runs in parallel to the 1.2s
   // DB save so that a crash between DB saves still leaves a recoverable copy.
   useEffect(() => {
     if (!chapter || !loaded) return;
     if (content === lastAutosavedRef.current) return;
     const handle = setTimeout(() => {
-      const snapshot = content;
-      void chapterApi
-        .autosaveWrite({ id: chapter.id, content: snapshot })
-        .then(() => {
-          lastAutosavedRef.current = snapshot;
-        })
-        .catch(() => {});
+      writeAutosaveSidecar();
     }, 5000);
     return () => clearTimeout(handle);
-  }, [content, chapter, loaded]);
+  }, [content, chapter, loaded, writeAutosaveSidecar]);
 
   const resolvedProviderId = useMemo(() => {
     if (activeProviderId && providers.some((p) => p.id === activeProviderId)) return activeProviderId;
@@ -262,6 +430,18 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   }, [skillMenuOpen]);
 
   useEffect(() => {
+    if (!snapshotMenuOpen) return;
+    const handler = (event: MouseEvent) => {
+      if (!snapshotMenuRef.current) return;
+      if (!snapshotMenuRef.current.contains(event.target as Node)) {
+        setSnapshotMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [snapshotMenuOpen]);
+
+  useEffect(() => {
     const offDone = skillApi.onDone((payload) => {
       const active = activeSkillRunRef.current;
       if (!active || payload.runId !== active.runId) return;
@@ -337,6 +517,53 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
     return () => window.removeEventListener("keydown", handler);
   }, [focusMode, patchSettings]);
 
+  const paragraphCount = useMemo(() => {
+    return content.split(/\n+/).filter((line) => line.trim().length > 0).length;
+  }, [content]);
+
+  const readingMinutes = useMemo(() => {
+    if (stats.graphemes === 0) return 0;
+    return Math.max(1, Math.ceil(stats.graphemes / 500));
+  }, [stats.graphemes]);
+
+  const saveStatusLabel = useMemo(() => {
+    if (savePhase === "saving") return "保存中…";
+    if (savePhase === "queued") return "等待保存";
+    if (savePhase === "error") return `保存失败${saveError ? `：${saveError}` : ""}`;
+    if (!lastSavedAt) return "已保存";
+    const seconds = Math.max(0, Math.round((Date.now() - lastSavedAt) / 1000));
+    if (seconds < 5) return "刚刚保存";
+    if (seconds < 60) return `${seconds} 秒前保存`;
+    return `${Math.floor(seconds / 60)} 分钟前保存`;
+  }, [lastSavedAt, saveError, savePhase]);
+
+  const saveStatusClass =
+    savePhase === "error"
+      ? "text-red-300"
+      : savePhase === "saving" || savePhase === "queued"
+        ? "text-accent-300"
+        : "text-ink-500";
+
+  const handleSnapshotRestored = useCallback(
+    (response: SnapshotRestoreResponse) => {
+      if (!chapter) return;
+      setContent(response.chapterContent);
+      contentCacheRef.current.set(chapter.id, response.chapterContent);
+      lastSavedRef.current = response.chapterContent;
+      lastAutosavedRef.current = response.chapterContent;
+      setSavePhase("saved");
+      setSaveError(null);
+      setLastSavedAt(Date.now());
+      setRecoveryPrompt(null);
+      setSnapshotMenuOpen(false);
+      void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
+      void queryClient.invalidateQueries({ queryKey: ["chapter-content", chapter.id] });
+      void queryClient.invalidateQueries({ queryKey: ["chapters", chapter.projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["daily-progress", chapter.projectId] });
+    },
+    [chapter, queryClient],
+  );
+
   if (!chapter) {
     return (
       <EmptyState
@@ -358,18 +585,27 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex items-center justify-between border-b border-ink-700 bg-ink-800/50 px-6 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100" : ""}`}>
-        <div className="flex items-center gap-3">
-          <span className="font-medium">{chapter.title}</span>
+      <div className={`flex min-h-11 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/50 px-4 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="truncate font-medium" title={chapter.title}>{chapter.title}</span>
+          <div className="hidden items-center gap-2 text-xs text-ink-400 lg:flex">
+            <span className="inline-flex items-center gap-1" title="正文有效字符数">
+              <FileText className="h-3.5 w-3.5" />
+              {stats.graphemes}
+            </span>
+            <span title="非空段落">段落 {paragraphCount}</span>
+            <span className="inline-flex items-center gap-1" title="按约 500 字/分钟估算">
+              <BookOpen className="h-3.5 w-3.5" />
+              {readingMinutes === 0 ? "未开始" : `约 ${readingMinutes} 分钟`}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-ink-300">
-          <span>汉字 {stats.chinese}</span>
-          <span>词 {stats.words}</span>
-          <span>合计 {stats.graphemes}</span>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-ink-300">
+          <span className="hidden text-ink-400 xl:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
           {/* v20: 显式撤回/重做按钮（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
               onClick={() => {
                 const e = editorInstance as unknown as {
                   commands?: { undo?: () => boolean };
@@ -379,10 +615,11 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
               disabled={!editorInstance}
               title="撤回（Ctrl+Z）— 包括手输、黏贴、AI 润色"
             >
-              ↶ 撤回
+              <RotateCcw className="h-3.5 w-3.5" />
+              撤回
             </button>
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
+              className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
               onClick={() => {
                 const e = editorInstance as unknown as {
                   commands?: { redo?: () => boolean };
@@ -392,35 +629,73 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
               disabled={!editorInstance}
               title="重做（Ctrl+Shift+Z）"
             >
-              ↷ 重做
+              <RotateCw className="h-3.5 w-3.5" />
+              重做
             </button>
           </div>
           <button
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${
+              findOpen ? "border-accent-500 text-accent-300" : "border-ink-600"
+            }`}
+            onClick={() => setFindOpen((v) => !v)}
+            title="查找正文（Ctrl+F）"
+          >
+            <Search className="h-3.5 w-3.5" />
+            查找
+          </button>
+          <button
+            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={handleManualSave}
             title="保存（Ctrl+S）"
           >
+            <Save className="h-3.5 w-3.5" />
             保存
           </button>
+          <div ref={snapshotMenuRef} className="relative">
+            <button
+              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${
+                snapshotMenuOpen ? "border-accent-500 text-accent-300" : "border-ink-600"
+              }`}
+              onClick={() => setSnapshotMenuOpen((v) => !v)}
+              title="章节快照：手动备份 / 还原历史版本"
+            >
+              <Archive className="h-3.5 w-3.5" />
+              快照
+            </button>
+            {snapshotMenuOpen && (
+              <div className="absolute right-0 top-full z-40 mt-2">
+                <SnapshotMenu
+                  chapterId={chapter.id}
+                  projectId={chapter.projectId}
+                  onBeforeSnapshotAction={flushCurrentContent}
+                  onRestored={handleSnapshotRestored}
+                  onClose={() => setSnapshotMenuOpen(false)}
+                />
+              </div>
+            )}
+          </div>
           <button
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={handleExport}
             title="导出为 Markdown 文件"
           >
+            <Download className="h-3.5 w-3.5" />
             导出
           </button>
           <button
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={handleManualAnalyze}
           >
-            手动分析
+            <RefreshCw className="h-3.5 w-3.5" />
+            分析
           </button>
           <button
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={() => setOutlineDialogOpen(true)}
             title="基于章节大纲卡 AI 生成本章正文"
           >
-            📋 从大纲生成
+            <Sparkles className="h-3.5 w-3.5" />
+            大纲生成
           </button>
           <div ref={skillMenuRef} className="relative">
             <button
@@ -429,11 +704,12 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
               disabled={manualSkills.length === 0}
               title={
                 manualSkills.length === 0
-                  ? "暂无可手动运行的 Skill（去 Skill 页创建或启用「手动触发」）"
+                ? "暂无可手动运行的 Skill（去 Skill 页创建或启用「手动触发」）"
                   : "运行一个 Skill"
               }
             >
-              跑 Skill
+              <Sparkles className="h-3.5 w-3.5" />
+              Skill
               <span className="text-[10px] opacity-70">▾</span>
             </button>
             {skillMenuOpen && manualSkills.length > 0 && (
@@ -454,24 +730,66 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
               </div>
             )}
           </div>
-          <span className="text-ink-500">
-            {skillStatus ??
-              exportStatus ??
-              (saveMutation.isPending
-                ? "保存中…"
-                : saveMutation.isError
-                  ? "保存失败"
-                  : "已保存")}
+          <span className={`max-w-56 truncate ${saveStatusClass}`} title={skillStatus ?? exportStatus ?? saveStatusLabel}>
+            {skillStatus ?? exportStatus ?? saveStatusLabel}
           </span>
           <button
-            className={`rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-accent-500 text-accent-400" : "border-ink-600"}`}
+            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-accent-500 text-accent-400" : "border-ink-600"}`}
             onClick={() => patchSettings({ focusMode: !focusMode })}
             title="专注模式（F11）"
           >
+            <Focus className="h-3.5 w-3.5" />
             {focusMode ? "退出专注" : "专注"}
           </button>
         </div>
       </div>
+      {findOpen && (
+        <div className="flex items-center justify-end gap-2 border-b border-ink-700 bg-ink-900/50 px-4 py-2 text-xs text-ink-300">
+          <div className="flex w-full max-w-md items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 py-1 focus-within:border-accent-500">
+            <Search className="h-3.5 w-3.5 text-ink-500" />
+            <input
+              ref={findInputRef}
+              className="min-w-0 flex-1 bg-transparent text-sm text-ink-100 outline-none placeholder:text-ink-500"
+              value={findText}
+              onChange={(e) => setFindText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  runFind(e.shiftKey);
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setFindOpen(false);
+                }
+              }}
+              placeholder="在当前章节中查找"
+            />
+            <button
+              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-40"
+              onClick={() => runFind(true)}
+              disabled={!findText.trim()}
+              title="上一个"
+            >
+              <ChevronUp className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-40"
+              onClick={() => runFind(false)}
+              disabled={!findText.trim()}
+              title="下一个"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+            <button
+              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+              onClick={() => setFindOpen(false)}
+              title="关闭查找"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
         <div className={`mx-auto ${editorWidthClass} px-8 py-8`}>
           {recoveryPrompt && (
@@ -509,11 +827,13 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
             value={content}
             onChange={(text) => setContent(text)}
             placeholder="在这里写下第一行……"
+            autofocus
             onEditorReady={handleEditorReady}
             autoIndent={settings.autoIndent}
             typewriterMode={settings.typewriterMode}
             fontSize={settings.editorFontSize}
             lineHeight={settings.editorLineHeight}
+            spellcheck={settings.spellcheck}
           />
         </div>
       </div>

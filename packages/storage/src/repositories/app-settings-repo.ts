@@ -16,6 +16,7 @@ const DEFAULTS: AppSettings = {
   editorWidth: "medium",
   typewriterMode: false,
   autoIndent: true,
+  spellcheck: true,
   focusMode: false,
 };
 
@@ -51,6 +52,7 @@ function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppS
       return raw === "narrow" || raw === "wide" ? raw : DEFAULTS.editorWidth;
     case "typewriterMode":
     case "autoIndent":
+    case "spellcheck":
     case "focusMode":
       return raw === "true";
     case "uiLanguage":

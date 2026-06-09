@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ChapterRecord } from "@inkforge/shared";
+import { ArrowDown, ArrowUp, Plus, Search, Upload } from "lucide-react";
 
 interface ChapterTreeProps {
   chapters: ChapterRecord[];
@@ -59,10 +60,16 @@ export function ChapterTree({
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [query, setQuery] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
 
-  const flat = useMemo(() => buildTree(chapters), [chapters]);
+  const flatAll = useMemo(() => buildTree(chapters), [chapters]);
+  const normalizedQuery = query.trim().toLowerCase();
+  const flat = useMemo(() => {
+    if (!normalizedQuery) return flatAll;
+    return flatAll.filter((chapter) => chapter.title.toLowerCase().includes(normalizedQuery));
+  }, [flatAll, normalizedQuery]);
 
   useEffect(() => {
     if (!menu) return;
@@ -80,7 +87,7 @@ export function ChapterTree({
     }
   }, [renamingId]);
 
-  const orderedIds = useMemo(() => flat.map((c) => c.id), [flat]);
+  const orderedIds = useMemo(() => flatAll.map((c) => c.id), [flatAll]);
   const scrollRef = useRef<HTMLDivElement>(null);
   // M9 Phase 2.2: virtualize chapter list. Fixed-ish row height keeps DOM cheap on 1000+ chapters.
   const virtualizer = useVirtualizer({
@@ -110,29 +117,45 @@ export function ChapterTree({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-ink-700 px-3 py-2">
-        <span className="text-sm font-medium text-ink-200">章节</span>
-        <div className="flex items-center gap-1">
-          <button
-            className="rounded-md px-2 py-1 text-xs text-ink-200 hover:bg-ink-700/70 disabled:opacity-60"
-            onClick={onImportMd}
-            disabled={importing}
-            title="从 Markdown 导入"
-          >
-            {importing ? "…" : "导入"}
-          </button>
-          <button
-            className="rounded-md bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-60"
-            onClick={onCreate}
-            disabled={creating}
-          >
-            {creating ? "创建中…" : "+ 新章"}
-          </button>
+      <div className="border-b border-ink-700 px-3 py-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-ink-200">章节</span>
+          <div className="flex items-center gap-1">
+            <button
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-200 hover:bg-ink-700/70 disabled:opacity-60"
+              onClick={onImportMd}
+              disabled={importing}
+              title="从 Markdown 导入"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {importing ? "…" : "导入"}
+            </button>
+            <button
+              className="inline-flex items-center gap-1 rounded-md bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-60"
+              onClick={onCreate}
+              disabled={creating}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {creating ? "创建中…" : "新章"}
+            </button>
+          </div>
+        </div>
+        <div className="relative mt-2">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-500" />
+          <input
+            className="h-8 w-full rounded-md border border-ink-700 bg-ink-900/60 pl-7 pr-2 text-xs text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="搜索章节"
+          />
         </div>
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-        {flat.length === 0 && (
+        {chapters.length === 0 && (
           <p className="px-3 py-3 text-xs text-ink-400">还没有章节，点右上新建一章开始。</p>
+        )}
+        {chapters.length > 0 && flat.length === 0 && (
+          <p className="px-3 py-3 text-xs text-ink-400">没有匹配的章节。</p>
         )}
         <div
           style={{
@@ -149,6 +172,7 @@ export function ChapterTree({
             const active = chapter.id === currentChapterId;
             const depth = chapter.order;
             const isRenaming = chapter.id === renamingId;
+            const fullIndex = orderedIds.indexOf(chapter.id);
             return (
               <div
                 key={vRow.key}
@@ -202,18 +226,18 @@ export function ChapterTree({
                       <button
                         className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, -1)}
-                        disabled={idx === 0}
-                        title="上移"
+                        disabled={!!normalizedQuery || fullIndex <= 0}
+                        title={normalizedQuery ? "搜索时不可调整顺序" : "上移"}
                       >
-                        ↑
+                        <ArrowUp className="h-3.5 w-3.5" />
                       </button>
                       <button
                         className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, 1)}
-                        disabled={idx === flat.length - 1}
-                        title="下移"
+                        disabled={!!normalizedQuery || fullIndex >= orderedIds.length - 1}
+                        title={normalizedQuery ? "搜索时不可调整顺序" : "下移"}
                       >
-                        ↓
+                        <ArrowDown className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}

@@ -229,6 +229,14 @@ export function SettingsDialog(): JSX.Element | null {
               <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
+                  checked={settings.spellcheck}
+                  onChange={(e) => settingsMutation.mutate({ spellcheck: e.target.checked })}
+                />
+                <span className="text-ink-300">启用系统拼写检查</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
                   checked={settings.typewriterMode}
                   onChange={(e) => settingsMutation.mutate({ typewriterMode: e.target.checked })}
                 />

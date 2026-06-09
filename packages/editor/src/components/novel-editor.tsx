@@ -3,15 +3,34 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function normalizeEditorText(text: string): string {
+  return text
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u00A0\u3000]/g, " ")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "");
+}
+
+function normalizePastedText(text: string): string {
+  return normalizeEditorText(text)
+    .replace(/\t/g, "  ")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+$/g, ""))
+    .join("\n");
+}
+
 function plainTextToHtml(text: string): string {
   if (!text) return "<p></p>";
-  return text
+  return normalizeEditorText(text)
     .split(/\n\n+/)
     .map((para) => {
-      const escaped = para
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+      const escaped = escapeHtml(para);
       const lines = escaped.split("\n").map((line) =>
         line.replace(/^( +)/, (m) => "\u3000".repeat(m.length)),
       );
@@ -21,15 +40,24 @@ function plainTextToHtml(text: string): string {
 }
 
 function scrollCursorToCenter(editor: Editor): void {
-  const { view } = editor;
-  const coords = view.coordsAtPos(view.state.selection.from);
-  const editorEl = view.dom.closest(".overflow-auto") ?? view.dom.parentElement;
-  if (!editorEl) return;
-  const rect = editorEl.getBoundingClientRect();
-  const targetY = coords.top - rect.top - rect.height / 2;
-  if (Math.abs(targetY) > 40) {
-    editorEl.scrollBy({ top: targetY, behavior: "smooth" });
+  try {
+    const { view } = editor;
+    const coords = view.coordsAtPos(view.state.selection.from);
+    const editorEl = view.dom.closest(".overflow-auto") ?? view.dom.parentElement;
+    if (!editorEl) return;
+    const rect = editorEl.getBoundingClientRect();
+    const targetY = coords.top - rect.top - rect.height / 2;
+    if (Math.abs(targetY) > 40) {
+      editorEl.scrollBy({ top: targetY, behavior: "smooth" });
+    }
+  } catch {
+    // coordsAtPos can throw while IME composition or document replacement is in flight.
   }
+}
+
+function syncEditorDomState(editor: Editor): void {
+  const dom = editor.view.dom;
+  dom.dataset.empty = editor.isEmpty ? "true" : "false";
 }
 
 export interface NovelEditorProps {
@@ -43,13 +71,14 @@ export interface NovelEditorProps {
   typewriterMode?: boolean;
   fontSize?: number;
   lineHeight?: number;
+  spellcheck?: boolean;
 }
 
 export function NovelEditor(props: NovelEditorProps): JSX.Element {
   const {
     value, onChange, placeholder, autofocus, className,
     onEditorReady, autoIndent = true, typewriterMode = false,
-    fontSize = 16, lineHeight = 2.0,
+    fontSize = 16, lineHeight = 2.0, spellcheck = true,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -62,9 +91,14 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
         class:
           className ??
           "prose prose-lg max-w-none focus:outline-none text-slate-100",
-        spellcheck: "false",
+        spellcheck: spellcheck ? "true" : "false",
         "data-placeholder": placeholder ?? "",
+        "data-empty": value.trim() ? "false" : "true",
+        "aria-label": placeholder ?? "Novel editor",
         style: `font-size:${fontSize}px;line-height:${lineHeight}`,
+      },
+      transformPastedText(text) {
+        return normalizePastedText(text);
       },
       handleTextInput(view, from, _to, text) {
         if (text !== " ") return false;
@@ -89,8 +123,12 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
         return true;
       },
     },
+    onCreate: ({ editor: ed }) => {
+      syncEditorDomState(ed);
+    },
     onUpdate: ({ editor: ed }) => {
-      const text = ed.getText().replace(/[\u00A0\u3000]/g, " ");
+      syncEditorDomState(ed);
+      const text = normalizeEditorText(ed.getText());
       onChange(text, ed.getHTML());
       if (typewriterMode) scrollCursorToCenter(ed);
     },
@@ -98,11 +136,21 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
 
   useEffect(() => {
     if (!editor) return;
-    const currentText = editor.getText().replace(/[\u00A0\u3000]/g, " ");
-    if (value === currentText) return;
-    if (editor.isFocused) return;
+    const currentText = normalizeEditorText(editor.getText());
+    if (normalizeEditorText(value) === currentText) return;
     editor.commands.setContent(plainTextToHtml(value), false);
+    syncEditorDomState(editor);
   }, [editor, value]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    dom.style.fontSize = `${fontSize}px`;
+    dom.style.lineHeight = String(lineHeight);
+    dom.setAttribute("spellcheck", spellcheck ? "true" : "false");
+    dom.setAttribute("data-placeholder", placeholder ?? "");
+    dom.setAttribute("aria-label", placeholder ?? "Novel editor");
+  }, [editor, fontSize, lineHeight, placeholder, spellcheck]);
 
   useEffect(() => {
     onEditorReady?.(editor ?? null);
