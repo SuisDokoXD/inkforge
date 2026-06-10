@@ -1,21 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BookOpen, FileText, PenLine } from "lucide-react";
 import type { ChapterRecord, ProjectRecord } from "@inkforge/shared";
 import { chapterApi, projectApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { AutoWriterPanel } from "../components/auto-writer/AutoWriterPanel";
 
-/**
- * v20: AutoWriter 独立顶级页面。
- *
- * 三栏：
- *  - 左：选书 → 选章节（含「写完跳下一章」与「在新章续写」入口）
- *  - 中：复用 AutoWriterPanel（嵌入式渲染，去掉 fixed 浮层时由我们包一层 wrapper）
- *  - 右：当前书的全局世界观 / 文风样本数 / 历史 run（占位提示，详情在 ChapterListItem 的 AutoWriter 浮层中显示）
- *
- * 设计理由：原 AutoWriterPanel 是 `fixed inset-y-0 right-0`，在顶级页里也工作良好；
- * 我们让它「叠在」中栏，左 / 右栏作为辅助导航。
- */
 export function AutoWriterPage(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const setCurrentProject = useAppStore((s) => s.setProject);
@@ -26,7 +16,6 @@ export function AutoWriterPage(): JSX.Element {
   });
   const projects: ProjectRecord[] = projectsQuery.data ?? [];
 
-  // 默认锁定到当前 project；若无则取第一本
   useEffect(() => {
     if (!currentProjectId && projects.length > 0) {
       setCurrentProject(projects[0].id);
@@ -59,77 +48,88 @@ export function AutoWriterPage(): JSX.Element {
   const activeChapter = chapters.find((c) => c.id === activeChapterId) ?? null;
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* ===== 左栏：书 + 章节导航 ===== */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-ink-700 bg-ink-900/40">
-        <div className="border-b border-ink-700 px-3 py-2 text-xs font-semibold text-ink-200">
-          🤖 AI 全自动写作
-        </div>
-        <div className="border-b border-ink-700 p-3">
-          <label className="mb-1 block text-[11px] text-ink-400">当前书籍</label>
+    <div className="grid h-full min-h-0 grid-cols-[300px_minmax(0,1fr)_300px] bg-ink-950 text-ink-100">
+      <aside className="flex min-h-0 flex-col border-r border-ink-700 bg-ink-900/55">
+        <header className="border-b border-ink-700 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <PenLine className="h-4 w-4 text-accent-300" />
+            <h2 className="text-sm font-semibold">自动写作</h2>
+          </div>
+        </header>
+
+        <section className="border-b border-ink-700 p-4">
+          <label className="mb-1 block text-xs font-medium text-ink-400">当前书籍</label>
           <select
             value={currentProjectId ?? ""}
-            onChange={(e) => {
-              setCurrentProject(e.target.value || null);
+            onChange={(event) => {
+              setCurrentProject(event.target.value || null);
               setActiveChapterId(null);
             }}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs"
+            className="h-9 w-full rounded-md border border-ink-700 bg-ink-950 px-2 text-sm text-ink-100"
           >
-            <option value="">— 请选择书籍 —</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
+            <option value="">选择书籍</option>
+            {projects.map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
               </option>
             ))}
           </select>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+        </section>
+
+        <section className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+          <div className="sticky top-0 z-10 border-b border-ink-700 bg-ink-900 px-4 py-2 text-xs font-medium text-ink-300">
+            章节
+          </div>
           {chapters.length === 0 ? (
-            <div className="p-3 text-[11px] text-ink-500">
-              该书还没有章节。先去「书房」创建一个。
+            <div className="px-4 py-8 text-sm text-ink-500">
+              这本书还没有章节。先到书房创建一章，再回来安排自动写作。
             </div>
           ) : (
-            <ul>
-              {chapters.map((ch) => (
-                <li key={ch.id}>
-                  <button
-                    type="button"
-                    onClick={() => setActiveChapterId(ch.id)}
-                    className={`flex w-full flex-col items-start gap-0.5 border-b border-ink-700/50 px-3 py-2 text-left text-xs transition-colors ${
-                      activeChapterId === ch.id
-                        ? "bg-accent-500/10 text-accent-100"
-                        : "text-ink-200 hover:bg-ink-800/40"
-                    }`}
-                  >
-                    <span className="truncate font-medium">
-                      {ch.order}. {ch.title || "（未命名）"}
-                    </span>
-                    <span className="text-[10px] text-ink-500">
-                      {ch.wordCount} 字
-                    </span>
-                  </button>
-                </li>
-              ))}
+            <ul className="divide-y divide-ink-700/70">
+              {chapters.map((chapter) => {
+                const active = activeChapterId === chapter.id;
+                return (
+                  <li key={chapter.id}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveChapterId(chapter.id)}
+                      className={`w-full px-4 py-3 text-left transition ${
+                        active ? "bg-accent-500/12" : "hover:bg-ink-800/70"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center gap-2 text-sm">
+                        <span className="min-w-0 flex-1 truncate font-medium">
+                          {chapter.title || "未命名章节"}
+                        </span>
+                        <span className="text-[11px] text-ink-500">#{chapter.order}</span>
+                      </div>
+                      <div className="text-xs text-ink-500">{chapter.wordCount} 字</div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
-        </div>
+        </section>
       </aside>
 
-      {/* ===== 中栏：思路输入 / 模型 / 控制 ===== */}
-      <main className="flex min-h-0 flex-1 flex-col bg-ink-900/20">
+      <main className="min-h-0 min-w-0">
         {!activeProject || !activeChapter ? (
-          <div className="m-auto max-w-md text-center text-sm text-ink-400">
-            <div className="mb-2 text-3xl">🤖</div>
-            <div>选择一本书 + 一个章节后，启动 AutoWriter。</div>
-            <div className="mt-2 text-[11px] text-ink-500">
-              本页跨章节读取上下文 / 注入全局世界观 / 学习素材库文风。
-              <br />
-              想从头写一章：先在「书房」新建空章节再回来这里。
+          <div className="flex h-full items-center justify-center px-8 text-center">
+            <div className="max-w-md">
+              <FileText className="mx-auto mb-4 h-10 w-10 text-ink-600" />
+              <div className="mb-2 text-base font-semibold text-ink-200">
+                选择一个章节
+              </div>
+              <p className="text-sm leading-6 text-ink-500">
+                自动写作会在选中章节中续写。先选择书籍和章节，再写下本章方向、叙事重点和需要避免的偏差。
+              </p>
             </div>
           </div>
         ) : (
           <AutoWriterPanel
             key={activeChapter.id}
+            variant="embedded"
             chapterId={activeChapter.id}
             projectId={activeProject.id}
             chapterTitle={activeChapter.title}
@@ -137,6 +137,35 @@ export function AutoWriterPage(): JSX.Element {
           />
         )}
       </main>
+
+      <aside className="hidden min-h-0 border-l border-ink-700 bg-ink-900/35 p-4 xl:block">
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold text-ink-200">
+          <BookOpen className="h-4 w-4 text-ink-400" />
+          使用流程
+        </div>
+        <ol className="space-y-3 text-sm leading-6 text-ink-400">
+          <li>
+            <span className="text-ink-200">1. 选章节</span>
+            <br />
+            自动写作会写入左侧选中的章节。
+          </li>
+          <li>
+            <span className="text-ink-200">2. 写简报</span>
+            <br />
+            说明场景、人物状态、情绪走向和本章要推进的内容。
+          </li>
+          <li>
+            <span className="text-ink-200">3. 设长度</span>
+            <br />
+            段落长度决定节奏；段数决定本次写作规模。
+          </li>
+          <li>
+            <span className="text-ink-200">4. 运行后校对</span>
+            <br />
+            运行结束后逐段查看，不满意的段落再重写。
+          </li>
+        </ol>
+      </aside>
     </div>
   );
 }

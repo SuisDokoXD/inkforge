@@ -56,6 +56,7 @@ export interface AutoWriterRemembered {
   maxSegments: number;
   maxRewrites: number;
   enableOocGate: boolean;
+  speedMode?: "fast" | "quality";
   advanced: boolean;
 }
 

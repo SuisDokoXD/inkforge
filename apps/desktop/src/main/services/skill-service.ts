@@ -373,15 +373,16 @@ async function executeRun(options: ExecuteRunOptions): Promise<void> {
       }
     }
 
+    const finalText = accumulatedText.trim();
     let feedbackId: string | undefined;
-    if (input.persist !== false) {
+    if (input.persist !== false && finalText) {
       const feedback = insertFeedback(ctx.db, {
         id: randomUUID(),
         projectId: input.projectId,
         chapterId: input.chapterId,
         type: "skill",
         payload: {
-          text: accumulatedText,
+          text: finalText,
           skillId: skill.id,
           skillName: skill.name,
           providerId: providerRecord.id,
@@ -401,7 +402,7 @@ async function executeRun(options: ExecuteRunOptions): Promise<void> {
       chapterId: input.chapterId,
       status: "completed",
       feedbackId,
-      text: accumulatedText,
+      text: finalText,
       usage,
       finishedAt: new Date().toISOString(),
     });

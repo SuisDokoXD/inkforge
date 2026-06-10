@@ -372,6 +372,7 @@ export async function startAutoWriter(
           maxSegments,
           maxRewritesPerSegment,
           enableOocGate,
+          speedMode: input.speedMode ?? "quality",
           existingChapterText,
           chapterTitle: chapter.title,
           characters,
@@ -689,6 +690,8 @@ async function invokeOneAgentOnce(args: {
   });
 
   let accumulated = "";
+  let bufferedDelta = "";
+  let lastChunkEmitAt = 0;
   let tokensIn = 0;
   let tokensOut = 0;
   let success = false;
@@ -698,28 +701,39 @@ async function invokeOneAgentOnce(args: {
   // UI 渲染时通过 agentRole + accumulatedText 即可。
   const segmentIndex = -1;
 
+  const flushDelta = (force = false): void => {
+    if (!bufferedDelta) return;
+    const now = Date.now();
+    if (!force && bufferedDelta.length < 120 && now - lastChunkEmitAt < 90) return;
+    const event: AutoWriterChunkEvent = {
+      runId,
+      chapterId,
+      agentRole: agentInput.role,
+      segmentIndex,
+      delta: bufferedDelta,
+      accumulatedText: "",
+      emittedAt: new Date().toISOString(),
+    };
+    bufferedDelta = "";
+    lastChunkEmitAt = now;
+    emitToWindow<AutoWriterChunkEvent>(
+      getWindow,
+      ipcEventChannels.autoWriterChunk,
+      event,
+    );
+  };
+
   try {
     for await (const chunk of stream) {
       if (controller.cancelled) break;
       if (chunk.type === "delta" && chunk.textDelta) {
         accumulated += chunk.textDelta;
-        const event: AutoWriterChunkEvent = {
-          runId,
-          chapterId,
-          agentRole: agentInput.role,
-          segmentIndex,
-          delta: chunk.textDelta,
-          accumulatedText: "",
-          emittedAt: new Date().toISOString(),
-        };
-        emitToWindow<AutoWriterChunkEvent>(
-          getWindow,
-          ipcEventChannels.autoWriterChunk,
-          event,
-        );
+        bufferedDelta += chunk.textDelta;
+        flushDelta(false);
         continue;
       }
       if (chunk.type === "done") {
+        flushDelta(true);
         if (chunk.usage) {
           tokensIn = chunk.usage.inputTokens ?? 0;
           tokensOut = chunk.usage.outputTokens ?? 0;

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ChapterRecord } from "@inkforge/shared";
 import { chapterApi, fsApi, llmApi, projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
@@ -12,8 +12,42 @@ import { TerminalPanel } from "../components/TerminalPanel";
 import { StatusBar } from "../components/StatusBar";
 import { ProviderSwitcher } from "../components/ProviderSwitcher";
 import { ProviderSettingsPanel } from "../components/ProviderSettingsPanel";
-import { SettingsDialog } from "../components/SettingsDialog";
 import { ExportDialog } from "../components/ExportDialog";
+
+interface ChapterHeadingItem {
+  id: string;
+  title: string;
+  line: number;
+}
+
+interface HeadingJumpTarget extends ChapterHeadingItem {
+  chapterId: string;
+  nonce: number;
+}
+
+function extractChapterHeadings(chapterId: string, content: string): ChapterHeadingItem[] {
+  const headings: ChapterHeadingItem[] = [];
+  const lines = content.split(/\r?\n/);
+  const headingPattern = /^\s{0,3}#{2,4}\s+(.+?)\s*#*\s*$/;
+  lines.forEach((line, index) => {
+    const match = line.match(headingPattern);
+    if (!match) return;
+    const title = match[1].trim();
+    if (!title) return;
+    const previous = headings[headings.length - 1];
+    if (previous?.title === title) {
+      const between = lines.slice(previous.line, index);
+      const hasBodyBetween = between.some((item) => item.trim() && !headingPattern.test(item));
+      if (!hasBodyBetween) return;
+    }
+    headings.push({
+      id: `${chapterId}:${index}`,
+      title,
+      line: index + 1,
+    });
+  });
+  return headings.slice(0, 24);
+}
 
 export function WorkspacePage(): JSX.Element {
   const queryClient = useQueryClient();
@@ -36,6 +70,8 @@ export function WorkspacePage(): JSX.Element {
   const focusMode = settings.focusMode;
 
   const [exportOpen, setExportOpen] = useState(false);
+  const [headingJumpTarget, setHeadingJumpTarget] = useState<HeadingJumpTarget | null>(null);
+  const headingJumpNonceRef = useRef(0);
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectApi.list() });
   const providersQuery = useQuery({ queryKey: ["providers"], queryFn: () => providerApi.list() });
 
@@ -55,6 +91,24 @@ export function WorkspacePage(): JSX.Element {
   });
 
   const chapters = useMemo(() => chaptersQuery.data ?? [], [chaptersQuery.data]);
+  const headingQueries = useQueries({
+    queries: chapters.map((chapter) => ({
+      queryKey: ["chapter-heading-outline", chapter.id, chapter.updatedAt, chapter.wordCount],
+      queryFn: async () => {
+        const res = await chapterApi.read({ id: chapter.id });
+        return extractChapterHeadings(chapter.id, res.content);
+      },
+      enabled: !!resolvedProjectId,
+      staleTime: 30_000,
+    })),
+  });
+  const chapterHeadings = useMemo(() => {
+    const map: Record<string, ChapterHeadingItem[]> = {};
+    chapters.forEach((chapter, index) => {
+      map[chapter.id] = headingQueries[index]?.data ?? [];
+    });
+    return map;
+  }, [chapters, headingQueries]);
   const currentChapter = useMemo(
     () => chapters.find((c) => c.id === currentChapterId) ?? null,
     [chapters, currentChapterId],
@@ -66,6 +120,13 @@ export function WorkspacePage(): JSX.Element {
       setChapter(chapters[0].id);
     }
   }, [chapters, currentChapterId, setChapter]);
+
+  useEffect(() => {
+    if (headingJumpTarget && headingJumpTarget.chapterId !== currentChapterId) return;
+    if (!headingJumpTarget) return;
+    const exists = chapterHeadings[headingJumpTarget.chapterId]?.some((item) => item.id === headingJumpTarget.id);
+    if (!exists) setHeadingJumpTarget(null);
+  }, [chapterHeadings, currentChapterId, headingJumpTarget]);
 
   useEffect(() => {
     const offChunk = llmApi.onChunk((payload) => {
@@ -208,7 +269,7 @@ export function WorkspacePage(): JSX.Element {
                 : "border-ink-600 text-ink-300 hover:bg-ink-700"
             }`}
             onClick={() => toggleTerminal()}
-            title="切换终端 (Ctrl+`)"
+            title="切换终端 (Ctrl+J)"
           >
             终端
           </button>
@@ -235,8 +296,18 @@ export function WorkspacePage(): JSX.Element {
         <aside className="flex w-64 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
           <ChapterTree
             chapters={chapters}
+            chapterHeadings={chapterHeadings}
             currentChapterId={currentChapterId}
-            onSelect={setChapter}
+            activeHeadingId={headingJumpTarget?.id ?? null}
+            onSelect={(id) => {
+              setHeadingJumpTarget(null);
+              setChapter(id);
+            }}
+            onSelectHeading={(chapterId, heading) => {
+              headingJumpNonceRef.current += 1;
+              setHeadingJumpTarget({ ...heading, chapterId, nonce: headingJumpNonceRef.current });
+              setChapter(chapterId);
+            }}
             onCreate={() => createChapter.mutate()}
             onRename={(id, title) => renameChapter.mutate({ id, title })}
             onDelete={(id) => deleteChapter.mutate(id)}
@@ -251,6 +322,7 @@ export function WorkspacePage(): JSX.Element {
         <section className="flex min-w-0 flex-1 flex-col">
           <EditorPane
             chapter={currentChapter}
+            headingJumpTarget={headingJumpTarget}
             providers={providersQuery.data ?? []}
             onCreateChapter={() => createChapter.mutate()}
             creatingChapter={createChapter.isPending}
@@ -298,7 +370,6 @@ export function WorkspacePage(): JSX.Element {
 
       <StatusBar />
       <ProviderSettingsPanel />
-      <SettingsDialog />
       {currentProjectId ? (
         <ExportDialog
           projectId={currentProjectId}

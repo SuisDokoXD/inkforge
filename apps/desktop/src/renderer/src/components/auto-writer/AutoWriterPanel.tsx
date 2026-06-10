@@ -1,5 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BookText,
+  CheckCircle2,
+  ChevronDown,
+  Loader2,
+  PenLine,
+  RotateCcw,
+  Send,
+  Settings2,
+  Square,
+  X,
+} from "lucide-react";
 import type {
   AutoWriterAgentBinding,
   AutoWriterAgentRole,
@@ -9,28 +21,25 @@ import type {
   AutoWriterPhaseEvent,
   AutoWriterRunRecord,
 } from "@inkforge/shared";
-import {
-  autoWriterApi,
-  providerApi,
-} from "../../lib/api";
+import { autoWriterApi, providerApi } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
 
 const ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
-  planner: "📋 提纲师",
-  writer: "✒ 执笔者",
-  critic: "🔍 审稿人",
-  reflector: "🪞 反思者",
+  planner: "结构",
+  writer: "起草",
+  critic: "校阅",
+  reflector: "整理",
 };
 
 const PHASE_LABELS: Record<AutoWriterPhase, string> = {
-  planner: "提纲师产出 beat sheet",
-  writer: "执笔者写本段",
-  critic: "审稿人检查 OOC",
-  reflector: "反思者总结备忘",
-  "rewrite-segment": "回炉重写本段",
+  planner: "梳理写作结构",
+  writer: "生成当前段落",
+  critic: "检查一致性",
+  reflector: "整理运行记录",
+  "rewrite-segment": "重写当前段落",
   "next-segment": "进入下一段",
-  done: "全部完成",
+  done: "完成",
 };
 
 interface AutoWriterPanelProps {
@@ -38,6 +47,7 @@ interface AutoWriterPanelProps {
   projectId: string;
   chapterTitle?: string;
   onClose: () => void;
+  variant?: "drawer" | "embedded";
 }
 
 export function AutoWriterPanel({
@@ -45,9 +55,9 @@ export function AutoWriterPanel({
   projectId,
   chapterTitle,
   onClose,
+  variant = "drawer",
 }: AutoWriterPanelProps): JSX.Element {
   const queryClient = useQueryClient();
-  // v22+: 配置持久化——上次选好的 provider/model/段长等下次回填
   const remembered = useAppStore((s) => s.autoWriterConfig);
   const setRemembered = useAppStore((s) => s.setAutoWriterConfig);
 
@@ -65,13 +75,15 @@ export function AutoWriterPanel({
     >) ?? {},
   );
   const [targetSegmentLength, setTargetSegmentLength] = useState(
-    remembered?.targetSegmentLength ?? 400,
+    remembered?.targetSegmentLength ?? 700,
   );
-  const [maxSegments, setMaxSegments] = useState(remembered?.maxSegments ?? 10);
-  const [maxRewrites, setMaxRewrites] = useState(remembered?.maxRewrites ?? 3);
+  const [maxSegments, setMaxSegments] = useState(remembered?.maxSegments ?? 7);
+  const [maxRewrites, setMaxRewrites] = useState(remembered?.maxRewrites ?? 1);
   const [enableOocGate, setEnableOocGate] = useState(remembered?.enableOocGate ?? true);
+  const [speedMode, setSpeedMode] = useState<"fast" | "quality">(
+    remembered?.speedMode ?? "fast",
+  );
 
-  // 任意一个配置变化时同步到 zustand persist
   useEffect(() => {
     setRemembered({
       primaryProviderId,
@@ -81,6 +93,7 @@ export function AutoWriterPanel({
       maxSegments,
       maxRewrites,
       enableOocGate,
+      speedMode,
       advanced,
     });
   }, [
@@ -91,6 +104,7 @@ export function AutoWriterPanel({
     maxSegments,
     maxRewrites,
     enableOocGate,
+    speedMode,
     advanced,
     setRemembered,
   ]);
@@ -111,7 +125,6 @@ export function AutoWriterPanel({
     queryFn: () => providerApi.list(),
   });
 
-  // 默认填上第一个 provider
   useEffect(() => {
     if (!primaryProviderId && providersQuery.data && providersQuery.data.length > 0) {
       const first = providersQuery.data[0];
@@ -120,15 +133,14 @@ export function AutoWriterPanel({
     }
   }, [providersQuery.data, primaryProviderId]);
 
-  // 订阅流式事件
   const lastChunkRef = useRef<{ role: AutoWriterAgentRole | null; segIdx: number }>({
     role: null,
     segIdx: -1,
   });
+
   useEffect(() => {
     const unsubChunk = autoWriterApi.onChunk((payload: AutoWriterChunkEvent) => {
       if (activeRunId && payload.runId !== activeRunId) return;
-      // 新角色开始 → 清空该角色 buffer
       if (lastChunkRef.current.role !== payload.agentRole) {
         setStreamBuffers((prev) => ({ ...prev, [payload.agentRole]: "" }));
         lastChunkRef.current = { role: payload.agentRole, segIdx: payload.segmentIndex };
@@ -185,8 +197,9 @@ export function AutoWriterPanel({
         agents,
         targetSegmentLength,
         maxSegments,
-        maxRewritesPerSegment: maxRewrites,
-        enableOocGate,
+        maxRewritesPerSegment: speedMode === "fast" ? 0 : maxRewrites,
+        enableOocGate: speedMode === "fast" ? false : enableOocGate,
+        speedMode,
       });
     },
     onSuccess: (res) => {
@@ -222,315 +235,329 @@ export function AutoWriterPanel({
 
   const isRunning = !!activeRunId;
   const providers = providersQuery.data ?? [];
-  const canStart =
-    !isRunning && userIdeas.trim().length > 0 && primaryProviderId && primaryModel;
+  const canStart = !isRunning && userIdeas.trim().length > 0 && primaryProviderId && primaryModel;
+  const containerClass =
+    variant === "drawer"
+      ? "fixed inset-y-0 right-0 z-40 flex w-[540px] max-w-full flex-col border-l border-ink-700 bg-ink-950 text-ink-100 shadow-2xl"
+      : "flex h-full min-h-0 flex-col bg-ink-950 text-ink-100";
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-[520px] max-w-full flex-col border-l border-ink-700 bg-ink-800 text-ink-100 shadow-2xl">
-      <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-4 py-2">
-        <div>
-          <h3 className="text-sm font-semibold">🤖 AI 自动写作</h3>
-          {chapterTitle && (
-            <div className="truncate text-[11px] text-ink-400">{chapterTitle}</div>
-          )}
+    <div className={containerClass}>
+      <header className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-900/45 px-5 py-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <PenLine className="h-4 w-4 text-accent-300" />
+            <h3 className="text-sm font-semibold">自动写作</h3>
+          </div>
+          {chapterTitle ? (
+            <div className="mt-1 truncate text-xs text-ink-500">{chapterTitle}</div>
+          ) : null}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          title="关闭"
         >
-          ✕
+          <X className="h-4 w-4" />
         </button>
-      </div>
+      </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin">
-        {/* 思路输入 */}
-        <section className="mb-3">
-          <label className="mb-1 block text-xs font-semibold text-ink-300">本章思路</label>
+      <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
+        <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <BookText className="h-4 w-4 text-ink-400" />
+            <label className="text-sm font-medium text-ink-200">写作简报</label>
+          </div>
           <textarea
             value={userIdeas}
-            onChange={(e) => setUserIdeas(e.target.value)}
-            placeholder="比如：主角在密林遭遇敌袭，意外发现身世线索；情绪由警觉转为震惊；伏笔：陌生人留下的青铜令牌"
+            onChange={(event) => setUserIdeas(event.target.value)}
+            placeholder="写下这一段要完成什么：场景、人物状态、情绪变化、需要保留的细节、不要越界的地方。"
             disabled={isRunning}
-            className="h-32 w-full resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs placeholder:text-ink-500 focus:border-accent-500 focus:outline-none disabled:opacity-60"
+            className="h-36 w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6 text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none disabled:opacity-60"
           />
-          <div className="mt-1 text-[10px] text-ink-500">{userIdeas.length} 字</div>
+          <div className="mt-2 text-xs text-ink-500">{userIdeas.length} 字</div>
         </section>
 
-        {/* 模型设置 */}
-        <section className="mb-3">
-          <label className="mb-1 block text-xs font-semibold text-ink-300">模型</label>
-          <div className="flex gap-2">
+        <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium text-ink-200">
+              <Settings2 className="h-4 w-4 text-ink-400" />
+              模型与长度
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdvanced((value) => !value)}
+              className="flex items-center gap-1 rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-300 hover:bg-ink-800"
+            >
+              {advanced ? "收起高级" : "高级"}
+              <ChevronDown className={`h-3.5 w-3.5 transition ${advanced ? "rotate-180" : ""}`} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-2">
             <select
               value={primaryProviderId}
-              onChange={(e) => {
-                const id = e.target.value;
+              onChange={(event) => {
+                const id = event.target.value;
                 setPrimaryProviderId(id);
-                const p = providers.find((x) => x.id === id);
-                if (p) setPrimaryModel(p.defaultModel);
+                const provider = providers.find((item) => item.id === id);
+                if (provider) setPrimaryModel(provider.defaultModel);
               }}
               disabled={isRunning}
-              className="flex-1 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs"
+              className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
             >
               <option value="">选择 Provider</option>
-              {providers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
+              {providers.map((provider) => (
+                <option key={provider.id} value={provider.id}>
+                  {provider.label}
                 </option>
               ))}
             </select>
             <input
               type="text"
               value={primaryModel}
-              onChange={(e) => setPrimaryModel(e.target.value)}
+              onChange={(event) => setPrimaryModel(event.target.value)}
               placeholder="model id"
               disabled={isRunning}
-              className="w-40 rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs"
+              className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
             />
           </div>
-          <button
-            type="button"
-            onClick={() => setAdvanced((v) => !v)}
-            className="mt-1 text-[10px] text-accent-300 hover:underline"
-          >
-            {advanced ? "收起高级" : "高级：为各角色分别绑定模型"}
-          </button>
-          {advanced && (
-            <div className="mt-2 grid grid-cols-1 gap-2 rounded-md border border-ink-700 bg-ink-900/40 p-2">
+
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-md border border-ink-700 bg-ink-950/55 p-1 text-xs">
+            <button
+              type="button"
+              disabled={isRunning}
+              onClick={() => {
+                setSpeedMode("fast");
+                setTargetSegmentLength((value) => (value < 600 ? 700 : value));
+                setMaxSegments((value) => (value > 10 ? 7 : value));
+                setMaxRewrites(0);
+              }}
+              className={`rounded px-3 py-2 text-left transition-colors ${
+                speedMode === "fast"
+                  ? "bg-accent-500/20 text-accent-200"
+                  : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
+              } disabled:opacity-60`}
+            >
+              <span className="block font-medium">快速出稿</span>
+              <span className="mt-0.5 block text-[11px] opacity-80">跳过逐段校阅，适合 5000 字长章</span>
+            </button>
+            <button
+              type="button"
+              disabled={isRunning}
+              onClick={() => setSpeedMode("quality")}
+              className={`rounded px-3 py-2 text-left transition-colors ${
+                speedMode === "quality"
+                  ? "bg-accent-500/20 text-accent-200"
+                  : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
+              } disabled:opacity-60`}
+            >
+              <span className="block font-medium">严谨校阅</span>
+              <span className="mt-0.5 block text-[11px] opacity-80">保留 Critic、重写与整理</span>
+            </button>
+          </div>
+
+          <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+            <NumberField
+              label="每段字数"
+              value={targetSegmentLength}
+              disabled={isRunning}
+              onChange={(value) => setTargetSegmentLength(value || 400)}
+            />
+            <NumberField
+              label="段数"
+              value={maxSegments}
+              disabled={isRunning}
+              onChange={(value) => setMaxSegments(value || 8)}
+            />
+            <NumberField
+              label="重写上限"
+              value={maxRewrites}
+              disabled={isRunning}
+              onChange={(value) => setMaxRewrites(value || 2)}
+            />
+          </div>
+
+          <label className="mt-3 flex items-center gap-2 text-xs text-ink-300">
+            <input
+              type="checkbox"
+              checked={enableOocGate}
+              onChange={(event) => setEnableOocGate(event.target.checked)}
+              disabled={isRunning}
+              className="accent-accent-500"
+            />
+            启用一致性检查，不通过时自动重写
+          </label>
+
+          {advanced ? (
+            <div className="mt-3 space-y-2 rounded-md border border-ink-700 bg-ink-950 p-3">
               {(Object.keys(ROLE_LABELS) as AutoWriterAgentRole[]).map((role) => {
                 const binding = agentBindings[role];
                 return (
-                  <div key={role} className="flex items-center gap-2 text-xs">
-                    <span className="w-20 shrink-0 text-ink-300">{ROLE_LABELS[role]}</span>
+                  <div key={role} className="grid grid-cols-[56px_minmax(0,1fr)_150px] gap-2 text-xs">
+                    <span className="self-center text-ink-400">{ROLE_LABELS[role]}</span>
                     <select
                       value={binding?.providerId ?? ""}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setAgentBindings((prev) => ({
                           ...prev,
                           [role]: {
-                            providerId: e.target.value,
+                            providerId: event.target.value,
                             model: binding?.model ?? "",
                           },
                         }))
                       }
                       disabled={isRunning}
-                      className="flex-1 rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-[11px]"
+                      className="h-8 rounded-md border border-ink-700 bg-ink-900 px-2"
                     >
                       <option value="">使用主模型</option>
-                      {providers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
+                      {providers.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.label}
                         </option>
                       ))}
                     </select>
                     <input
                       type="text"
                       value={binding?.model ?? ""}
-                      onChange={(e) =>
+                      onChange={(event) =>
                         setAgentBindings((prev) => ({
                           ...prev,
                           [role]: {
                             providerId: binding?.providerId ?? "",
-                            model: e.target.value,
+                            model: event.target.value,
                           },
                         }))
                       }
                       placeholder="model"
                       disabled={isRunning}
-                      className="w-32 rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-[11px]"
+                      className="h-8 rounded-md border border-ink-700 bg-ink-900 px-2"
                     />
                   </div>
                 );
               })}
             </div>
-          )}
+          ) : null}
         </section>
 
-        {/* 参数 */}
-        <section className="mb-3 grid grid-cols-3 gap-2 text-xs">
-          <label className="flex flex-col gap-1">
-            <span className="text-ink-400">单段字数</span>
-            <input
-              type="number"
-              value={targetSegmentLength}
-              onChange={(e) => setTargetSegmentLength(Number(e.target.value) || 400)}
-              disabled={isRunning}
-              className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-ink-400">最多段数</span>
-            <input
-              type="number"
-              value={maxSegments}
-              onChange={(e) => setMaxSegments(Number(e.target.value) || 10)}
-              disabled={isRunning}
-              className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-ink-400">重写上限</span>
-            <input
-              type="number"
-              value={maxRewrites}
-              onChange={(e) => setMaxRewrites(Number(e.target.value) || 3)}
-              disabled={isRunning}
-              className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5"
-            />
-          </label>
-        </section>
-        <label className="mb-3 flex items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={enableOocGate}
-            onChange={(e) => setEnableOocGate(e.target.checked)}
-            disabled={isRunning}
-          />
-          <span>启用 OOC 守门员（Critic 不通过时回炉重写）</span>
-        </label>
-
-        {/* 控制 */}
-        <section className="mb-3 flex gap-2">
+        <section className="mb-4">
           {!isRunning ? (
             <button
               type="button"
               disabled={!canStart || startMut.isPending}
               onClick={() => startMut.mutate()}
-              className="flex-1 rounded-md bg-accent-500/30 px-3 py-2 text-sm font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
             >
-              {startMut.isPending ? "启动中…" : "🚀 启动 AutoWriter"}
+              {startMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+              开始写作
             </button>
           ) : (
             <button
               type="button"
               onClick={() => stopMut.mutate()}
-              className="flex-1 rounded-md bg-rose-500/30 px-3 py-2 text-sm font-semibold text-rose-100 hover:bg-rose-500/40"
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-rose-500 text-sm font-semibold text-white hover:bg-rose-400"
             >
-              ⏹ 停止
+              <Square className="h-4 w-4" />
+              停止
             </button>
           )}
-        </section>
-        {startMut.isError && (
-          <div className="mb-2 rounded-md bg-rose-500/20 px-2 py-1 text-xs text-rose-200">
-            启动失败：{String(startMut.error)}
-          </div>
-        )}
-
-        {/* Phase 指示 */}
-        {currentPhase && (
-          <section className="mb-3 rounded-md border border-ink-700 bg-ink-900/40 p-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="rounded bg-accent-500/30 px-1.5 py-0.5 text-[10px] text-accent-100">
-                Phase
-              </span>
-              <span>{PHASE_LABELS[currentPhase.phase]}</span>
-              <span className="ml-auto text-ink-400">
-                第 {currentPhase.segmentIndex + 1} 段
-                {currentPhase.rewriteCount
-                  ? ` · 第 ${currentPhase.rewriteCount} 次重写`
-                  : ""}
-              </span>
+          {startMut.isError ? (
+            <div className="mt-2 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+              启动失败：{String(startMut.error)}
             </div>
-            {currentPhase.criticSummary && (
-              <div className="mt-1 flex gap-2 text-[10px]">
-                <span className="text-rose-300">
-                  🔴 {currentPhase.criticSummary.errorCount}
-                </span>
-                <span className="text-accent-300">
-                  🟡 {currentPhase.criticSummary.warnCount}
-                </span>
-                <span className="text-sky-300">
-                  🔵 {currentPhase.criticSummary.infoCount}
-                </span>
-              </div>
-            )}
-          </section>
-        )}
+          ) : null}
+        </section>
 
-        {/* 中途介入 */}
-        {isRunning && (
-          <section className="mb-3 rounded-md border border-ink-700 bg-ink-900/40 p-2">
-            <div className="mb-1 text-xs text-ink-300">中途介入（追加思路或纠错）</div>
+        {currentPhase ? (
+          <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-accent-500/15 px-2 py-0.5 text-accent-200">
+                {PHASE_LABELS[currentPhase.phase]}
+              </span>
+              <span className="text-ink-500">第 {currentPhase.segmentIndex + 1} 段</span>
+              {currentPhase.rewriteCount ? (
+                <span className="text-ink-500">重写 {currentPhase.rewriteCount}</span>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
+        {isRunning ? (
+          <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
+            <div className="mb-2 text-sm font-medium text-ink-200">中途补充</div>
             <textarea
               value={interruptDraft}
-              onChange={(e) => setInterruptDraft(e.target.value)}
-              placeholder="可以补一个新约束，比如：让对话更含蓄；或指出某段有 OOC……"
-              className="h-16 w-full resize-none rounded-md border border-ink-700 bg-ink-900 p-2 text-xs"
+              onChange={(event) => setInterruptDraft(event.target.value)}
+              placeholder="补充新要求，或指出刚才生成内容里的偏差。"
+              className="h-20 w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6"
             />
-            <div className="mt-1 flex gap-2">
+            <div className="mt-2 flex gap-2">
               <button
                 type="button"
                 disabled={!interruptDraft.trim() || injectMut.isPending}
                 onClick={() => injectMut.mutate(interruptDraft.trim())}
-                className="rounded-md bg-sky-500/30 px-2 py-1 text-xs text-sky-100 hover:bg-sky-500/40 disabled:opacity-40"
+                className="flex h-8 items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-500/10 px-3 text-xs text-sky-200 hover:bg-sky-500/20 disabled:opacity-45"
               >
-                💡 追加思路
+                <Send className="h-3.5 w-3.5" />
+                补充方向
               </button>
               <button
                 type="button"
                 disabled={!interruptDraft.trim() || correctMut.isPending}
                 onClick={() => correctMut.mutate(interruptDraft.trim())}
-                className="rounded-md bg-rose-500/30 px-2 py-1 text-xs text-rose-100 hover:bg-rose-500/40 disabled:opacity-40"
+                className="flex h-8 items-center gap-1.5 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-45"
               >
-                ✗ 标记错误
+                <RotateCcw className="h-3.5 w-3.5" />
+                要求修正
               </button>
             </div>
           </section>
-        )}
+        ) : null}
 
-        {/* 流式输出 */}
-        <section className="mb-3 grid grid-cols-1 gap-2">
+        <section className="mb-4 space-y-2">
           {(Object.keys(ROLE_LABELS) as AutoWriterAgentRole[]).map((role) => {
             const text = streamBuffers[role];
             if (!text) return null;
             return (
-              <div
-                key={role}
-                className="rounded-md border border-ink-700 bg-ink-900/40 p-2 text-xs"
-              >
-                <div className="mb-1 text-[11px] text-ink-400">{ROLE_LABELS[role]}</div>
-                <pre className="whitespace-pre-wrap text-ink-100">{text}</pre>
+              <div key={role} className="rounded-md border border-ink-700 bg-ink-900/35 p-3">
+                <div className="mb-2 text-xs font-medium text-ink-400">{ROLE_LABELS[role]}</div>
+                <pre className="whitespace-pre-wrap text-sm leading-6 text-ink-100">{text}</pre>
               </div>
             );
           })}
         </section>
 
-        {/* 完成 */}
-        {doneEvent && (
+        {doneEvent ? (
           <>
             <section
-              className={`mb-3 rounded-md border p-2 text-xs ${
+              className={`mb-4 rounded-md border p-3 text-sm ${
                 doneEvent.status === "completed"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-100"
                   : doneEvent.status === "partial"
-                    ? "border-accent-500/40 bg-accent-500/10 text-accent-100"
+                    ? "border-amber-500/35 bg-amber-500/10 text-amber-100"
                     : doneEvent.status === "stopped"
-                      ? "border-sky-500/40 bg-sky-500/10 text-sky-100"
-                      : "border-rose-500/40 bg-rose-500/10 text-rose-100"
+                      ? "border-sky-500/35 bg-sky-500/10 text-sky-100"
+                      : "border-rose-500/35 bg-rose-500/10 text-rose-100"
               }`}
             >
-              <div className="font-semibold">
-                {doneEvent.status === "completed" && "✓ 全部完成"}
-                {doneEvent.status === "partial" &&
-                  `⚠ 部分完成（已保留前 ${doneEvent.totalSegments} 段）`}
-                {doneEvent.status === "stopped" && "⏹ 已手动停止"}
-                {doneEvent.status === "failed" && "✗ 全部失败"}
-                {doneEvent.status !== "completed" &&
-                  doneEvent.status !== "partial" &&
-                  doneEvent.status !== "stopped" &&
-                  doneEvent.status !== "failed" &&
-                  `运行结束：${doneEvent.status}`}
+              <div className="flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="h-4 w-4" />
+                {doneEvent.status === "completed"
+                  ? "写作完成"
+                  : doneEvent.status === "partial"
+                    ? "部分完成"
+                    : doneEvent.status === "stopped"
+                      ? "已停止"
+                      : "运行失败"}
               </div>
-              <div className="mt-1 text-[11px]">
+              <div className="mt-1 text-xs opacity-85">
                 {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · token{" "}
-                {doneEvent.totalTokensIn} ↑ / {doneEvent.totalTokensOut} ↓
+                {doneEvent.totalTokensIn} / {doneEvent.totalTokensOut}
               </div>
-              {doneEvent.error && (
-                <div className="mt-1 text-[11px] text-rose-200">错误：{doneEvent.error}</div>
-              )}
+              {doneEvent.error ? <div className="mt-1 text-xs">错误：{doneEvent.error}</div> : null}
             </section>
 
-            {/* v22+: 段落审改——对每段否决重写 */}
             {(doneEvent.status === "completed" || doneEvent.status === "partial") && (
               <PostRunSegmentRewriter
                 chapterId={chapterId}
@@ -544,11 +571,35 @@ export function AutoWriterPanel({
               />
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );
 }
 
-// 让外部能拿到 record（用于 PR 验证 / 回归）
+function NumberField({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}): JSX.Element {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-ink-400">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        disabled={disabled}
+        className="h-8 rounded-md border border-ink-700 bg-ink-950 px-2"
+      />
+    </label>
+  );
+}
+
 export type { AutoWriterRunRecord };

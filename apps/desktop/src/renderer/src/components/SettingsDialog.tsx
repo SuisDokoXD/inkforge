@@ -149,22 +149,21 @@ export function SettingsDialog(): JSX.Element | null {
             <div className="flex items-center gap-3">
               <span className="text-ink-300">{t("settings.theme")}</span>
               <div className="flex overflow-hidden rounded-md border border-ink-600">
-                <button
-                  className={`px-3 py-1 text-xs ${
-                    settings.theme === "dark" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
-                  }`}
-                  onClick={() => settingsMutation.mutate({ theme: "dark" })}
-                >
-                  {t("settings.theme.dark")}
-                </button>
-                <button
-                  className={`px-3 py-1 text-xs ${
-                    settings.theme === "light" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
-                  }`}
-                  onClick={() => settingsMutation.mutate({ theme: "light" })}
-                >
-                  {t("settings.theme.light")}
-                </button>
+                {([
+                  ["light", t("settings.theme.light")],
+                  ["paper", t("settings.theme.paper")],
+                  ["dark", t("settings.theme.dark")],
+                ] as const).map(([theme, label]) => (
+                  <button
+                    key={theme}
+                    className={`px-3 py-1 text-xs ${
+                      settings.theme === theme ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
+                    }`}
+                    onClick={() => settingsMutation.mutate({ theme })}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
           </section>

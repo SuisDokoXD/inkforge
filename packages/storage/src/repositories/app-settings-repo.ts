@@ -25,7 +25,7 @@ type SettingRow = { key: string; value: string };
 function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppSettings] {
   switch (key) {
     case "theme":
-      return raw === "light" ? "light" : "dark";
+      return raw === "light" || raw === "paper" ? raw : "dark";
     case "activeProviderId":
       return raw ? raw : null;
     case "analysisEnabled":

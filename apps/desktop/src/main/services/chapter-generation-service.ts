@@ -60,6 +60,7 @@ function buildChapterPrompt(args: ChapterPromptArgs): { system: string; user: st
       "输出仅本章正文：可以使用 Markdown 二级小标题（## 小标题）组织段落；不要使用一级标题、代码块或解释性说明。",
       "保持人物口吻与世界观连贯；自然推进情节；避免重复前文已写过的事件细节。",
       "如果本章偏游记、见闻、散文或抒情叙述，请写得更细：分 3-6 个小节，每节有明确的小标题。",
+      "禁止连续输出两个同名小标题；同一小节只保留一个 `## 小标题`，不要在下一行或下一段重复。",
       "散文小节要有层次：先交代行踪或触发物，再写可感的景物细节，再落到人的心绪、记忆或顿悟；避免只堆砌形容词。",
       "学习中国文学的气息，但不要仿写具体作家的原句：可取汪曾祺的清淡、沈从文的水气、郁达夫的行旅情绪、古典山水文的留白与节制。",
       "正文长度建议 1500-2500 字。",
@@ -255,14 +256,43 @@ function countGraphemes(text: string): number {
   return Array.from(text).filter((c) => /\S/.test(c)).length;
 }
 
+function headingTitle(line: string): string | null {
+  const match = line.match(/^\s{0,3}#{2,4}\s+(.+?)\s*#*\s*$/);
+  return match?.[1]?.trim() || null;
+}
+
+function removeConsecutiveDuplicateHeadings(text: string): string {
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  const kept: string[] = [];
+  let lastHeadingTitle: string | null = null;
+  let lastHeadingIndex = -1;
+
+  for (const line of lines) {
+    const title = headingTitle(line);
+    if (title && lastHeadingTitle === title) {
+      const between = kept.slice(lastHeadingIndex + 1);
+      const hasBodyBetween = between.some((item) => item.trim() && !headingTitle(item));
+      if (!hasBodyBetween) continue;
+    }
+    kept.push(line);
+    if (title) {
+      lastHeadingTitle = title;
+      lastHeadingIndex = kept.length - 1;
+    }
+  }
+
+  return kept.join("\n").trim();
+}
+
 export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommitDraftResponse {
   const ctx = getAppContext();
   const project = getProject(ctx.db, input.projectId);
   if (!project) throw new Error("project_not_found");
 
   const title = input.title.trim() || "AI 生成章节";
-  const md = `# ${title}\n\n${input.text.trim()}\n`;
-  const wordCount = countGraphemes(input.text);
+  const cleanedText = removeConsecutiveDuplicateHeadings(input.text);
+  const md = `# ${title}\n\n${cleanedText}\n`;
+  const wordCount = countGraphemes(cleanedText);
 
   let chapterId = input.chapterId;
   let filePath: string;

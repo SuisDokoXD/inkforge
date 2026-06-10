@@ -3,10 +3,19 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import type { ChapterRecord } from "@inkforge/shared";
 import { ArrowDown, ArrowUp, Plus, Search, Upload } from "lucide-react";
 
+export interface ChapterHeadingItem {
+  id: string;
+  title: string;
+  line: number;
+}
+
 interface ChapterTreeProps {
   chapters: ChapterRecord[];
+  chapterHeadings?: Record<string, ChapterHeadingItem[]>;
   currentChapterId: string | null;
+  activeHeadingId?: string | null;
   onSelect: (chapterId: string) => void;
+  onSelectHeading?: (chapterId: string, heading: ChapterHeadingItem) => void;
   onCreate: () => void;
   onRename: (chapterId: string, title: string) => void;
   onDelete: (chapterId: string) => void;
@@ -45,10 +54,51 @@ function buildTree(chapters: ChapterRecord[]): ChapterRecord[] {
   return result;
 }
 
+type TreeRow =
+  | { kind: "chapter"; chapter: ChapterRecord; depth: number }
+  | { kind: "heading"; id: string; chapter: ChapterRecord; heading: ChapterHeadingItem; depth: number };
+
+function buildRows(
+  chapters: ChapterRecord[],
+  chapterHeadings: Record<string, ChapterHeadingItem[]>,
+): TreeRow[] {
+  const rows: TreeRow[] = [];
+  const sorted = [...chapters].sort((a, b) => a.order - b.order);
+  const byId = new Map<string, ChapterRecord[]>();
+  const roots: ChapterRecord[] = [];
+  for (const c of sorted) {
+    if (c.parentId) {
+      const arr = byId.get(c.parentId) ?? [];
+      arr.push(c);
+      byId.set(c.parentId, arr);
+    } else {
+      roots.push(c);
+    }
+  }
+  const walk = (node: ChapterRecord, depth: number): void => {
+    rows.push({ kind: "chapter", chapter: node, depth });
+    for (const heading of chapterHeadings[node.id] ?? []) {
+      rows.push({
+        kind: "heading",
+        id: heading.id,
+        chapter: node,
+        heading,
+        depth: depth + 1,
+      });
+    }
+    for (const child of byId.get(node.id) ?? []) walk(child, depth + 1);
+  };
+  for (const root of roots) walk(root, 0);
+  return rows;
+}
+
 export function ChapterTree({
   chapters,
+  chapterHeadings = {},
   currentChapterId,
+  activeHeadingId = null,
   onSelect,
+  onSelectHeading,
   onCreate,
   onRename,
   onDelete,
@@ -65,11 +115,17 @@ export function ChapterTree({
   const renameInputRef = useRef<HTMLInputElement>(null);
 
   const flatAll = useMemo(() => buildTree(chapters), [chapters]);
+  const rowAll = useMemo(() => buildRows(chapters, chapterHeadings), [chapters, chapterHeadings]);
   const normalizedQuery = query.trim().toLowerCase();
-  const flat = useMemo(() => {
-    if (!normalizedQuery) return flatAll;
-    return flatAll.filter((chapter) => chapter.title.toLowerCase().includes(normalizedQuery));
-  }, [flatAll, normalizedQuery]);
+  const rows = useMemo(() => {
+    if (!normalizedQuery) return rowAll;
+    return rowAll.filter((row) =>
+      row.kind === "chapter"
+        ? row.chapter.title.toLowerCase().includes(normalizedQuery)
+        : row.heading.title.toLowerCase().includes(normalizedQuery) ||
+          row.chapter.title.toLowerCase().includes(normalizedQuery),
+    );
+  }, [rowAll, normalizedQuery]);
 
   useEffect(() => {
     if (!menu) return;
@@ -91,11 +147,14 @@ export function ChapterTree({
   const scrollRef = useRef<HTMLDivElement>(null);
   // M9 Phase 2.2: virtualize chapter list. Fixed-ish row height keeps DOM cheap on 1000+ chapters.
   const virtualizer = useVirtualizer({
-    count: flat.length,
+    count: rows.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 32,
     overscan: 12,
-    getItemKey: (index) => flat[index]?.id ?? index,
+    getItemKey: (index) => {
+      const row = rows[index];
+      return row?.kind === "heading" ? row.id : row?.chapter.id ?? index;
+    },
   });
 
   const handleMove = (chapterId: string, direction: -1 | 1) => {
@@ -154,7 +213,7 @@ export function ChapterTree({
         {chapters.length === 0 && (
           <p className="px-3 py-3 text-xs text-ink-400">还没有章节，点右上新建一章开始。</p>
         )}
-        {chapters.length > 0 && flat.length === 0 && (
+        {chapters.length > 0 && rows.length === 0 && (
           <p className="px-3 py-3 text-xs text-ink-400">没有匹配的章节。</p>
         )}
         <div
@@ -168,10 +227,17 @@ export function ChapterTree({
         >
           {virtualizer.getVirtualItems().map((vRow) => {
             const idx = vRow.index;
-            const chapter = flat[idx];
-            const active = chapter.id === currentChapterId;
-            const depth = chapter.order;
-            const isRenaming = chapter.id === renamingId;
+            const row = rows[idx];
+            if (!row) return null;
+            const chapter = row.chapter;
+            const chapterActive = chapter.id === currentChapterId;
+            const depth = row.depth;
+            const isHeading = row.kind === "heading";
+            const headingActive = isHeading && row.id === activeHeadingId;
+            const duplicateHeading =
+              isHeading &&
+              (chapterHeadings[chapter.id] ?? []).filter((item) => item.title === row.heading.title).length > 1;
+            const isRenaming = !isHeading && chapter.id === renamingId;
             const fullIndex = orderedIds.indexOf(chapter.id);
             return (
               <div
@@ -187,11 +253,18 @@ export function ChapterTree({
                 }}
               >
                 <div
-                  className={`group flex items-center px-3 py-1.5 text-sm transition-colors ${
-                    active ? "bg-accent-500/20 text-accent-200" : "text-ink-200 hover:bg-ink-700/60"
+                  className={`group flex items-center px-3 transition-colors ${
+                    isHeading
+                      ? headingActive
+                        ? "mx-2 rounded-md bg-accent-500/12 py-1 text-xs font-medium text-accent-200 ring-1 ring-accent-500/20 hover:bg-accent-500/16"
+                        : "mx-2 rounded-md py-1 text-xs text-ink-300 hover:bg-ink-700/35 hover:text-ink-100 dark:text-ink-500 dark:hover:bg-ink-700/30 dark:hover:text-ink-200"
+                      : chapterActive
+                        ? "bg-accent-500/14 py-2 text-sm text-accent-200"
+                        : "py-2 text-sm text-ink-100 hover:bg-ink-700/35 dark:text-ink-200 dark:hover:bg-ink-700/45"
                   }`}
-                  style={{ paddingLeft: `${12 + depth * 12}px` }}
+                  style={{ paddingLeft: `${isHeading ? 14 + depth * 14 : 12 + depth * 14}px` }}
                   onContextMenu={(e) => {
+                    if (isHeading) return;
                     e.preventDefault();
                     setMenu({ chapterId: chapter.id, x: e.clientX, y: e.clientY });
                   }}
@@ -210,18 +283,34 @@ export function ChapterTree({
                     />
                   ) : (
                     <button
-                      className="flex flex-1 items-center justify-between overflow-hidden text-left"
-                      onClick={() => onSelect(chapter.id)}
+                      className="flex min-w-0 flex-1 items-center overflow-hidden text-left"
+                      onClick={() => {
+                        if (isHeading) {
+                          onSelectHeading?.(chapter.id, row.heading);
+                        } else {
+                          onSelect(chapter.id);
+                        }
+                      }}
                       onDoubleClick={() => {
+                        if (isHeading) return;
                         setRenamingId(chapter.id);
                         setRenameValue(chapter.title);
                       }}
+                      title={isHeading ? `跳到第 ${row.heading.line} 行` : undefined}
                     >
-                      <span className="truncate">{chapter.title}</span>
-                      <span className="ml-2 shrink-0 text-xs text-ink-400">{chapter.wordCount}</span>
+                      <span className={`truncate ${isHeading ? "leading-5" : ""}`}>
+                        {isHeading ? row.heading.title : chapter.title}
+                      </span>
+                      {isHeading ? (
+                        duplicateHeading ? (
+                          <span className="ml-2 shrink-0 rounded-full border border-ink-600/70 bg-ink-950/10 px-1.5 py-0.5 text-[10px] font-normal text-ink-400 dark:border-ink-700 dark:bg-ink-950/35">
+                            {row.heading.line} 行
+                          </span>
+                        ) : null
+                      ) : null}
                     </button>
                   )}
-                  {!isRenaming && (
+                  {!isRenaming && !isHeading && (
                     <div className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"

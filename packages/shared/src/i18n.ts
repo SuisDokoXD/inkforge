@@ -146,6 +146,7 @@ export const i18nResources: Resources = {
   "settings.theme": { zh: "主题", en: "Theme", ja: "テーマ" },
   "settings.theme.dark": { zh: "深色", en: "Dark", ja: "ダーク" },
   "settings.theme.light": { zh: "浅色", en: "Light", ja: "ライト" },
+  "settings.theme.paper": { zh: "纸感", en: "Paper", ja: "紙" },
   "settings.devMode": { zh: "启用开发者模式", en: "Enable developer mode", ja: "開発者モードを有効化" },
   "settings.devModeHint": {
     zh: "显示开发者菜单与诊断摘要入口",

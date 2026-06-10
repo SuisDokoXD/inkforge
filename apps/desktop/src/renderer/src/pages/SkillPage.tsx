@@ -1,5 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BookOpenText,
+  Check,
+  ChevronRight,
+  Download,
+  FlaskConical,
+  Library,
+  Plus,
+  Save,
+  Send,
+  ShoppingCart,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type {
   SkillDefinition,
   SkillOutputTarget,
@@ -21,10 +36,17 @@ const SCOPE_LABELS: Record<SkillScope, string> = {
 };
 
 const OUTPUT_LABELS: Record<SkillOutputTarget, string> = {
-  "ai-feedback": "写入时间线",
-  "replace-selection": "替换选中",
+  "ai-feedback": "只给建议",
+  "replace-selection": "替换选中文本",
   "insert-after-selection": "插入到选中后",
   "append-chapter": "追加到章末",
+};
+
+const OUTPUT_DESCRIPTIONS: Record<SkillOutputTarget, string> = {
+  "ai-feedback": "结果进入右侧时间线，不直接改正文。适合审校、提醒、分析。",
+  "replace-selection": "把选中的文字换成 AI 输出。适合润色、改写、翻译。",
+  "insert-after-selection": "保留原文，把 AI 输出插在选区后面。适合扩写、补充说明。",
+  "append-chapter": "把结果加到当前章节末尾。适合续写、章末总结。",
 };
 
 const TRIGGER_LABELS: Record<SkillTriggerType, string> = {
@@ -44,11 +66,19 @@ const ALL_TRIGGERS: SkillTriggerType[] = [
 ];
 
 const TRIGGER_DESCRIPTIONS: Record<SkillTriggerType, string> = {
-  selection: "选中文本后从悬浮工具条运行，适合润色、改写、局部审校。",
-  "every-n-chars": "写到一定字数后自动运行，适合轻量提醒；不建议绑定重型生成。",
-  "on-save": "保存章节时运行，适合审校、摘要、风格检查。",
-  "on-chapter-end": "章节到末尾时运行，适合章末建议、伏笔检查。",
-  manual: "只在编辑器里手动点击运行，最稳妥，适合多数写作工具。",
+  selection: "选中一段文字后，在悬浮工具条里点这个指令。适合润色、改写、局部审校。",
+  "every-n-chars": "写到一定字数后自动提醒。适合轻量检查，不建议用来长篇生成。",
+  "on-save": "保存章节时自动运行。适合错别字、风格、伏笔提示。",
+  "on-chapter-end": "光标在章节末尾时运行。适合续写建议、章末总结。",
+  manual: "在编辑器工具栏手动运行。最稳妥，适合多数写作指令。",
+};
+
+const TRIGGER_USAGE: Record<SkillTriggerType, string> = {
+  selection: "选中文本后出现",
+  "every-n-chars": "写作中自动出现",
+  "on-save": "保存时自动运行",
+  "on-chapter-end": "章节末尾使用",
+  manual: "工具栏里手动点",
 };
 
 const PROMPT_TEMPLATES = [
@@ -74,11 +104,11 @@ const PROMPT_TEMPLATES = [
 ];
 
 const CORE_PLACEHOLDERS = [
-  { label: "选中文本", token: "{{selection}}" },
-  { label: "章节标题", token: "{{chapter.title}}" },
-  { label: "全文", token: "{{chapter.text}}" },
-  { label: "前文 1200 字", token: "{{context_before_1200}}" },
-  { label: "角色名", token: "{{character.name}}" },
+  { label: "选中文本", token: "{{selection}}", help: "用户当前框选的文字" },
+  { label: "章节标题", token: "{{chapter.title}}", help: "当前章节名" },
+  { label: "全文", token: "{{chapter.text}}", help: "当前章节全部正文" },
+  { label: "前文 1200 字", token: "{{context_before_1200}}", help: "光标前的上下文" },
+  { label: "角色名", token: "{{character.name}}", help: "当前关联角色" },
 ];
 
 const ADVANCED_MACROS = [
@@ -151,6 +181,12 @@ function upsertTrigger(
 
 function removeTrigger(list: SkillTriggerDef[], type: SkillTriggerType): SkillTriggerDef[] {
   return list.filter((t) => t.type !== type);
+}
+
+function describeTriggers(triggers: SkillTriggerDef[]): string {
+  const enabled = triggers.filter((t) => t.enabled !== false);
+  if (enabled.length === 0) return "尚未设置使用入口";
+  return enabled.map((t) => TRIGGER_USAGE[t.type]).join("、");
 }
 
 export function SkillPage(): JSX.Element {
@@ -383,32 +419,36 @@ export function SkillPage(): JSX.Element {
     <div className="flex h-full w-full bg-ink-900 text-ink-100">
       <aside className="flex w-72 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
         <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-3 py-2 text-sm">
-          <span className="text-accent-300">🧩 Skill</span>
+          <span className="flex items-center gap-2 font-medium text-accent-300">
+            <Library size={16} />
+            写作指令
+          </span>
           <div className="flex gap-1">
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+              className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 text-xs hover:bg-ink-700"
               onClick={() => {
                 setActiveSkillId(null);
                 setEditor(emptyEditorState());
               }}
               title="新建"
             >
-              + 新建
+              <Plus size={14} />
+              新建
             </button>
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-600 text-xs hover:bg-ink-700"
               onClick={() => importMut.mutate()}
               disabled={importMut.isPending}
               title="导入 JSON"
             >
-              ⬇
+              <Upload size={14} />
             </button>
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-600 text-xs hover:bg-ink-700"
               onClick={() => setMarketOpen(true)}
               title="Skill 市场"
             >
-              🛒
+              <ShoppingCart size={14} />
             </button>
           </div>
         </div>
@@ -445,16 +485,19 @@ export function SkillPage(): JSX.Element {
                   <span className="rounded bg-ink-700 px-1 text-xs text-ink-400">停用</span>
                 )}
               </div>
-              <div className="flex gap-1 text-xs text-ink-400">
+              <div className="mt-0.5 flex max-w-full gap-1 text-xs text-ink-400">
                 <span>{SCOPE_LABELS[s.scope]}</span>
                 <span>·</span>
-                <span>{s.triggers.length} 触发</span>
+                <span className="truncate">{describeTriggers(s.triggers)}</span>
+              </div>
+              <div className="text-[11px] text-ink-500">
+                {OUTPUT_LABELS[s.output]}
               </div>
             </button>
           ))}
           {(skillsQuery.data ?? []).length === 0 && !skillsQuery.isLoading && (
-            <div className="px-3 py-6 text-center text-xs text-ink-500">
-              暂无 Skill。点"+新建"或导入 JSON。
+            <div className="px-4 py-8 text-center text-xs leading-6 text-ink-500">
+              还没有写作指令。点「新建」做一个润色、审校或续写工具。
             </div>
           )}
         </div>
@@ -464,15 +507,15 @@ export function SkillPage(): JSX.Element {
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-800/60 px-4 py-2 text-sm">
-          <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ink-700 bg-ink-800/60 px-4 py-2 text-sm">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <input
-              className="rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
+              className="h-9 w-72 rounded-md border border-ink-600 bg-ink-900 px-3 text-sm font-medium focus:border-accent-500 focus:outline-none"
               value={editor.name}
               onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-              placeholder="Skill 名称"
+              placeholder="指令名称，例如：温柔润色"
             />
-            <label className="flex items-center gap-1 text-xs text-ink-300">
+            <label className="flex h-9 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2 text-xs text-ink-300">
               <input
                 type="checkbox"
                 checked={editor.enabled}
@@ -481,7 +524,7 @@ export function SkillPage(): JSX.Element {
               启用
             </label>
             <select
-              className="rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-xs"
+              className="h-9 rounded-md border border-ink-600 bg-ink-900 px-2 text-xs"
               value={editor.scope}
               onChange={(e) => setEditor({ ...editor, scope: e.target.value as SkillScope })}
             >
@@ -491,44 +534,54 @@ export function SkillPage(): JSX.Element {
                 </option>
               ))}
             </select>
+            <div className="hidden min-w-0 items-center gap-2 text-xs text-ink-500 xl:flex">
+              <ChevronRight size={14} />
+              <span className="truncate">{describeTriggers(editor.triggers)}</span>
+              <span>·</span>
+              <span>{OUTPUT_LABELS[editor.output]}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-ink-500">{statusText}</span>
+          <div className="flex shrink-0 items-center gap-2 text-xs">
+            {statusText && <span className="max-w-56 truncate text-ink-500">{statusText}</span>}
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 hover:bg-ink-700"
+              className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 hover:bg-ink-700"
               onClick={() => exportMut.mutate()}
               disabled={!editor.id || exportMut.isPending}
             >
+              <Download size={13} />
               导出
             </button>
             <button
-              className="rounded-md border border-ink-600 px-2 py-1 hover:bg-ink-700"
+              className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 hover:bg-ink-700"
               onClick={() => setPublishOpen(true)}
               disabled={!editor.id}
               title="生成发布用 skill.json 和 PR 说明"
             >
+              <Send size={13} />
               发布
             </button>
             {!isNew && (
               <button
-                className="rounded-md border border-red-600/60 px-2 py-1 text-red-300 hover:bg-red-900/30"
+                className="flex h-8 items-center gap-1 rounded-md border border-red-600/60 px-2 text-red-300 hover:bg-red-900/30"
                 onClick={() => {
                   if (editor.id && confirm(`删除「${editor.name}」？`)) {
                     deleteSkillMut.mutate(editor.id);
                   }
                 }}
               >
+                <Trash2 size={13} />
                 删除
               </button>
             )}
             <button
-              className="rounded-md border border-accent-500/60 bg-accent-500/20 px-3 py-1 text-accent-200 hover:bg-accent-500/30 disabled:opacity-50"
+              className="flex h-8 items-center gap-1 rounded-md bg-accent-500 px-3 font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
               disabled={createSkillMut.isPending || updateSkillMut.isPending || (!isNew && !dirty)}
               onClick={() => {
                 if (isNew) createSkillMut.mutate();
                 else updateSkillMut.mutate();
               }}
             >
+              <Save size={13} />
               {isNew ? "创建" : "保存"}
             </button>
           </div>
@@ -536,15 +589,59 @@ export function SkillPage(): JSX.Element {
 
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
           <div className="flex flex-col gap-4 p-4">
+            <section className="rounded-xl border border-ink-700 bg-ink-800/30 p-4">
+              <div className="mb-3 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-base font-semibold text-ink-100">把常用 AI 操作做成一个按钮</h1>
+                  <p className="mt-1 text-xs leading-6 text-ink-400">
+                    例如“润色选中文本”“审校当前章节”“按前文续写一段”。保存后，它会出现在编辑器工具栏、选中文本浮层，或按你设置的方式自动运行。
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-md border border-ink-700 bg-ink-950 px-2 py-1 text-xs text-ink-400">
+                  {editor.enabled ? "已启用" : "已停用"}
+                </span>
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                <div className="rounded-md border border-ink-700 bg-ink-950/60 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-sm font-medium text-ink-100">
+                    <Sparkles size={15} className="text-accent-300" />
+                    1. 写清楚要做什么
+                  </div>
+                  <p className="text-xs leading-5 text-ink-500">
+                    用自然语言描述任务，再点占位符告诉 AI 要处理哪段文字。
+                  </p>
+                </div>
+                <div className="rounded-md border border-ink-700 bg-ink-950/60 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-sm font-medium text-ink-100">
+                    <BookOpenText size={15} className="text-accent-300" />
+                    2. 选择在哪里使用
+                  </div>
+                  <p className="text-xs leading-5 text-ink-500">
+                    手动点击最稳；选中文本适合润色；自动触发更适合轻量提醒。
+                  </p>
+                </div>
+                <div className="rounded-md border border-ink-700 bg-ink-950/60 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-sm font-medium text-ink-100">
+                    <Check size={15} className="text-accent-300" />
+                    3. 决定结果放哪里
+                  </div>
+                  <p className="text-xs leading-5 text-ink-500">
+                    可以只给建议，也可以替换选区、插入到后面或追加到章末。
+                  </p>
+                </div>
+              </div>
+            </section>
+
             <section className="rounded-xl border border-ink-700/70 bg-ink-800/35 p-4 shadow-sm">
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-ink-100">写作指令</h2>
+                  <h2 className="text-sm font-semibold text-ink-100">指令内容</h2>
                   <p className="mt-1 text-xs text-ink-400">
-                    写清楚它要怎么处理文本。常用占位符可以点按钮插入，不需要背宏语法。
+                    像给助手写一句明确要求。花括号占位符会在运行时自动换成正文、选区或章节信息。
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-ink-500">套用模板</span>
                   {PROMPT_TEMPLATES.map((tpl) => (
                     <button
                       key={tpl.name}
@@ -560,31 +657,40 @@ export function SkillPage(): JSX.Element {
 
               <textarea
                 ref={promptTextareaRef}
-                className="h-64 w-full resize-y rounded-xl border border-ink-600 bg-ink-900/80 p-3 font-mono text-sm leading-relaxed shadow-inner focus:border-accent-500 focus:outline-none"
+                className="h-56 w-full resize-y rounded-xl border border-ink-600 bg-ink-950/80 p-3 font-mono text-sm leading-relaxed shadow-inner focus:border-accent-500 focus:outline-none"
                 value={editor.prompt}
                 onChange={(e) => setEditor({ ...editor, prompt: e.target.value })}
-                placeholder={"例：请温柔润色以下文字，保留原意，只输出改写结果：\n\n{{selection}}"}
+                placeholder={"例：请温柔润色以下文字，保留原意和长度，只输出改写后的正文：\n\n{{selection}}"}
                 aria-label="Skill Prompt"
               />
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="text-xs text-ink-500">插入上下文</span>
-                {CORE_PLACEHOLDERS.map((item) => (
-                  <button
-                    key={item.token}
-                    type="button"
-                    className="rounded-full border border-ink-700 bg-ink-900/50 px-2.5 py-1 text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
-                    onClick={() => insertPromptText(item.token)}
-                    title={item.token}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+              <div className="mt-3 rounded-lg border border-ink-700 bg-ink-950/50 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-xs font-medium text-ink-300">告诉 AI 读取哪些内容</span>
+                  <span className="text-[11px] text-ink-500">点击即可插入到光标位置</span>
+                </div>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+                  {CORE_PLACEHOLDERS.map((item) => (
+                    <button
+                      key={item.token}
+                      type="button"
+                      className="rounded-md border border-ink-700 bg-ink-900 px-2.5 py-2 text-left transition hover:border-accent-500/60 hover:bg-accent-500/10"
+                      onClick={() => insertPromptText(item.token)}
+                      title={item.token}
+                    >
+                      <span className="block text-xs font-medium text-ink-200">{item.label}</span>
+                      <span className="mt-1 block truncate font-mono text-[11px] text-ink-500">
+                        {item.token}
+                      </span>
+                      <span className="mt-1 block text-[11px] text-ink-500">{item.help}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <details className="mt-3 rounded-lg border border-ink-700/70 bg-ink-900/30 px-3 py-2">
                 <summary className="cursor-pointer text-xs text-ink-400">
-                  高级宏：随机、骰子、日期、换行
+                  少数情况下才需要：随机、骰子、日期、换行
                 </summary>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ADVANCED_MACROS.map((macro) => (
@@ -804,11 +910,37 @@ export function SkillPage(): JSX.Element {
               </div>
             </section>
 
-            <div>
-              <div className="mb-2 text-xs text-ink-400">模型绑定 / 输出</div>
-              <div className="grid grid-cols-3 gap-3 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm">
+            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
+              <div className="mb-3">
+                <h2 className="text-sm font-semibold text-ink-100">结果怎么处理</h2>
+                <p className="mt-1 text-xs text-ink-400">
+                  先选“只给建议”最安全；确认效果稳定后，再改成替换或插入正文。
+                </p>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {(Object.keys(OUTPUT_LABELS) as SkillOutputTarget[]).map((output) => (
+                  <button
+                    key={output}
+                    type="button"
+                    onClick={() => setEditor({ ...editor, output })}
+                    className={`rounded-lg border p-3 text-left transition ${
+                      editor.output === output
+                        ? "border-accent-500/60 bg-accent-500/12"
+                        : "border-ink-700 bg-ink-900/35 hover:bg-ink-800"
+                    }`}
+                  >
+                    <span className="block text-sm font-medium text-ink-100">
+                      {OUTPUT_LABELS[output]}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-ink-500">
+                      {OUTPUT_DESCRIPTIONS[output]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs text-ink-400">温度 (Temperature)</label>
+                  <label className="mb-1 block text-xs text-ink-400">创造性</label>
                   <input
                     className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1"
                     type="number"
@@ -818,9 +950,10 @@ export function SkillPage(): JSX.Element {
                     value={editor.temperature}
                     onChange={(e) => setEditor({ ...editor, temperature: e.target.value })}
                   />
+                  <p className="mt-1 text-[11px] text-ink-500">越低越稳，越高越发散。</p>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-ink-400">最大 Token 数</label>
+                  <label className="mb-1 block text-xs text-ink-400">最长输出</label>
                   <input
                     className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1"
                     type="number"
@@ -829,29 +962,17 @@ export function SkillPage(): JSX.Element {
                     value={editor.maxTokens}
                     onChange={(e) => setEditor({ ...editor, maxTokens: e.target.value })}
                   />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-ink-400">输出方式</label>
-                  <select
-                    className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1"
-                    value={editor.output}
-                    onChange={(e) =>
-                      setEditor({ ...editor, output: e.target.value as SkillOutputTarget })
-                    }
-                  >
-                    {(Object.keys(OUTPUT_LABELS) as SkillOutputTarget[]).map((o) => (
-                      <option key={o} value={o}>
-                        {OUTPUT_LABELS[o]}
-                      </option>
-                    ))}
-                  </select>
+                  <p className="mt-1 text-[11px] text-ink-500">润色可小一些，续写可适当放大。</p>
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div>
+            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
               <div className="mb-2 flex items-center justify-between text-xs text-ink-400">
-                <span>测试运行（不写入时间线）</span>
+                <span className="flex items-center gap-2">
+                  <FlaskConical size={14} />
+                  测试一下
+                </span>
                 <div className="flex items-center gap-2">
                   <button
                     className="rounded-md border border-ink-600 px-3 py-1 hover:bg-ink-700"
@@ -865,10 +986,13 @@ export function SkillPage(): JSX.Element {
                     onClick={runTest}
                     disabled={testRunning || !editor.id}
                   >
-                    {testRunning ? "运行中…" : "▶ 运行"}
+                    {testRunning ? "运行中…" : "运行模型"}
                   </button>
                 </div>
               </div>
+              <p className="mb-2 text-xs leading-5 text-ink-500">
+                粘贴一段样例文字，先“预览渲染”检查占位符替换；保存后才能运行模型测试。
+              </p>
               <textarea
                 className="h-24 w-full resize-y rounded-md border border-ink-600 bg-ink-800 p-2 text-sm"
                 value={testSample}
@@ -883,7 +1007,7 @@ export function SkillPage(): JSX.Element {
               <pre className="mt-2 h-32 w-full overflow-auto rounded-md border border-ink-700 bg-ink-950 p-2 text-xs text-ink-200 scrollbar-thin">
                 {testOutput || "(等待输出)"}
               </pre>
-            </div>
+            </section>
           </div>
         </div>
       </section>

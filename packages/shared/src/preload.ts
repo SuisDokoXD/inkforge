@@ -23,6 +23,8 @@ import type {
   DailySummaryGenerateResponse,
   DailySummaryGetInput,
   DailySummaryListInput,
+  FeedbackClearChapterInput,
+  FeedbackDeleteEmptyInput,
   FeedbackDismissInput,
   FeedbackListInput,
   FsPickFileInput,
@@ -202,6 +204,8 @@ export interface InkforgeApi {
   feedback: {
     list(input: FeedbackListInput): Promise<AIFeedbackRecord[]>;
     dismiss(input: FeedbackDismissInput): Promise<{ id: string; dismissed: boolean }>;
+    deleteEmpty(input: FeedbackDeleteEmptyInput): Promise<{ deleted: number }>;
+    clearChapter(input: FeedbackClearChapterInput): Promise<{ deleted: number }>;
   };
   outline: {
     create(input: OutlineCreateInput): Promise<OutlineCardRecord>;
@@ -239,6 +243,7 @@ export interface InkforgeApi {
   fs: {
     pickFile(input: FsPickFileInput): Promise<FsPickFileResponse>;
     saveFile(input: FsSaveFileInput): Promise<FsSaveFileResponse>;
+    getPathForFile(file: unknown): string;
   };
   terminal: {
     spawn(input: TerminalSpawnInput): Promise<TerminalSpawnResponse>;

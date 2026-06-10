@@ -36,6 +36,8 @@ import { GlobalDropZone } from "./components/GlobalDropZone";
 import { PageSkeleton } from "./components/PageSkeleton";
 import { CommandPalette } from "./components/CommandPalette";
 import { AnimatedPage } from "./components/AnimatedPage";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { LetterArrivalToast } from "./components/LetterArrivalToast";
 
 // 按当前主视图返回对应页面元素。抽成函数让 <AnimatePresence> 只需包一个带 key 的子节点，
 // 避免在 JSX 里铺 13 行 `mainView === x && <X/>` 条件渲染。
@@ -95,8 +97,12 @@ export function App(): JSX.Element {
   }, [settingsQuery.data, setSettings]);
 
   useEffect(() => {
-    const theme = settings.theme === "light" ? "theme-light" : "theme-dark";
-    document.documentElement.classList.remove("theme-light", "theme-dark");
+    const theme = settings.theme === "paper"
+      ? "theme-paper"
+      : settings.theme === "light"
+        ? "theme-light"
+        : "theme-dark";
+    document.documentElement.classList.remove("theme-light", "theme-dark", "theme-paper");
     document.documentElement.classList.add(theme);
   }, [settings.theme]);
 
@@ -218,6 +224,7 @@ export function App(): JSX.Element {
         <CrashRecoveryBanner />
         <ReminderToast />
         <AchievementToast />
+        <LetterArrivalToast />
         <GlobalDropZone />
         <div className="flex min-h-0 flex-1">
           <ErrorBoundary label="ActivityBar" lang={lang}>
@@ -237,6 +244,7 @@ export function App(): JSX.Element {
         </div>
         <CompanionMount projectId={currentProjectId ?? null} />
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} ctx={paletteCtx} />
+        <SettingsDialog />
       </div>
     </ErrorBoundary>
   );

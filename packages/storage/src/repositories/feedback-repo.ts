@@ -84,3 +84,23 @@ export function listFeedbacksByProject(db: DB, projectId: string, limit = 100): 
 export function setFeedbackDismissed(db: DB, id: string, dismissed: boolean): void {
   db.prepare(`UPDATE ai_feedbacks SET dismissed = ? WHERE id = ?`).run(dismissed ? 1 : 0, id);
 }
+
+export function deleteEmptyFeedbacksByChapter(db: DB, chapterId: string): number {
+  const result = db
+    .prepare(
+      `DELETE FROM ai_feedbacks
+       WHERE chapter_id = ?
+         AND (
+           payload IS NULL
+           OR TRIM(payload) = ''
+           OR (json_valid(payload) = 1 AND TRIM(COALESCE(json_extract(payload, '$.text'), '')) = '')
+         )`,
+    )
+    .run(chapterId);
+  return Number(result.changes ?? 0);
+}
+
+export function deleteFeedbacksByChapter(db: DB, chapterId: string): number {
+  const result = db.prepare(`DELETE FROM ai_feedbacks WHERE chapter_id = ?`).run(chapterId);
+  return Number(result.changes ?? 0);
+}

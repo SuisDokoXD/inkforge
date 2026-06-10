@@ -194,6 +194,7 @@ function stripHtml(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(Number.parseInt(n, 16)))
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
@@ -205,16 +206,59 @@ function extractAttr(xml: string, attr: string): string | undefined {
 }
 
 function joinPath(base: string, rel: string): string {
-  if (!rel) return base;
+  const cleanRel = rel.split("#", 1)[0].split("?", 1)[0];
+  if (!cleanRel) return base;
   const baseDir = base.includes("/") ? base.slice(0, base.lastIndexOf("/") + 1) : "";
-  const parts = (baseDir + rel).split("/");
+  const parts = (baseDir + cleanRel).split("/");
   const out: string[] = [];
   for (const p of parts) {
     if (p === "" || p === ".") continue;
     if (p === "..") out.pop();
-    else out.push(p);
+    else out.push(safeDecodeURIComponent(p));
   }
   return out.join("/");
+}
+
+function safeDecodeURIComponent(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeZipPath(path: string): string {
+  return path.replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function getEntry(entries: Map<string, ZipEntry>, filePath: string): ZipEntry | undefined {
+  const normalized = normalizeZipPath(filePath);
+  return entries.get(normalized) ?? entries.get(safeDecodeURIComponent(normalized));
+}
+
+function decodeXmlText(text: string | undefined): string | undefined {
+  return text
+    ?.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(Number.parseInt(n, 16)))
+    .trim();
+}
+
+function extractElementText(xml: string, tag: string): string | undefined {
+  const m = new RegExp(`<(?:[\\w-]+:)?${tag}\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w-]+:)?${tag}>`, "i").exec(xml);
+  return decodeXmlText(m?.[1]?.replace(/<[^>]+>/g, ""));
+}
+
+function extractHtmlTitle(html: string): string | null {
+  const h = /<h[1-3][^>]*>([\s\S]*?)<\/h[1-3]>/i.exec(html);
+  const t = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html);
+  return decodeXmlText((h?.[1] ?? t?.[1])?.replace(/<[^>]+>/g, "")) || null;
 }
 
 export async function parseEpubChapters(
@@ -228,21 +272,19 @@ export async function parseEpubChapters(
   const containerXml = (await readEntry(buf, containerEntry)).toString("utf8");
   const opfPath = extractAttr(containerXml, "full-path");
   if (!opfPath) throw new Error("EPUB: rootfile path not found");
-  const opfEntry = entries.get(opfPath);
+  const opfEntry = getEntry(entries, opfPath);
   if (!opfEntry) throw new Error(`EPUB: ${opfPath} missing`);
   const opfXml = (await readEntry(buf, opfEntry)).toString("utf8");
 
   // 2. metadata
-  const titleM = /<dc:title[^>]*>([^<]+)<\/dc:title>/i.exec(opfXml);
-  const authorM = /<dc:creator[^>]*>([^<]+)<\/dc:creator>/i.exec(opfXml);
   const meta: EpubMeta = {
-    title: titleM?.[1]?.trim(),
-    author: authorM?.[1]?.trim(),
+    title: extractElementText(opfXml, "title"),
+    author: extractElementText(opfXml, "creator"),
   };
 
   // 3. manifest: id -> href
   const manifest = new Map<string, string>();
-  const manifestRe = /<item\s+([^/>]+?)\/?>/gi;
+  const manifestRe = /<item\b([^>]*)\/?>/gi;
   let mm: RegExpExecArray | null;
   while ((mm = manifestRe.exec(opfXml)) !== null) {
     const attrs = mm[1];
@@ -253,7 +295,7 @@ export async function parseEpubChapters(
 
   // 4. spine: ordered list of idref
   const spineIds: string[] = [];
-  const spineRe = /<itemref\s+([^/>]+?)\/?>/gi;
+  const spineRe = /<itemref\b([^>]*)\/?>/gi;
   let sm: RegExpExecArray | null;
   while ((sm = spineRe.exec(opfXml)) !== null) {
     const idref = extractAttr(sm[1], "idref");
@@ -267,15 +309,12 @@ export async function parseEpubChapters(
     const href = manifest.get(id);
     if (!href) continue;
     const fullPath = joinPath(opfPath, href);
-    const entry = entries.get(fullPath);
+    const entry = getEntry(entries, fullPath);
     if (!entry) continue;
     const html = (await readEntry(buf, entry)).toString("utf8");
     const text = stripHtml(html);
     if (!text || text.length < 50) continue; // skip cover/empty
-    // Try to extract title from <h1>/<title>
-    const h1 = /<h[1-3][^>]*>([^<]+)<\/h[1-3]>/i.exec(html);
-    const titleTag = /<title[^>]*>([^<]+)<\/title>/i.exec(html);
-    const chapterTitle = (h1?.[1] ?? titleTag?.[1])?.trim() || null;
+    const chapterTitle = extractHtmlTitle(html);
     chapters.push({ ordinal: ord, chapterTitle, text });
     ord += 1;
   }
@@ -315,6 +354,9 @@ export async function importEpubAsLib(input: {
   notes?: string;
 }): Promise<{ lib: SampleLibRecord; chunkCount: number }> {
   const { meta, chapters } = await parseEpubChapters(input.filePath);
+  if (chapters.length === 0) {
+    throw new Error("EPUB 未解析出正文章节：请确认文件包含有效目录/spine，或先转为 TXT 后导入");
+  }
   const ctx = getAppContext();
   const lib = createSampleLib(ctx.db, {
     projectId: input.projectId,

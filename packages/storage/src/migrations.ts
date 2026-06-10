@@ -1116,6 +1116,49 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 27,
+    name: "expanded_material_kinds",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS materials_v27 (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK(kind IN (
+            'idea',
+            'plot',
+            'character',
+            'location',
+            'world',
+            'fragment',
+            'reference',
+            'note'
+          )),
+          title TEXT NOT NULL,
+          content TEXT NOT NULL DEFAULT '',
+          tags TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(tags)),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+        );
+
+        INSERT INTO materials_v27 (
+          id, project_id, kind, title, content, tags, created_at, updated_at
+        )
+        SELECT
+          id, project_id, kind, title, content, tags, created_at, updated_at
+        FROM materials;
+
+        DROP TABLE materials;
+        ALTER TABLE materials_v27 RENAME TO materials;
+
+        CREATE INDEX IF NOT EXISTS idx_materials_project_updated
+          ON materials(project_id, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_materials_project_kind
+          ON materials(project_id, kind);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {

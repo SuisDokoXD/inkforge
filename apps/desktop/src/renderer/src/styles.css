@@ -87,6 +87,46 @@ html.theme-light {
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
 }
 
+/*
+ * 温润纸感主题：暖白纸面 + 墨色文字 + 低饱和橙色强调。
+ * 仍沿用 ink 反向刻度：ink-900 是主背景，ink-100 是主要文字。
+ * 色值刻意克制，避免整套 UI 变成泛黄仿古皮肤。
+ */
+html.theme-paper {
+  color-scheme: light;
+  --ink-50: 16 12 8;
+  --ink-100: 45 34 25;
+  --ink-200: 68 53 41;
+  --ink-300: 98 79 63;
+  --ink-400: 124 104 84;
+  --ink-500: 151 130 109;
+  --ink-600: 211 197 177;
+  --ink-700: 228 217 199;
+  --ink-800: 244 237 224;
+  --ink-900: 250 246 237;
+  --accent-50: 111 45 16;
+  --accent-100: 135 56 18;
+  --accent-200: 163 73 24;
+  --accent-300: 191 91 31;
+  --accent-400: 213 111 42;
+  --accent-500: 224 125 48;
+  --accent-600: 235 151 82;
+  --accent-700: 244 185 127;
+  --accent-800: 250 216 178;
+  --accent-900: 253 236 214;
+  --c-rose-100: 159 18 57; --c-rose-200: 190 18 60; --c-rose-300: 225 29 72;
+  --c-red-100: 153 27 27; --c-red-200: 185 28 28; --c-red-300: 220 38 38;
+  --c-emerald-100: 6 95 70; --c-emerald-200: 4 120 87; --c-emerald-300: 5 150 105;
+  --c-green-100: 22 101 52; --c-green-200: 21 128 61; --c-green-300: 22 163 74;
+  --c-sky-100: 7 89 133; --c-sky-200: 3 105 161; --c-sky-300: 2 132 199;
+  --c-blue-100: 30 64 175; --c-blue-200: 29 78 216; --c-blue-300: 37 99 235;
+  --c-violet-100: 91 33 182; --c-violet-200: 109 40 217; --c-violet-300: 124 58 237;
+  --c-fuchsia-100: 134 25 143; --c-fuchsia-200: 162 28 175; --c-fuchsia-300: 192 38 211;
+  --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
+  --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
+  --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
+}
+
 html,
 body,
 #root {
@@ -114,7 +154,10 @@ select {
 }
 html.theme-light input,
 html.theme-light textarea,
-html.theme-light select {
+html.theme-light select,
+html.theme-paper input,
+html.theme-paper textarea,
+html.theme-paper select {
   color: rgb(var(--ink-100));
 }
 input::placeholder,
@@ -126,6 +169,19 @@ textarea::placeholder {
 input::selection,
 textarea::selection {
   background-color: rgba(0, 122, 255, 0.28);
+  color: rgb(var(--ink-50));
+}
+
+html.theme-paper body {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.12)),
+    radial-gradient(circle at 1px 1px, rgba(92, 68, 40, 0.035) 1px, transparent 0);
+  background-size: auto, 18px 18px;
+}
+
+html.theme-paper input::selection,
+html.theme-paper textarea::selection {
+  background-color: rgba(224, 125, 48, 0.24);
   color: rgb(var(--ink-50));
 }
 
@@ -160,6 +216,15 @@ textarea::selection {
 
 .ProseMirror ::selection {
   background-color: rgba(0, 122, 255, 0.22);
+}
+
+html.theme-paper .ProseMirror ::selection {
+  background-color: rgba(224, 125, 48, 0.24);
+  color: rgb(var(--ink-50));
+}
+
+html.theme-paper .ProseMirror {
+  text-shadow: 0 0 0 rgba(0, 0, 0, 0.01);
 }
 
 .ProseMirror h1,

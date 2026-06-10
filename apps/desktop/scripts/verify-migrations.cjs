@@ -133,7 +133,7 @@ const EXPECTED_INDEXES = [
   "idx_world_info_traces_project_time",
 ];
 
-const EXPECTED_MAX_VERSION = 26;
+const EXPECTED_MAX_VERSION = 27;
 const EXPECTED_VERSIONS = Array.from(
   { length: EXPECTED_MAX_VERSION },
   (_, i) => i + 1,

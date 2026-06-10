@@ -183,18 +183,21 @@ async function runAnalysis(params: RunAnalysisParams): Promise<void> {
           throw new Error(chunk.error);
         }
       }
-      const feedback: AIFeedbackRecord = insertFeedback(ctx.db, {
-        id: analysisId,
-        projectId: input.projectId,
-        chapterId: input.chapterId,
-        type: "analysis",
-        payload: {
-          text: accumulatedText,
-          providerId: providerRecord.id,
-          model: input.model ?? providerRecord.defaultModel,
-        },
-        trigger: input.trigger ?? "auto-200",
-      });
+      const finalText = accumulatedText.trim();
+      const feedback: AIFeedbackRecord | undefined = finalText
+        ? insertFeedback(ctx.db, {
+            id: analysisId,
+            projectId: input.projectId,
+            chapterId: input.chapterId,
+            type: "analysis",
+            payload: {
+              text: finalText,
+              providerId: providerRecord.id,
+              model: input.model ?? providerRecord.defaultModel,
+            },
+            trigger: input.trigger ?? "auto-200",
+          })
+        : undefined;
       emitDone(window, {
         analysisId,
         projectId: input.projectId,

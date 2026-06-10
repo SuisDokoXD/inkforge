@@ -50,6 +50,21 @@ export function AITimeline(): JSX.Element {
     },
   });
 
+  const deleteEmpty = useMutation({
+    mutationFn: (chapterId: string) => feedbackApi.deleteEmpty({ chapterId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["feedbacks", currentChapterId] });
+    },
+  });
+
+  const clearChapter = useMutation({
+    mutationFn: (chapterId: string) => feedbackApi.clearChapter({ chapterId }),
+    onSuccess: () => {
+      setExpandedId(null);
+      void queryClient.invalidateQueries({ queryKey: ["feedbacks", currentChapterId] });
+    },
+  });
+
   useEffect(() => {
     if (analyses.some((a) => a.status === "completed")) {
       void queryClient.invalidateQueries({ queryKey: ["feedbacks", currentChapterId] });
@@ -59,6 +74,7 @@ export function AITimeline(): JSX.Element {
   const items: DisplayItem[] = useMemo(() => {
     const streamingItems: DisplayItem[] = analyses
       .filter((a) => a.chapterId === currentChapterId)
+      .filter((a) => a.status !== "completed" || a.accumulatedText.trim() || a.error)
       .map((a) => ({
         kind: "streaming" as const,
         id: a.analysisId,
@@ -84,10 +100,17 @@ export function AITimeline(): JSX.Element {
   }, [analyses, currentChapterId, historyQuery.data]);
 
   const visible = useMemo(
-    () => items.filter((item) => showDismissed || !item.dismissed),
+    () =>
+      items.filter(
+        (item) =>
+          (showDismissed || !item.dismissed) &&
+          (item.kind !== "history" || item.text.trim().length > 0),
+      ),
     [items, showDismissed],
   );
   const dismissedCount = items.filter((item) => item.dismissed).length;
+  const historyCount = items.filter((item) => item.kind === "history").length;
+  const emptyHistoryCount = items.filter((item) => item.kind === "history" && !item.text.trim()).length;
 
   // M9 Phase 2.2: virtualize visible list. Variable heights handled via measureElement.
   const virtualizer = useVirtualizer({
@@ -104,10 +127,36 @@ export function AITimeline(): JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      {dismissedCount > 0 && (
-        <div className="flex items-center justify-end border-b border-ink-700 px-3 py-1.5 text-xs">
+      {(historyCount > 0 || dismissedCount > 0) && (
+        <div className="flex flex-wrap items-center justify-end gap-2 border-b border-ink-700 px-3 py-1.5 text-xs">
+          {emptyHistoryCount > 0 && currentChapterId && (
+            <button
+              className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-50"
+              onClick={() => deleteEmpty.mutate(currentChapterId)}
+              disabled={deleteEmpty.isPending || clearChapter.isPending}
+              title="删除当前章节中内容为空的历史分析"
+            >
+              删除空分析 ({emptyHistoryCount})
+            </button>
+          )}
+          {historyCount > 0 && currentChapterId && (
+            <button
+              className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+              onClick={() => {
+                if (window.confirm(`清空当前章节的 ${historyCount} 条 AI 时间线历史？此操作不可撤销。`)) {
+                  clearChapter.mutate(currentChapterId);
+                }
+              }}
+              disabled={deleteEmpty.isPending || clearChapter.isPending}
+              title="清空当前章节所有已保存的 AI 时间线历史"
+            >
+              清空本章
+            </button>
+          )}
           <button
-            className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700"
+            className={`rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 ${
+              dismissedCount > 0 ? "" : "hidden"
+            }`}
             onClick={() => setShowDismissed((v) => !v)}
           >
             {showDismissed ? "隐藏已忽略" : `显示已忽略 (${dismissedCount})`}
@@ -172,7 +221,7 @@ export function AITimeline(): JSX.Element {
                           ? "生成中…"
                           : item.status === "failed"
                             ? `失败：${item.error ?? ""}`
-                            : summarize(item.text || "", 40) || "(空)"}
+                            : summarize(item.text || "", 40) || "无正文"}
                       </span>
                       <time className="shrink-0 text-[10px] text-ink-500">
                         {new Date(item.createdAt).toLocaleTimeString()}

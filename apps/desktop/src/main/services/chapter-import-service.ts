@@ -78,5 +78,8 @@ export async function importEpubChapters(input: {
   filePath: string;
 }): Promise<BulkImportResult> {
   const { chapters } = await parseEpubChapters(input.filePath);
+  if (chapters.length === 0) {
+    throw new Error("EPUB 未解析出正文章节：请确认文件包含有效目录/spine，或先转为 TXT 后导入");
+  }
   return importParsedChapters(input.projectId, chapters);
 }

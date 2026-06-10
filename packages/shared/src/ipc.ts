@@ -103,6 +103,8 @@ export const ipcChannels = {
   llmChat: "llm:chat",
   feedbackList: "feedback:list",
   feedbackDismiss: "feedback:dismiss",
+  feedbackDeleteEmpty: "feedback:delete-empty",
+  feedbackClearChapter: "feedback:clear-chapter",
   outlineCreate: "outline:create",
   outlineUpdate: "outline:update",
   outlineDelete: "outline:delete",
@@ -450,6 +452,14 @@ export interface FeedbackListInput {
 export interface FeedbackDismissInput {
   id: string;
   dismissed?: boolean;
+}
+
+export interface FeedbackDeleteEmptyInput {
+  chapterId: string;
+}
+
+export interface FeedbackClearChapterInput {
+  chapterId: string;
 }
 
 export interface ProviderSaveInput {
@@ -1343,6 +1353,8 @@ export interface IpcRequestMap {
   [ipcChannels.llmChat]: { req: LLMChatInput; res: LLMChatResponse };
   [ipcChannels.feedbackList]: { req: FeedbackListInput; res: AIFeedbackRecord[] };
   [ipcChannels.feedbackDismiss]: { req: FeedbackDismissInput; res: { id: string; dismissed: boolean } };
+  [ipcChannels.feedbackDeleteEmpty]: { req: FeedbackDeleteEmptyInput; res: { deleted: number } };
+  [ipcChannels.feedbackClearChapter]: { req: FeedbackClearChapterInput; res: { deleted: number } };
   [ipcChannels.outlineCreate]: { req: OutlineCreateInput; res: OutlineCardRecord };
   [ipcChannels.outlineUpdate]: { req: OutlineUpdateInput; res: OutlineCardRecord };
   [ipcChannels.outlineDelete]: { req: OutlineDeleteInput; res: { id: string } };
@@ -1626,6 +1638,12 @@ export interface AutoWriterStartInput {
   maxRewritesPerSegment?: number;
   /** 是否启用 OOC 守门员（默认 true）。 */
   enableOocGate?: boolean;
+  /**
+   * 速度策略：
+   * - fast: Planner + Writer，跳过逐段 Critic / Reflector / 自动重写，适合长章快速出稿。
+   * - quality: 完整多 Agent 流程，适合需要严谨校对的章节。
+   */
+  speedMode?: "fast" | "quality";
 }
 
 export interface AutoWriterStartResponse {

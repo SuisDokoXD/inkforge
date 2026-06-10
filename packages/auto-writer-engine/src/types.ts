@@ -46,6 +46,8 @@ export interface PipelineRunInput {
   maxRewritesPerSegment: number;
   /** 是否启用 OOC 守门员 */
   enableOocGate: boolean;
+  /** fast skips per-segment critic / reflector / rewrites for long-form speed. */
+  speedMode?: "fast" | "quality";
   /** 已存在的章节正文（用户已写部分）做续写起点 */
   existingChapterText: string;
   /** 章节标题，喂给 Planner 提示 */

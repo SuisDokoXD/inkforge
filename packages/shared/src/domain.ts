@@ -89,7 +89,7 @@ export type AppSettingKey =
   | "focusMode";
 
 export interface AppSettings {
-  theme: "dark" | "light";
+  theme: "dark" | "light" | "paper";
   activeProviderId: string | null;
   analysisEnabled: boolean;
   analysisThreshold: number;
@@ -938,7 +938,15 @@ export interface CharacterLetterRecord {
 // research_notes (web clippings). Backs the standalone "素材库" page.
 // =====================================================================
 
-export type MaterialKind = "note" | "idea" | "fragment" | "reference";
+export type MaterialKind =
+  | "idea"
+  | "plot"
+  | "character"
+  | "location"
+  | "world"
+  | "fragment"
+  | "reference"
+  | "note";
 
 export interface MaterialRecord {
   id: string;

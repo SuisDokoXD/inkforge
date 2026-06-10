@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import type { BookSummary } from "@inkforge/shared";
+import { BookOpen, Clock3, Library, Pencil, Plus, Settings, Target, Trash2 } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { CoverUploader } from "./CoverUploader";
 import { staggerContainer, staggerItem, fadeOnly, hoverLift, SPRING_SNAPPY } from "../../lib/motion-tokens";
@@ -24,6 +26,11 @@ function fmtNum(n: number): string {
   return `${(n / 10_000).toFixed(1)} 万`;
 }
 
+function fmtDate(value: string | null): string {
+  if (!value) return "尚未编辑";
+  return new Date(value).toLocaleDateString();
+}
+
 /**
  * 第一次进入书房或点 ➕ 时显示的"全部书"网格选择器。
  * 现有 OnboardingPage / WorkspacePage 不动；这里用同样的 ink 颜色风格。
@@ -39,18 +46,33 @@ export function BookListGrid({
   onOpenSettings,
 }: BookListGridProps): JSX.Element {
   const reduce = useReducedMotion();
+  const totalWords = books.reduce((sum, book) => sum + book.totalWords, 0);
+  const totalChapters = books.reduce((sum, book) => sum + book.chapterCount, 0);
+  const todayWords = books.reduce((sum, book) => sum + book.todayWords, 0);
+  const recentBooks = [...books]
+    .sort((a, b) => {
+      const aTime = new Date(a.lastChapterUpdatedAt ?? a.project.lastOpened ?? a.project.createdAt).getTime();
+      const bTime = new Date(b.lastChapterUpdatedAt ?? b.project.lastOpened ?? b.project.createdAt).getTime();
+      return bTime - aTime;
+    })
+    .slice(0, 4);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 flex-1 flex-col bg-ink-900">
       <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-4 py-2">
-        <h2 className="text-sm font-semibold text-ink-100">📚 全部书籍</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">
+          <Library size={16} className="text-accent-300" />
+          全部书籍
+        </h2>
         <div className="flex items-center gap-2">
           {onCreateBook && (
             <button
               type="button"
               onClick={onCreateBook}
-              className="rounded-md bg-accent-500/30 px-3 py-1 text-xs font-semibold text-accent-100 hover:bg-accent-500/40"
+              className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400"
             >
-              ➕ 新建书籍
+              <Plus size={14} />
+              新建书籍
             </button>
           )}
           {onClose && (
@@ -64,23 +86,29 @@ export function BookListGrid({
           )}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(300px,420px)_minmax(0,1fr)] overflow-hidden">
+        <div className="min-h-0 overflow-y-auto border-r border-ink-700/70 p-4 scrollbar-thin">
         {books.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <div className="text-ink-400">还没有任何书籍</div>
+          <div className="flex min-h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-ink-700 bg-ink-800/30 px-6 py-10 text-center">
+            <BookOpen size={36} className="text-ink-500" />
+            <div className="text-sm font-medium text-ink-200">还没有任何书籍</div>
+            <p className="max-w-xs text-xs leading-6 text-ink-500">
+              先创建一本书，之后章节、素材、人物和 AI 写作都会围绕这本书组织。
+            </p>
             {onCreateBook && (
               <button
                 type="button"
                 onClick={onCreateBook}
-                className="rounded-md bg-accent-500/30 px-4 py-2 text-sm font-semibold text-accent-100 hover:bg-accent-500/40"
+                className="flex h-9 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-sm font-semibold text-ink-950 hover:bg-accent-400"
               >
-                ➕ 创建第一本书
+                <Plus size={15} />
+                创建第一本书
               </button>
             )}
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4"
+            className="grid grid-cols-1 gap-3"
             variants={staggerContainer}
             initial="initial"
             animate="animate"
@@ -93,7 +121,7 @@ export function BookListGrid({
                   variants={reduce ? fadeOnly : staggerItem}
                   whileHover={reduce ? undefined : hoverLift}
                   transition={SPRING_SNAPPY}
-                  className={`group relative flex flex-col items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                  className={`group relative flex gap-3 rounded-lg border p-3 text-left transition-colors ${
                     opened
                       ? "border-accent-500/40 bg-accent-500/10"
                       : "border-ink-700 bg-ink-900/40 hover:border-accent-500/30 hover:bg-ink-800/60"
@@ -102,11 +130,11 @@ export function BookListGrid({
                   <button
                     type="button"
                     onClick={() => onPickBook(book.project.id)}
-                    className="flex w-full flex-col items-center gap-2 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
                     <CoverUploader
                       projectId={book.project.id}
-                      size="lg"
+                      size="sm"
                       editable={false}
                       fallbackName={book.project.name}
                     />
@@ -140,9 +168,8 @@ export function BookListGrid({
                       )}
                     </div>
                   </button>
-                  {/* hover 时显示的快捷操作（v20） */}
                   {(onRenameBook || onDeleteBook || onOpenSettings) && (
-                    <div className="pointer-events-none absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                    <div className="pointer-events-none absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
                       {onOpenSettings && (
                         <button
                           type="button"
@@ -151,9 +178,9 @@ export function BookListGrid({
                             e.stopPropagation();
                             onOpenSettings(book);
                           }}
-                          className="rounded bg-ink-900/80 px-1.5 py-0.5 text-[12px] text-ink-200 hover:bg-accent-500/30 hover:text-accent-100"
+                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-accent-500/25 hover:text-accent-100"
                         >
-                          ⚙
+                          <Settings size={14} />
                         </button>
                       )}
                       {onRenameBook && (
@@ -164,9 +191,9 @@ export function BookListGrid({
                             e.stopPropagation();
                             onRenameBook(book);
                           }}
-                          className="rounded bg-ink-900/80 px-1.5 py-0.5 text-[12px] text-ink-200 hover:bg-sky-500/30 hover:text-sky-100"
+                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-sky-500/25 hover:text-sky-100"
                         >
-                          ✏
+                          <Pencil size={14} />
                         </button>
                       )}
                       {onDeleteBook && (
@@ -177,9 +204,9 @@ export function BookListGrid({
                             e.stopPropagation();
                             onDeleteBook(book);
                           }}
-                          className="rounded bg-ink-900/80 px-1.5 py-0.5 text-[12px] text-ink-200 hover:bg-rose-500/30 hover:text-rose-100"
+                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-rose-500/25 hover:text-rose-100"
                         >
-                          🗑
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -189,7 +216,104 @@ export function BookListGrid({
             })}
           </motion.div>
         )}
+        </div>
+
+        <div className="min-h-0 overflow-y-auto p-6 scrollbar-thin">
+          <div className="mx-auto flex max-w-4xl flex-col gap-5">
+            <section className="rounded-xl border border-ink-700 bg-ink-800/35 p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-ink-100">书房概览</h3>
+                  <p className="mt-1 text-sm leading-6 text-ink-400">
+                    从左侧打开一本书后，会进入它的章节列表；也可以在这里新建书籍，先把项目架起来。
+                  </p>
+                </div>
+                {onCreateBook && (
+                  <button
+                    type="button"
+                    onClick={onCreateBook}
+                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-accent-500/50 bg-accent-500/15 px-3 text-sm font-medium text-accent-100 hover:bg-accent-500/25"
+                  >
+                    <Plus size={15} />
+                    新书
+                  </button>
+                )}
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <StatCard icon={<BookOpen size={16} />} label="书籍" value={`${books.length} 本`} />
+                <StatCard icon={<Library size={16} />} label="章节" value={`${totalChapters} 章`} />
+                <StatCard icon={<Target size={16} />} label="总字数" value={`${fmtNum(totalWords)} 字`} />
+              </div>
+              <div className="mt-3 rounded-md border border-ink-700 bg-ink-950/50 px-3 py-2 text-xs text-ink-400">
+                今日新增 <span className="font-medium text-ink-100">{fmtNum(todayWords)}</span> 字
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-ink-700 bg-ink-800/25 p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <Clock3 size={16} className="text-ink-400" />
+                <h3 className="text-sm font-semibold text-ink-100">最近编辑</h3>
+              </div>
+              {recentBooks.length === 0 ? (
+                <div className="rounded-md border border-dashed border-ink-700 py-8 text-center text-xs text-ink-500">
+                  还没有最近编辑记录。
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  {recentBooks.map((book) => (
+                    <button
+                      key={book.project.id}
+                      type="button"
+                      onClick={() => onPickBook(book.project.id)}
+                      className="flex items-center justify-between gap-3 rounded-md border border-ink-700 bg-ink-950/50 px-3 py-2 text-left hover:border-accent-500/40 hover:bg-accent-500/10"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm text-ink-100">{book.project.name}</span>
+                        <span className="mt-0.5 block text-xs text-ink-500">
+                          {book.chapterCount} 章 · {fmtNum(book.totalWords)} 字
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-500">
+                        {fmtDate(book.lastChapterUpdatedAt ?? book.project.lastOpened)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-xl border border-ink-700 bg-ink-800/20 p-5">
+              <h3 className="text-sm font-semibold text-ink-100">这里可以做什么</h3>
+              <div className="mt-3 grid gap-2 text-xs leading-6 text-ink-400 md:grid-cols-2">
+                <p className="rounded-md bg-ink-950/45 p-3">打开一本书，管理它的章节、来源标签、快照和章节日志。</p>
+                <p className="rounded-md bg-ink-950/45 p-3">给书籍补充设定和世界观，后续自动写作会读取这些资料。</p>
+                <p className="rounded-md bg-ink-950/45 p-3">把不同作品同时打开成标签页，在多本书之间快速切换。</p>
+                <p className="rounded-md bg-ink-950/45 p-3">从这里新建书籍，再去写作页继续正文创作。</p>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}): JSX.Element {
+  return (
+    <div className="rounded-md border border-ink-700 bg-ink-950/55 p-3">
+      <div className="mb-2 flex items-center gap-2 text-xs text-ink-500">
+        <span className="text-accent-300">{icon}</span>
+        {label}
+      </div>
+      <div className="text-lg font-semibold text-ink-100">{value}</div>
     </div>
   );
 }

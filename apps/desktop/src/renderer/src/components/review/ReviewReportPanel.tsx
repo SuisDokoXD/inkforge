@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  ExternalLink,
+  Info,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import type {
   ChapterRecord,
   ReviewApplyFixResponse,
   ReviewDimensionRecord,
   ReviewFindingRecord,
   ReviewProgressEvent,
+  ReviewSeverity,
 } from "@inkforge/shared";
 import { reviewApi } from "../../lib/api";
 
@@ -18,14 +30,30 @@ interface ReviewReportPanelProps {
   onExport: (reportId: string) => void;
 }
 
-function severityBadge(severity: string): { color: string; icon: string } {
+function severityMeta(severity: ReviewSeverity): {
+  label: string;
+  className: string;
+  icon: typeof AlertTriangle;
+} {
   if (severity === "error") {
-    return { color: "bg-red-500/20 text-red-200 border-red-500/50", icon: "❗" };
+    return {
+      label: "严重",
+      className: "border-rose-500/35 bg-rose-500/8 text-rose-200",
+      icon: AlertTriangle,
+    };
   }
   if (severity === "info") {
-    return { color: "bg-sky-500/20 text-sky-200 border-sky-500/40", icon: "ℹ" };
+    return {
+      label: "提示",
+      className: "border-sky-500/35 bg-sky-500/8 text-sky-200",
+      icon: Info,
+    };
   }
-  return { color: "bg-accent-500/20 text-accent-200 border-accent-500/50", icon: "⚠" };
+  return {
+    label: "警告",
+    className: "border-amber-500/35 bg-amber-500/8 text-amber-200",
+    icon: AlertTriangle,
+  };
 }
 
 export function ReviewReportPanel({
@@ -34,7 +62,6 @@ export function ReviewReportPanel({
   chapters,
   onJumpChapter,
   onDoneRunning,
-  onExport,
 }: ReviewReportPanelProps): JSX.Element {
   const queryClient = useQueryClient();
   const progressRef = useRef<ReviewProgressEvent | null>(null);
@@ -71,13 +98,11 @@ export function ReviewReportPanel({
       queryClient.invalidateQueries({ queryKey: ["review-report", reportId] }),
   });
 
-  // —— Audit→Fix：preview/apply 两步 ——
-  // 流程：点击"修复"→ 调用 review.applyFix({mode:"preview"})→ 展示对照 →
-  //       用户点"应用"再调用 mode:"apply" 写盘。
   const [fixPreview, setFixPreview] = useState<{
     findingId: string;
     response: ReviewApplyFixResponse;
   } | null>(null);
+
   const previewMut = useMutation({
     mutationFn: (findingId: string) =>
       reviewApi.applyFix({ findingId, mode: "preview" }),
@@ -85,6 +110,7 @@ export function ReviewReportPanel({
       setFixPreview({ findingId, response: res });
     },
   });
+
   const applyMut = useMutation({
     mutationFn: (findingId: string) =>
       reviewApi.applyFix({ findingId, mode: "apply" }),
@@ -112,18 +138,19 @@ export function ReviewReportPanel({
 
   const groupedByDimension = useMemo(() => {
     const map = new Map<string, ReviewFindingRecord[]>();
-    for (const f of findings) {
-      const list = map.get(f.dimensionId) ?? [];
-      list.push(f);
-      map.set(f.dimensionId, list);
+    for (const finding of findings) {
+      const list = map.get(finding.dimensionId) ?? [];
+      list.push(finding);
+      map.set(finding.dimensionId, list);
     }
-    return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
+    return [...map.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [findings]);
 
   if (reportQuery.isLoading || !report) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-ink-400">
-        加载中…
+      <div className="flex flex-1 items-center justify-center gap-2 text-sm text-ink-400">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        加载报告
       </div>
     );
   }
@@ -134,235 +161,303 @@ export function ReviewReportPanel({
   const processed = progress?.processedChapters ?? (isRunning ? 0 : totalChapters);
   const percent = Math.min(100, Math.round((processed / Math.max(1, totalChapters)) * 100));
   const totals = report.summary.totals;
+  const visibleFindings = findings.filter((finding) => !finding.dismissed);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-ink-700 bg-ink-800/30 px-4 py-3">
-        <div className="flex items-center justify-between gap-4 text-xs text-ink-400">
-          <div>
-            开始：{new Date(report.startedAt).toLocaleString("zh-CN")}
-            {report.finishedAt && (
-              <>
-                {" · "}
-                完成：{new Date(report.finishedAt).toLocaleString("zh-CN")}
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded bg-red-500/15 px-2 py-[1px] text-red-200">
-              ❗ {totals.error}
-            </span>
-            <span className="rounded bg-accent-500/15 px-2 py-[1px] text-accent-200">
-              ⚠ {totals.warn}
-            </span>
-            <span className="rounded bg-sky-500/15 px-2 py-[1px] text-sky-200">
-              ℹ {totals.info}
-            </span>
-            <button
-              type="button"
-              onClick={() => onExport(report.id)}
-              disabled={isRunning}
-              className="rounded border border-ink-700 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700 disabled:opacity-50"
-            >
-              导出 Markdown
-            </button>
-          </div>
+    <div className="flex min-h-0 flex-1 flex-col bg-ink-950">
+      <div className="border-b border-ink-700 bg-ink-900/35 px-4 py-3">
+        <div className="grid grid-cols-3 gap-2 text-xs">
+          <SummaryTile label="严重" value={totals.error} tone="rose" />
+          <SummaryTile label="警告" value={totals.warn} tone="amber" />
+          <SummaryTile label="提示" value={totals.info} tone="sky" />
         </div>
-        {isRunning && (
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-ink-400">
-            <div className="h-1.5 flex-1 rounded-full bg-ink-700 overflow-hidden">
+        {isRunning ? (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-ink-400">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-800">
               <div
                 className="h-full rounded-full bg-accent-400 transition-all"
                 style={{ width: `${percent}%` }}
               />
             </div>
             <span>
-              {processed}/{totalChapters} 章 · 已累计 {progress?.partialFindings ?? 0} 条
+              {processed}/{totalChapters} 章 · 已发现 {progress?.partialFindings ?? 0}
             </span>
           </div>
-        )}
-        {report.status === "failed" && report.error && (
-          <div className="mt-2 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+        ) : null}
+        {report.status === "failed" && report.error ? (
+          <div className="mt-3 rounded-md border border-rose-500/35 bg-rose-500/8 px-3 py-2 text-xs text-rose-200">
             审查失败：{report.error}
           </div>
-        )}
+        ) : null}
       </div>
-      <div className="flex-1 overflow-auto scrollbar-thin">
-        {groupedByDimension.length === 0 && (
-          <div className="p-8 text-center text-sm text-ink-400">
-            {isRunning ? "正在执行…" : "本报告未产出 findings"}
+
+      <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
+        {groupedByDimension.length === 0 ? (
+          <div className="flex h-full items-center justify-center px-8 text-center">
+            <div>
+              {isRunning ? (
+                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-accent-300" />
+              ) : (
+                <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-emerald-400" />
+              )}
+              <div className="mb-1 text-sm font-medium text-ink-300">
+                {isRunning ? "正在审查" : "没有发现问题"}
+              </div>
+              <p className="text-xs text-ink-500">
+                {isRunning
+                  ? "报告完成后会按维度展示 findings。"
+                  : "当前报告没有产生 findings，可以调整维度后重新运行。"}
+              </p>
+            </div>
           </div>
-        )}
-        {groupedByDimension.map(([dimensionId, list]) => {
-          const dim = dimensionById.get(dimensionId);
-          return (
-            <details
-              key={dimensionId}
-              open
-              className="border-b border-ink-700/60 px-4 py-3"
-            >
-              <summary className="flex cursor-pointer items-center gap-2 text-sm text-ink-100">
-                <span>{dim?.name ?? dimensionId}</span>
-                <span className="rounded bg-ink-800 px-1.5 py-[1px] text-[10px] text-ink-400">
-                  {list.length}
-                </span>
-                {dim?.kind === "builtin" && (
-                  <span className="text-[10px] text-ink-500">
-                    {dim.builtinId}
-                  </span>
-                )}
-              </summary>
-              <ul className="mt-2 space-y-2">
-                {list.map((finding) => {
-                  const badge = severityBadge(finding.severity);
-                  const chapter = finding.chapterId
-                    ? chapterById.get(finding.chapterId)
-                    : undefined;
-                  return (
-                    <li
-                      key={finding.id}
-                      className={`rounded border px-3 py-2 ${badge.color} ${
-                        finding.dismissed ? "opacity-50" : ""
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span>{badge.icon}</span>
-                        {chapter && (
-                          <button
-                            type="button"
-                            onClick={() => onJumpChapter(chapter.id)}
-                            className="truncate text-ink-200 hover:underline"
-                          >
-                            《{chapter.title}》
-                          </button>
-                        )}
-                        <span className="ml-auto text-ink-400">
-                          {new Date(finding.createdAt).toLocaleTimeString("zh-CN")}
-                        </span>
+        ) : (
+          <div className="p-4">
+            <div className="mb-3 text-xs text-ink-500">
+              显示 {visibleFindings.length} 条未忽略 findings，已忽略的条目会变淡保留。
+            </div>
+            <div className="space-y-3">
+              {groupedByDimension.map(([dimensionId, list]) => {
+                const dim = dimensionById.get(dimensionId);
+                return (
+                  <section
+                    key={dimensionId}
+                    className="rounded-md border border-ink-700 bg-ink-900/35"
+                  >
+                    <header className="flex items-center gap-2 border-b border-ink-700 px-3 py-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-ink-100">
+                          {dim?.name ?? dimensionId}
+                        </div>
+                        <div className="truncate text-[11px] text-ink-500">
+                          {dim?.kind === "builtin" ? dim.builtinId : "自定义维度"}
+                        </div>
                       </div>
-                      {finding.excerpt && (
-                        <blockquote className="mt-1 rounded bg-black/20 px-2 py-1 text-[12px] text-ink-100">
-                          {finding.excerpt}
-                        </blockquote>
-                      )}
-                      {finding.suggestion && (
-                        <p className="mt-1 text-[12px] leading-5 text-ink-100">
-                          {finding.suggestion}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center gap-2 text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() =>
+                      <span className="rounded bg-ink-950 px-2 py-0.5 text-xs text-ink-400">
+                        {list.length}
+                      </span>
+                    </header>
+                    <ul className="divide-y divide-ink-700/70">
+                      {list.map((finding) => (
+                        <FindingRow
+                          key={finding.id}
+                          finding={finding}
+                          chapter={finding.chapterId ? chapterById.get(finding.chapterId) : undefined}
+                          onJumpChapter={onJumpChapter}
+                          onToggleDismiss={() =>
                             dismissMut.mutate({
                               findingId: finding.id,
                               dismissed: !finding.dismissed,
                             })
                           }
-                          disabled={dismissMut.isPending}
-                          className="rounded border border-ink-600 px-2 py-0.5 text-ink-200 hover:bg-ink-700/40"
-                        >
-                          {finding.dismissed ? "取消忽略" : "忽略"}
-                        </button>
-                        {/* 仅当存在 suggestion + 章节定位时才显示"修复" */}
-                        {finding.suggestion &&
-                          finding.chapterId &&
-                          finding.excerptStart != null &&
-                          finding.excerptEnd != null && (
-                            <button
-                              type="button"
-                              onClick={() => previewMut.mutate(finding.id)}
-                              disabled={
-                                previewMut.isPending ||
-                                applyMut.isPending ||
-                                finding.dismissed
-                              }
-                              className="rounded border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
-                              title="让 AI 按建议改写选段并预览"
-                            >
-                              {previewMut.isPending &&
-                              previewMut.variables === finding.id
-                                ? "生成中…"
-                                : "修复"}
-                            </button>
-                          )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </details>
-          );
-        })}
+                          onPreviewFix={() => previewMut.mutate(finding.id)}
+                          fixing={previewMut.isPending && previewMut.variables === finding.id}
+                          disabled={dismissMut.isPending || previewMut.isPending || applyMut.isPending}
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
-      {/* Fix 预览对话框：preview 成功后弹出，对照原文与 AI 修订，让用户决定是否落盘 */}
-      {fixPreview && (
+
+      {fixPreview ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
           onClick={() => setFixPreview(null)}
         >
           <div
-            className="flex max-h-[80vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-ink-700 bg-ink-900 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           >
-            <header className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-950/60 px-4 py-3">
-              <h2 className="text-sm font-semibold text-ink-100">修订预览</h2>
+            <header className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
+              <div>
+                <h2 className="text-sm font-semibold text-ink-100">修复预览</h2>
+                <p className="text-xs text-ink-500">确认后才会写回原章节。</p>
+              </div>
               <button
+                type="button"
                 onClick={() => setFixPreview(null)}
-                className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+                title="关闭"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </header>
-            <div className="grid flex-1 grid-cols-2 gap-3 overflow-auto p-4">
-              <div>
-                <div className="mb-1 text-[11px] text-ink-400">原文片段</div>
-                <pre className="whitespace-pre-wrap rounded border border-ink-700 bg-ink-950/50 p-2 text-[12px] leading-5 text-ink-200">
-                  {fixPreview.response.originalExcerpt}
-                </pre>
-              </div>
-              <div>
-                <div className="mb-1 text-[11px] text-emerald-300">AI 修订</div>
-                <pre className="whitespace-pre-wrap rounded border border-emerald-500/40 bg-emerald-500/5 p-2 text-[12px] leading-5 text-ink-100">
-                  {fixPreview.response.patchedExcerpt}
-                </pre>
-              </div>
+            <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-auto p-4">
+              <PreviewBlock title="原文片段" text={fixPreview.response.originalExcerpt} />
+              <PreviewBlock title="AI 修订" text={fixPreview.response.patchedExcerpt} accent />
             </div>
-            <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-ink-700 bg-ink-950/60 px-4 py-3 text-xs">
-              <span className="text-ink-400">
+            <footer className="flex items-center justify-between gap-2 border-t border-ink-700 px-4 py-3 text-xs">
+              <span className="text-ink-500">
                 {fixPreview.response.range
-                  ? `位置：${fixPreview.response.range.start} – ${fixPreview.response.range.end}`
-                  : "未定位精确范围（无法落盘）"}
+                  ? `位置 ${fixPreview.response.range.start} - ${fixPreview.response.range.end}`
+                  : "未定位到可写回范围"}
               </span>
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={() => setFixPreview(null)}
-                  className="rounded px-3 py-1.5 text-ink-300 hover:bg-ink-800"
+                  className="h-8 rounded-md px-3 text-ink-300 hover:bg-ink-800"
                 >
                   取消
                 </button>
                 <button
+                  type="button"
                   onClick={() => previewMut.mutate(fixPreview.findingId)}
                   disabled={previewMut.isPending}
-                  className="rounded border border-ink-600 px-3 py-1.5 text-ink-200 hover:bg-ink-700/40 disabled:opacity-50"
-                  title="让 AI 再生成一次"
+                  className="flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-3 text-ink-200 hover:bg-ink-800 disabled:opacity-50"
                 >
+                  <RotateCcw className="h-3.5 w-3.5" />
                   重新生成
                 </button>
                 <button
+                  type="button"
                   onClick={() => applyMut.mutate(fixPreview.findingId)}
-                  disabled={
-                    applyMut.isPending || !fixPreview.response.range
-                  }
-                  className="rounded bg-emerald-500 px-3 py-1.5 font-medium text-ink-900 hover:bg-emerald-400 disabled:opacity-50"
+                  disabled={applyMut.isPending || !fixPreview.response.range}
+                  className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 font-medium text-ink-950 hover:bg-emerald-400 disabled:opacity-50"
                 >
-                  {applyMut.isPending ? "写入中…" : "应用到原文"}
+                  <Check className="h-3.5 w-3.5" />
+                  {applyMut.isPending ? "写入中" : "应用到原文"}
                 </button>
               </div>
             </footer>
           </div>
         </div>
-      )}
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "rose" | "amber" | "sky";
+}): JSX.Element {
+  const toneClass =
+    tone === "rose"
+      ? "text-rose-300"
+      : tone === "amber"
+        ? "text-amber-300"
+        : "text-sky-300";
+  return (
+    <div className="rounded-md border border-ink-700 bg-ink-950 px-3 py-2">
+      <div className="text-[11px] text-ink-500">{label}</div>
+      <div className={`text-lg font-semibold ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function FindingRow({
+  finding,
+  chapter,
+  onJumpChapter,
+  onToggleDismiss,
+  onPreviewFix,
+  fixing,
+  disabled,
+}: {
+  finding: ReviewFindingRecord;
+  chapter?: ChapterRecord;
+  onJumpChapter: (chapterId: string) => void;
+  onToggleDismiss: () => void;
+  onPreviewFix: () => void;
+  fixing: boolean;
+  disabled: boolean;
+}): JSX.Element {
+  const meta = severityMeta(finding.severity);
+  const Icon = meta.icon;
+  const canFix =
+    !!finding.suggestion &&
+    !!finding.chapterId &&
+    finding.excerptStart != null &&
+    finding.excerptEnd != null;
+
+  return (
+    <li className={`p-3 ${finding.dismissed ? "opacity-45" : ""}`}>
+      <div className="mb-2 flex items-center gap-2 text-xs">
+        <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${meta.className}`}>
+          <Icon className="h-3 w-3" />
+          {meta.label}
+        </span>
+        {chapter ? (
+          <button
+            type="button"
+            onClick={() => onJumpChapter(chapter.id)}
+            className="inline-flex min-w-0 items-center gap-1 text-ink-300 hover:text-accent-200"
+          >
+            <span className="truncate">{chapter.title}</span>
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </button>
+        ) : (
+          <span className="text-ink-500">全书范围</span>
+        )}
+        <span className="ml-auto text-[11px] text-ink-500">
+          {new Date(finding.createdAt).toLocaleTimeString("zh-CN")}
+        </span>
+      </div>
+      {finding.excerpt ? (
+        <blockquote className="mb-2 rounded-md border border-ink-700 bg-ink-950 px-2 py-1.5 text-xs leading-5 text-ink-200">
+          {finding.excerpt}
+        </blockquote>
+      ) : null}
+      {finding.suggestion ? (
+        <p className="text-xs leading-5 text-ink-200">{finding.suggestion}</p>
+      ) : null}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleDismiss}
+          disabled={disabled}
+          className="h-7 rounded-md border border-ink-700 px-2 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+        >
+          {finding.dismissed ? "恢复" : "忽略"}
+        </button>
+        {canFix ? (
+          <button
+            type="button"
+            onClick={onPreviewFix}
+            disabled={disabled || finding.dismissed}
+            className="flex h-7 items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+          >
+            {fixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            修复
+          </button>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+function PreviewBlock({
+  title,
+  text,
+  accent = false,
+}: {
+  title: string;
+  text: string;
+  accent?: boolean;
+}): JSX.Element {
+  return (
+    <div className="min-h-0">
+      <div className={`mb-1 text-xs ${accent ? "text-emerald-300" : "text-ink-400"}`}>
+        {title}
+      </div>
+      <pre
+        className={`max-h-[52vh] overflow-auto whitespace-pre-wrap rounded-md border p-3 text-xs leading-5 scrollbar-thin ${
+          accent
+            ? "border-emerald-500/35 bg-emerald-500/8 text-ink-100"
+            : "border-ink-700 bg-ink-950 text-ink-200"
+        }`}
+      >
+        {text}
+      </pre>
     </div>
   );
 }

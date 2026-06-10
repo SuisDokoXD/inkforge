@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import {
   ipcChannels,
   ipcEventChannels,
@@ -61,6 +61,8 @@ const api: InkforgeApi = {
   feedback: {
     list: (input) => ipcRenderer.invoke(ipcChannels.feedbackList, input),
     dismiss: (input) => ipcRenderer.invoke(ipcChannels.feedbackDismiss, input),
+    deleteEmpty: (input) => ipcRenderer.invoke(ipcChannels.feedbackDeleteEmpty, input),
+    clearChapter: (input) => ipcRenderer.invoke(ipcChannels.feedbackClearChapter, input),
   },
   outline: {
     create: (input) => ipcRenderer.invoke(ipcChannels.outlineCreate, input),
@@ -99,6 +101,7 @@ const api: InkforgeApi = {
   fs: {
     pickFile: (input) => ipcRenderer.invoke(ipcChannels.fsPickFile, input),
     saveFile: (input) => ipcRenderer.invoke(ipcChannels.fsSaveFile, input),
+    getPathForFile: (file) => webUtils.getPathForFile(file as File),
   },
   terminal: {
     spawn: (input) => ipcRenderer.invoke(ipcChannels.terminalSpawn, input),

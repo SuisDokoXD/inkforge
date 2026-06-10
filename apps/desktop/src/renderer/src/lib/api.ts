@@ -14,6 +14,8 @@ import type {
   ChapterUpdateInput,
   DailyProgressInput,
   DailyProgressRecord,
+  FeedbackClearChapterInput,
+  FeedbackDeleteEmptyInput,
   FeedbackDismissInput,
   FeedbackListInput,
   FsPickFileInput,
@@ -165,6 +167,10 @@ export const feedbackApi = {
   list: (input: FeedbackListInput): Promise<AIFeedbackRecord[]> => api().feedback.list(input),
   dismiss: (input: FeedbackDismissInput): Promise<{ id: string; dismissed: boolean }> =>
     api().feedback.dismiss(input),
+  deleteEmpty: (input: FeedbackDeleteEmptyInput): Promise<{ deleted: number }> =>
+    api().feedback.deleteEmpty(input),
+  clearChapter: (input: FeedbackClearChapterInput): Promise<{ deleted: number }> =>
+    api().feedback.clearChapter(input),
 };
 
 export const outlineApi = {
@@ -192,6 +198,7 @@ export const diagApi = {
 export const fsApi = {
   pickFile: (input: FsPickFileInput = {}): Promise<FsPickFileResponse> => api().fs.pickFile(input),
   saveFile: (input: FsSaveFileInput): Promise<FsSaveFileResponse> => api().fs.saveFile(input),
+  getPathForFile: (file: File): string => api().fs.getPathForFile(file),
 };
 
 export const terminalApi = {

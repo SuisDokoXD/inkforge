@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChapterRecord,
@@ -12,12 +13,13 @@ import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/edi
 import type { Editor } from "@tiptap/react";
 import {
   Archive,
-  BookOpen,
   ChevronDown,
   ChevronUp,
   Download,
-  FileText,
   Focus,
+  GripVertical,
+  Minus,
+  NotepadText,
   RefreshCw,
   RotateCcw,
   RotateCw,
@@ -37,6 +39,13 @@ import { SnapshotMenu } from "./snapshot";
 
 interface EditorPaneProps {
   chapter: ChapterRecord | null;
+  headingJumpTarget?: {
+    chapterId: string;
+    id: string;
+    title: string;
+    line: number;
+    nonce: number;
+  } | null;
   providers: ProviderRecord[];
   // 无选中章节时的空状态引导：把"新建章节"动作交给空状态的主 CTA，
   // 让原本只有一行灰字的空旷编辑区变成有指引、有落点的画面。
@@ -53,7 +62,13 @@ interface SaveRequest {
   wordCount: number;
 }
 
-export function EditorPane({ chapter, providers, onCreateChapter, creatingChapter }: EditorPaneProps): JSX.Element {
+export function EditorPane({
+  chapter,
+  headingJumpTarget,
+  providers,
+  onCreateChapter,
+  creatingChapter,
+}: EditorPaneProps): JSX.Element {
   const queryClient = useQueryClient();
   const settings = useAppStore((s) => s.settings);
   const activeProviderId = settings.activeProviderId;
@@ -88,6 +103,7 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   const saveQueueRef = useRef<SaveRequest | null>(null);
   const saveLoopPromiseRef = useRef<Promise<void> | null>(null);
   const activeSkillRunRef = useRef<{ runId: string; skillName: string; output: SkillOutputTarget } | null>(null);
+  const lastHeadingJumpNonceRef = useRef<number | null>(null);
   const handleEditorReady = useCallback((editor: Editor | null) => {
     setEditorInstance(editor);
   }, []);
@@ -264,6 +280,83 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   const handleManualSave = useCallback(() => {
     void flushCurrentContent().catch(() => {});
   }, [flushCurrentContent]);
+
+  const jumpEditorToText = useCallback((needles: Array<{ text: string; occurrence?: number }>): boolean => {
+    if (!editorInstance) return false;
+    const candidates = needles
+      .map((item) => ({ text: item.text.trim(), occurrence: item.occurrence ?? 0 }))
+      .filter((item, index, arr) =>
+        item.text.length > 0 &&
+        arr.findIndex((candidate) => candidate.text === item.text && candidate.occurrence === item.occurrence) === index,
+      );
+    for (const candidate of candidates) {
+      let found: { from: number; to: number } | null = null;
+      let remaining = Math.max(0, candidate.occurrence);
+      editorInstance.state.doc.descendants((node, pos) => {
+        if (found || !node.isText || !node.text) return !found;
+        let startIndex = 0;
+        while (startIndex <= node.text.length) {
+          const index = node.text.indexOf(candidate.text, startIndex);
+          if (index < 0) return true;
+          if (remaining > 0) {
+            remaining -= 1;
+            startIndex = index + candidate.text.length;
+            continue;
+          }
+          found = { from: pos + index, to: pos + index + candidate.text.length };
+          return false;
+        }
+        return false;
+      });
+      if (found) {
+        editorInstance.chain().focus().setTextSelection(found).scrollIntoView().run();
+        return true;
+      }
+    }
+    return false;
+  }, [editorInstance]);
+
+  useEffect(() => {
+    if (!chapter || !loaded || !editorInstance || !headingJumpTarget) return;
+    if (headingJumpTarget.chapterId !== chapter.id) return;
+    if (lastHeadingJumpNonceRef.current === headingJumpTarget.nonce) return;
+    lastHeadingJumpNonceRef.current = headingJumpTarget.nonce;
+
+    const timer = window.setTimeout(() => {
+      const lines = contentRef.current.split(/\r?\n/);
+      const lineIndex = Math.max(0, headingJumpTarget.line - 1);
+      const headingLine = lines[lineIndex]?.trim();
+      const headingLineOccurrence = headingLine
+        ? Math.max(
+            0,
+            lines.slice(0, lineIndex + 1).filter((line) => line.trim() === headingLine).length - 1,
+          )
+        : 0;
+      const jumped = jumpEditorToText([
+        { text: headingLine ?? "", occurrence: headingLineOccurrence },
+        { text: `## ${headingJumpTarget.title}` },
+        { text: `### ${headingJumpTarget.title}` },
+        { text: `#### ${headingJumpTarget.title}` },
+        { text: headingJumpTarget.title },
+      ]);
+      if (!jumped) {
+        editorInstance.commands.focus();
+        const finder = (window as unknown as {
+          find?: (
+            searchString: string,
+            caseSensitive?: boolean,
+            backwards?: boolean,
+            wrapAround?: boolean,
+            wholeWord?: boolean,
+            searchInFrames?: boolean,
+            showDialog?: boolean,
+          ) => boolean;
+        }).find;
+        finder?.(headingLine || headingJumpTarget.title, false, false, true, false, false, false);
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [chapter, editorInstance, headingJumpTarget, jumpEditorToText, loaded]);
 
   const runFind = useCallback(
     (backwards = false) => {
@@ -517,15 +610,6 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
     return () => window.removeEventListener("keydown", handler);
   }, [focusMode, patchSettings]);
 
-  const paragraphCount = useMemo(() => {
-    return content.split(/\n+/).filter((line) => line.trim().length > 0).length;
-  }, [content]);
-
-  const readingMinutes = useMemo(() => {
-    if (stats.graphemes === 0) return 0;
-    return Math.max(1, Math.ceil(stats.graphemes / 500));
-  }, [stats.graphemes]);
-
   const saveStatusLabel = useMemo(() => {
     if (savePhase === "saving") return "保存中…";
     if (savePhase === "queued") return "等待保存";
@@ -586,19 +670,8 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
   return (
     <div className="flex h-full flex-col">
       <div className={`flex min-h-11 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/50 px-4 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
-        <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
           <span className="min-w-0 truncate font-medium" title={chapter.title}>{chapter.title}</span>
-          <div className="hidden shrink-0 items-center gap-3 whitespace-nowrap text-xs text-ink-400 lg:flex">
-            <span className="inline-flex shrink-0 items-center gap-1" title="正文有效字符数">
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              {stats.graphemes}
-            </span>
-            <span className="hidden shrink-0 xl:inline" title="非空段落">段落 {paragraphCount}</span>
-            <span className="hidden shrink-0 items-center gap-1 2xl:inline-flex" title="按约 500 字/分钟估算">
-              <BookOpen className="h-3.5 w-3.5 shrink-0" />
-              {readingMinutes === 0 ? "未开始" : `约 ${readingMinutes} 分钟`}
-            </span>
-          </div>
         </div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-ink-300">
           <span className="hidden text-ink-400 xl:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
@@ -856,6 +929,9 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
         projectId={chapter.projectId}
         chapterId={chapter.id}
       />
+      {focusMode && (
+        <FocusDraftBoard chapterId={chapter.id} projectId={chapter.projectId} />
+      )}
       {chapter ? (
         <ChapterFromOutlineDialog
           chapter={chapter}
@@ -863,6 +939,169 @@ export function EditorPane({ chapter, providers, onCreateChapter, creatingChapte
           onClose={() => setOutlineDialogOpen(false)}
         />
       ) : null}
+    </div>
+  );
+}
+
+interface DraftPosition {
+  x: number;
+  y: number;
+}
+
+function FocusDraftBoard({
+  chapterId,
+  projectId,
+}: {
+  chapterId: string;
+  projectId: string;
+}): JSX.Element {
+  const contentKey = `inkforge:focus-draft:${projectId}:${chapterId}`;
+  const posKey = "inkforge:focus-draft:position";
+  const [open, setOpen] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
+  const [text, setText] = useState("");
+  const [position, setPosition] = useState<DraftPosition>({ x: 32, y: 96 });
+  const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
+
+  useEffect(() => {
+    setText(window.localStorage.getItem(contentKey) ?? "");
+  }, [contentKey]);
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem(posKey);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as Partial<DraftPosition>;
+      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+        setPosition({
+          x: Math.max(8, Math.min(parsed.x, window.innerWidth - 280)),
+          y: Math.max(56, Math.min(parsed.y, window.innerHeight - 160)),
+        });
+      }
+    } catch {
+      // Ignore corrupted local UI state.
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(contentKey, text);
+  }, [contentKey, text]);
+
+  useEffect(() => {
+    window.localStorage.setItem(posKey, JSON.stringify(position));
+  }, [posKey, position]);
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const nextX = drag.originX + event.clientX - drag.startX;
+      const nextY = drag.originY + event.clientY - drag.startY;
+      setPosition({
+        x: Math.max(8, Math.min(nextX, window.innerWidth - 288)),
+        y: Math.max(56, Math.min(nextY, window.innerHeight - 96)),
+      });
+    };
+    const handleUp = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+  }, []);
+
+  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: position.x,
+      originY: position.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="fixed z-30 flex h-9 items-center gap-2 rounded-md border border-ink-700 bg-ink-900/90 px-3 text-xs text-ink-200 shadow-xl backdrop-blur hover:border-accent-500/50 hover:text-accent-100"
+        style={{ left: position.x, top: position.y }}
+      >
+        <NotepadText className="h-4 w-4 text-accent-300" />
+        草稿
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="fixed z-30 w-80 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/92 text-ink-100 shadow-2xl backdrop-blur"
+      style={{ left: position.x, top: position.y }}
+    >
+      <div
+        className="flex cursor-move items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/80 px-2.5 py-2"
+        onPointerDown={startDrag}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <GripVertical className="h-4 w-4 shrink-0 text-ink-500" />
+          <NotepadText className="h-4 w-4 shrink-0 text-accent-300" />
+          <span className="truncate text-sm font-medium">专注草稿</span>
+          {text.trim() && (
+            <span className="rounded bg-ink-950 px-1.5 py-0.5 text-[10px] text-ink-500">
+              {text.trim().length} 字
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setCollapsed((v) => !v)}
+            className="flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+            title={collapsed ? "展开" : "收起"}
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={() => setOpen(false)}
+            className="flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+            title="隐藏草稿板"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      {!collapsed && (
+        <div className="p-2.5">
+          <textarea
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="临时记一下下一段想写什么、人物动机、伏笔、句子碎片……"
+            className="h-48 w-full resize-y rounded-md border border-ink-700 bg-ink-950/85 p-2.5 text-sm leading-6 text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500/60"
+          />
+          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-500">
+            <span>只在专注模式显示，按当前章节保存。</span>
+            {text && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm("清空这张草稿板？")) setText("");
+                }}
+                className="rounded px-1.5 py-0.5 text-ink-400 hover:bg-ink-800 hover:text-rose-200"
+              >
+                清空
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

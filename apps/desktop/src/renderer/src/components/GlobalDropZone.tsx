@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { sampleLibApi } from "../lib/api";
+import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 
 /**
@@ -98,9 +98,8 @@ export function GlobalDropZone(): JSX.Element | null {
         setBusyText(`导入中 · ${file.name}`);
         try {
           if (ext === "epub") {
-            // Electron 32：File 对象上的 path 仍可用。
-            // 标准 File.path 不在 web 规范里，TS DOM 类型没声明，做兼容读取。
-            const filePath = (file as unknown as { path?: string }).path;
+            // Electron 32+: use the preload bridge for the real filesystem path.
+            const filePath = fsApi.getPathForFile(file);
             if (!filePath) {
               throw new Error("无法获取 EPUB 文件路径");
             }

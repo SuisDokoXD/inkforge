@@ -51,8 +51,22 @@ function main() {
     fail("ActivityBar.tsx no longer references NAV_SHORTCUTS");
   }
 
-  // Sanity: must include the previously broken shortcuts so we never regress.
-  const required = ["Ctrl+1", "Ctrl+`", "Ctrl+2", "Ctrl+3", "Ctrl+4", "Ctrl+5", "Ctrl+6", "Ctrl+7", "Ctrl+8", "Ctrl+9", "Ctrl+0", "Ctrl+Shift+A", "Ctrl+M"];
+  // Sanity: must include the visible ActivityBar shortcut set.
+  const required = [
+    "Ctrl+1",
+    "Ctrl+2",
+    "Ctrl+3",
+    "Ctrl+4",
+    "Ctrl+5",
+    "Ctrl+6",
+    "Ctrl+7",
+    "Ctrl+8",
+    "Ctrl+9",
+    "Ctrl+0",
+    "Ctrl+Shift+L",
+    "Ctrl+Shift+H",
+    "Ctrl+Shift+M",
+  ];
   for (const r of required) {
     if (!combos.includes(r)) fail("required shortcut missing in NAV_SHORTCUTS: " + r);
   }

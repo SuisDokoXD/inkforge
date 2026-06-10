@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Archive, Loader2, MessageSquareText, Pause, Play, Send, Users } from "lucide-react";
 import type { TavernCardRecord, TavernMode, TavernSessionRecord } from "@inkforge/shared";
 import { tavernEventsApi, tavernRoundApi, tavernSessionApi, tavernSummaryApi } from "../../lib/api";
 
@@ -10,6 +11,7 @@ interface DirectorPanelProps {
 
 export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Element {
   const queryClient = useQueryClient();
+  const autoPickedSessionRef = useRef<string | null>(null);
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
 
   const [mode, setMode] = useState<TavernMode>(session.mode);
@@ -19,11 +21,25 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
   const [compactKeepLastK, setCompactKeepLastK] = useState(session.lastK);
   const [compactOpen, setCompactOpen] = useState(false);
 
-  // Clear active round when a round completes (listen for tavern:done)
+  useEffect(() => {
+    setMode(session.mode);
+    setAutoRounds(3);
+    setDirectorMessage("");
+    setCompactKeepLastK(session.lastK);
+    setParticipants([]);
+    setActiveRoundId(null);
+    autoPickedSessionRef.current = null;
+  }, [session.id, session.lastK, session.mode]);
+
+  useEffect(() => {
+    if (autoPickedSessionRef.current === session.id || cards.length === 0) return;
+    setParticipants(cards.slice(0, 2).map((card) => card.id));
+    autoPickedSessionRef.current = session.id;
+  }, [cards, session.id]);
+
   useEffect(() => {
     const off = tavernEventsApi.onDone((e) => {
       if (e.sessionId === session.id && e.roundId === activeRoundId) {
-        // Clear when the final speaker of this round reports done-of-round (heuristic: any done clears)
         setActiveRoundId((prev) => (prev === e.roundId ? null : prev));
       }
     });
@@ -86,96 +102,111 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
   const canRun = participants.length >= 1 && !runMut.isPending && !activeRoundId;
 
   return (
-    <div className="border-t border-ink-700 bg-ink-800/40 p-3 space-y-2">
-      <div className="flex items-center gap-3 text-xs">
-        <span className="text-ink-400">模式:</span>
-        <label className="flex items-center gap-1 cursor-pointer">
-          <input
-            type="radio"
-            name="tavern-mode"
-            checked={mode === "director"}
-            onChange={() => setMode("director")}
-            className="accent-accent-500"
-          />
-          <span className="text-ink-200">导演</span>
-        </label>
-        <label className="flex items-center gap-1 cursor-pointer">
-          <input
-            type="radio"
-            name="tavern-mode"
-            checked={mode === "auto"}
-            onChange={() => setMode("auto")}
-            className="accent-accent-500"
-          />
-          <span className="text-ink-200">自动</span>
-        </label>
-        {mode === "auto" && (
-          <label className="flex items-center gap-1 ml-4">
-            <span className="text-ink-400">轮数:</span>
-            <input
-              type="number"
-              value={autoRounds}
-              onChange={(e) => setAutoRounds(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-              className="w-12 rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-ink-100 text-xs"
-              min={1}
-              max={10}
-            />
-          </label>
-        )}
+    <div className="border-t border-ink-700 bg-ink-900/85 p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-ink-200">
+          <Users size={16} className="text-ink-400" />
+          选择发言角色
+          <span className="text-xs font-normal text-ink-500">已选 {participants.length} 位</span>
+        </div>
+        <div className="flex rounded-md border border-ink-700 bg-ink-950 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("auto")}
+            className={`h-7 rounded px-2.5 text-xs transition ${
+              mode === "auto" ? "bg-accent-500 text-ink-950" : "text-ink-400 hover:text-ink-100"
+            }`}
+          >
+            自动推进
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("director")}
+            className={`h-7 rounded px-2.5 text-xs transition ${
+              mode === "director" ? "bg-accent-500 text-ink-950" : "text-ink-400 hover:text-ink-100"
+            }`}
+          >
+            导演引导
+          </button>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {cards.length === 0 && (
-          <span className="text-xs text-ink-500 italic">当前项目无可用角色卡</span>
-        )}
-        {cards.map((card) => {
-          const selected = participants.includes(card.id);
-          return (
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {cards.length === 0 ? (
+          <div className="rounded-md border border-dashed border-ink-700 px-3 py-2 text-xs text-ink-500">
+            当前项目还没有可用角色卡。先到「人物」页创建角色，再回到这里推进讨论。
+          </div>
+        ) : (
+          cards.map((card) => {
+            const selected = participants.includes(card.id);
+            return (
             <button
               key={card.id}
               type="button"
               onClick={() => toggleParticipant(card.id)}
-              className={`rounded px-2 py-1 text-xs transition ${
+              className={`rounded-md border px-2.5 py-1.5 text-xs transition ${
                 selected
-                  ? "bg-accent-500/20 text-accent-200 border border-accent-500/50"
-                  : "bg-ink-900/60 text-ink-400 border border-ink-700 hover:bg-ink-900"
+                  ? "border-accent-500/60 bg-accent-500/15 text-accent-100"
+                  : "border-ink-700 bg-ink-950 text-ink-400 hover:bg-ink-800 hover:text-ink-200"
               }`}
               title={`${card.providerId}/${card.model}`}
             >
-              {selected ? "✓ " : ""}
               {card.name}
             </button>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {mode === "director" && (
-        <textarea
-          value={directorMessage}
-          onChange={(e) => setDirectorMessage(e.target.value)}
-          placeholder="导演指令（可选）：对角色下一步发言的引导"
-          className="w-full rounded border border-ink-700 bg-ink-900 px-2 py-1.5 text-xs text-ink-100 resize-none h-12"
-        />
+        <div className="mb-3 rounded-md border border-ink-700 bg-ink-950">
+          <div className="flex items-center gap-2 border-b border-ink-700 px-2.5 py-1.5 text-xs text-ink-400">
+            <MessageSquareText size={14} />
+            给下一轮一点方向
+          </div>
+          <textarea
+            value={directorMessage}
+            onChange={(e) => setDirectorMessage(e.target.value)}
+            placeholder="例如：让他们重点讨论主角的真实动机，不要急着给结论。"
+            className="h-16 w-full resize-none bg-transparent px-2.5 py-2 text-xs leading-5 text-ink-100 outline-none placeholder:text-ink-500"
+          />
+        </div>
       )}
 
       <div className="flex items-center gap-2">
+        {mode === "auto" && (
+          <label className="flex h-8 items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-2 text-xs text-ink-400">
+            <span>连续</span>
+            <input
+              type="number"
+              value={autoRounds}
+              onChange={(e) => setAutoRounds(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+              className="w-10 bg-transparent text-center text-ink-100 outline-none"
+              min={1}
+              max={10}
+            />
+            <span>轮</span>
+          </label>
+        )}
         {activeRoundId ? (
           <button
             type="button"
             onClick={() => stopMut.mutate(activeRoundId)}
             disabled={stopMut.isPending}
-            className="rounded bg-red-500/20 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-md bg-red-500/20 px-3 text-xs text-red-300 hover:bg-red-500/30 disabled:opacity-50"
           >
-            ⏸ 停止
+            <Pause size={14} />
+            停止
           </button>
         ) : (
           <button
             type="button"
             onClick={() => runMut.mutate()}
             disabled={!canRun}
-            className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
+            className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
           >
-            ▶ {runMut.isPending ? "启动中…" : "推进"}
+            {runMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            {runMut.isPending ? "启动中" : "开始一轮"}
           </button>
         )}
         {mode === "director" && directorMessage.trim() && (
@@ -183,17 +214,19 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             type="button"
             onClick={() => postDirectorMut.mutate(directorMessage.trim())}
             disabled={postDirectorMut.isPending}
-            className="rounded bg-blue-500/20 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-500/30 disabled:opacity-50"
+            className="flex h-8 items-center gap-1.5 rounded-md bg-blue-500/20 px-3 text-xs text-blue-200 hover:bg-blue-500/30 disabled:opacity-50"
           >
-            📣 发送指令
+            <Send size={14} />
+            发送指令
           </button>
         )}
         <button
           type="button"
           onClick={() => setCompactOpen(true)}
-          className="ml-auto rounded bg-ink-700/60 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
+          className="ml-auto flex h-8 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-950 px-3 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-200"
         >
-          📜 压缩历史
+          <Archive size={14} />
+          压缩历史
         </button>
       </div>
 

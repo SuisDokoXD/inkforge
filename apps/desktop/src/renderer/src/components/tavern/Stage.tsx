@@ -48,8 +48,13 @@ export function Stage({ sessionId, sessions }: StageProps): JSX.Element {
 
   if (!sessionId) {
     return (
-      <div className="flex-1 flex items-center justify-center text-ink-400 text-sm italic">
-        请选择或新建一个会话
+      <div className="flex-1 flex items-center justify-center px-6 text-center">
+        <div>
+          <div className="text-sm font-medium text-ink-200">还没有打开讨论</div>
+          <p className="mt-2 max-w-sm text-xs leading-6 text-ink-500">
+            从左侧新建或选择一个会话，让角色围绕某个写作问题展开讨论。
+          </p>
+        </div>
       </div>
     );
   }
@@ -82,10 +87,14 @@ export function Stage({ sessionId, sessions }: StageProps): JSX.Element {
         className="flex-1 overflow-auto scrollbar-thin px-4 py-3 space-y-2"
       >
         {messages.length === 0 && !streamBuffer && (
-          <div className="flex h-full items-center justify-center text-ink-500 text-sm italic">
-            议题：{session.topic}
-            <br />
-            点击下方「推进」开始第一轮对话。
+          <div className="flex h-full items-center justify-center px-6 text-center">
+            <div className="max-w-lg">
+              <div className="text-xs text-ink-500">本场议题</div>
+              <div className="mt-2 text-base font-medium leading-7 text-ink-100">{session.topic}</div>
+              <p className="mt-4 text-xs leading-6 text-ink-500">
+                在下方选择 1 到 6 位角色，点击「开始一轮」即可让他们发言。你可以随时切换自动推进或导演引导。
+              </p>
+            </div>
           </div>
         )}
         {messages.map((msg) => (

@@ -144,6 +144,35 @@ function indentParagraph(line: string): string {
   return FULLWIDTH_INDENT + line;
 }
 
+function headingTitle(line: string): string | null {
+  const match = line.match(/^\s{0,3}#{2,4}\s+(.+?)\s*#*\s*$/);
+  return match?.[1]?.trim() || null;
+}
+
+function removeConsecutiveDuplicateHeadings(text: string): string {
+  const lines = text.split("\n");
+  const kept: string[] = [];
+  let lastHeadingTitle: string | null = null;
+  let lastHeadingIndex = -1;
+
+  for (const line of lines) {
+    const title = headingTitle(line);
+    if (title && lastHeadingTitle === title) {
+      const between = kept.slice(lastHeadingIndex + 1);
+      const hasBodyBetween = between.some((item) => item.trim() && !headingTitle(item));
+      if (!hasBodyBetween) continue;
+    }
+
+    kept.push(line);
+    if (title) {
+      lastHeadingTitle = title;
+      lastHeadingIndex = kept.length - 1;
+    }
+  }
+
+  return kept.join("\n");
+}
+
 export function normalizeNovelParagraphs(text: string): string {
   if (!text) return "";
   let out = text.replace(/\r\n/g, "\n");
@@ -152,6 +181,7 @@ export function normalizeNovelParagraphs(text: string): string {
   out = out.replace(/([，。！？、；：「」『』""''])[ \t]+/g, "$1");
   // 三个以上换行 → 两个
   out = out.replace(/\n{3,}/g, "\n\n");
+  out = removeConsecutiveDuplicateHeadings(out);
   // 在对话行前补空行
   out = out.replace(
     /([^\n])\n([ \t]*[「『""].*?[」』""])/g,
@@ -251,6 +281,7 @@ export async function runAutoWriterPipeline(
       globalWorldview: input.globalWorldview,
       previousChaptersText: input.previousChaptersText,
       styleSamples: input.styleSamples,
+      detailLevel: input.speedMode === "fast" ? "compact" : undefined,
     }),
     stats,
   );
@@ -279,6 +310,7 @@ export async function runAutoWriterPipeline(
         globalWorldview: input.globalWorldview,
         previousChaptersText: input.previousChaptersText,
         styleSamples: input.styleSamples,
+        detailLevel: input.speedMode === "fast" ? "compact" : undefined,
       }),
       stats,
     );
@@ -394,7 +426,7 @@ export async function runAutoWriterPipeline(
       });
 
       // ---------- Critic / OOC gate ----------
-      if (!input.enableOocGate) {
+      if (input.speedMode === "fast" || !input.enableOocGate) {
         chapterSoFar = tentativeChapter;
         seg.text = segmentText;
         seg.status = "completed";
@@ -506,26 +538,30 @@ export async function runAutoWriterPipeline(
     if (deps.isCancelled()) break;
 
     // ---------- Reflector ----------
-    seg.status = "reflecting";
-    deps.emitPhase({ phase: "reflector", segmentIndex: i });
-    const reflectorOut = await callAgent(
-      deps,
-      resolveRole,
-      "reflector",
-      buildReflectorSystem(),
-      buildReflectorUser({
-        segmentText: seg.text,
-        segmentIndex: i,
-        criticFindingsText: seg.lastCriticFindingsText ?? "",
-        recentCorrections: deps.drainInterrupts(),
-        voiceBlock: input.voiceBlock,
-        globalWorldview: input.globalWorldview,
-        previousChaptersText: input.previousChaptersText,
-        styleSamples: input.styleSamples,
-      }),
-      stats,
-    );
-    reflectorMemo = reflectorOut.text.trim() || null;
+    if (input.speedMode !== "fast") {
+      seg.status = "reflecting";
+      deps.emitPhase({ phase: "reflector", segmentIndex: i });
+      const reflectorOut = await callAgent(
+        deps,
+        resolveRole,
+        "reflector",
+        buildReflectorSystem(),
+        buildReflectorUser({
+          segmentText: seg.text,
+          segmentIndex: i,
+          criticFindingsText: seg.lastCriticFindingsText ?? "",
+          recentCorrections: deps.drainInterrupts(),
+          voiceBlock: input.voiceBlock,
+          globalWorldview: input.globalWorldview,
+          previousChaptersText: input.previousChaptersText,
+          styleSamples: input.styleSamples,
+        }),
+        stats,
+      );
+      reflectorMemo = reflectorOut.text.trim() || null;
+    } else {
+      reflectorMemo = null;
+    }
     lastCriticFindingsText = seg.lastCriticFindingsText;
 
     stats.totalSegments += 1;
