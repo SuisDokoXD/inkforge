@@ -58,6 +58,7 @@ export interface AutoWriterRemembered {
   enableOocGate: boolean;
   speedMode?: "fast" | "quality";
   advanced: boolean;
+  sampleLibIds?: string[];
 }
 
 export interface AppState {
@@ -68,6 +69,8 @@ export interface AppState {
   settingsPanelOpen: boolean;
   providerPanelOpen: boolean;
   mainView: MainView;
+  outlineFocusCardId: string | null;
+  researchDraftQuery: string | null;
   rightPanel: "timeline" | "chat";
   terminalOpen: boolean;
   terminalHeight: number;
@@ -101,6 +104,8 @@ export interface AppState {
   openSettings: (open?: boolean) => void;
   openProviderPanel: (open?: boolean) => void;
   setMainView: (view: MainView) => void;
+  setOutlineFocusCard: (cardId: string | null) => void;
+  setResearchDraftQuery: (query: string | null) => void;
   setRightPanel: (panel: "timeline" | "chat") => void;
   toggleTerminal: (open?: boolean) => void;
   setTerminalHeight: (h: number) => void;
@@ -165,6 +170,8 @@ export const useAppStore = create<AppState>()(
       settingsPanelOpen: false,
       providerPanelOpen: false,
       mainView: "writing",
+      outlineFocusCardId: null,
+      researchDraftQuery: null,
       rightPanel: "timeline",
       terminalOpen: false,
       terminalHeight: 240,
@@ -200,6 +207,8 @@ export const useAppStore = create<AppState>()(
       openSettings: (open = true) => set(() => ({ settingsPanelOpen: open })),
       openProviderPanel: (open = true) => set(() => ({ providerPanelOpen: open })),
       setMainView: (view) => set(() => ({ mainView: view })),
+      setOutlineFocusCard: (cardId) => set(() => ({ outlineFocusCardId: cardId })),
+      setResearchDraftQuery: (query) => set(() => ({ researchDraftQuery: query })),
       setRightPanel: (panel) => set(() => ({ rightPanel: panel })),
       toggleTerminal: (open) =>
         set((state) => ({ terminalOpen: typeof open === "boolean" ? open : !state.terminalOpen })),

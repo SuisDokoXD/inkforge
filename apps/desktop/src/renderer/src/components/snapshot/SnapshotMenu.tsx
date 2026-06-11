@@ -1,18 +1,20 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AutoWriterAgentRole,
   ChapterSnapshotKind,
   ChapterSnapshotRecord,
   SnapshotRestoreResponse,
 } from "@inkforge/shared";
 import { snapshotApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 export interface SnapshotMenuProps {
   chapterId: string;
   projectId: string;
   /** 还原后回调：上层用它刷新编辑器内容 / chapter store。 */
   onRestored?: (response: SnapshotRestoreResponse) => void;
-  /** 创建快照或还原快照前调用；编辑器可借此先落盘当前未保存正文。 */
+  /** 创建或还原版本备份前调用；编辑器可借此先保存当前未保存正文。 */
   onBeforeSnapshotAction?: () => Promise<void> | void;
   /** 关闭菜单。父组件控制打开状态。 */
   onClose?: () => void;
@@ -24,8 +26,8 @@ export interface SnapshotMenuProps {
 
 const KIND_LABELS: Record<ChapterSnapshotKind, string> = {
   manual: "📌 手动",
-  "pre-ai": "↻ AI 写前",
-  "post-ai": "✓ AI 写后",
+  "pre-ai": "↻ 模型写前",
+  "post-ai": "✓ 模型写后",
   "pre-rewrite": "↻ 重写前",
   "pre-restore": "↶ 还原前",
   "auto-periodic": "⏱ 定时",
@@ -38,6 +40,13 @@ const KIND_COLORS: Record<ChapterSnapshotKind, string> = {
   "pre-rewrite": "bg-orange-500/20 text-orange-200",
   "pre-restore": "bg-rose-500/20 text-rose-200",
   "auto-periodic": "bg-violet-500/20 text-violet-200",
+};
+
+const AGENT_ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
+  planner: "结构规划",
+  writer: "正文起草",
+  critic: "逐段校阅",
+  reflector: "整理记录",
 };
 
 function formatTime(iso: string): string {
@@ -55,7 +64,7 @@ function formatTime(iso: string): string {
 }
 
 /**
- * 通用快照菜单组件。可挂在任意位置（编辑器顶栏 / 书房章节卡片旁 / 命令面板）。
+ * 通用版本备份菜单组件。可挂在任意位置（编辑器顶栏 / 书房章节卡片旁 / 命令面板）。
  * PR-3 不主动挂载到现有页面，仅作为 PR-4/PR-7 的复用组件。
  */
 export function SnapshotMenu({
@@ -110,7 +119,9 @@ export function SnapshotMenu({
       await onBeforeSnapshotAction();
       return true;
     } catch (error) {
-      window.alert(`当前正文保存失败，无法继续快照操作：${error instanceof Error ? error.message : String(error)}`);
+      window.alert(
+        `当前正文保存失败，无法继续版本备份操作：${friendlyErrorMessage(error, "请稍后重试。")}`,
+      );
       return false;
     } finally {
       setPreparing(false);
@@ -127,7 +138,7 @@ export function SnapshotMenu({
   const handleRestore = async (snap: ChapterSnapshotRecord) => {
     const ok = window.confirm(
       `还原到「${snap.label || KIND_LABELS[snap.kind]}」？\n\n` +
-        `当前正文将先打一个 pre-restore 快照，可再次撤销。`,
+        "当前正文会先保存为还原前备份，可再次撤销。",
     );
     if (!ok) return;
     if (!(await runBeforeSnapshotAction())) return;
@@ -138,7 +149,7 @@ export function SnapshotMenu({
   const handleDelete = (snap: ChapterSnapshotRecord) => {
     if (snap.kind === "manual") {
       const ok = window.confirm(
-        `删除手动快照「${snap.label || snap.id.slice(0, 8)}」？此操作不可撤销。`,
+        `删除手动备份「${snap.label || snap.id.slice(0, 8)}」？此操作不可撤销。`,
       );
       if (!ok) return;
     }
@@ -148,12 +159,14 @@ export function SnapshotMenu({
   return (
     <div className="flex w-[420px] max-w-full flex-col gap-2 rounded-xl border border-ink-600 bg-ink-800 p-3 text-ink-100 shadow-2xl">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">📚 章节快照</h3>
+        <h3 className="text-sm font-semibold">📚 章节版本备份</h3>
         {onClose && (
           <button
             type="button"
             onClick={onClose}
             className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+            aria-label="关闭章节版本备份"
+            title="关闭"
           >
             ✕
           </button>
@@ -175,12 +188,12 @@ export function SnapshotMenu({
         )}
         {listQuery.isError && (
           <div className="py-4 text-center text-xs text-red-400">
-            加载失败：{String(listQuery.error)}
+            加载失败：{friendlyErrorMessage(listQuery.error, "版本备份读取失败，请稍后重试。")}
           </div>
         )}
         {listQuery.isSuccess && items.length === 0 && (
           <div className="py-4 text-center text-xs text-ink-400">
-            暂无快照。点上方按钮创建第一个。
+            暂无版本备份。点上方按钮创建第一个。
           </div>
         )}
         <ul className="flex flex-col gap-1">
@@ -204,10 +217,7 @@ export function SnapshotMenu({
               </div>
               <div className="flex items-center gap-2 text-ink-400">
                 <span>{snap.wordCount} 字</span>
-                {snap.agentRole && <span>· {snap.agentRole}</span>}
-                <span className="font-mono opacity-60">
-                  {snap.contentHash.slice(0, 7)}
-                </span>
+                {snap.agentRole && <span>· {AGENT_ROLE_LABELS[snap.agentRole]}</span>}
                 <div className="ml-auto flex gap-1">
                   <button
                     type="button"
@@ -222,6 +232,8 @@ export function SnapshotMenu({
                     onClick={() => handleDelete(snap)}
                     disabled={deleteMut.isPending}
                     className="rounded bg-ink-700 px-2 py-0.5 text-ink-300 hover:bg-rose-500/30 hover:text-rose-200 disabled:opacity-50"
+                    aria-label={`删除版本备份 ${snap.label || KIND_LABELS[snap.kind]}`}
+                    title="删除"
                   >
                     ✕
                   </button>
@@ -233,7 +245,7 @@ export function SnapshotMenu({
       </div>
 
       <div className="mt-1 text-[10px] text-ink-500">
-        自动快照仅保留最近 50 条；手动快照永不清理。
+        自动备份仅保留最近 50 条；手动备份永不清理。
       </div>
     </div>
   );

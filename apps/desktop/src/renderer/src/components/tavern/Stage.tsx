@@ -71,13 +71,6 @@ export function Stage({ sessionId, sessions }: StageProps): JSX.Element {
   const getCardName = (cardId: string | null) =>
     cardId ? cards.find((c) => c.id === cardId)?.name : undefined;
 
-  const getProviderHint = (cardId: string | null) => {
-    if (!cardId) return undefined;
-    const card = cards.find((c) => c.id === cardId);
-    if (!card) return undefined;
-    return `${card.providerId}/${card.model}`;
-  };
-
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <ContextBudgetBar sessionId={sessionId} />
@@ -102,7 +95,6 @@ export function Stage({ sessionId, sessions }: StageProps): JSX.Element {
             key={msg.id}
             message={msg}
             cardName={getCardName(msg.characterId) ?? undefined}
-            providerHint={getProviderHint(msg.characterId) ?? undefined}
           />
         ))}
         {streamBuffer && streamBuffer.text.length > 0 && (
@@ -118,7 +110,6 @@ export function Stage({ sessionId, sessions }: StageProps): JSX.Element {
               createdAt: new Date().toISOString(),
             }}
             cardName={streamBuffer.speakerName}
-            providerHint={getProviderHint(streamBuffer.speakerCardId) ?? undefined}
             isStreaming
           />
         )}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProjectRecord } from "@inkforge/shared";
 import { coverApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface CoverUploaderProps {
   projectId: string;
@@ -48,7 +49,7 @@ export function CoverUploader({
       queryClient.invalidateQueries({ queryKey: ["bookshelf-books"] });
       setError(null);
     },
-    onError: (err) => setError(String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "上传封面失败，请换一张图片后重试。")),
   });
 
   const deleteMut = useMutation({

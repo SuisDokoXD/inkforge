@@ -303,7 +303,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   },
   {
     id: "vllm",
-    label: "Custom OpenAI-Compatible",
+    label: "自定义兼容接口",
     vendor: "openai-compat",
     baseUrl: "",
     defaultModel: "",

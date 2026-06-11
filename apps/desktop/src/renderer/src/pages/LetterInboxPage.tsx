@@ -18,6 +18,7 @@ import type {
 } from "@inkforge/shared";
 import { letterApi, novelCharacterApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 type LetterFilter = "all" | "unread" | "pinned";
 
@@ -633,7 +634,7 @@ function GenerateLetterDialog({
         tone: tone || undefined,
       }),
     onSuccess: (letter) => onGenerated(letter),
-    onError: (err) => setError(err instanceof Error ? err.message : String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "来信生成失败，请稍后重试。")),
   });
 
   return (

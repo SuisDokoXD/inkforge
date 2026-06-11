@@ -6,6 +6,7 @@ import type {
 } from "@inkforge/shared";
 import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 export function SampleLibPanel(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
@@ -51,7 +52,7 @@ export function SampleLibPanel(): JSX.Element {
       setShowImport(null);
       queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
     } catch (err) {
-      setLastImport(`✗ 导入失败：${err instanceof Error ? err.message : String(err)}`);
+      setLastImport(`✗ ${friendlyErrorMessage(err, "导入失败，请检查文本内容后重试。")}`);
     } finally {
       setBusy(false);
     }
@@ -81,7 +82,7 @@ export function SampleLibPanel(): JSX.Element {
       setShowImport(null);
       queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
     } catch (err) {
-      setLastImport(`✗ EPUB 导入失败：${err instanceof Error ? err.message : String(err)}`);
+      setLastImport(`✗ ${friendlyErrorMessage(err, "EPUB 导入失败，请换一本文件后重试。")}`);
     } finally {
       setBusy(false);
     }
@@ -113,7 +114,7 @@ export function SampleLibPanel(): JSX.Element {
         >
           + 选择 EPUB 文件
         </button>
-        <span className="ml-auto text-ink-500">写作时 AI 自动从中召回</span>
+        <span className="ml-auto text-ink-500">自动写作会按片段匹配；也可在写作前手动指定用哪几本文集</span>
       </div>
 
       {showImport === "text" ? (
@@ -121,6 +122,7 @@ export function SampleLibPanel(): JSX.Element {
           <input
             type="text"
             placeholder="书名（必填）"
+            aria-label="参考文集书名"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -128,6 +130,7 @@ export function SampleLibPanel(): JSX.Element {
           <input
             type="text"
             placeholder="作者（可选）"
+            aria-label="参考文集作者"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
@@ -142,6 +145,7 @@ export function SampleLibPanel(): JSX.Element {
             ref={textRef}
             defaultValue=""
             placeholder="粘贴小说全文，自动按「第 X 章」拆章"
+            aria-label="参考文集正文"
             className="h-32 w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
             onInput={(e) => {
               const len = (e.target as HTMLTextAreaElement).value.length;
@@ -178,6 +182,7 @@ export function SampleLibPanel(): JSX.Element {
           <input
             type="text"
             placeholder="书名（留空读 EPUB 元数据）"
+            aria-label="EPUB 书名"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -185,6 +190,7 @@ export function SampleLibPanel(): JSX.Element {
           <input
             type="text"
             placeholder="作者（留空读 EPUB 元数据）"
+            aria-label="EPUB 作者"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
@@ -216,7 +222,7 @@ export function SampleLibPanel(): JSX.Element {
       ) : null}
 
       {libs.length === 0 ? (
-        <p className="text-xs text-ink-500">尚无参考库。导入小说后写作时 AI 会自动从中召回相关节选。</p>
+        <p className="text-xs text-ink-500">尚无参考文集。导入小说后，自动写作会按当前章节内容匹配相近片段；也可以在自动写作面板里指定只参考某几本。</p>
       ) : (
         <ul className="divide-y divide-ink-700 rounded-md border border-ink-700 text-xs">
           {libs.map((lib) => (

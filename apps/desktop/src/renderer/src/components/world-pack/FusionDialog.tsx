@@ -2,9 +2,9 @@
 // 卡牌融合对话框（UI 优化版）
 // =============================================================================
 // 优化点：
-//   - 双栏布局：左=源卡 + brief 输入，右=预览 / 思考动画
+//   - 双栏布局：左=源卡 + 融合要求，右=预览 / 思考动画
 //   - 源卡用迷你卡片样式展示（沿用 WorldPackCard 的视觉语言）
-//   - LLM 调用期间用脉动 + 进度文案，不留白等
+//   - AI 调用期间用脉动 + 进度文案，不留白等
 //   - 顶栏带返回操作的清晰流程：源卡确认 → 生成预览 → 校对 → 保存
 // =============================================================================
 
@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { X, Sparkles, Save, RefreshCw, ArrowRight, Wand2 } from "lucide-react";
 import { worldPackApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 import type {
   WorldPackFuseResponse,
   WorldPackRecord,
@@ -26,7 +27,7 @@ interface Props {
 const FUSION_TIPS = [
   "正在阅读所有源卡设定…",
   "分析重叠概念与冲突…",
-  "按你的 brief 重新编织世界观…",
+  "按你的融合要求重新编织世界观…",
   "生成融合后的条目…",
   "整理最终输出…",
 ];
@@ -102,13 +103,14 @@ export function FusionDialog({
           <div className="flex-1">
             <div className="text-base font-semibold text-fuchsia-200">卡牌融合</div>
             <div className="text-[11px] text-fuchsia-300/70">
-              多张世界观卡 → LLM 编织 → 一张新卡
+              多张世界观卡 → 模型整理 → 一张新卡
             </div>
           </div>
           <button
             onClick={onClose}
             className="rounded-md p-1.5 text-fuchsia-200 hover:bg-fuchsia-500/20"
             title="关闭"
+            aria-label="关闭卡牌融合"
           >
             <X className="h-4 w-4" />
           </button>
@@ -128,7 +130,7 @@ export function FusionDialog({
             </div>
 
             <SectionLabel index={2} active>
-              融合 Brief
+              融合要求
             </SectionLabel>
             <textarea
               value={brief}
@@ -165,7 +167,7 @@ export function FusionDialog({
             </button>
             {previewMutation.isError && (
               <div className="rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
-                融合失败：{(previewMutation.error as Error).message}
+                融合失败：{friendlyErrorMessage(previewMutation.error)}
               </div>
             )}
           </aside>
@@ -253,7 +255,7 @@ function ThinkingState({ tip }: { tip: string }): JSX.Element {
       <div className="text-center">
         <div className="text-base font-medium text-fuchsia-200">{tip}</div>
         <div className="mt-2 text-xs text-ink-500">
-          LLM 正在编织新卡牌，通常需要 15-40 秒…
+          模型正在整理新卡牌，通常需要 15-40 秒…
         </div>
       </div>
       <div className="flex gap-1.5">
@@ -273,9 +275,9 @@ function IdleState(): JSX.Element {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 text-ink-500">
       <Wand2 className="h-16 w-16 opacity-20" />
-      <div className="text-sm">填好左侧 brief 后点"生成融合预览"</div>
+      <div className="text-sm">填好左侧融合要求后点“生成融合预览”</div>
       <div className="max-w-xs text-center text-xs text-ink-600">
-        预览不会落库；觉得满意再点"保存为新卡"。可反复重生成。
+        预览不会保存；觉得满意再点“保存为新卡”。可反复重新生成。
       </div>
     </div>
   );
@@ -356,7 +358,7 @@ function PreviewBody({
       <div className="border-t border-ink-700 bg-ink-900/60 p-4">
         {saveError && (
           <div className="mb-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
-            保存失败：{saveError.message}
+            保存失败：{friendlyErrorMessage(saveError)}
           </div>
         )}
         <button
@@ -372,7 +374,7 @@ function PreviewBody({
           ) : (
             <>
               <Save className="h-4 w-4" />
-              保存为新卡（origin = fused）
+              保存为新卡
             </>
           )}
         </button>

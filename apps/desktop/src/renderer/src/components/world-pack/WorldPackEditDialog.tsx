@@ -165,6 +165,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
 
           <FieldLabel>卡牌名</FieldLabel>
           <input
+            aria-label="卡牌名"
             key={`name-${pack.id}-${pack.version}`}
             defaultValue={pack.name}
             onBlur={(e) => {
@@ -176,6 +177,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
 
           <FieldLabel>副标题</FieldLabel>
           <input
+            aria-label="副标题"
             key={`tagline-${pack.id}-${pack.version}`}
             defaultValue={pack.tagline}
             onBlur={(e) =>
@@ -188,6 +190,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
 
           <FieldLabel>长描述</FieldLabel>
           <textarea
+            aria-label="长描述"
             key={`desc-${pack.id}-${pack.version}`}
             defaultValue={pack.description}
             rows={4}
@@ -201,6 +204,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
 
           <FieldLabel>标签（逗号分隔）</FieldLabel>
           <input
+            aria-label="标签"
             key={`tags-${pack.id}-${pack.version}`}
             defaultValue={pack.tags.join(", ")}
             onBlur={(e) => {
@@ -217,8 +221,9 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
 
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div>
-              <FieldLabel>扫描深度</FieldLabel>
+              <FieldLabel>参考范围</FieldLabel>
               <input
+                aria-label="参考范围"
                 key={`sd-${pack.id}-${pack.version}`}
                 type="number"
                 defaultValue={pack.scanDepth}
@@ -231,8 +236,9 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
               />
             </div>
             <div>
-              <FieldLabel>Token 预算</FieldLabel>
+              <FieldLabel>参考容量</FieldLabel>
               <input
+                aria-label="参考容量"
                 key={`tb-${pack.id}-${pack.version}`}
                 type="number"
                 defaultValue={pack.tokenBudget}

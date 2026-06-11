@@ -116,7 +116,7 @@ export function WorldPackLibrary(): JSX.Element {
   function handleCardDelete(pack: WorldPackRecord): void {
     if (deleteMutation.isPending) return;
     const slottedHint = slottedIds.has(pack.id)
-      ? "此卡当前已插槽到项目，删除后会同时从插槽中移除。"
+      ? "此卡当前已加入本书，删除后会同时从本书使用列表中移除。"
       : "此操作不可撤销。";
     if (!confirm(`删除卡牌「${pack.name}」？\n\n${slottedHint}`)) return;
     deleteMutation.mutate(pack.id);
@@ -134,6 +134,7 @@ export function WorldPackLibrary(): JSX.Element {
           <div className="relative flex-1 max-w-md">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
             <input
+              aria-label="搜索世界观卡牌"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索卡牌名 / 简介 / 标签"
@@ -141,6 +142,8 @@ export function WorldPackLibrary(): JSX.Element {
             />
             {search && (
               <button
+                type="button"
+                aria-label="清空搜索"
                 onClick={() => setSearch("")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-400 hover:bg-ink-700 hover:text-ink-100"
               >
@@ -153,15 +156,16 @@ export function WorldPackLibrary(): JSX.Element {
             {currentProjectId && (
               <button
                 onClick={() => setShowSlotPanel((v) => !v)}
+                aria-label="管理本书正在使用的世界观卡牌"
                 className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
                   showSlotPanel
                     ? "bg-accent-500 text-ink-900 shadow-lg shadow-accent-500/20"
                     : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-accent-500/40 hover:bg-ink-800"
                 }`}
-                title="管理当前项目的卡牌插槽"
+                title="管理本书正在使用的世界观卡牌"
               >
                 <Layers className="h-4 w-4" />
-                <span>插槽</span>
+                <span>本书使用</span>
                 {slottedIds.size > 0 && (
                   <span
                     className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
@@ -180,6 +184,7 @@ export function WorldPackLibrary(): JSX.Element {
                 setFusionMode((v) => !v);
                 setFusionSourceIds([]);
               }}
+              aria-label={fusionMode ? "取消卡牌融合" : "融合多张世界观卡牌"}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
                 fusionMode
                   ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/30"
@@ -192,6 +197,7 @@ export function WorldPackLibrary(): JSX.Element {
             {fusionMode && fusionSourceIds.length >= 2 && (
               <button
                 onClick={() => setShowFusionDialog(true)}
+                aria-label={`融合已选择的 ${fusionSourceIds.length} 张世界观卡牌`}
                 className="animate-pulse rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-fuchsia-500/40 hover:bg-fuchsia-400"
               >
                 融合 {fusionSourceIds.length} 张 →
@@ -200,6 +206,7 @@ export function WorldPackLibrary(): JSX.Element {
             <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
+              aria-label="新建世界观卡牌"
               className="flex items-center gap-1.5 rounded-lg bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 shadow-lg shadow-accent-500/20 hover:bg-accent-400 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" /> 新建卡牌
@@ -234,7 +241,7 @@ export function WorldPackLibrary(): JSX.Element {
       {/* ===== 融合模式横幅 ===== */}
       {fusionMode && (
         <div className="border-b border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-500/20 to-fuchsia-500/10 px-4 py-2 text-xs text-fuchsia-100 ring-1 ring-fuchsia-400/20">
-          <span className="font-medium">融合模式</span>　点选 2-4 张源卡作为输入，LLM 会按你的 brief 生成一张新卡。已选{" "}
+          <span className="font-medium">融合模式</span>　点选 2-4 张源卡，会按你的融合要求生成一张新卡。已选{" "}
           <span className="rounded bg-fuchsia-500/30 px-1.5 py-0.5 font-bold">
             {fusionSourceIds.length} / 4
           </span>
@@ -332,9 +339,9 @@ function EmptyState({
       <div className="text-center">
         <div className="text-lg font-medium text-ink-200">卡牌库空空如也</div>
         <p className="mt-1 max-w-md text-sm text-ink-400">
-          世界观卡牌让你把完整的设定预设（修真 / 蒸朋 / 末日…）保存为可流通的"卡"。
+          世界观卡牌让你把完整的设定预设（修真 / 蒸汽朋克 / 末日…）保存为可复用的资料卡。
           <br />
-          需要时挑一张插槽到当前项目，或把多张融合成全新的卡。
+          需要时挑一张加入本书，或把多张融合成全新的卡。
         </p>
       </div>
       <button
@@ -344,7 +351,7 @@ function EmptyState({
         <Plus className="h-4 w-4" /> 建第一张卡
       </button>
       <div className="mt-2 text-xs text-ink-500">
-        提示：双击任意卡牌可快速插槽到当前项目
+        提示：双击任意卡牌可快速加入本书
       </div>
     </div>
   );

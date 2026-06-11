@@ -8,7 +8,7 @@ import { chapterLogApi } from "../../lib/api";
 
 const KIND_BADGE: Record<ChapterLogEntryKind, { label: string; cls: string }> = {
   progress: { label: "📈 进度", cls: "bg-emerald-500/20 text-emerald-200" },
-  "ai-run": { label: "🤖 AI 运行", cls: "bg-violet-500/20 text-violet-200" },
+  "ai-run": { label: "🤖 模型运行", cls: "bg-violet-500/20 text-violet-200" },
   manual: { label: "✍ 手记", cls: "bg-sky-500/20 text-sky-200" },
   "daily-reminder": { label: "⏰ 每日", cls: "bg-accent-500/20 text-accent-200" },
 };
@@ -103,7 +103,7 @@ export function ChapterLogDrawer({
         )}
         {listQuery.isSuccess && entries.length === 0 && (
           <div className="py-4 text-center text-xs text-ink-500">
-            还没有任何条目。AI 跑完一轮 / 进度更新 / 手动记录 都会出现在这里。
+            还没有任何条目。模型跑完一轮 / 进度更新 / 手动记录都会出现在这里。
           </div>
         )}
         <ul className="flex flex-col gap-2">
@@ -131,7 +131,7 @@ function LogEntryItem({
   const meta = entry.metadata ?? {};
   const tokens =
     typeof meta.tokensIn === "number" || typeof meta.tokensOut === "number"
-      ? `${meta.tokensIn ?? 0} ↑ / ${meta.tokensOut ?? 0} ↓`
+      ? `生成消耗 ${meta.tokensIn ?? 0} 输入量 / ${meta.tokensOut ?? 0} 输出量`
       : null;
   const rewrites = typeof meta.rewrites === "number" ? `重写 ${meta.rewrites} 次` : null;
   return (
@@ -147,6 +147,7 @@ function LogEntryItem({
           type="button"
           onClick={onDelete}
           className="ml-auto text-[11px] text-ink-500 hover:text-rose-400"
+          aria-label="删除日志"
           title="删除"
         >
           ✕

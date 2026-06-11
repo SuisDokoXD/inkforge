@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 /**
  * v22+: 全局拖拽接管。
@@ -120,7 +121,7 @@ export function GlobalDropZone(): JSX.Element | null {
             pushToast(`✓ 已导入《${res.lib.title}》${res.chunkCount} 章`, true);
           }
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
+          const msg = friendlyErrorMessage(err, "导入失败，请检查文件内容后重试。");
           pushToast(`✗ ${file.name}：${msg}`, false);
         }
       }

@@ -117,7 +117,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
               作者批注
             </h3>
             <p className="mt-0.5 text-xs text-ink-400">
-              每次 Skill / 写作 LLM 调用都会注入这段文字，全局锁口吻、风格、禁忌
+              每次模型写作和技能运行都会参考这段文字，用来稳定口吻、风格和禁忌
             </p>
           </div>
           <button
@@ -186,7 +186,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
             className={`absolute bottom-2 right-3 rounded-full bg-ink-900/80 px-2 py-0.5 text-[10px] backdrop-blur-sm ${
               overLimit ? "text-red-300 ring-1 ring-red-500/40" : "text-ink-500"
             }`}
-            title={overLimit ? "超过推荐长度，可能挤占 LLM 上下文" : ""}
+            title={overLimit ? "超过推荐长度，可能挤占模型可参考内容" : ""}
           >
             {charCount}
             {overLimit ? ` / ${MAX_RECOMMENDED}（偏长）` : ""}
@@ -199,19 +199,19 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         )}
       </div>
 
-      {/* ===== 右：注入位置 + 说明 ===== */}
+      {/* ===== 右：参考时机 + 说明 ===== */}
       <aside className="w-[300px] shrink-0 border-l border-ink-700 bg-ink-900/40 p-5">
-        <h4 className="text-sm font-medium text-ink-200">注入位置</h4>
+        <h4 className="text-sm font-medium text-ink-200">参考时机</h4>
         <p className="mt-1 text-xs text-ink-400">
-          决定本批注在 user prompt 的哪一段。after 通常约束力更强（贴近输出）。
+          决定模型在写作前后何时看到这段批注。越靠近输出，硬性约束越强。
         </p>
 
         <div className="mt-4 space-y-2">
           <PositionRadio
             value="before"
             current={position}
-            label="提示前（before）"
-            hint="作为全局背景注入，与世界观一起前置"
+            label="写作前"
+            hint="作为全局背景，与世界观一起提前参考"
             accent="amber"
             onChange={(v) => {
               setPosition(v);
@@ -221,8 +221,8 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
           <PositionRadio
             value="after"
             current={position}
-            label="提示后（after）"
-            hint="贴近输出位置，对 LLM 的约束力更强"
+            label="写作后"
+            hint="更贴近输出，对硬性规则约束更强"
             accent="rose"
             onChange={(v) => {
               setPosition(v);
@@ -234,10 +234,10 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         <div className="mt-8 rounded-lg border border-ink-700 bg-ink-800/40 p-3 text-xs text-ink-400">
           <div className="font-medium text-ink-300">💡 使用建议</div>
           <ul className="mt-2 space-y-1 list-disc pl-4">
-            <li>风格类约束放 before（让 LLM 在写之前就吸收）</li>
-            <li>禁忌词、硬性规则放 after（贴近输出更难被忽略）</li>
-            <li>不超过 800 字符，免得挤占有限上下文</li>
-            <li>临时不想生效可点右上 toggle 禁用，不必删内容</li>
+            <li>风格类约束放写作前，让模型先吸收整体口吻</li>
+            <li>禁忌词、硬性规则放写作后，贴近输出更难被忽略</li>
+            <li>不超过 800 字符，免得挤占有限可参考内容</li>
+            <li>临时不想生效可点右上开关禁用，不必删内容</li>
           </ul>
         </div>
       </aside>

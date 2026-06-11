@@ -1,5 +1,5 @@
 // =============================================================================
-// World Info 激活诊断面板
+// 世界观资料参考记录面板
 // =============================================================================
 // SillyTavern 一直只往 console.log 写激活情况，作者问"为啥这条没生效"基本靠猜。
 // 本面板把每次 activator 跑的完整 trace 可视化：
@@ -23,13 +23,37 @@ interface Props {
   projectId: string;
 }
 
+const LOGIC_LABELS: Record<string, string> = {
+  and_any: "主关键词 + 任一辅助词",
+  and_all: "主关键词 + 全部辅助词",
+  not_any: "主关键词出现，辅助词都不出现",
+  not_all: "主关键词出现，辅助词不全出现",
+};
+
+function sceneLabel(scene: string): string {
+  const labels: Record<string, string> = {
+    skill: "技能执行",
+    "auto-writer": "自动写作",
+    chat: "写作问答",
+    review: "正文审查",
+    quick: "快捷改写",
+    letter: "人物来信",
+    tavern: "酒馆对话",
+    "world-pack-fusion": "卡牌融合",
+    "chapter-generation": "章节生成",
+    outline: "大纲生成",
+    analysis: "正文分析",
+  };
+  return labels[scene] ?? "模型写作";
+}
+
 // 给单条 entry trace 渲染一个状态徽章 + 中文文案。
 function StatusBadge({ trace }: { trace: WorldInfoEntryTrace }): JSX.Element {
   if (trace.injected) {
     return (
       <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300 ring-1 ring-emerald-400/30">
         <CheckCircle2 className="h-3 w-3" />
-        {trace.constant ? "强制注入" : "已注入"}
+        {trace.constant ? "总是参考" : "已参考"}
       </span>
     );
   }
@@ -37,7 +61,7 @@ function StatusBadge({ trace }: { trace: WorldInfoEntryTrace }): JSX.Element {
     return (
       <span className="inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-[11px] text-orange-300 ring-1 ring-orange-400/30">
         <Wallet className="h-3 w-3" />
-        预算超
+        字数超限
       </span>
     );
   }
@@ -45,7 +69,7 @@ function StatusBadge({ trace }: { trace: WorldInfoEntryTrace }): JSX.Element {
     return (
       <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] text-sky-300 ring-1 ring-sky-400/30">
         <Dices className="h-3 w-3" />
-        概率失
+        随机跳过
       </span>
     );
   }
@@ -60,7 +84,7 @@ function StatusBadge({ trace }: { trace: WorldInfoEntryTrace }): JSX.Element {
   return (
     <span className="inline-flex items-center gap-1 rounded bg-ink-700 px-1.5 py-0.5 text-[11px] text-ink-300">
       <XCircle className="h-3 w-3" />
-      未知
+      未参考
     </span>
   );
 }
@@ -92,11 +116,12 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
       {/* 左：trace 列表 */}
       <aside className="flex w-[320px] shrink-0 flex-col border-r border-ink-700 bg-ink-950/60">
         <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-3 py-2">
-          <span className="text-sm font-medium text-ink-200">激活记录</span>
+          <span className="text-sm font-medium text-ink-200">参考记录</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => tracesQuery.refetch()}
               title="刷新"
+              aria-label="刷新参考记录"
               className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${tracesQuery.isFetching ? "animate-spin" : ""}`} />
@@ -107,7 +132,8 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
                 queryClient.invalidateQueries({ queryKey: ["world-info-traces", projectId] });
                 setSelectedTraceId(null);
               }}
-              title="清空所有诊断记录"
+              title="清空所有参考记录"
+              aria-label="清空所有参考记录"
               className="rounded p-1 text-ink-400 hover:bg-rose-500/20 hover:text-rose-300"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -118,9 +144,9 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
           {traces.length === 0 ? (
             <div className="p-6 text-center text-xs text-ink-500">
               <div className="mb-2 text-2xl opacity-40">📊</div>
-              暂无激活记录
+              暂无参考记录
               <br />
-              触发任何带 World Info 的 AI 操作后会自动出现
+              触发带世界观资料的模型操作后会自动出现
             </div>
           ) : (
             traces.map((t) => {
@@ -137,14 +163,14 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
                   }`}
                 >
                   <div className="flex w-full items-center justify-between">
-                    <span className="font-medium">{t.scene}</span>
+                    <span className="font-medium">{sceneLabel(t.scene)}</span>
                     <span className="text-[10px] text-ink-500">
                       {formatTimestamp(t.createdAt)}
                     </span>
                   </div>
                   <div className="flex w-full items-center justify-between text-[11px] text-ink-400">
                     <span>
-                      注入 {injected}/{total}
+                      参考 {injected}/{total}
                     </span>
                     <span>
                       {t.charsUsed}/{t.charBudget} 字
@@ -163,23 +189,23 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
           <>
             <div className="border-b border-ink-700 bg-ink-900/40 px-4 py-3">
               <div className="text-sm font-medium text-ink-100">
-                {selected.scene} · {formatTimestamp(selected.createdAt)}
+                {sceneLabel(selected.scene)} · {formatTimestamp(selected.createdAt)}
               </div>
               <div className="mt-1 text-xs text-ink-400">
-                共扫描 {selected.entries.length} 条 · 注入{" "}
-                {selected.entries.filter((e) => e.injected).length} 条 · 字符占用{" "}
+                共判断 {selected.entries.length} 条 · 已参考{" "}
+                {selected.entries.filter((e) => e.injected).length} 条 · 参考字数{" "}
                 {selected.charsUsed}/{selected.charBudget}
               </div>
               {selected.scanTextPreview && (
                 <div className="mt-2 line-clamp-2 rounded bg-ink-950/60 px-2 py-1 text-[11px] text-ink-400">
-                  扫描文本预览：{selected.scanTextPreview}
+                  本次判断依据：{selected.scanTextPreview}
                 </div>
               )}
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {selected.entries.length === 0 ? (
                 <div className="p-6 text-center text-xs text-ink-500">
-                  这次激活没有候选条目
+                  这次没有可参考条目
                 </div>
               ) : (
                 <ul className="space-y-2">
@@ -205,19 +231,21 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
                           </div>
                           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-ink-400">
                             <span>
-                              主命中: {e.matchedKeys.length > 0 ? e.matchedKeys.join("/") : "—"}
+                              命中关键词：{e.matchedKeys.length > 0 ? e.matchedKeys.join("/") : "—"}
                             </span>
                             {e.secondaryMatched.length > 0 && (
-                              <span>次命中: {e.secondaryMatched.join("/")}</span>
+                              <span>辅助命中：{e.secondaryMatched.join("/")}</span>
                             )}
-                            <span>逻辑: {e.selectiveLogic}</span>
                             <span>
-                              概率: {e.probability}
+                              组合方式：{LOGIC_LABELS[e.selectiveLogic] ?? "默认"}
+                            </span>
+                            <span>
+                              触发概率：{e.probability}
                               {e.rolled !== null
-                                ? ` (掷 ${e.rolled.toFixed(0)})`
+                                ? `（本次随机 ${e.rolled.toFixed(0)}）`
                                 : ""}
                             </span>
-                            <span>预占: {e.approxChars} 字</span>
+                            <span>约占：{e.approxChars} 字</span>
                           </div>
                         </div>
                       </div>
@@ -231,7 +259,7 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
           <div className="flex h-full items-center justify-center text-ink-500">
             <div className="text-center">
               <div className="mb-3 text-4xl opacity-30">📊</div>
-              从左侧选一条激活记录
+              从左侧选一条参考记录
             </div>
           </div>
         )}

@@ -5,6 +5,7 @@ import { getAnalysisThreshold } from "@inkforge/shared";
 import { settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { SceneRoutingPanel } from "./SceneRoutingPanel";
 import { SampleLibPanel } from "./SampleLibPanel";
 import { AnimatedDialog } from "./AnimatedDialog";
@@ -48,7 +49,7 @@ export function SettingsDialog(): JSX.Element | null {
       await navigator.clipboard.writeText(res.text);
       alert(t("common.copy") + " ✓");
     } catch (err) {
-      alert(t("error.generic") + ": " + String(err));
+      alert(friendlyErrorMessage(err, "复制排查信息失败，请稍后重试。"));
     }
   };
 
@@ -61,7 +62,7 @@ export function SettingsDialog(): JSX.Element | null {
       const r = await window.inkforge.diag.snapshot({});
       setDiagText(r.text);
     } catch (err) {
-      setDiagText(t("error.generic") + ": " + String(err));
+      setDiagText(friendlyErrorMessage(err, "读取排查信息失败，请稍后重试。"));
     } finally {
       setDiagLoading(false);
     }
@@ -246,14 +247,14 @@ export function SettingsDialog(): JSX.Element | null {
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
-              AI 路由
+              模型分配
             </h3>
             <SceneRoutingPanel />
           </section>
 
           <section>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
-              参考小说库 (RAG)
+              参考小说库
             </h3>
             <SampleLibPanel />
           </section>

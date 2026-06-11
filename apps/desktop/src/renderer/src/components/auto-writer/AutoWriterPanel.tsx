@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  BookOpenText,
   BookText,
   CheckCircle2,
   ChevronDown,
+  ClipboardList,
+  FileSearch,
   Loader2,
   PenLine,
   RotateCcw,
@@ -20,9 +23,14 @@ import type {
   AutoWriterPhase,
   AutoWriterPhaseEvent,
   AutoWriterRunRecord,
+  OutlineCardRecord,
+  SampleLibRecord,
 } from "@inkforge/shared";
-import { autoWriterApi, providerApi } from "../../lib/api";
+import { autoWriterApi, outlineApi, providerApi, sampleLibApi } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
+import { useWritingFlowActions } from "../../lib/use-writing-flow-actions";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { SampleReferencePicker } from "../SampleReferencePicker";
 import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
 
 const ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
@@ -60,6 +68,7 @@ export function AutoWriterPanel({
   const queryClient = useQueryClient();
   const remembered = useAppStore((s) => s.autoWriterConfig);
   const setRemembered = useAppStore((s) => s.setAutoWriterConfig);
+  const flowActions = useWritingFlowActions();
 
   const [userIdeas, setUserIdeas] = useState("");
   const [advanced, setAdvanced] = useState(remembered?.advanced ?? false);
@@ -83,6 +92,9 @@ export function AutoWriterPanel({
   const [speedMode, setSpeedMode] = useState<"fast" | "quality">(
     remembered?.speedMode ?? "fast",
   );
+  const [selectedSampleLibIds, setSelectedSampleLibIds] = useState<string[]>(
+    remembered?.sampleLibIds ?? [],
+  );
 
   useEffect(() => {
     setRemembered({
@@ -95,6 +107,7 @@ export function AutoWriterPanel({
       enableOocGate,
       speedMode,
       advanced,
+      sampleLibIds: selectedSampleLibIds,
     });
   }, [
     primaryProviderId,
@@ -106,6 +119,7 @@ export function AutoWriterPanel({
     enableOocGate,
     speedMode,
     advanced,
+    selectedSampleLibIds,
     setRemembered,
   ]);
 
@@ -124,6 +138,17 @@ export function AutoWriterPanel({
     queryKey: ["providers"],
     queryFn: () => providerApi.list(),
   });
+  const outlineCardsQuery = useQuery<OutlineCardRecord[]>({
+    queryKey: ["outline-cards", projectId],
+    queryFn: () => outlineApi.list({ projectId }),
+  });
+  const sampleLibsQuery = useQuery<SampleLibRecord[]>({
+    queryKey: ["sample-libs", projectId],
+    queryFn: () => sampleLibApi.list({ projectId }),
+  });
+  const linkedOutlineCard =
+    outlineCardsQuery.data?.find((card) => card.chapterId === chapterId) ?? null;
+  const sampleLibs = sampleLibsQuery.data ?? [];
 
   useEffect(() => {
     if (!primaryProviderId && providersQuery.data && providersQuery.data.length > 0) {
@@ -199,6 +224,7 @@ export function AutoWriterPanel({
         maxSegments,
         maxRewritesPerSegment: speedMode === "fast" ? 0 : maxRewrites,
         enableOocGate: speedMode === "fast" ? false : enableOocGate,
+        sampleLibIds: selectedSampleLibIds.length > 0 ? selectedSampleLibIds : undefined,
         speedMode,
       });
     },
@@ -258,6 +284,7 @@ export function AutoWriterPanel({
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
           title="关闭"
+          aria-label="关闭自动写作"
         >
           <X className="h-4 w-4" />
         </button>
@@ -279,6 +306,16 @@ export function AutoWriterPanel({
           <div className="mt-2 text-xs text-ink-500">{userIdeas.length} 字</div>
         </section>
 
+        {sampleLibs.length > 0 ? (
+          <SampleReferencePicker
+            libs={sampleLibs}
+            selectedIds={selectedSampleLibIds}
+            onChange={setSelectedSampleLibIds}
+            disabled={isRunning}
+            className="mb-4"
+          />
+        ) : null}
+
         <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-medium text-ink-200">
@@ -297,6 +334,7 @@ export function AutoWriterPanel({
 
           <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-2">
             <select
+              aria-label="选择自动写作使用的模型服务"
               value={primaryProviderId}
               onChange={(event) => {
                 const id = event.target.value;
@@ -307,7 +345,7 @@ export function AutoWriterPanel({
               disabled={isRunning}
               className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
             >
-              <option value="">选择 Provider</option>
+              <option value="">选择模型服务</option>
               {providers.map((provider) => (
                 <option key={provider.id} value={provider.id}>
                   {provider.label}
@@ -315,10 +353,11 @@ export function AutoWriterPanel({
               ))}
             </select>
             <input
+              aria-label="自动写作使用的模型名称"
               type="text"
               value={primaryModel}
               onChange={(event) => setPrimaryModel(event.target.value)}
-              placeholder="model id"
+              placeholder="模型名称"
               disabled={isRunning}
               className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
             />
@@ -354,7 +393,7 @@ export function AutoWriterPanel({
               } disabled:opacity-60`}
             >
               <span className="block font-medium">严谨校阅</span>
-              <span className="mt-0.5 block text-[11px] opacity-80">保留 Critic、重写与整理</span>
+              <span className="mt-0.5 block text-[11px] opacity-80">保留逐段校阅、重写与整理</span>
             </button>
           </div>
 
@@ -381,6 +420,7 @@ export function AutoWriterPanel({
 
           <label className="mt-3 flex items-center gap-2 text-xs text-ink-300">
             <input
+              aria-label="启用一致性检查"
               type="checkbox"
               checked={enableOocGate}
               onChange={(event) => setEnableOocGate(event.target.checked)}
@@ -398,6 +438,7 @@ export function AutoWriterPanel({
                   <div key={role} className="grid grid-cols-[56px_minmax(0,1fr)_150px] gap-2 text-xs">
                     <span className="self-center text-ink-400">{ROLE_LABELS[role]}</span>
                     <select
+                      aria-label={`${ROLE_LABELS[role]}使用的模型服务`}
                       value={binding?.providerId ?? ""}
                       onChange={(event) =>
                         setAgentBindings((prev) => ({
@@ -419,6 +460,7 @@ export function AutoWriterPanel({
                       ))}
                     </select>
                     <input
+                      aria-label={`${ROLE_LABELS[role]}使用的模型名称`}
                       type="text"
                       value={binding?.model ?? ""}
                       onChange={(event) =>
@@ -430,7 +472,7 @@ export function AutoWriterPanel({
                           },
                         }))
                       }
-                      placeholder="model"
+                      placeholder="模型"
                       disabled={isRunning}
                       className="h-8 rounded-md border border-ink-700 bg-ink-900 px-2"
                     />
@@ -464,7 +506,7 @@ export function AutoWriterPanel({
           )}
           {startMut.isError ? (
             <div className="mt-2 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-              启动失败：{String(startMut.error)}
+              启动失败：{friendlyErrorMessage(startMut.error, "自动写作启动失败，请检查本章内容和模型服务后重试。")}
             </div>
           ) : null}
         </section>
@@ -552,10 +594,41 @@ export function AutoWriterPanel({
                       : "运行失败"}
               </div>
               <div className="mt-1 text-xs opacity-85">
-                {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · token{" "}
-                {doneEvent.totalTokensIn} / {doneEvent.totalTokensOut}
+                {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · 生成消耗：
+                输入量 {doneEvent.totalTokensIn} / 输出量 {doneEvent.totalTokensOut}
               </div>
-              {doneEvent.error ? <div className="mt-1 text-xs">错误：{doneEvent.error}</div> : null}
+              {doneEvent.error ? (
+                <div className="mt-1 text-xs">
+                  失败原因：{friendlyErrorMessage(doneEvent.error, "自动写作中断，请稍后重试。")}
+                </div>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-2.5 text-xs font-medium text-ink-950 hover:bg-accent-400"
+                  onClick={() => flowActions.openChapter(chapterId)}
+                >
+                  <BookOpenText className="h-3.5 w-3.5" />
+                  打开正文
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-current/30 px-2.5 text-xs hover:bg-white/10"
+                  onClick={() => flowActions.reviewChapter(chapterId)}
+                >
+                  <FileSearch className="h-3.5 w-3.5" />
+                  审查本章
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-current/30 px-2.5 text-xs hover:bg-white/10"
+                  onClick={() => flowActions.openOutline(linkedOutlineCard?.id)}
+                  title={linkedOutlineCard ? `查看大纲卡：${linkedOutlineCard.title}` : "回到大纲"}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  回到大纲
+                </button>
+              </div>
             </section>
 
             {(doneEvent.status === "completed" || doneEvent.status === "partial") && (
@@ -592,6 +665,7 @@ function NumberField({
     <label className="flex flex-col gap-1">
       <span className="text-ink-400">{label}</span>
       <input
+        aria-label={label}
         type="number"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}

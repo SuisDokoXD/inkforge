@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Loader2, MessageSquareText, Pause, Play, Send, Users } from "lucide-react";
 import type { TavernCardRecord, TavernMode, TavernSessionRecord } from "@inkforge/shared";
 import { tavernEventsApi, tavernRoundApi, tavernSessionApi, tavernSummaryApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface DirectorPanelProps {
   session: TavernSessionRecord;
@@ -69,7 +70,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
       setDirectorMessage("");
     },
     onError: (err) => {
-      alert(`推进失败：${err instanceof Error ? err.message : String(err)}`);
+      alert(`推进失败：${friendlyErrorMessage(err, "角色讨论暂时无法推进，请稍后重试。")}`);
     },
   });
 
@@ -95,7 +96,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
       setCompactOpen(false);
     },
     onError: (err) => {
-      alert(`压缩失败：${err instanceof Error ? err.message : String(err)}`);
+      alert(`整理失败：${friendlyErrorMessage(err, "讨论记录整理失败，请稍后重试。")}`);
     },
   });
 
@@ -149,7 +150,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
                   ? "border-accent-500/60 bg-accent-500/15 text-accent-100"
                   : "border-ink-700 bg-ink-950 text-ink-400 hover:bg-ink-800 hover:text-ink-200"
               }`}
-              title={`${card.providerId}/${card.model}`}
+              title={`选择「${card.name}」参与讨论`}
             >
               {card.name}
             </button>
@@ -165,6 +166,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             给下一轮一点方向
           </div>
           <textarea
+            aria-label="下一轮讨论方向"
             value={directorMessage}
             onChange={(e) => setDirectorMessage(e.target.value)}
             placeholder="例如：让他们重点讨论主角的真实动机，不要急着给结论。"
@@ -178,6 +180,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
           <label className="flex h-8 items-center gap-2 rounded-md border border-ink-700 bg-ink-950 px-2 text-xs text-ink-400">
             <span>连续</span>
             <input
+              aria-label="连续讨论轮数"
               type="number"
               value={autoRounds}
               onChange={(e) => setAutoRounds(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
@@ -217,7 +220,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
             className="flex h-8 items-center gap-1.5 rounded-md bg-blue-500/20 px-3 text-xs text-blue-200 hover:bg-blue-500/30 disabled:opacity-50"
           >
             <Send size={14} />
-            发送指令
+            发送引导
           </button>
         )}
         <button
@@ -226,16 +229,17 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
           className="ml-auto flex h-8 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-950 px-3 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-200"
         >
           <Archive size={14} />
-          压缩历史
+          整理历史
         </button>
       </div>
 
       {compactOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-sm rounded-lg border border-ink-700 bg-ink-800 p-5 shadow-xl">
-            <h3 className="text-sm font-medium text-accent-300 mb-3">压缩历史</h3>
-            <label className="block text-xs text-ink-300 mb-2">保留最近 K 条完整消息</label>
+            <h3 className="text-sm font-medium text-accent-300 mb-3">整理历史</h3>
+            <label className="block text-xs text-ink-300 mb-2">完整保留最近几条消息</label>
             <input
+              aria-label="完整保留最近几条消息"
               type="number"
               value={compactKeepLastK}
               onChange={(e) => setCompactKeepLastK(Math.max(1, parseInt(e.target.value) || 1))}
@@ -243,7 +247,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
               min={1}
             />
             <p className="text-[11px] text-ink-500 mt-2">
-              早于这 {compactKeepLastK} 条的非摘要消息将被摘要模型压缩为一条摘要消息。需要会话配置摘要 Provider。
+              更早的讨论会被整理成一条简短回顾。需要先配置长讨论整理服务。
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -259,7 +263,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
                 disabled={compactMut.isPending}
                 className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
               >
-                {compactMut.isPending ? "压缩中…" : "开始压缩"}
+                {compactMut.isPending ? "整理中…" : "开始整理"}
               </button>
             </div>
           </div>

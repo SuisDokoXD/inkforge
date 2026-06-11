@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
 import type { LLMChatMessage } from "@inkforge/shared";
 import { llmApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
   applyPersona,
   PET_DEFAULT_NAME,
@@ -86,7 +87,11 @@ export function CompanionChat({
     onError: (err) => {
       setMessages((prev) => [
         ...prev,
-        { id: `e-${Date.now()}`, role: "assistant", content: `…出错了：${String(err)}` },
+        {
+          id: `e-${Date.now()}`,
+          role: "assistant",
+          content: `…暂时没回上来：${friendlyErrorMessage(err, "模型服务暂时不可用，请稍后重试。")}`,
+        },
       ]);
     },
   });

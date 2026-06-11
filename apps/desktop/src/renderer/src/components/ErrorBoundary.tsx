@@ -51,14 +51,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       const bridge = (window as unknown as { inkforge?: { diag?: { snapshot?: (p: object) => Promise<{ text: string }> } } }).inkforge;
       const snap = await bridge?.diag?.snapshot?.({});
       const payload = [
-        `Label: ${this.props.label ?? "root"}`,
-        `Error: ${this.state.error?.message ?? "unknown"}`,
+        `位置：${this.props.label ?? "应用主界面"}`,
+        `错误摘要：${this.state.error?.message ?? "暂无错误摘要"}`,
         "",
-        "Stack:",
-        this.state.error?.stack ?? "(no stack)",
+        "错误细节（供排查）：",
+        this.state.error?.stack ?? "暂无调用栈信息",
         "",
-        "Diag:",
-        snap?.text ?? "(diag unavailable)",
+        "环境信息：",
+        snap?.text ?? "暂时无法读取环境信息",
       ].join("\n");
       await navigator.clipboard.writeText(payload);
     } catch {
@@ -77,7 +77,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     const title = t("error.boundary.title", l);
     const retry = t("common.retry", l);
     const copyDiag = t("error.boundary.copyDiag", l);
-    const shortDesc = `${label ? `[${label}] ` : ""}${error.message || "unknown error"}`;
+    const shortDesc = label
+      ? `${label} 暂时无法显示。可以重试，或复制排查信息发给维护者。`
+      : "此区域暂时无法显示。可以重试，或复制排查信息发给维护者。";
 
     return (
       <div className="flex h-full w-full items-center justify-center p-8">
@@ -104,13 +106,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               className="rounded px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
               onClick={this.toggleDetails}
             >
-              {showDetails ? "▾" : "▸"} stack
+              {showDetails ? "▾" : "▸"} 排查说明
             </button>
           </div>
           {showDetails && (
-            <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900/80 p-2 font-mono text-[11px] leading-relaxed text-ink-300">
-              {error.stack ?? error.message}
-            </pre>
+            <div className="mt-3 rounded bg-ink-900/80 p-3 text-xs leading-6 text-ink-300">
+              原始错误细节已隐藏，避免把内部调用信息直接显示在写作界面。需要排查时，请点击“{copyDiag}”。
+            </div>
           )}
         </div>
       </div>

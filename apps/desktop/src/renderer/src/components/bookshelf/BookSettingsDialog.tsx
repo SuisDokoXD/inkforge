@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectRecord } from "@inkforge/shared";
 import { outlineGenApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface BookSettingsDialogProps {
   project: ProjectRecord | null;
@@ -59,7 +60,7 @@ export function BookSettingsDialog({
       onSaved?.(next);
       onClose();
     },
-    onError: (err) => setError(String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "保存书籍设定失败，请稍后重试。")),
   });
 
   if (!project) return null;
@@ -114,7 +115,7 @@ export function BookSettingsDialog({
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
             rows={3}
-            placeholder="一段话讲清你这本书在写什么。AI 生成大纲时会作为种子使用。"
+            placeholder="一段话讲清你这本书在写什么。生成大纲时会作为种子使用。"
             className="w-full resize-none rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm"
           />
         </label>
@@ -125,7 +126,7 @@ export function BookSettingsDialog({
               🌍 全局世界观
             </span>
             <span>
-              AutoWriter 每段开始前都会读这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
+              自动写作每段开始前都会参考这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
             </span>
           </span>
           <textarea
@@ -139,7 +140,7 @@ export function BookSettingsDialog({
             {globalWorldview.length} 字
             {globalWorldview.length > 4000 && (
               <span className="ml-2 text-accent-300">
-                ⚠ 内容偏长，AI 调用成本上升；建议控制在 2000 字内
+                ⚠ 内容偏长，模型生成成本会上升；建议控制在 2000 字内
               </span>
             )}
           </span>

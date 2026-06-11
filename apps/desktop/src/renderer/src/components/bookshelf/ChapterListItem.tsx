@@ -84,6 +84,7 @@ export function ChapterListItem({
           <input
             type="text"
             autoFocus
+            aria-label="章节标题"
             value={renameDraft}
             onChange={(e) => setRenameDraft(e.target.value)}
             onBlur={commitRename}
@@ -126,17 +127,17 @@ export function ChapterListItem({
             className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-[10px] text-ink-300"
             title="设置章节来源"
           >
-            <option value="ai-auto">🤖 AI 全自动</option>
-            <option value="ai-assisted">✍🤖 AI 陪写</option>
+            <option value="ai-auto">🤖 模型全自动</option>
+            <option value="ai-assisted">✍🤖 模型陪写</option>
             <option value="manual">✍ 我手写</option>
           </select>
           <button
             type="button"
             onClick={() => setAutoWriterOpen(true)}
             className="rounded bg-accent-500/20 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-500/30"
-            title="AI 自动写作"
+            title="打开自动写作"
           >
-            🤖 AI 写
+            🤖 自动写
           </button>
           <button
             type="button"
@@ -150,9 +151,10 @@ export function ChapterListItem({
             type="button"
             onClick={() => setSnapshotOpen((v) => !v)}
             className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-600"
-            title="章节快照"
+            aria-label="打开章节版本备份"
+            title="章节版本备份"
           >
-            ↶ 快照
+            ↶ 备份
           </button>
           <button
             type="button"
@@ -161,6 +163,7 @@ export function ChapterListItem({
               setRenaming(true);
             }}
             className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-sky-500/30 hover:text-sky-100"
+            aria-label="重命名章节"
             title="改名"
           >
             ✏
@@ -177,6 +180,7 @@ export function ChapterListItem({
               }
             }}
             className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-rose-500/30 hover:text-rose-100"
+            aria-label="删除章节"
             title="删除章节"
           >
             🗑

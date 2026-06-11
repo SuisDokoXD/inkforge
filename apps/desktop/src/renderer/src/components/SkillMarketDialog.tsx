@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { MarketSkillMetaDTO } from "@inkforge/shared";
 import { AnimatedDialog } from "./AnimatedDialog";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 interface SkillMarketDialogProps {
   open: boolean;
@@ -43,13 +44,13 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
     <AnimatedDialog
       open={open}
       onClose={onClose}
-      ariaLabel="Skill 市场"
+      ariaLabel="技能市场"
       overlayClassName="flex items-center justify-center p-6"
       zClassName="z-40"
       panelClassName="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl"
     >
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
-          <h2 className="text-base font-semibold">🛒 Skill 市场</h2>
+          <h2 className="text-base font-semibold">技能市场</h2>
           <button
             className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
             onClick={onClose}
@@ -63,7 +64,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
             <div className="px-4 pb-2 pt-3">
               <input
                 type="search"
-                placeholder="搜索 skill…"
+                placeholder="搜索技能…"
                 className="w-full rounded border border-ink-600 bg-ink-900 px-3 py-1.5 text-sm outline-none focus:border-ink-400"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -75,7 +76,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
               )}
               {registryQuery.isError && (
                 <div className="p-4 text-sm text-red-400">
-                  无法拉取 registry：{String(registryQuery.error)}
+                  无法读取技能市场：{friendlyErrorMessage(registryQuery.error, "技能市场暂时不可用，请稍后重试。")}
                   <button
                     className="ml-2 underline"
                     onClick={() => registryQuery.refetch()}
@@ -85,7 +86,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
                 </div>
               )}
               {!registryQuery.isLoading && filtered.length === 0 && (
-                <div className="p-4 text-sm text-ink-400">暂无匹配的 Skill</div>
+                <div className="p-4 text-sm text-ink-400">暂无匹配的技能</div>
               )}
               {filtered.map((s) => (
                 <button
@@ -113,7 +114,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
           {/* Right: detail */}
           <div className="flex w-1/2 flex-col p-4 text-sm">
             {!selected && (
-              <div className="text-ink-400">选择一个 Skill 查看详情</div>
+              <div className="text-ink-400">选择一个技能查看详情</div>
             )}
             {selected && (
               <div className="flex h-full flex-col gap-3">
@@ -157,7 +158,7 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
                 </div>
                 {installMutation.isError && (
                   <div className="text-xs text-red-400">
-                    安装失败：{String(installMutation.error)}
+                    安装失败：{friendlyErrorMessage(installMutation.error, "安装失败，请稍后重试。")}
                   </div>
                 )}
               </div>

@@ -29,6 +29,7 @@ export interface ResearchHit {
 }
 
 export interface SampleChunkHit {
+  libId: string;
   libTitle: string;
   libAuthor: string | null;
   chapterTitle: string | null;
@@ -117,6 +118,7 @@ export function ragSearchSampleChunks(
   return db
     .prepare(
       `SELECT
+         l.id             AS libId,
          l.title          AS libTitle,
          l.author         AS libAuthor,
          c.chapter_title  AS chapterTitle,

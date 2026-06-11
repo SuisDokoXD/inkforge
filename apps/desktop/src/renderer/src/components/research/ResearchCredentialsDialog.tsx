@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ResearchCredentialStatus, ResearchProvider } from "@inkforge/shared";
 import { researchApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface ResearchCredentialsDialogProps {
   open: boolean;
@@ -15,20 +16,24 @@ const PROVIDER_ROWS: Array<{
 }> = [
   {
     provider: "tavily",
-    label: "Tavily",
-    hint: "Bearer token，推荐中文场景",
+    label: "网页检索",
+    hint: "适合中文网页，需要服务密钥",
   },
   {
     provider: "bing",
-    label: "Bing Search v7",
-    hint: "Ocp-Apim-Subscription-Key",
+    label: "通用搜索",
+    hint: "适合广泛网页，需要服务密钥",
   },
   {
     provider: "serpapi",
-    label: "SerpAPI",
-    hint: "URL query api_key；Google 结果",
+    label: "聚合搜索",
+    hint: "适合搜索结果聚合，需要服务密钥",
   },
 ];
+
+function providerRowLabel(provider: ResearchProvider): string {
+  return PROVIDER_ROWS.find((row) => row.provider === provider)?.label ?? "检索服务";
+}
 
 export function ResearchCredentialsDialog({
   open,
@@ -58,12 +63,12 @@ export function ResearchCredentialsDialog({
     }) => researchApi.credentialUpsert(input),
     onSuccess: async (_data, input) => {
       setDrafts((prev) => ({ ...prev, [input.provider]: "" }));
-      setStatus(`${input.provider} 已保存`);
+      setStatus(`${providerRowLabel(input.provider)}已保存`);
       await queryClient.invalidateQueries({ queryKey: ["research-credential-status"] });
       window.setTimeout(() => setStatus(null), 2000);
     },
     onError: (err) => {
-      setStatus(err instanceof Error ? err.message : String(err));
+      setStatus(friendlyErrorMessage(err, "保存搜索服务设置失败，请检查后重试。"));
     },
   });
 
@@ -71,7 +76,7 @@ export function ResearchCredentialsDialog({
     mutationFn: (provider: Exclude<ResearchProvider, "manual" | "llm-fallback">) =>
       researchApi.credentialDelete({ provider }),
     onSuccess: async (_data, provider) => {
-      setStatus(`${provider} 已清除`);
+      setStatus(`${providerRowLabel(provider)}已清除`);
       await queryClient.invalidateQueries({ queryKey: ["research-credential-status"] });
       window.setTimeout(() => setStatus(null), 2000);
     },
@@ -85,25 +90,21 @@ export function ResearchCredentialsDialog({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6">
       <div className="w-full max-w-lg rounded-xl border border-ink-700 bg-ink-800 p-5 shadow-2xl">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-accent-300">资料检索凭证</h2>
+          <h2 className="text-sm font-semibold text-accent-300">搜索服务设置</h2>
           <button
             onClick={onClose}
             type="button"
+            aria-label="关闭搜索服务设置"
             className="rounded px-2 py-0.5 text-sm text-ink-400 hover:bg-ink-700"
           >
             ×
           </button>
         </div>
         <p className="mb-3 text-[11px] text-ink-400">
-          凭证仅存于本机 keystore（优先 OS keychain，回退 AES-GCM）。不上传任何服务器。
+          这里填写联网搜索服务的密钥。密钥只保存在本机安全存储中，不上传到任何服务器。
         </p>
         <div className="space-y-3">
           {PROVIDER_ROWS.map((row) => {
@@ -133,13 +134,14 @@ export function ResearchCredentialsDialog({
                   <input
                     type="password"
                     value={draft}
+                    aria-label={`${row.label}服务密钥`}
                     onChange={(e) =>
                       setDrafts((prev) => ({
                         ...prev,
                         [row.provider]: e.target.value,
                       }))
                     }
-                    placeholder={configured ? "重写后覆盖旧值" : "粘贴 API Key"}
+                    placeholder={configured ? "重写后覆盖旧值" : "粘贴服务密钥"}
                     className="flex-1 rounded border border-ink-700 bg-ink-900 px-2 py-1 font-mono text-[12px] text-ink-100"
                   />
                   <button

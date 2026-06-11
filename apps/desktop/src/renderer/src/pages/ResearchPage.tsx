@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BookMarked,
@@ -19,23 +19,35 @@ import type {
 import { chapterApi, researchApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { ResearchCredentialsDialog } from "../components/research/ResearchCredentialsDialog";
+import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
+import { friendlyActionError, friendlyErrorMessage } from "../lib/friendly-error";
 
 const PROVIDER_OPTIONS: Array<{ value: ResearchProvider; label: string; hint: string }> = [
-  { value: "llm-fallback", label: "LLM 综述", hint: "无搜索 key 时可用，适合先整理方向" },
-  { value: "tavily", label: "Tavily", hint: "适合网页检索" },
-  { value: "bing", label: "Bing Search", hint: "适合通用搜索" },
-  { value: "serpapi", label: "SerpAPI", hint: "适合搜索结果聚合" },
+  { value: "llm-fallback", label: "模型综述（不联网）", hint: "不会访问网页，只整理方向和关键词；查真实地点、人物、事件时请用联网搜索" },
+  { value: "tavily", label: "联网网页检索", hint: "需要配置搜索服务密钥，适合查网页资料" },
+  { value: "bing", label: "联网通用搜索", hint: "需要配置搜索服务密钥，适合查广泛网页" },
+  { value: "serpapi", label: "联网聚合搜索", hint: "需要配置搜索服务密钥，适合查搜索结果页" },
 ];
+
+function providerLabel(value: ResearchProvider | null | undefined): string {
+  return PROVIDER_OPTIONS.find((item) => item.value === value)?.label ?? "未知来源";
+}
 
 const QUERY_CHIPS = [
   "时代背景",
   "城市风物",
   "职业细节",
   "器物制度",
+  "维基百科",
+  "日文资料",
+  "英文资料",
+  "官网/旅游",
+  "地图/登山",
+  "地名/山岳",
+  "海拔/路线",
+  "神社/传说",
   "饮食服饰",
   "真实案例",
-  "地名路线",
-  "术语解释",
 ];
 
 const STARTER_CARDS = [
@@ -59,11 +71,33 @@ interface SearchState {
   usedProvider: ResearchProvider | null;
   fellBackToLlm: boolean;
   error?: string;
+  expandedQueries?: string[];
+  attemptedProviders?: ResearchProvider[];
+}
+
+function researchErrorMessage(error?: string): string | null {
+  if (!error) return null;
+  if (error === "empty_query") return "请输入要检索的主题。";
+  if (error === "no_hits") return "已经尝试扩展查法，但没有找到可用结果。";
+  if (error === "all_providers_failed") return "所有检索来源都暂时不可用。";
+  if (error.includes("api_key_missing")) {
+    return "所选搜索服务还没有配置密钥，已尝试使用可用的兜底来源。";
+  }
+  if (error.includes("requires_provider")) {
+    return "模型综述需要先配置一个可用的模型服务。";
+  }
+  if (error.includes("invalid_json")) {
+    return "模型综述返回格式异常，请重试或换一个检索来源。";
+  }
+  return "检索服务返回异常，请换一个来源或稍后重试。";
 }
 
 export function ResearchPage(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
   const currentChapterId = useAppStore((s) => s.currentChapterId);
+  const researchDraftQuery = useAppStore((s) => s.researchDraftQuery);
+  const setResearchDraftQuery = useAppStore((s) => s.setResearchDraftQuery);
+  const flowActions = useWritingFlowActions();
   const queryClient = useQueryClient();
 
   const [provider, setProvider] = useState<ResearchProvider>("llm-fallback");
@@ -78,6 +112,14 @@ export function ResearchPage(): JSX.Element {
       projectId ? researchApi.list({ projectId }) : Promise.resolve([]),
     enabled: !!projectId,
   });
+
+  useEffect(() => {
+    const trimmed = researchDraftQuery?.trim();
+    if (!trimmed) return;
+    setQuery(trimmed);
+    setSearchState(null);
+    setResearchDraftQuery(null);
+  }, [researchDraftQuery, setResearchDraftQuery]);
 
   const searchMut = useMutation({
     mutationFn: async () => {
@@ -97,18 +139,22 @@ export function ResearchPage(): JSX.Element {
         usedProvider: res.usedProvider,
         fellBackToLlm: !!res.fellBackToLlm,
         error: res.error,
+        expandedQueries: res.expandedQueries,
+        attemptedProviders: res.attemptedProviders,
       });
+      const detail = researchErrorMessage(res.error);
+      const queryCount = res.expandedQueries?.length ?? 1;
       setStatus(
         res.fellBackToLlm
-          ? `已使用 LLM 综述${res.error ? `：${res.error}` : ""}`
+          ? `已改用模型综述（不联网）${detail ? `：${detail}` : ""}`
           : res.hits.length === 0
-            ? `没有命中结果${res.error ? `：${res.error}` : ""}`
-            : `命中 ${res.hits.length} 条 · ${res.usedProvider}`,
+            ? `没有命中结果${detail ? `：${detail}` : ""}`
+            : `命中 ${res.hits.length} 条 · 已尝试 ${queryCount} 种查法 · ${providerLabel(res.usedProvider)}`,
       );
       window.setTimeout(() => setStatus(null), 3000);
     },
     onError: (err) => {
-      setStatus(err instanceof Error ? err.message : String(err));
+      setStatus(friendlyErrorMessage(err, "检索失败，请换一个查法后重试。"));
     },
   });
 
@@ -130,7 +176,7 @@ export function ResearchPage(): JSX.Element {
       window.setTimeout(() => setStatus(null), 2000);
     },
     onError: (err) => {
-      setStatus(`保存失败：${err instanceof Error ? err.message : String(err)}`);
+      setStatus(friendlyActionError("保存失败", err));
     },
   });
 
@@ -142,7 +188,7 @@ export function ResearchPage(): JSX.Element {
       const quote = [
         "",
         "",
-        `> 资料《${topic}》 · ${hit.provider}${hit.url ? ` · ${hit.url}` : ""}`,
+        `> 资料《${topic}》 · ${providerLabel(hit.provider)}${hit.url ? ` · ${hit.url}` : ""}`,
         `> ${hit.snippet || hit.title}`,
         "",
       ].join("\n");
@@ -156,7 +202,7 @@ export function ResearchPage(): JSX.Element {
       window.setTimeout(() => setStatus(null), 2000);
     },
     onError: (err) => {
-      setStatus(err instanceof Error ? err.message : String(err));
+      setStatus(friendlyActionError("插入章节失败", err));
     },
   });
 
@@ -209,17 +255,17 @@ export function ResearchPage(): JSX.Element {
                 资料检索
               </h1>
               <p className="mt-1 text-xs leading-5 text-ink-400">
-                写作前查清背景，写作中保存出处。没有搜索凭证时，也可以先用 LLM 综述整理方向。
+                写作前查清背景，写作中保存出处。输入一个问题后，会自动扩展成多种查法。
               </p>
             </div>
             <button
               type="button"
               onClick={() => setCredentialsOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
-              title="管理搜索 provider 的 API Key"
+              title="设置联网搜索服务"
             >
               <KeyRound className="h-3.5 w-3.5" />
-              检索凭证
+              搜索服务设置
             </button>
           </div>
 
@@ -228,6 +274,7 @@ export function ResearchPage(): JSX.Element {
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
               <input
                 type="text"
+                aria-label="资料检索问题"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -235,12 +282,13 @@ export function ResearchPage(): JSX.Element {
                     searchMut.mutate();
                   }
                 }}
-                placeholder="输入要查的具体问题，例如：1930 年上海报馆编辑日常"
+                placeholder="输入要查的具体问题，例如：富士山的地理、登山路线和民间传说"
                 className="w-full rounded-md border border-ink-700 bg-ink-950/70 py-2 pl-9 pr-3 text-sm text-ink-100 placeholder:text-ink-600"
               />
             </div>
             <select
               value={provider}
+              aria-label="选择检索来源"
               onChange={(e) => setProvider(e.target.value as ResearchProvider)}
               className="rounded-md border border-ink-700 bg-ink-950/70 px-2 py-2 text-sm text-ink-100"
             >
@@ -288,7 +336,12 @@ export function ResearchPage(): JSX.Element {
 
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
           {!searchState ? (
-            <ResearchStarter currentChapterReady={!!currentChapterId} />
+            <ResearchStarter
+              currentChapterReady={!!currentChapterId}
+              onOpenChapter={
+                currentChapterId ? () => flowActions.openChapter(currentChapterId) : undefined
+              }
+            />
           ) : (
             <SearchResults
               state={searchState}
@@ -297,9 +350,12 @@ export function ResearchPage(): JSX.Element {
               insertPending={insertMut.isPending}
               onSave={(hit) => saveMut.mutate(hit)}
               onInsert={(hit) => insertMut.mutate(hit)}
+              onOpenChapter={
+                currentChapterId ? () => flowActions.openChapter(currentChapterId) : undefined
+              }
               onCopyUrl={(url) => {
                 navigator.clipboard.writeText(url);
-                setStatus("已复制 URL");
+                setStatus("已复制链接");
                 window.setTimeout(() => setStatus(null), 1500);
               }}
             />
@@ -323,8 +379,10 @@ export function ResearchPage(): JSX.Element {
 
 function ResearchStarter({
   currentChapterReady,
+  onOpenChapter,
 }: {
   currentChapterReady: boolean;
+  onOpenChapter?: () => void;
 }): JSX.Element {
   return (
     <div className="p-6">
@@ -336,8 +394,9 @@ function ResearchStarter({
               资料页负责把“可能需要查”变成“已经有出处”。
             </h2>
             <p className="mt-3 text-sm leading-7 text-ink-300">
-              不要只搜一个宽泛词。把问题写成“地点 + 时代 + 人物职业 + 场景细节”，
-              更容易得到能放进小说里的信息。
+              不要只搜一个宽泛词。查真实地点、山脉、制度或历史时，优先选择联网搜索；
+              再把问题写成“地点 + 时代 + 人物职业 + 场景细节”，更容易得到能放进小说里的信息。
+              如果只是选择“模型综述（不联网）”，它不会去网上查资料，只会帮你整理可能的关键词和提问方向。
             </p>
           </div>
         </section>
@@ -373,8 +432,43 @@ function ResearchStarter({
             >
               {currentChapterReady ? "可插入章节" : "仅保存资料"}
             </span>
+            {onOpenChapter && (
+              <button
+                type="button"
+                onClick={onOpenChapter}
+                className="rounded-md border border-ink-700 px-2.5 py-1 text-[11px] text-ink-300 hover:bg-ink-800"
+              >
+                回到正文
+              </button>
+            )}
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function SearchQueryTrail({
+  queries,
+  className = "",
+}: {
+  queries?: string[];
+  className?: string;
+}): JSX.Element | null {
+  const visibleQueries = (queries ?? []).filter(Boolean);
+  if (visibleQueries.length <= 1) return null;
+  return (
+    <div className={className}>
+      <div className="text-[11px] font-medium text-ink-300">已尝试的查法</div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {visibleQueries.map((item) => (
+          <span
+            key={item}
+            className="max-w-full rounded-full border border-ink-700 bg-ink-950/40 px-2 py-1 text-[11px] leading-4 text-ink-400"
+          >
+            {item}
+          </span>
+        ))}
       </div>
     </div>
   );
@@ -387,6 +481,7 @@ function SearchResults({
   insertPending,
   onSave,
   onInsert,
+  onOpenChapter,
   onCopyUrl,
 }: {
   state: SearchState;
@@ -395,19 +490,27 @@ function SearchResults({
   insertPending: boolean;
   onSave: (hit: ResearchSearchHit) => void;
   onInsert: (hit: ResearchSearchHit) => void;
+  onOpenChapter?: () => void;
   onCopyUrl: (url: string) => void;
 }): JSX.Element {
+  const queryCount = state.expandedQueries?.length ?? 1;
+  const providerTrail =
+    state.attemptedProviders && state.attemptedProviders.length > 1
+      ? state.attemptedProviders.map((item) => providerLabel(item)).join(" → ")
+      : null;
+
   if (state.hits.length === 0) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
-        <div className="max-w-md rounded-lg border border-dashed border-ink-700 bg-ink-900/35 p-6">
+        <div className="max-w-xl rounded-lg border border-dashed border-ink-700 bg-ink-900/35 p-6">
           <Search className="mx-auto h-7 w-7 text-ink-500" />
           <h2 className="mt-3 text-sm font-semibold text-ink-100">没有命中结果</h2>
           <p className="mt-2 text-sm leading-6 text-ink-400">
             {state.error
-              ? `检索返回：${state.error}`
-              : "换一个更具体的问题，或切到 LLM 综述先整理关键词。"}
+              ? researchErrorMessage(state.error)
+              : "换一个更具体的问题，或切到模型综述先整理关键词。"}
           </p>
+          <SearchQueryTrail queries={state.expandedQueries} className="mt-4 text-left" />
         </div>
       </div>
     );
@@ -415,21 +518,45 @@ function SearchResults({
 
   return (
     <div className="divide-y divide-ink-700/60">
-      <div className="px-5 py-3 text-xs text-ink-400">
-        主题：<span className="text-ink-200">{state.topic}</span>
-        <span className="mx-2 text-ink-600">·</span>
-        来源：{state.usedProvider ?? "unknown"}
-        {state.fellBackToLlm && (
-          <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-800 ring-1 ring-amber-400/20 dark:text-amber-200">
-            已回退为 LLM 综述
-          </span>
-        )}
+      <div className="space-y-2 px-5 py-3 text-xs text-ink-400">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>
+              主题：<span className="text-ink-200">{state.topic}</span>
+            </span>
+            <span className="text-ink-600">·</span>
+            <span>来源：{providerLabel(state.usedProvider)}</span>
+            <span className="text-ink-600">·</span>
+            <span>已尝试 {queryCount} 种查法</span>
+            {providerTrail && (
+              <>
+                <span className="text-ink-600">·</span>
+                <span>尝试来源：{providerTrail}</span>
+              </>
+            )}
+            {state.fellBackToLlm && (
+              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-800 ring-1 ring-amber-400/20 dark:text-amber-200">
+                已改用模型综述（不联网）
+              </span>
+            )}
+          </div>
+          {onOpenChapter && (
+            <button
+              type="button"
+              onClick={onOpenChapter}
+              className="rounded-md border border-ink-700 px-2.5 py-1 text-[11px] text-ink-300 hover:bg-ink-800"
+            >
+              回到正文
+            </button>
+          )}
+        </div>
+        <SearchQueryTrail queries={state.expandedQueries} />
       </div>
       {state.hits.map((hit, idx) => (
         <article key={`${hit.url}-${idx}`} className="px-5 py-4">
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
-            <span className="rounded bg-ink-800 px-1.5 py-[1px]">{hit.provider}</span>
-            {hit.score !== undefined && <span>score {hit.score.toFixed(2)}</span>}
+            <span className="rounded bg-ink-800 px-1.5 py-[1px]">{providerLabel(hit.provider)}</span>
+            {hit.score !== undefined && <span>相关度 {hit.score.toFixed(2)}</span>}
             {hit.url && (
               <a
                 href={hit.url}
@@ -536,7 +663,7 @@ function ResearchNotesSidebar({
                     className="border-b border-ink-700/50 px-3 py-2 last:border-b-0"
                   >
                     <div className="flex items-center gap-2 text-[10px] text-ink-500">
-                      <span>{note.sourceProvider}</span>
+                      <span>{providerLabel(note.sourceProvider)}</span>
                       <span>·</span>
                       <span>{new Date(note.createdAt).toLocaleDateString("zh-CN")}</span>
                     </div>

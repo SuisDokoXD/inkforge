@@ -29,6 +29,7 @@ import {
   resolveProviderRecord,
   streamText,
 } from "./llm-runtime";
+import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 
 // ---------------------------------------------------------------------------
 // Prompt builders
@@ -40,6 +41,8 @@ interface MasterPromptArgs {
   genre: string;
   subGenre: string;
   tags: string[];
+  globalWorldview: string;
+  voiceBlock: string;
 }
 
 function buildMasterOutlinePrompt(args: MasterPromptArgs): { system: string; user: string } {
@@ -48,41 +51,63 @@ function buildMasterOutlinePrompt(args: MasterPromptArgs): { system: string; use
   const tail = [args.genre && `主类：${args.genre}`, sub, tagLine].filter(Boolean).join(" · ");
   return {
     system: [
-      "你是一位中文小说总编，擅长根据梗概和定位反推故事的主线骨架。",
-      "输出一份**总大纲**，结构如下，用纯文本（无 Markdown 标题），每一段一行起：",
-      "  1. 一句话核心冲突（不超过 60 字）",
-      "  2. 三段式骨架：开端 / 发展（含转折点 1-2 个） / 高潮收束",
-      "  3. 主要人物简介（3-5 人，每人一行：姓名 · 定位 · 一句话动机）",
-      "  4. 主题与基调（一段，不超过 80 字）",
-      "  5. 节奏建议（按章数粗略分配：开端约 X 章 / 发展 Y 章 / 高潮 Z 章）",
-      "整体不超过 800 字。不要分析、不要询问、不要使用 Markdown 列表符号——直接给大纲。",
+      "你是一位中文小说总编，擅长把零散想法整理成可执行的长篇故事蓝图。",
+      "输出一份总大纲，用纯文本分块，不要 Markdown 代码块，不要解释你的工作过程。",
+      "必须包含以下块，每块都要具体，禁止空话：",
+      "【核心钩子】一句话说明主角、欲望、阻力和代价，不超过 80 字。",
+      "【主题气质】说明作品的情绪底色、散文/叙事比例、读者读完应留下的余味。",
+      "【主要人物】3-6 人，每人写：姓名/身份/欲望/秘密或缺口/与主线关系。",
+      "【背景与规则】写清地点、时代、社会气息、生活规则或超自然规则；如果用户没有填写背景，默认使用真实世界/当下社会，不要硬编架空世界观。",
+      "【三幕推进】开端、发展、转折、低谷、高潮、收束各写 1-2 句，必须有事件因果。",
+      "【关键场景】列 5-8 个可落笔场景，每个场景要有地点、人物动作和情绪变化。",
+      "【伏笔与回收】列 4-6 条伏笔，每条写埋设位置和回收方式。",
+      "【节奏分配】按章数区间给出开端/发展/转折/高潮/尾声的比例。",
+      "如果是游记、散文、见闻或抒情作品，要把行踪、景物、心绪、回望纳入主线，不要只写抽象感悟。",
+      "如果是现实题材或散文，背景可以是当下社会、几年前的社会、一次真实旅行、一个县城或一段家庭记忆；重点写时代细节、人物关系和现场感。",
+      "整体 900-1400 字。每句话尽量含有具体名词、动作或场景，避免“成长、命运、救赎”等空泛词单独出现。",
     ].join("\n"),
     user: [
       `作品名：${args.name}`,
       tail,
+      args.voiceBlock ? `\n${args.voiceBlock}\n` : "",
+      args.globalWorldview.trim()
+        ? `背景与时代语境（可选设定）：\n${args.globalWorldview.trim()}\n`
+        : "背景与时代语境：未填写。默认按真实世界处理；若梗概或类型指向当下、近年或某个年代，请使用相应社会生活细节，不要虚构一套世界观。\n",
       "",
       "梗概：",
-      args.synopsis || "（用户尚未填写。请基于上述类型与标签自由发挥，给一个具典型性的中等长度故事框架。）",
-    ].join("\n"),
+      args.synopsis || "（用户尚未填写。请基于作品名、类型、标签和背景语境，自行推导一个可执行的中等长度故事框架。）",
+    ].filter(Boolean).join("\n"),
   };
 }
 
 function buildChapterOutlinesPrompt(
   project: ProjectRecord,
   targetCount: number,
+  voiceBlock: string,
 ): { system: string; user: string } {
   return {
     system: [
-      "你是一位中文小说编辑，根据总大纲将故事拆分为章节大纲卡。",
+      "你是一位中文小说编辑，根据总大纲将故事拆分为可直接写正文的章节大纲卡。",
       `输出严格的 JSON 数组（**不要**加 \`\`\`json 围栏，**不要**输出其他文字），共 ${targetCount} 项，按时间顺序：`,
-      `  [{"title":"第一章 · 章节标题","content":"本章 80-150 字纲要：发生什么 / 谁的视角 / 起点状态 → 终点状态 / 关键场景或道具"}, ...]`,
-      "title 格式：「第N章 · 简短副标题」。content 必须是单行字符串（用 \\n 表示换行）。",
-      "禁止输出标题以外的任何内容。",
+      `  [{"title":"第1章 · 简短副标题","content":"本章功能：...\\n视角人物：...\\n开场落点：...\\n关键场景：...\\n冲突推进：...\\n情绪层次：...\\n结尾钩子：...\\n散文小节：## ... / ## ..."}, ...]`,
+      "title 必须使用「第N章 · 副标题」，N 从 1 递增，不要写“第一章”混排。",
+      "content 必须是 7-8 行结构化文本，每行用上面标签开头；每张卡 220-380 字。",
+      "每张卡都要写清：谁在什么地点做什么、为什么做、遇到什么阻力、章末留下什么变化。",
+      "关键场景必须可拍成画面；不要写“主角进一步成长”“矛盾加深”这种空句，除非后面接具体事件。",
+      "如果作品偏散文/游记：每张卡都要给 2-4 个可用的 `## 小标题`，体现行踪、景物、心绪或回望。",
+      "如果没有单独填写世界观，默认真实世界；现实散文可以用当下社会、几年前的社会、地方风物、人情关系作为背景推进。",
+      "章节之间要有因果链：上一章的结尾钩子必须推动下一章的开场落点。",
+      "禁止输出 JSON 以外的任何内容。",
     ].join("\n"),
     user: [
       `作品：${project.name}`,
       project.genre ? `类型：${project.genre}${project.subGenre ? " / " + project.subGenre : ""}` : "",
       project.tags.length ? `标签：${project.tags.join("、")}` : "",
+      voiceBlock ? `\n${voiceBlock}\n` : "",
+      project.synopsis.trim() ? `梗概：\n${project.synopsis.trim()}\n` : "",
+      project.globalWorldview.trim()
+        ? `背景与时代语境（可选设定）：\n${project.globalWorldview.trim()}\n`
+        : "背景与时代语境：未填写。默认真实世界/当下社会；如果作品明显是回忆、纪实、游记或散文，请按具体年代、地点和社会氛围处理。\n",
       "",
       "总大纲：",
       project.masterOutline.trim() || "（无）",
@@ -97,15 +122,18 @@ function buildChapterOutlinesPrompt(
 function buildRefineMasterPrompt(
   project: ProjectRecord,
   intent: string,
+  voiceBlock: string,
 ): { system: string; user: string } {
   return {
     system: [
       "你是一位中文小说总编，根据用户的修改意图调整总大纲。",
-      "保持原大纲的整体结构（核心冲突 / 三段式 / 人物 / 主题 / 节奏），只在用户指出的方向上修改。",
+      "保持原大纲的整体结构（核心钩子 / 主题气质 / 人物 / 世界规则 / 三幕推进 / 关键场景 / 伏笔 / 节奏），只在用户指出的方向上修改。",
+      "修改后仍要具体可执行，保留地点、动作、阻力、伏笔回收；不要变成抽象总结。",
       "输出仅大纲文本本身，不要附加解释。",
     ].join("\n"),
     user: [
       `作品：${project.name}`,
+      voiceBlock ? `\n${voiceBlock}\n` : "",
       "",
       "原总大纲：",
       project.masterOutline.trim() || "（空）",
@@ -120,15 +148,18 @@ function buildRefineMasterPrompt(
 function buildRefineCardPrompt(
   card: OutlineCardRecord,
   intent: string,
+  voiceBlock: string,
 ): { system: string; user: string } {
   return {
     system: [
       "你是一位中文小说编辑，根据用户的修改意图优化某一章的大纲卡。",
       "保持原章的位置与角色，仅按用户意图调整内容。",
-      "输出仅大纲卡正文本身（不带 title），单段或多段均可，不要附加解释。",
+      "输出仅大纲卡正文本身（不带 title），必须保留结构化行：本章功能 / 视角人物 / 开场落点 / 关键场景 / 冲突推进 / 情绪层次 / 结尾钩子 / 散文小节。",
+      "每行都要具体可落笔，不要附加解释。",
     ].join("\n"),
     user: [
       `章节标题：${card.title}`,
+      voiceBlock ? `\n${voiceBlock}\n` : "",
       "",
       "原章纲：",
       card.content.trim() || "（空）",
@@ -236,6 +267,29 @@ function parseOutlineCardsJson(raw: string): Array<{ title: string; content: str
     .filter((c) => c.title || c.content);
 }
 
+const REQUIRED_CARD_LABELS = [
+  "本章功能",
+  "视角人物",
+  "开场落点",
+  "关键场景",
+  "冲突推进",
+  "情绪层次",
+  "结尾钩子",
+];
+
+function assertOutlineCardsUseful(cards: Array<{ title: string; content: string }>): void {
+  const weak = cards.filter((card) => {
+    const compactLength = Array.from(card.content).filter((ch) => /\S/.test(ch)).length;
+    const labelHits = REQUIRED_CARD_LABELS.filter((label) => card.content.includes(label)).length;
+    return compactLength < 120 || labelHits < 5;
+  });
+  if (weak.length > Math.max(1, Math.floor(cards.length * 0.25))) {
+    throw new Error(
+      "outline_cards_too_thin: 模型返回的大纲卡过薄，未达到可写正文的结构要求。请补充梗概、类型、背景语境后重新生成，或换用更强的 outline_generation 模型。",
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Service exports
 // ---------------------------------------------------------------------------
@@ -248,6 +302,7 @@ export function updateProjectCreativeMeta(input: ProjectUpdateMetaInput): Projec
     genre: input.genre,
     subGenre: input.subGenre,
     tags: input.tags,
+    globalWorldview: input.globalWorldview,
   });
 }
 
@@ -262,9 +317,14 @@ export async function generateMasterOutline(
   const genre = input.genre ?? project.genre;
   const subGenre = input.subGenre ?? project.subGenre;
   const tags = input.tags ?? project.tags;
+  const globalWorldview = input.globalWorldview ?? project.globalWorldview;
+  const voiceBlock = buildVoiceContext({
+    db: ctx.db,
+    projectId: project.id,
+  }).before;
 
-  if (!synopsis.trim() && !genre.trim() && tags.length === 0) {
-    throw new Error("metadata_empty: please fill synopsis or genre or tags first");
+  if (!synopsis.trim() && !genre.trim() && tags.length === 0 && !globalWorldview.trim()) {
+    throw new Error("metadata_empty: please fill synopsis, genre, tags, or background first");
   }
 
   const { providerRecord, apiKey, model } = await resolveProviderForScene("outline_generation", {
@@ -278,6 +338,8 @@ export async function generateMasterOutline(
     genre,
     subGenre,
     tags,
+    globalWorldview,
+    voiceBlock,
   });
 
   const { text, durationMs } = await streamCollect({
@@ -297,6 +359,7 @@ export async function generateMasterOutline(
     genre,
     subGenre,
     tags,
+    globalWorldview,
     masterOutline: text,
     // Reset undo snapshot on fresh generate
     preRefineMasterOutline: null,
@@ -321,7 +384,11 @@ export async function generateChapterOutlines(
     providerId: input.providerId,
     model: input.model,
   });
-  const { system, user } = buildChapterOutlinesPrompt(project, targetCount);
+  const voiceBlock = buildVoiceContext({
+    db: ctx.db,
+    projectId: project.id,
+  }).before;
+  const { system, user } = buildChapterOutlinesPrompt(project, targetCount, voiceBlock);
 
   const { text, durationMs } = await streamCollect({
     providerRecord,
@@ -335,6 +402,7 @@ export async function generateChapterOutlines(
 
   const cards = parseOutlineCardsJson(text);
   if (cards.length === 0) throw new Error("LLM returned zero outline cards");
+  assertOutlineCardsUseful(cards);
 
   // Optionally clear existing project-level outline cards (chapterId IS NULL)
   if (input.replaceExisting) {
@@ -383,7 +451,11 @@ export async function refineOutline(
     if (!project) throw new Error("project_not_found");
     if (!project.masterOutline.trim()) throw new Error("master_outline_empty");
 
-    const { system, user } = buildRefineMasterPrompt(project, intent);
+    const voiceBlock = buildVoiceContext({
+      db: ctx.db,
+      projectId: project.id,
+    }).before;
+    const { system, user } = buildRefineMasterPrompt(project, intent, voiceBlock);
     const { text, durationMs } = await streamCollect({
       providerRecord,
       apiKey,
@@ -435,7 +507,11 @@ export async function refineOutline(
     updatedAt: row.updated_at,
   };
 
-  const { system, user } = buildRefineCardPrompt(card, intent);
+  const voiceBlock = buildVoiceContext({
+    db: ctx.db,
+    projectId: card.projectId,
+  }).before;
+  const { system, user } = buildRefineCardPrompt(card, intent, voiceBlock);
   const { text, durationMs } = await streamCollect({
     providerRecord,
     apiKey,

@@ -2,11 +2,11 @@ import { useState } from "react";
 import type { TavernMessageRecord } from "@inkforge/shared";
 import { useAppStore } from "../../stores/app-store";
 import { chapterApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface RoleBubbleProps {
   message: TavernMessageRecord;
   cardName?: string;
-  providerHint?: string;
   isStreaming?: boolean;
 }
 
@@ -22,7 +22,6 @@ function hashColor(id: string): string {
 export function RoleBubble({
   message,
   cardName,
-  providerHint,
   isStreaming = false,
 }: RoleBubbleProps): JSX.Element {
   const currentChapterId = useAppStore((s) => s.currentChapterId);
@@ -52,7 +51,7 @@ export function RoleBubble({
       });
       alert("已追加到当前章节末尾。");
     } catch (err) {
-      alert(`摘录失败：${err instanceof Error ? err.message : String(err)}`);
+      alert(`摘录失败：${friendlyErrorMessage(err, "摘录写入失败，请稍后重试。")}`);
     }
   };
 
@@ -101,13 +100,12 @@ export function RoleBubble({
             {!isDirector && (
               <>
                 <span className="font-medium text-ink-200">{cardName || "?"}</span>
-                {providerHint && <span>{providerHint}</span>}
               </>
             )}
             {isDirector && <span className="font-medium text-blue-300">导演</span>}
             {(message.tokensIn > 0 || message.tokensOut > 0) && (
               <span>
-                {message.tokensIn}↑ / {message.tokensOut}↓
+                生成消耗 {message.tokensIn} 输入量 / {message.tokensOut} 输出量
               </span>
             )}
           </div>
@@ -145,7 +143,7 @@ export function RoleBubble({
               onClick={handleExtract}
               className="block w-full px-3 py-1.5 text-left text-xs text-ink-200 hover:bg-ink-700"
             >
-              📋 摘录到编辑器
+              摘录到正文
             </button>
           </div>
         </>

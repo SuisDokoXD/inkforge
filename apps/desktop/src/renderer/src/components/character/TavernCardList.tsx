@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { NovelCharacterRecord, TavernCardRecord, ProviderRecord } from "@inkforge/shared";
+import { NovelCharacterRecord, TavernCardRecord } from "@inkforge/shared";
 import { tavernCardApi, providerApi } from "../../lib/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -9,6 +9,12 @@ interface TavernCardListProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   novelCharacters: NovelCharacterRecord[];
+}
+
+function syncModeLabel(mode: TavernCardRecord["syncMode"]): string {
+  if (mode === "two-way") return "双向同步";
+  if (mode === "snapshot") return "创建时复制";
+  return "独立角色";
 }
 
 export function TavernCardList({
@@ -49,7 +55,7 @@ export function TavernCardList({
   return (
     <div className="flex h-full flex-col bg-ink-800/40 border-l border-ink-700">
       <div className="flex items-center justify-between border-b border-ink-700 p-3">
-        <h2 className="text-sm font-medium text-accent-300">酒馆卡 (AI)</h2>
+        <h2 className="text-sm font-medium text-accent-300">酒馆角色</h2>
         <div className="relative group">
           <button className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30">
             从书中创建
@@ -72,7 +78,6 @@ export function TavernCardList({
       </div>
       <div className="flex-1 overflow-auto scrollbar-thin">
         {cards.map((card) => {
-          const providerLabel = providersQuery.data?.find(p => p.id === card.providerId)?.label || card.providerId;
           return (
             <button
               key={card.id}
@@ -87,12 +92,12 @@ export function TavernCardList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <span className="truncate text-sm font-medium text-ink-100">{card.name}</span>
-                  <span className="shrink-0 rounded bg-ink-800 px-1 text-[9px] text-ink-400 uppercase">
-                    {card.syncMode}
+                  <span className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+                    {syncModeLabel(card.syncMode)}
                   </span>
                 </div>
                 <div className="mt-1 truncate text-[11px] text-ink-500">
-                  {providerLabel} / {card.model}
+                  {card.linkedNovelCharacterId ? "已关联书中人物" : "独立讨论角色"}
                 </div>
               </div>
             </button>

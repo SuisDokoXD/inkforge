@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectRecord } from "@inkforge/shared";
 import { projectApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface EditBookDialogProps {
   /** 当前要编辑的书籍。null 时对话框隐藏。 */
@@ -44,7 +45,7 @@ export function EditBookDialog({
       onSaved?.(next);
       onClose();
     },
-    onError: (err) => setError(String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "保存书籍信息失败，请稍后重试。")),
   });
 
   if (!project) return null;

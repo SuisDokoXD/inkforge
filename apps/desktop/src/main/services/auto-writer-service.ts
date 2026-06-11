@@ -14,7 +14,6 @@ import {
   listNovelCharacters,
   listOutlines,
   listWorldEntries,
-  ragSearchSampleChunks,
   readChapterFile,
   setChapterOrigin,
   updateAutoWriterRun,
@@ -58,6 +57,7 @@ import { createSnapshot } from "./snapshot-service";
 import { appendAiEntry } from "./chapter-log-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
+import { findSampleReferences } from "./rag-service";
 
 interface RuntimeController {
   runId: string;
@@ -160,32 +160,16 @@ function buildPreviousChaptersText(
  * query so chunks roughly aligned with the upcoming scene get picked.
  * Returns up to 3 references (cheap; Critic will use them too).
  */
-function buildStyleSamples(
-  db: DB,
-  projectId: string,
-  userIdeas: string,
-): StyleSampleRef[] {
-  const trimmed = (userIdeas ?? "").trim();
-  if (!trimmed) return [];
-  // Use 2-3 keywords from ideas as queries (very simple split).
-  const queries = trimmed
-    .split(/[。！？\.\!\?\n]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 4 && s.length <= 80)
-    .slice(0, 3);
-  if (queries.length === 0) return [];
-
-  let hits: { libTitle: string; libAuthor: string | null; chapterTitle: string | null; text: string }[] = [];
-  try {
-    hits = ragSearchSampleChunks(db, projectId, queries, 3) as typeof hits;
-  } catch (error) {
-    logger.warn("auto-writer: ragSearchSampleChunks failed", error);
-    return [];
-  }
-  return hits.slice(0, 3).map((h) => ({
-    source: [h.libTitle, h.libAuthor, h.chapterTitle].filter(Boolean).join(" · "),
-    excerpt: (h.text ?? "").slice(0, 600),
-  }));
+function buildStyleSamples(args: {
+  projectId: string;
+  query: string;
+  sampleLibIds?: string[];
+}): StyleSampleRef[] {
+  return findSampleReferences(args.projectId, args.query, {
+    maxHits: 4,
+    maxPerEntry: 650,
+    sampleLibIds: args.sampleLibIds,
+  });
 }
 
 export async function startAutoWriter(
@@ -243,10 +227,14 @@ export async function startAutoWriter(
   // 很简略或没维护，这一段就是空，逻辑无副作用。
   // 找匹配方式：outline_cards.chapter_id = chapter.id（最严格）。
   let userIdeas = input.userIdeas;
+  let linkedCardTitle = "";
+  let linkedCardContent = "";
   try {
     const allCards = listOutlines(ctx.db, input.projectId);
     const linkedCard = allCards.find((c) => c.chapterId === chapter.id);
     if (linkedCard && linkedCard.content.trim()) {
+      linkedCardTitle = linkedCard.title;
+      linkedCardContent = linkedCard.content.trim();
       const cardBlock = `【来自大纲卡《${linkedCard.title}》】\n${linkedCard.content.trim()}`;
       userIdeas = userIdeas?.trim()
         ? `${cardBlock}\n\n【用户即时思路】\n${userIdeas.trim()}`
@@ -263,7 +251,28 @@ export async function startAutoWriter(
     project.path,
     chapter,
   );
-  const styleSamples = buildStyleSamples(ctx.db, project.id, input.userIdeas);
+  const styleSampleQuery = [
+    project.name,
+    project.genre,
+    project.subGenre,
+    project.tags.join(" "),
+    project.synopsis,
+    project.masterOutline,
+    project.globalWorldview,
+    chapter.title,
+    linkedCardTitle,
+    linkedCardContent,
+    input.userIdeas,
+    existingChapterText?.slice(-1200) ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .slice(-2400);
+  const styleSamples = buildStyleSamples({
+    projectId: project.id,
+    query: styleSampleQuery,
+    sampleLibIds: input.sampleLibIds,
+  });
   const voiceBlock = buildVoiceContext({
     db: ctx.db,
     projectId: project.id,

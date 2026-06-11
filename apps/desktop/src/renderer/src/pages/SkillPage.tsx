@@ -26,6 +26,7 @@ import type {
 import { renderSkillTemplate } from "@inkforge/skill-engine";
 import { fsApi, skillApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { SkillMarketDialog } from "../components/SkillMarketDialog";
 import { SkillPublishDialog } from "../components/SkillPublishDialog";
 
@@ -44,8 +45,8 @@ const OUTPUT_LABELS: Record<SkillOutputTarget, string> = {
 
 const OUTPUT_DESCRIPTIONS: Record<SkillOutputTarget, string> = {
   "ai-feedback": "结果进入右侧时间线，不直接改正文。适合审校、提醒、分析。",
-  "replace-selection": "把选中的文字换成 AI 输出。适合润色、改写、翻译。",
-  "insert-after-selection": "保留原文，把 AI 输出插在选区后面。适合扩写、补充说明。",
+  "replace-selection": "把选中的文字换成模型生成结果。适合润色、改写、翻译。",
+  "insert-after-selection": "保留原文，把模型生成结果插在选区后面。适合扩写、补充说明。",
   "append-chapter": "把结果加到当前章节末尾。适合续写、章末总结。",
 };
 
@@ -112,12 +113,12 @@ const CORE_PLACEHOLDERS = [
 ];
 
 const ADVANCED_MACROS = [
-  "{{random:雨,雪,风}}",
-  "{{roll:1d6}}",
-  "{{date}}",
-  "{{time}}",
-  "{{datetime}}",
-  "{{newline}}",
+  { label: "随机词", token: "{{random:雨,雪,风}}" },
+  { label: "掷骰结果", token: "{{roll:1d6}}" },
+  { label: "今天日期", token: "{{date}}" },
+  { label: "当前时间", token: "{{time}}" },
+  { label: "日期和时间", token: "{{datetime}}" },
+  { label: "换行", token: "{{newline}}" },
 ];
 
 interface EditorState {
@@ -136,7 +137,7 @@ interface EditorState {
 function emptyEditorState(): EditorState {
   return {
     id: null,
-    name: "新建 Skill",
+    name: "新建技能",
     prompt: "",
     scope: "global",
     output: "ai-feedback",
@@ -231,7 +232,9 @@ export function SkillPage(): JSX.Element {
     const offDone = skillApi.onDone((payload) => {
       setTestRunning(false);
       if (payload.status === "failed") {
-        setStatusText(`运行失败：${payload.error ?? "unknown"}`);
+        setStatusText(
+          `运行失败：${friendlyErrorMessage(payload.error, "技能运行失败，请检查提示词后重试。")}`,
+        );
       } else if (payload.status === "cancelled") {
         setStatusText("已取消");
       } else {
@@ -318,7 +321,7 @@ export function SkillPage(): JSX.Element {
   const importMut = useMutation({
     mutationFn: async () => {
       const picked = await fsApi.pickFile({
-        title: "选择 Skill JSON",
+        title: "选择技能配置文件",
       });
       if (!picked.path || picked.content === null) return null;
       return skillApi.importJson({
@@ -337,7 +340,7 @@ export function SkillPage(): JSX.Element {
 
   const runTest = async () => {
     if (!editor.id) {
-      setStatusText("测试运行前需先保存 Skill");
+      setStatusText("测试运行前需先保存技能");
       return;
     }
     setTestOutput("");
@@ -356,7 +359,9 @@ export function SkillPage(): JSX.Element {
       });
     } catch (err) {
       setTestRunning(false);
-      setStatusText(`运行失败：${err instanceof Error ? err.message : String(err)}`);
+      setStatusText(
+        `运行失败：${friendlyErrorMessage(err, "技能运行失败，请检查提示词后重试。")}`,
+      );
     }
   };
 
@@ -389,7 +394,7 @@ export function SkillPage(): JSX.Element {
       { strict: false, emptyOnMissing: true },
     );
     const missingNote = res.missing.length
-      ? `\n\n⚠ 未识别占位：${res.missing.join(", ")}`
+      ? `\n\n⚠ 有未识别的插入项：${res.missing.join(", ")}`
       : "";
     setPreviewText(res.text + missingNote);
   };
@@ -439,14 +444,14 @@ export function SkillPage(): JSX.Element {
               className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-600 text-xs hover:bg-ink-700"
               onClick={() => importMut.mutate()}
               disabled={importMut.isPending}
-              title="导入 JSON"
+              title="导入技能配置"
             >
               <Upload size={14} />
             </button>
             <button
               className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-600 text-xs hover:bg-ink-700"
               onClick={() => setMarketOpen(true)}
-              title="Skill 市场"
+              title="技能市场"
             >
               <ShoppingCart size={14} />
             </button>
@@ -511,6 +516,7 @@ export function SkillPage(): JSX.Element {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <input
               className="h-9 w-72 rounded-md border border-ink-600 bg-ink-900 px-3 text-sm font-medium focus:border-accent-500 focus:outline-none"
+              aria-label="写作指令名称"
               value={editor.name}
               onChange={(e) => setEditor({ ...editor, name: e.target.value })}
               placeholder="指令名称，例如：温柔润色"
@@ -518,6 +524,7 @@ export function SkillPage(): JSX.Element {
             <label className="flex h-9 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-2 text-xs text-ink-300">
               <input
                 type="checkbox"
+                aria-label="启用写作指令"
                 checked={editor.enabled}
                 onChange={(e) => setEditor({ ...editor, enabled: e.target.checked })}
               />
@@ -526,6 +533,7 @@ export function SkillPage(): JSX.Element {
             <select
               className="h-9 rounded-md border border-ink-600 bg-ink-900 px-2 text-xs"
               value={editor.scope}
+              aria-label="写作指令使用范围"
               onChange={(e) => setEditor({ ...editor, scope: e.target.value as SkillScope })}
             >
               {(Object.keys(SCOPE_LABELS) as SkillScope[]).map((s) => (
@@ -555,7 +563,7 @@ export function SkillPage(): JSX.Element {
               className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 hover:bg-ink-700"
               onClick={() => setPublishOpen(true)}
               disabled={!editor.id}
-              title="生成发布用 skill.json 和 PR 说明"
+              title="生成发布用配置和说明"
             >
               <Send size={13} />
               发布
@@ -592,7 +600,7 @@ export function SkillPage(): JSX.Element {
             <section className="rounded-xl border border-ink-700 bg-ink-800/30 p-4">
               <div className="mb-3 flex items-start justify-between gap-4">
                 <div>
-                  <h1 className="text-base font-semibold text-ink-100">把常用 AI 操作做成一个按钮</h1>
+                  <h1 className="text-base font-semibold text-ink-100">把常用模型操作做成一个按钮</h1>
                   <p className="mt-1 text-xs leading-6 text-ink-400">
                     例如“润色选中文本”“审校当前章节”“按前文续写一段”。保存后，它会出现在编辑器工具栏、选中文本浮层，或按你设置的方式自动运行。
                   </p>
@@ -608,7 +616,7 @@ export function SkillPage(): JSX.Element {
                     1. 写清楚要做什么
                   </div>
                   <p className="text-xs leading-5 text-ink-500">
-                    用自然语言描述任务，再点占位符告诉 AI 要处理哪段文字。
+                    用自然语言描述任务，再点内容按钮告诉模型要处理哪段文字。
                   </p>
                 </div>
                 <div className="rounded-md border border-ink-700 bg-ink-950/60 p-3">
@@ -637,7 +645,7 @@ export function SkillPage(): JSX.Element {
                 <div>
                   <h2 className="text-sm font-semibold text-ink-100">指令内容</h2>
                   <p className="mt-1 text-xs text-ink-400">
-                    像给助手写一句明确要求。花括号占位符会在运行时自动换成正文、选区或章节信息。
+                    像给助手写一句明确要求。下方内容按钮会在运行时自动换成正文、选区或章节信息。
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -660,13 +668,13 @@ export function SkillPage(): JSX.Element {
                 className="h-56 w-full resize-y rounded-xl border border-ink-600 bg-ink-950/80 p-3 font-mono text-sm leading-relaxed shadow-inner focus:border-accent-500 focus:outline-none"
                 value={editor.prompt}
                 onChange={(e) => setEditor({ ...editor, prompt: e.target.value })}
-                placeholder={"例：请温柔润色以下文字，保留原意和长度，只输出改写后的正文：\n\n{{selection}}"}
-                aria-label="Skill Prompt"
+                placeholder={"例：请温柔润色我选中的文字，保留原意和长度，只输出改写后的正文。\n\n需要插入正文、选区或章节信息时，点下方内容按钮。"}
+                aria-label="技能提示词"
               />
 
               <div className="mt-3 rounded-lg border border-ink-700 bg-ink-950/50 p-3">
                 <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-ink-300">告诉 AI 读取哪些内容</span>
+                  <span className="text-xs font-medium text-ink-300">告诉模型读取哪些内容</span>
                   <span className="text-[11px] text-ink-500">点击即可插入到光标位置</span>
                 </div>
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
@@ -676,11 +684,11 @@ export function SkillPage(): JSX.Element {
                       type="button"
                       className="rounded-md border border-ink-700 bg-ink-900 px-2.5 py-2 text-left transition hover:border-accent-500/60 hover:bg-accent-500/10"
                       onClick={() => insertPromptText(item.token)}
-                      title={item.token}
+                      title={`插入：${item.label}`}
                     >
                       <span className="block text-xs font-medium text-ink-200">{item.label}</span>
-                      <span className="mt-1 block truncate font-mono text-[11px] text-ink-500">
-                        {item.token}
+                      <span className="mt-1 block text-[11px] text-accent-700 dark:text-accent-300">
+                        点击插入
                       </span>
                       <span className="mt-1 block text-[11px] text-ink-500">{item.help}</span>
                     </button>
@@ -695,12 +703,13 @@ export function SkillPage(): JSX.Element {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ADVANCED_MACROS.map((macro) => (
                     <button
-                      key={macro}
+                      key={macro.token}
                       type="button"
-                      className="rounded-md border border-ink-700 bg-ink-950/60 px-2 py-1 font-mono text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
-                      onClick={() => insertPromptText(macro)}
+                      className="rounded-md border border-ink-700 bg-ink-950/60 px-2 py-1 text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
+                      onClick={() => insertPromptText(macro.token)}
+                      title={`插入：${macro.label}`}
                     >
-                      {macro}
+                      {macro.label}
                     </button>
                   ))}
                 </div>
@@ -712,14 +721,14 @@ export function SkillPage(): JSX.Element {
               open={editor.variables.length > 0}
             >
               <summary className="cursor-pointer text-sm font-semibold text-ink-200">
-                自定义变量
+                自定义填空项
                 <span className="ml-2 rounded-full bg-ink-900/70 px-2 py-0.5 text-xs font-normal text-ink-400">
                   {editor.variables.length}
                 </span>
               </summary>
               <div className="mt-3 rounded-lg border border-ink-700 bg-ink-900/35 p-3">
                 <div className="mb-3 flex items-center justify-between gap-3 text-xs text-ink-400">
-                  <span>只有需要可复用参数时再加，例如情绪、语气、目标字数。</span>
+                  <span>只有需要反复填写同类内容时再加，例如情绪、语气、目标字数。</span>
                   <button
                     type="button"
                     className="shrink-0 rounded-md border border-ink-600 px-2 py-1 hover:bg-ink-700"
@@ -733,12 +742,12 @@ export function SkillPage(): JSX.Element {
                       })
                     }
                   >
-                    + 添加变量
+                    + 添加填空项
                   </button>
                 </div>
                 {editor.variables.length === 0 && (
                   <div className="rounded-md border border-dashed border-ink-700 px-3 py-4 text-center text-xs text-ink-500">
-                    多数写作 Skill 不需要变量。直接用上面的占位符就够了。
+                    多数写作技能不需要填空项。直接用上面的内容按钮就够了。
                   </div>
                 )}
                 <div className="flex flex-col gap-2">
@@ -746,9 +755,9 @@ export function SkillPage(): JSX.Element {
                     <div key={idx} className="flex flex-wrap items-center gap-2 text-sm">
                       <input
                         className="w-28 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
-                        placeholder="变量名"
+                        aria-label="填空项名称"
+                        placeholder="填空项名称"
                         value={v.key}
-                        aria-label="变量名"
                         onChange={(e) => {
                           const next = [...editor.variables];
                           next[idx] = { ...next[idx]!, key: e.target.value };
@@ -757,9 +766,9 @@ export function SkillPage(): JSX.Element {
                       />
                       <input
                         className="w-32 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
-                        placeholder="显示名"
+                        aria-label="填空项显示名称"
+                        placeholder="显示名称"
                         value={v.label}
-                        aria-label="变量显示名"
                         onChange={(e) => {
                           const next = [...editor.variables];
                           next[idx] = { ...next[idx]!, label: e.target.value };
@@ -768,9 +777,9 @@ export function SkillPage(): JSX.Element {
                       />
                       <input
                         className="min-w-40 flex-1 rounded border border-ink-600 bg-ink-950/70 px-2 py-1 text-xs"
-                        placeholder="默认值"
+                        aria-label="填空项默认内容"
+                        placeholder="默认内容"
                         value={v.defaultValue ?? ""}
-                        aria-label="变量默认值"
                         onChange={(e) => {
                           const next = [...editor.variables];
                           next[idx] = { ...next[idx]!, defaultValue: e.target.value };
@@ -789,6 +798,7 @@ export function SkillPage(): JSX.Element {
                       <label className="flex items-center gap-1 text-xs text-ink-400">
                         <input
                           type="checkbox"
+                          aria-label="设为必填"
                           checked={v.required}
                           onChange={(e) => {
                             const next = [...editor.variables];
@@ -839,6 +849,7 @@ export function SkillPage(): JSX.Element {
                         <input
                           className="mt-1"
                           type="checkbox"
+                          aria-label={`启用触发方式：${TRIGGER_LABELS[type]}`}
                           checked={!!existing}
                           onChange={(e) => {
                             if (e.target.checked) {
@@ -891,7 +902,7 @@ export function SkillPage(): JSX.Element {
                             value={existing.debounceMs ?? 10_000}
                             min={0}
                             step={1000}
-                            aria-label="自动触发防抖毫秒"
+                            aria-label="自动触发等待时间"
                             onChange={(e) =>
                               setEditor({
                                 ...editor,
@@ -901,7 +912,7 @@ export function SkillPage(): JSX.Element {
                               })
                             }
                           />
-                          ms
+                          毫秒
                         </div>
                       )}
                     </div>
@@ -948,6 +959,7 @@ export function SkillPage(): JSX.Element {
                     min={0}
                     max={2}
                     value={editor.temperature}
+                    aria-label="创造性"
                     onChange={(e) => setEditor({ ...editor, temperature: e.target.value })}
                   />
                   <p className="mt-1 text-[11px] text-ink-500">越低越稳，越高越发散。</p>
@@ -960,6 +972,7 @@ export function SkillPage(): JSX.Element {
                     min={50}
                     max={8000}
                     value={editor.maxTokens}
+                    aria-label="最长输出"
                     onChange={(e) => setEditor({ ...editor, maxTokens: e.target.value })}
                   />
                   <p className="mt-1 text-[11px] text-ink-500">润色可小一些，续写可适当放大。</p>
@@ -977,9 +990,9 @@ export function SkillPage(): JSX.Element {
                   <button
                     className="rounded-md border border-ink-600 px-3 py-1 hover:bg-ink-700"
                     onClick={runPreview}
-                    title="本地渲染 Prompt（不调用模型、不花费）"
+                    title="预览最终发送给模型的内容（不调用模型、不产生生成消耗）"
                   >
-                    预览渲染
+                    预览替换结果
                   </button>
                   <button
                     className="rounded-md border border-accent-500/60 px-3 py-1 text-accent-200 hover:bg-accent-500/20 disabled:opacity-50"
@@ -991,11 +1004,12 @@ export function SkillPage(): JSX.Element {
                 </div>
               </div>
               <p className="mb-2 text-xs leading-5 text-ink-500">
-                粘贴一段样例文字，先“预览渲染”检查占位符替换；保存后才能运行模型测试。
+                粘贴一段样例文字，先“预览替换结果”检查内容按钮是否取到了正确文字；保存后才能运行模型测试。
               </p>
               <textarea
                 className="h-24 w-full resize-y rounded-md border border-ink-600 bg-ink-800 p-2 text-sm"
                 value={testSample}
+                aria-label="测试样例文本"
                 onChange={(e) => setTestSample(e.target.value)}
                 placeholder="粘贴一段样例文本作为章节正文 / 选中片段……"
               />

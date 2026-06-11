@@ -52,6 +52,7 @@ export function SessionSidebar({
           <div
             key={s.id}
             role="button"
+            aria-label={`打开酒馆会话：${s.title}`}
             tabIndex={0}
             onClick={() => onSelect(s.id)}
             onKeyDown={(e) => {
@@ -71,7 +72,7 @@ export function SessionSidebar({
                 {s.topic.length > 30 ? "…" : ""}
               </div>
               <div className="mt-0.5 text-[10px] text-ink-500">
-                预算 {s.budgetTokens} · lastK {s.lastK}
+                讨论记忆 {s.budgetTokens} · 保留最近 {s.lastK} 条
               </div>
             </div>
             <button

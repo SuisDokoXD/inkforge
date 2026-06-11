@@ -25,7 +25,7 @@ import {
   resolveProviderRecord,
   streamText,
 } from "./llm-runtime";
-import { buildRagBlock } from "./rag-service";
+import { buildRagBlock, buildSampleReferenceBlock } from "./rag-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 
@@ -43,6 +43,7 @@ interface ChapterPromptArgs {
   cardContent: string;
   prevTail: string;
   ragBlock: string;
+  sampleReferenceBlock: string;
   voiceBlock: string;
 }
 
@@ -62,13 +63,14 @@ function buildChapterPrompt(args: ChapterPromptArgs): { system: string; user: st
       "如果本章偏游记、见闻、散文或抒情叙述，请写得更细：分 3-6 个小节，每节有明确的小标题。",
       "禁止连续输出两个同名小标题；同一小节只保留一个 `## 小标题`，不要在下一行或下一段重复。",
       "散文小节要有层次：先交代行踪或触发物，再写可感的景物细节，再落到人的心绪、记忆或顿悟；避免只堆砌形容词。",
-      "学习中国文学的气息，但不要仿写具体作家的原句：可取汪曾祺的清淡、沈从文的水气、郁达夫的行旅情绪、古典山水文的留白与节制。",
+      "可以借鉴导入文集里的宏观叙事技法、场景组织、节奏和意象密度，但不要复制原文，也不要复刻任何特定作者的可识别风格。",
       "正文长度建议 1500-2500 字。",
       "禁止任何分析、说明、章末总结之类的元文字。",
     ].join("\n"),
     user: [
       args.voiceBlock || "",
       args.ragBlock || "",
+      args.sampleReferenceBlock || "",
       `作品：${args.projectName}`,
       meta,
       "",
@@ -191,9 +193,30 @@ export async function generateChapterFromOutline(
     }
   }
 
-  // RAG: query = card content + master outline tail
-  const ragQuery = [cardRow.content, project.masterOutline].filter(Boolean).join("\n").slice(-600);
-  const ragBlock = buildRagBlock(project.id, ragQuery);
+  // RAG: keep imported literature references in a separate block so they are not
+  // squeezed out by world/character/research hits.
+  const ragQuery = [
+    project.name,
+    project.genre,
+    project.subGenre,
+    project.tags.join(" "),
+    project.synopsis,
+    cardRow.title,
+    cardRow.content,
+    project.masterOutline,
+    project.globalWorldview,
+    prevTail,
+  ]
+    .filter(Boolean)
+    .join("\n")
+    .slice(-1200);
+  const ragBlock = buildRagBlock(project.id, ragQuery, { sampleChunks: false });
+  const sampleReferenceBlock = buildSampleReferenceBlock(project.id, ragQuery, {
+    maxHits: 3,
+    maxPerEntry: 650,
+    maxTotalChars: 2200,
+    sampleLibIds: input.sampleLibIds,
+  });
   const voiceBlock = buildVoiceContext({
     db: ctx.db,
     projectId: project.id,
@@ -213,6 +236,7 @@ export async function generateChapterFromOutline(
     cardContent: cardRow.content,
     prevTail,
     ragBlock,
+    sampleReferenceBlock,
     voiceBlock,
   });
 

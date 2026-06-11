@@ -6,7 +6,7 @@ interface StepperProps {
 
 const STEPS = [
   "工作目录",
-  "AI Provider",
+  "模型服务",
   "技能预设",
   "首个项目",
   "完成",

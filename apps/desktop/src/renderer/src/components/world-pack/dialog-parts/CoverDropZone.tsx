@@ -62,6 +62,7 @@ export function CoverDropZone({ coverUrl, uploading, onPickFile }: Props): JSX.E
         )}
         {uploading ? "上传中…" : "上传封面（≤2MB）"}
         <input
+          aria-label="选择封面图片"
           type="file"
           accept={ACCEPT}
           className="hidden"

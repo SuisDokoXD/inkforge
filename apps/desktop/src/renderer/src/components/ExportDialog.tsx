@@ -4,6 +4,7 @@ import {
   fsApi,
   projectExportApi,
 } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { AnimatedDialog } from "./AnimatedDialog";
 
 type ExportFormat = "txt" | "md" | "html" | "docx" | "epub";
@@ -49,11 +50,11 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
         text: `✓ ${fmt.toUpperCase()} 导出成功：${res.chapterCount} 章 · ${kb} KB · ${res.outputPath}`,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg === "export_cancelled") {
+      const raw = err instanceof Error ? err.message : String(err);
+      if (raw === "export_cancelled") {
         setStatus({ kind: "err", text: "已取消" });
       } else {
-        setStatus({ kind: "err", text: `导出失败：${msg}` });
+        setStatus({ kind: "err", text: `导出失败：${friendlyErrorMessage(err, "导出失败，请稍后重试。")}` });
       }
     } finally {
       setBusy(false);
@@ -81,8 +82,7 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
       });
       onImported?.();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setStatus({ kind: "err", text: `导入失败：${msg}` });
+      setStatus({ kind: "err", text: `导入失败：${friendlyErrorMessage(err, "导入失败，请检查文件后重试。")}` });
     } finally {
       setBusy(false);
     }

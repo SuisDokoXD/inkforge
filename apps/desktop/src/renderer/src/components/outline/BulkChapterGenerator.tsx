@@ -2,6 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { OutlineCardRecord } from "@inkforge/shared";
 import { chapterGenApi, outlineApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
+
+function getPendingCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
+  return cards
+    .filter((card) => !card.chapterId)
+    .sort((a, b) => a.order - b.order);
+}
+
+function getWrittenCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
+  return cards.filter((card) => !!card.chapterId);
+}
 
 /**
  * v22+: 批量章节生成 + 断点续写。
@@ -26,6 +37,7 @@ import { chapterGenApi, outlineApi } from "../../lib/api";
 interface Props {
   projectId: string;
   cards: OutlineCardRecord[];
+  sampleLibIds?: string[];
   /** 父组件全局 busy 标志：批量进行时禁用其他按钮 */
   onBusyChange?: (busy: boolean) => void;
 }
@@ -39,7 +51,12 @@ interface ProgressLine {
   message?: string;
 }
 
-export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props): JSX.Element | null {
+export function BulkChapterGenerator({
+  projectId,
+  cards,
+  sampleLibIds,
+  onBusyChange,
+}: Props): JSX.Element | null {
   const queryClient = useQueryClient();
 
   const [status, setStatus] = useState<Status>("idle");
@@ -53,15 +70,10 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
   const runningRef = useRef(false);
 
   const pending = useMemo(
-    () =>
-      cards
-        .filter((c) => c.chapterId === null && c.chapterId !== undefined)
-        .filter((c) => c.chapterId === null) // doubly safe
-        .filter((c) => !c.chapterId)
-        .sort((a, b) => a.order - b.order),
+    () => getPendingCards(cards),
     [cards],
   );
-  const written = cards.filter((c) => !!c.chapterId);
+  const written = useMemo(() => getWrittenCards(cards), [cards]);
 
   useEffect(() => {
     onBusyChange?.(status === "running");
@@ -98,9 +110,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
         // 每一轮重新 list 一次，避免本地 cards 缓存过期：
         // 用户可能并行手写了一章，或前面循环刚落盘但 props 还没刷新。
         const fresh = await outlineApi.list({ projectId });
-        const ordered = fresh
-          .filter((c) => c.chapterId === null && !c.chapterId)
-          .sort((a, b) => a.order - b.order);
+        const ordered = getPendingCards(fresh);
         if (ordered.length === 0) {
           setStatus("done");
           break;
@@ -121,10 +131,11 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
             outlineCardId: card.id,
             candidates: 1,
             prevChapterId,
+            sampleLibIds: sampleLibIds && sampleLibIds.length > 0 ? sampleLibIds : undefined,
           });
           const candidate = res.candidates[0];
           if (!candidate || !candidate.text.trim()) {
-            throw new Error("LLM 返回为空");
+            throw new Error("模型没有返回正文");
           }
           await chapterGenApi.commitDraft({
             projectId,
@@ -138,7 +149,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
           queryClient.invalidateQueries({ queryKey: ["outline-cards"] });
           queryClient.invalidateQueries({ queryKey: ["chapters"] });
         } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
+          const msg = friendlyErrorMessage(e, "生成本章失败，请稍后重试。");
           markProgress(card.id, "failed", msg);
           setError(msg);
           setStatus("error");
@@ -220,6 +231,7 @@ export function BulkChapterGenerator({ projectId, cards, onBusyChange }: Props):
           本次最多
           <input
             type="number"
+            aria-label="本次最多生成章节数"
             min={0}
             max={50}
             step={1}

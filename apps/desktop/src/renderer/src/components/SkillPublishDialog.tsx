@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { AnimatedDialog } from "./AnimatedDialog";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 interface SkillPublishDialogProps {
   open: boolean;
@@ -28,13 +29,13 @@ export function SkillPublishDialog({
     <AnimatedDialog
       open={open}
       onClose={onClose}
-      ariaLabel="发布到 Skill 市场"
+      ariaLabel="发布到技能市场"
       overlayClassName="flex items-center justify-center p-6"
       zClassName="z-40"
       panelClassName="flex h-[80vh] w-full max-w-4xl flex-col rounded-2xl border border-ink-600 bg-ink-800 text-ink-100 shadow-2xl"
     >
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
-          <h2 className="text-base font-semibold">📤 发布到 Skill 市场</h2>
+          <h2 className="text-base font-semibold">发布到技能市场</h2>
           <button
             className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
             onClick={onClose}
@@ -45,13 +46,15 @@ export function SkillPublishDialog({
         <div className="flex flex-1 gap-4 overflow-y-auto p-5 text-sm">
           {bundleQuery.isLoading && <div className="text-ink-400">构建中…</div>}
           {bundleQuery.isError && (
-            <div className="text-red-400">构建失败：{String(bundleQuery.error)}</div>
+            <div className="text-red-400">
+              准备失败：{friendlyErrorMessage(bundleQuery.error, "发布资料准备失败，请稍后重试。")}
+            </div>
           )}
           {bundle && (
             <>
               <div className="flex w-1/2 flex-col">
                 <div className="mb-2 text-xs font-semibold uppercase text-ink-400">
-                  skill.json
+                  技能配置
                 </div>
                 <textarea
                   readOnly
@@ -63,13 +66,13 @@ export function SkillPublishDialog({
                     className="rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-500"
                     onClick={() => navigator.clipboard.writeText(bundle.skillJson)}
                   >
-                    复制 JSON
+                    复制配置
                   </button>
                 </div>
               </div>
               <div className="flex w-1/2 flex-col">
                 <div className="mb-2 text-xs font-semibold uppercase text-ink-400">
-                  PR 说明
+                  发布说明
                 </div>
                 <pre className="flex-1 overflow-auto rounded border border-ink-600 bg-ink-900 p-3 text-xs text-ink-200">
                   {bundle.prInstructions}

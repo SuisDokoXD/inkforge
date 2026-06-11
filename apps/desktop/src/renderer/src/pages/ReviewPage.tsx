@@ -1,25 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  BookOpenText,
   CheckCircle2,
   ChevronDown,
+  ClipboardList,
   Download,
   FileSearch,
   Info,
   ListChecks,
   Loader2,
+  PenLine,
   Play,
   Square,
 } from "lucide-react";
 import type {
   ChapterRecord,
+  OutlineCardRecord,
   ReviewDimensionRecord,
   ReviewReportRecord,
   ReviewSeverity,
 } from "@inkforge/shared";
-import { chapterApi, fsApi, reviewApi, reviewDimApi } from "../lib/api";
+import { chapterApi, fsApi, outlineApi, reviewApi, reviewDimApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
+import { getReviewDimensionHelp } from "../lib/review-dimension-copy";
+import { friendlyActionError } from "../lib/friendly-error";
 import { ReviewReportPanel } from "../components/review/ReviewReportPanel";
 
 type RangeKind = "book" | "chapter";
@@ -28,6 +35,12 @@ const SEVERITY_LABEL: Record<ReviewSeverity, string> = {
   info: "提示",
   warn: "警告",
   error: "严重",
+};
+
+const SEVERITY_HELP: Record<ReviewSeverity, string> = {
+  info: "可参考，不一定要改",
+  warn: "建议修改，默认级别",
+  error: "优先处理，影响连贯性",
 };
 
 function reportStatusLabel(status: ReviewReportRecord["status"]): string {
@@ -51,12 +64,15 @@ function totalFindings(report: ReviewReportRecord): number {
 
 export function ReviewPage(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
+  const currentChapterId = useAppStore((s) => s.currentChapterId);
   const setMainView = useAppStore((s) => s.setMainView);
   const setActiveChapter = useAppStore((s) => s.setChapter);
   const queryClient = useQueryClient();
+  const flowActions = useWritingFlowActions();
 
   const [rangeKind, setRangeKind] = useState<RangeKind>("book");
   const [selectedChapterIds, setSelectedChapterIds] = useState<string[]>([]);
+  const rangeTouchedRef = useRef(false);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [runningReportId, setRunningReportId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -78,12 +94,36 @@ export function ReviewPage(): JSX.Element {
     queryFn: () => (projectId ? reviewApi.list({ projectId }) : Promise.resolve([])),
     enabled: !!projectId,
   });
+  const outlineCardsQuery = useQuery<OutlineCardRecord[]>({
+    queryKey: ["outline-cards", projectId],
+    queryFn: () => (projectId ? outlineApi.list({ projectId }) : Promise.resolve([])),
+    enabled: !!projectId,
+  });
 
   const dimensions = dimensionsQuery.data ?? [];
   const reports = reportsQuery.data ?? [];
   const chapters = chaptersQuery.data ?? [];
   const enabledDimensions = useMemo(() => dimensions.filter((d) => d.enabled), [dimensions]);
   const activeReport = reports.find((report) => report.id === activeReportId) ?? null;
+  const actionChapterId =
+    rangeKind === "chapter" && selectedChapterIds.length === 1
+      ? selectedChapterIds[0]
+      : currentChapterId;
+  const actionChapter = chapters.find((chapter) => chapter.id === actionChapterId) ?? null;
+  const actionOutlineCard =
+    (outlineCardsQuery.data ?? []).find((card) => card.chapterId === actionChapter?.id) ?? null;
+
+  useEffect(() => {
+    rangeTouchedRef.current = false;
+  }, [projectId]);
+
+  useEffect(() => {
+    if (rangeTouchedRef.current) return;
+    if (!currentChapterId) return;
+    if (!chapters.some((chapter) => chapter.id === currentChapterId)) return;
+    setRangeKind("chapter");
+    setSelectedChapterIds([currentChapterId]);
+  }, [chapters, currentChapterId]);
 
   const toggleDimMut = useMutation({
     mutationFn: (dim: ReviewDimensionRecord) =>
@@ -145,7 +185,7 @@ export function ReviewPage(): JSX.Element {
       void queryClient.invalidateQueries({ queryKey: ["review-reports", projectId] });
     },
     onError: (err) => {
-      setStatus(`启动失败：${err instanceof Error ? err.message : String(err)}`);
+      setStatus(friendlyActionError("启动失败", err));
     },
   });
 
@@ -171,11 +211,12 @@ export function ReviewPage(): JSX.Element {
       window.setTimeout(() => setStatus(null), 3000);
     },
     onError: (err) => {
-      setStatus(err instanceof Error ? err.message : String(err));
+      setStatus(friendlyActionError("导出失败", err));
     },
   });
 
   const toggleChapter = (id: string) => {
+    rangeTouchedRef.current = true;
     setSelectedChapterIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -222,7 +263,10 @@ export function ReviewPage(): JSX.Element {
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
-              onClick={() => setRangeKind("book")}
+              onClick={() => {
+                rangeTouchedRef.current = true;
+                setRangeKind("book");
+              }}
               className={`h-8 rounded-md border ${
                 rangeKind === "book"
                   ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
@@ -233,7 +277,10 @@ export function ReviewPage(): JSX.Element {
             </button>
             <button
               type="button"
-              onClick={() => setRangeKind("chapter")}
+              onClick={() => {
+                rangeTouchedRef.current = true;
+                setRangeKind("chapter");
+              }}
               className={`h-8 rounded-md border ${
                 rangeKind === "chapter"
                   ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
@@ -272,9 +319,51 @@ export function ReviewPage(): JSX.Element {
           ) : null}
         </section>
 
+        {actionChapter ? (
+          <section className="border-b border-ink-700 p-3 text-xs">
+            <div className="mb-2 min-w-0">
+              <div className="font-medium text-ink-200">当前处理章节</div>
+              <div className="mt-1 truncate text-ink-500" title={actionChapter.title}>
+                {actionChapter.title || "未命名章节"} · {actionChapter.wordCount} 字
+                {actionOutlineCard ? ` · 已关联大纲卡` : ""}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+                onClick={() => flowActions.openChapter(actionChapter.id)}
+              >
+                <BookOpenText className="h-3.5 w-3.5" />
+                打开正文
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+                onClick={() => flowActions.autoWriteChapter(actionChapter.id)}
+              >
+                <PenLine className="h-3.5 w-3.5" />
+                继续自动写作
+              </button>
+              <button
+                type="button"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+                onClick={() => flowActions.openOutline(actionOutlineCard?.id)}
+                title={actionOutlineCard ? `查看大纲卡：${actionOutlineCard.title}` : "回到大纲"}
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                回到大纲
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         <section className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-          <div className="sticky top-0 z-10 border-b border-ink-700 bg-ink-900 px-4 py-2 text-xs font-medium text-ink-300">
-            审查维度
+          <div className="sticky top-0 z-10 border-b border-ink-700 bg-ink-900 px-4 py-2">
+            <div className="text-xs font-medium text-ink-300">审查维度</div>
+            <div className="mt-0.5 text-[11px] text-ink-500">
+              右侧级别表示发现问题时在报告里的标记强度：提示可参考，警告建议改，严重优先处理。
+            </div>
           </div>
           <ul className="divide-y divide-ink-700/70">
             {dimensions.map((dim) => (
@@ -287,14 +376,15 @@ export function ReviewPage(): JSX.Element {
                     onChange={() => toggleDimMut.mutate(dim)}
                     className="mt-0.5 accent-accent-500"
                   />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm text-ink-100">{dim.name}</div>
-                    <div className="mt-0.5 truncate text-[11px] text-ink-500">
-                      {dim.kind === "builtin" ? dim.builtinId : "自定义技能维度"}
+                  <div className="min-w-0 flex-1 pr-2">
+                    <div className="text-sm text-ink-100">{dim.name}</div>
+                    <div className="mt-1 text-[11px] leading-4 text-ink-500">
+                      <div>{getReviewDimensionHelp(dim)}</div>
+                      <div className="text-ink-400">{SEVERITY_HELP[dim.severity]}</div>
                     </div>
                   </div>
                   <label className="relative">
-                    <span className="sr-only">严重级别</span>
+                    <span className="sr-only">{dim.name} 的报告级别</span>
                     <select
                       value={dim.severity}
                       onChange={(e) =>
@@ -304,10 +394,11 @@ export function ReviewPage(): JSX.Element {
                         })
                       }
                       className="h-7 appearance-none rounded-md border border-ink-700 bg-ink-950 pl-2 pr-7 text-xs text-ink-200"
+                      title={SEVERITY_HELP[dim.severity]}
                     >
-                      <option value="info">提示</option>
-                      <option value="warn">警告</option>
-                      <option value="error">严重</option>
+                      <option value="info">提示 · 可参考</option>
+                      <option value="warn">警告 · 建议改</option>
+                      <option value="error">严重 · 优先处理</option>
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-1.5 top-1.5 h-3.5 w-3.5 text-ink-500" />
                   </label>
@@ -437,7 +528,7 @@ export function ReviewPage(): JSX.Element {
               <FileSearch className="mx-auto mb-3 h-9 w-9 text-ink-600" />
               <div className="mb-1 text-sm font-medium text-ink-300">没有选中的报告</div>
               <p className="text-xs text-ink-500">
-                左侧设置审查范围和维度，中间选择历史报告，右侧会显示 findings 和修复入口。
+                左侧设置审查范围和维度，中间选择历史报告，右侧会显示问题条目和修复入口。
               </p>
             </div>
           </div>

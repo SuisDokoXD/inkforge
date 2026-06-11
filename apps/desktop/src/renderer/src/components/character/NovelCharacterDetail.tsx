@@ -9,6 +9,12 @@ interface NovelCharacterDetailProps {
   tavernCards: TavernCardRecord[];
 }
 
+function syncModeLabel(mode: TavernCardRecord["syncMode"]): string {
+  if (mode === "two-way") return "双向同步";
+  if (mode === "snapshot") return "创建时复制";
+  return "独立角色";
+}
+
 export function NovelCharacterDetail({
   novelCharacter,
   tavernCards,
@@ -107,7 +113,7 @@ export function NovelCharacterDetail({
 
       <div className="space-y-6 flex-1">
         <section>
-          <label className="mb-2 block text-xs font-medium text-ink-400 uppercase tracking-wider">人设 (Persona)</label>
+          <label className="mb-2 block text-xs font-medium text-ink-400">人设</label>
           <textarea
             className="w-full h-32 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-accent-500/50 focus:outline-none"
             value={localData.persona || ""}
@@ -117,7 +123,7 @@ export function NovelCharacterDetail({
         </section>
 
         <section>
-          <label className="mb-2 block text-xs font-medium text-ink-400 uppercase tracking-wider">背景 (Backstory)</label>
+          <label className="mb-2 block text-xs font-medium text-ink-400">背景</label>
           <textarea
             className="w-full h-40 rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-200 focus:border-accent-500/50 focus:outline-none"
             value={localData.backstory || ""}
@@ -127,9 +133,9 @@ export function NovelCharacterDetail({
         </section>
 
         <section>
-          <label className="mb-2 block text-xs font-medium text-ink-400 uppercase tracking-wider">特征 (Traits)</label>
+          <label className="mb-2 block text-xs font-medium text-ink-400">特征</label>
           <div className="rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-500 italic">
-            键值对编辑将在后续版本支持...
+            结构化特征编辑将在后续版本支持...
           </div>
         </section>
       </div>
@@ -138,13 +144,13 @@ export function NovelCharacterDetail({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-ink-200">酒馆绑定</h3>
-            <p className="text-xs text-ink-500 mt-1">同步此人设到 LLM 酒馆卡</p>
+            <p className="text-xs text-ink-500 mt-1">同步此人设到酒馆角色卡</p>
           </div>
           {linkedCard ? (
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <div className="text-sm text-accent-200">{linkedCard.name}</div>
-                <div className="text-[10px] text-ink-500">同步模式: {linkedCard.syncMode}</div>
+                <div className="text-[10px] text-ink-500">{syncModeLabel(linkedCard.syncMode)}</div>
               </div>
               <button
                 onClick={handleUnbind}

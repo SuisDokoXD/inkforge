@@ -66,13 +66,14 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-accent-400" />
           <span className="text-sm font-medium text-ink-100">
-            已插槽 <span className="text-accent-300">{slots.length}</span>
+            本书使用 <span className="text-accent-300">{slots.length}</span>
           </span>
         </div>
         <button
           onClick={onClose}
           className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
           title="收起"
+          aria-label="收起本书使用列表"
         >
           <X className="h-4 w-4" />
         </button>
@@ -80,7 +81,7 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
 
       {/* 说明 */}
       <div className="border-b border-ink-700/40 bg-ink-900/30 px-3 py-1.5 text-[11px] text-ink-500">
-        靠前的卡牌优先级更高；禁用的卡保留槽位但不参与注入
+        靠前的卡牌会优先参考；关闭的卡保留在列表中，但暂不参与写作参考
       </div>
 
       {/* 列表 */}
@@ -88,9 +89,9 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
         {slots.length === 0 ? (
           <div className="p-6 text-center text-sm text-ink-500">
             <Layers className="mx-auto mb-3 h-10 w-10 opacity-20" />
-            <div>还没插任何卡牌</div>
+            <div>还没有加入任何卡牌</div>
             <div className="mt-1 text-xs text-ink-600">
-              双击库里的卡牌可快速插槽
+              在左侧卡牌库双击卡牌可快速加入本书
             </div>
           </div>
         ) : (
@@ -164,7 +165,8 @@ function SlotRow({
           onClick={onMoveUp}
           disabled={isFirst}
           className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
-          title="上移（优先级 +）"
+          title="上移（提高参考优先级）"
+          aria-label="上移此卡牌"
         >
           <ChevronUp className="h-3 w-3" />
         </button>
@@ -172,7 +174,8 @@ function SlotRow({
           onClick={onMoveDown}
           disabled={isLast}
           className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
-          title="下移"
+          title="下移（降低参考优先级）"
+          aria-label="下移此卡牌"
         >
           <ChevronDown className="h-3 w-3" />
         </button>
@@ -208,14 +211,16 @@ function SlotRow({
       <button
         onClick={onToggle}
         className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-accent-300"
-        title={enabled ? "禁用此卡（保留槽位）" : "启用此卡"}
+        title={enabled ? "暂时不参考这张卡" : "重新参考这张卡"}
+        aria-label={enabled ? "暂时不参考这张卡" : "重新参考这张卡"}
       >
         {enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
       </button>
       <button
         onClick={onRemove}
         className="rounded p-1 text-ink-400 hover:bg-red-500/20 hover:text-red-300"
-        title="移除插槽"
+        title="从本书移除"
+        aria-label="从本书移除此卡牌"
       >
         <X className="h-4 w-4" />
       </button>

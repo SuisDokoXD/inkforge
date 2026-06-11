@@ -60,6 +60,7 @@ export function DialogShell({
               onClick={onClose}
               className="rounded-md p-1.5 text-ink-300 hover:bg-ink-800 hover:text-ink-100"
               title="关闭 (Esc)"
+              aria-label="关闭卡牌编辑"
             >
               <X className="h-4 w-4" />
             </button>

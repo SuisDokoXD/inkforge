@@ -38,6 +38,110 @@ import {
 } from "./llm-runtime";
 
 const CREDENTIAL_PROVIDERS: ResearchProvider[] = ["tavily", "bing", "serpapi"];
+const MAX_EXPANDED_QUERIES = 6;
+
+function pushUnique(target: string[], value: string): void {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized) return;
+  if (!target.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+    target.push(normalized);
+  }
+}
+
+function hasCjk(text: string): boolean {
+  return /[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(text);
+}
+
+function buildResearchQueries(rawQuery: string): string[] {
+  const query = rawQuery.trim().replace(/\s+/g, " ");
+  const queries: string[] = [];
+  pushUnique(queries, query);
+
+  const mentionsJapan =
+    /日本|日文|东京|東京|京都|大阪|北海道|富士|神社|和风|和風|japan|japanese|nihon|nippon/i.test(
+      query,
+    );
+  const mentionsMountain =
+    /山|峰|岳|火山|登山|山脉|山地|mountain|volcano|hiking|climb/i.test(query);
+  const mentionsPlace =
+    mentionsMountain ||
+    /地名|地点|地方|城市|村|町|县|県|岛|島|河|湖|寺|神社|城|地理|路线|路線|风土|風土|place|location|geography/i.test(
+      query,
+    );
+
+  if (mentionsJapan && mentionsMountain) {
+    pushUnique(queries, "日本 名山 维基百科");
+    pushUnique(queries, "日本 山 一覧");
+    pushUnique(queries, `${query} 日本 地理 历史`);
+    pushUnique(queries, `${query} 観光 登山 歴史 アクセス`);
+    pushUnique(queries, `${query} Wikipedia mountain Japan`);
+    pushUnique(queries, `site:ja.wikipedia.org ${query}`);
+  } else if (mentionsJapan) {
+    pushUnique(queries, `${query} 日本 维基百科`);
+    pushUnique(queries, `${query} 日文资料`);
+    pushUnique(queries, `${query} 観光 歴史 アクセス`);
+    pushUnique(queries, `${query} official tourism Japan`);
+    pushUnique(queries, `site:ja.wikipedia.org ${query}`);
+  } else if (mentionsPlace) {
+    pushUnique(queries, `${query} 维基百科 地理`);
+    pushUnique(queries, `${query} 历史 民俗 传说`);
+    pushUnique(queries, `${query} 官方 旅游`);
+    pushUnique(queries, `${query} 地图 路线`);
+    pushUnique(queries, `${query} Wikipedia geography`);
+  } else if (hasCjk(query)) {
+    pushUnique(queries, `${query} 维基百科`);
+    pushUnique(queries, `${query} 官方资料`);
+    pushUnique(queries, `${query} 历史 背景`);
+    pushUnique(queries, `${query} 英文资料`);
+    pushUnique(queries, `${query} 真实案例`);
+  } else {
+    pushUnique(queries, `${query} wikipedia`);
+    pushUnique(queries, `${query} official source`);
+    pushUnique(queries, `${query} history background`);
+    pushUnique(queries, `${query} geography culture`);
+    pushUnique(queries, `${query} primary sources`);
+  }
+
+  return queries.slice(0, MAX_EXPANDED_QUERIES);
+}
+
+function buildLlmFallbackQuery(query: string, expandedQueries: string[]): string {
+  if (expandedQueries.length <= 1) return query;
+  return [
+    `原始查询：${query}`,
+    "系统自动准备的检索方向：",
+    ...expandedQueries.map((item, index) => `${index + 1}. ${item}`),
+    "请基于这些方向整理概述，并明确给出后续可继续检索的关键词。",
+  ].join("\n");
+}
+
+function normalizeHitUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    parsed.hash = "";
+    return parsed.toString().replace(/\/$/, "").toLowerCase();
+  } catch {
+    return trimmed.replace(/\/$/, "").toLowerCase();
+  }
+}
+
+function hitKey(hit: ResearchSearchHit): string {
+  const url = normalizeHitUrl(hit.url);
+  if (url) return `url:${url}`;
+  return `text:${hit.title.trim().toLowerCase()}|${hit.snippet.trim().slice(0, 80).toLowerCase()}`;
+}
+
+function mergeHits(target: ResearchSearchHit[], incoming: ResearchSearchHit[]): void {
+  const existing = new Set(target.map(hitKey));
+  for (const hit of incoming) {
+    const key = hitKey(hit);
+    if (!key || existing.has(key)) continue;
+    existing.add(key);
+    target.push(hit);
+  }
+}
 
 function credentialAccount(provider: ResearchProvider): string {
   return `research:${provider}`;
@@ -79,8 +183,10 @@ async function buildLlmFallbackHits(options: {
   }
   const system = [
     "你是资料综述助手，当前无网络检索 API 可用。",
-    "请基于自身训练数据对用户查询给出 3~5 条最有用的综述条目。",
-    "每条必须包含：title（≤20 字）/ url（可留空字符串）/ snippet（60~180 字，指明来源类型）。",
+    "请基于自身训练数据对用户查询给出 3~5 条最有用的综述条目，但不要声称已经联网查证。",
+    "遇到地名、外国资料、历史资料时，优先给出中外名称、可能来源类型、可继续检索的关键词。",
+    "不确定的事实要标明“需核实”，不要编造链接。",
+    "每条必须包含：title（≤20 字）/ url（可留空字符串）/ snippet（80~220 字，指明来源类型和核实方向）。",
     "严格输出 JSON 数组，不要任何注释或 Markdown 围栏。",
   ].join("\n");
   const user = `查询：${options.query}\n期望条目数：${options.topK}`;
@@ -158,6 +264,50 @@ function adapterFor(provider: ResearchProvider): ResearchProviderAdapter {
   }
 }
 
+async function searchAdapterWithQueries(options: {
+  adapter: ResearchProviderAdapter;
+  providerId: ResearchProvider;
+  query: string;
+  expandedQueries: string[];
+  topK: number;
+  apiKey?: string;
+}): Promise<ResearchSearchHit[]> {
+  const { adapter, providerId, query, expandedQueries, topK, apiKey } = options;
+  const merged: ResearchSearchHit[] = [];
+  let lastError: string | undefined;
+
+  const queries =
+    providerId === "llm-fallback"
+      ? [buildLlmFallbackQuery(query, expandedQueries)]
+      : expandedQueries;
+  const perQueryTopK =
+    providerId === "llm-fallback" ? topK : Math.min(Math.max(Math.ceil(topK / 2), 3), 5);
+
+  for (const searchQuery of queries) {
+    try {
+      const hits = await adapter.search({
+        query: searchQuery,
+        topK: perQueryTopK,
+        apiKey,
+      });
+      mergeHits(merged, hits);
+      if (merged.length >= topK && providerId !== "llm-fallback") break;
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
+      logger.warn(
+        `research adapter ${providerId} failed for query "${searchQuery}"`,
+        lastError,
+      );
+    }
+  }
+
+  if (merged.length === 0 && lastError) {
+    throw new Error(lastError);
+  }
+
+  return merged.slice(0, topK);
+}
+
 export async function searchResearch(
   input: ResearchSearchInput,
 ): Promise<ResearchSearchResponse> {
@@ -167,17 +317,22 @@ export async function searchResearch(
       hits: [],
       usedProvider: "llm-fallback",
       error: "empty_query",
+      expandedQueries: [],
+      attemptedProviders: [],
     };
   }
   const preferred: ResearchProvider = input.provider ?? "llm-fallback";
   const topK = input.topK ?? 5;
+  const expandedQueries = buildResearchQueries(query);
 
   const attempts: ResearchProvider[] = [preferred];
   if (preferred !== "llm-fallback") attempts.push("llm-fallback");
 
   let lastError: string | undefined;
+  const attemptedProviders: ResearchProvider[] = [];
   for (const providerId of attempts) {
     const adapter = adapterFor(providerId);
+    attemptedProviders.push(providerId);
     try {
       const apiKey =
         adapter.requiresApiKey && !input.apiKey
@@ -187,12 +342,25 @@ export async function searchResearch(
         lastError = `${providerId}_api_key_missing`;
         continue;
       }
-      const hits = await adapter.search({ query, topK, apiKey });
+      const hits = await searchAdapterWithQueries({
+        adapter,
+        providerId,
+        query,
+        expandedQueries,
+        topK,
+        apiKey,
+      });
+      if (hits.length === 0 && providerId !== "llm-fallback") {
+        lastError = "no_hits";
+        continue;
+      }
       return {
         hits,
         usedProvider: providerId,
         fellBackToLlm: providerId === "llm-fallback" && preferred !== "llm-fallback",
         error: hits.length === 0 ? "no_hits" : undefined,
+        expandedQueries,
+        attemptedProviders,
       };
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
@@ -205,6 +373,8 @@ export async function searchResearch(
     usedProvider: "llm-fallback",
     fellBackToLlm: true,
     error: lastError ?? "all_providers_failed",
+    expandedQueries,
+    attemptedProviders,
   };
 }
 

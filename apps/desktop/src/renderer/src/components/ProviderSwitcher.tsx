@@ -32,7 +32,7 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
         className="rounded-full bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
         onClick={() => openProviderPanel(true)}
       >
-        配置 Provider
+        配置模型服务
       </button>
     );
   }
@@ -53,7 +53,7 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
       <button
         className="rounded-md border border-ink-600 px-2 py-1 text-ink-300 hover:bg-ink-700"
         onClick={() => openProviderPanel(true)}
-        title="管理 Provider"
+        title="管理模型服务"
       >
         ⚙
       </button>

@@ -340,7 +340,7 @@ export function WorkspacePage(): JSX.Element {
               }`}
               onClick={() => setRightPanel("timeline")}
             >
-              AI 时间线
+              写作建议
             </button>
             <button
               className={`flex-1 py-2 transition-colors ${

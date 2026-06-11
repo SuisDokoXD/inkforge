@@ -191,16 +191,16 @@ export function WorldPage(): JSX.Element {
         <button
           className={`rounded-md px-3 py-1 ${tab === "note" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("note")}
-          title="全局风格批注：每次 LLM 调用都会注入"
+          title="全局风格批注：每次模型写作都会参考"
         >
           📌 作者批注
         </button>
         <button
           className={`rounded-md px-3 py-1 ${tab === "diag" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("diag")}
-          title="World Info 激活诊断面板"
+          title="查看模型写作时参考了哪些世界观资料"
         >
-          📊 激活诊断
+          参考记录
         </button>
         <div className="ml-auto flex items-center gap-2">
           <button
@@ -213,7 +213,7 @@ export function WorldPage(): JSX.Element {
           <button
             onClick={() => setVoiceProfileOpen(true)}
             className="rounded-md px-3 py-1 text-ink-300 hover:bg-ink-800"
-            title="编辑写作声音档案（每次 AI 生成都会注入）"
+            title="编辑写作声音档案（每次模型生成都会参考）"
           >
             🎙️ 写作声音
           </button>

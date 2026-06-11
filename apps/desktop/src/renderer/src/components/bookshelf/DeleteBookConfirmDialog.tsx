@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProjectRecord } from "@inkforge/shared";
 import { projectApi } from "../../lib/api";
 import { useBookshelfStore } from "../../stores/bookshelf-store";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface DeleteBookConfirmDialogProps {
   project: ProjectRecord | null;
@@ -38,7 +39,7 @@ export function DeleteBookConfirmDialog({
       onDeleted?.(project!.id);
       onClose();
     },
-    onError: (err) => setError(String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "删除书籍失败，请稍后重试。")),
   });
 
   if (!project) return null;
@@ -50,11 +51,11 @@ export function DeleteBookConfirmDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
       role="dialog"
-      onClick={onClose}
+      onMouseDown={onClose}
     >
       <div
         className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-ink-800 p-5 text-ink-100 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <h3 className="mb-2 text-base font-semibold text-rose-200">🗑 删除书籍</h3>
         <p className="mb-3 text-xs text-ink-300">
@@ -64,13 +65,14 @@ export function DeleteBookConfirmDialog({
         <label className="mb-3 flex items-start gap-2 text-xs text-ink-300">
           <input
             type="checkbox"
+            aria-label="同时删除磁盘上的项目目录"
             checked={removeFiles}
             onChange={(e) => setRemoveFiles(e.target.checked)}
             className="mt-0.5"
           />
           <span>
             <strong className="text-rose-200">同时删除磁盘上的项目目录</strong>
-            （含所有章节 .md、快照、封面、日志）
+            （含所有章节 .md、版本备份、封面、日志）
             <br />
             <span className="text-ink-500">
               不勾选则仅清理数据库行，磁盘文件保留以便日后手动恢复。
@@ -87,6 +89,7 @@ export function DeleteBookConfirmDialog({
           </span>
           <input
             type="text"
+            aria-label="输入完整书名确认删除"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             autoFocus

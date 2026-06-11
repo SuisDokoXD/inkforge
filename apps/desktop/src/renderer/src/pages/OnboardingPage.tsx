@@ -5,6 +5,7 @@ import { findCatalogEntry, type ProviderVendor } from "@inkforge/shared";
 import { projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeSlideUp, fadeOnly } from "../lib/motion-tokens";
 import { OnboardingStepper } from "../components/onboarding/OnboardingStepper";
 import { OnboardingStepWorkspace } from "../components/onboarding/OnboardingStepWorkspace";
@@ -159,7 +160,7 @@ export function OnboardingPage({ onFinish }: OnboardingPageProps): JSX.Element {
 
       updateDraft({ step: draft.step + 1 });
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err));
+      setErrorMessage(friendlyErrorMessage(err, "新手引导保存失败，请检查填写内容后重试。"));
     }
   };
 

@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { dailyApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { DailySummaryDialog } from "./DailySummaryDialog";
 import { UpdateIndicator } from "./UpdateIndicator";
 
@@ -61,8 +62,8 @@ export function StatusBar(): JSX.Element {
             className="rounded border border-ink-700/70 bg-ink-900/60 px-2 py-0.5 font-mono text-[11px] text-ink-300"
             title={t("status.words")}
           >
-            CN {formatNumber(chapterStats.cjk)} · EN {formatNumber(chapterStats.en)} · ~
-            {formatNumber(chapterStats.tokens)} tok
+            中文 {formatNumber(chapterStats.cjk)} · 英文 {formatNumber(chapterStats.en)} · 约
+            {formatNumber(chapterStats.tokens)} 预估消耗
           </span>
         )}
         {projectId && (
@@ -70,7 +71,7 @@ export function StatusBar(): JSX.Element {
             type="button"
             onClick={() => setSummaryOpen(true)}
             className="rounded border border-ink-700 bg-ink-800/60 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
-            title="基于当天字数与最近章节生成 AI 日报"
+            title="基于当天字数与最近章节生成今日总结"
           >
             📝 今日总结
           </button>
@@ -78,8 +79,9 @@ export function StatusBar(): JSX.Element {
       </div>
       <div className="flex items-center gap-3">
         {analysisStatus === "streaming" && t("common.loading")}
-        {analysisStatus === "failed" && `${t("error.generic")}: ${analysisError ?? "unknown"}`}
-        {(analysisStatus === null || analysisStatus === "completed") && "AI · ready"}
+        {analysisStatus === "failed" &&
+          `分析失败：${friendlyErrorMessage(analysisError, "分析暂时不可用，请稍后重试。")}`}
+        {(analysisStatus === null || analysisStatus === "completed") && "模型就绪"}
         <UpdateIndicator />
       </div>
       {projectId && (

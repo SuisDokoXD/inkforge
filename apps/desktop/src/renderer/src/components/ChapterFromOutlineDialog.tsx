@@ -7,6 +7,7 @@ import type {
 } from "@inkforge/shared";
 import { chapterGenApi, outlineApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { AnimatedDialog } from "./AnimatedDialog";
 
 interface ChapterFromOutlineDialogProps {
@@ -76,7 +77,7 @@ export function ChapterFromOutlineDialog({
       });
       setDraft(res);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyErrorMessage(e, "生成章节失败，请稍后重试。"));
     } finally {
       setBusy(false);
     }
@@ -105,7 +106,7 @@ export function ChapterFromOutlineDialog({
       setDraft(null);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(friendlyErrorMessage(e, "采用正文失败，请稍后重试。"));
     } finally {
       setBusy(false);
     }

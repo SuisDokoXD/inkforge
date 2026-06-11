@@ -13,6 +13,7 @@ import { llmApi, skillApi } from "../lib/api";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { SPRING_SNAPPY } from "../lib/motion-tokens";
 import { applySkillOutputToEditor, type SkillApplyRange } from "../lib/skill-output";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 const CONTEXT_WINDOW = 400;
 
@@ -32,7 +33,7 @@ interface ActionDef {
 
 const ACTIONS: ActionDef[] = [
   { kind: "polish", label: "润色", tip: "优化遣词节奏，不改情节", placement: "inline-replace" },
-  { kind: "critique", label: "审查", tip: "送到 AI 时间线，指出问题", placement: "timeline" },
+  { kind: "critique", label: "审查", tip: "送到写作建议，指出问题", placement: "timeline" },
   { kind: "continue", label: "续写", tip: "接在选区之后自然延展", placement: "insert-after" },
   { kind: "rephrase", label: "代入", tip: "换语气改写，给出 3 种", placement: "options" },
 ];
@@ -195,7 +196,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         .map((s) => s.value);
       const errors = settled
         .filter((s): s is PromiseRejectedResult => s.status === "rejected")
-        .map((s) => (s.reason instanceof Error ? s.reason.message : String(s.reason)));
+        .map((s) => friendlyErrorMessage(s.reason, "生成失败，请稍后重试。"));
 
       if (responses.length === 0) {
         setResult({
@@ -203,7 +204,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           action,
           from,
           to,
-          error: errors[0] ?? "all candidates failed",
+          error: errors[0] ?? "生成失败，请稍后重试。",
           loading: false,
         });
         return;
@@ -236,7 +237,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         action,
         from,
         to,
-        error: err instanceof Error ? err.message : String(err),
+        error: friendlyErrorMessage(err, "生成失败，请稍后重试。"),
         loading: false,
       });
     }
@@ -293,7 +294,9 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           onPushFeedback?.("", "skill");
         }
       } else if (payload.status === "failed") {
-        setSkillStatus(`「${active.skillName}」失败：${payload.error ?? "unknown"}`);
+        setSkillStatus(
+          `「${active.skillName}」失败：${friendlyErrorMessage(payload.error, "技能运行失败，请稍后重试。")}`,
+        );
       } else if (payload.status === "cancelled") {
         setSkillStatus(`「${active.skillName}」已取消`);
       }
@@ -341,7 +344,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       };
     } catch (err) {
       setSkillStatus(
-        `「${skill.name}」启动失败：${err instanceof Error ? err.message : String(err)}`,
+        `「${skill.name}」启动失败：${friendlyErrorMessage(err, "技能启动失败，请稍后重试。")}`,
       );
       window.setTimeout(() => setSkillStatus(null), 3500);
     }
@@ -380,13 +383,13 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           {selectionSkills.length > 0 && (
             <div ref={skillMenuRef} className="relative">
               <button
-                title="运行一个选中文本类 Skill"
+                title="运行一个选中文本类技能"
                 className="flex items-center gap-0.5 rounded px-2 py-1 hover:bg-ink-700 disabled:opacity-60"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setSkillMenuOpen((v) => !v)}
                 disabled={!!result?.loading}
               >
-                Skill
+                技能
                 <span className="text-[10px] opacity-70">▾</span>
               </button>
               {skillMenuOpen && (
@@ -412,7 +415,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           <span className="px-1 text-ink-500">|</span>
           <span className="px-1 text-ink-400">{selectionText.length}字</span>
           <span className="px-1 text-ink-500">|</span>
-          <label className="flex items-center gap-1 px-1 text-ink-400" title="一次生成几个候选 (并发调用)">
+          <label className="flex items-center gap-1 px-1 text-ink-400" title="一次生成几个可选版本">
             候选
             <select
               className="rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
@@ -479,11 +482,13 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
         </button>
       </div>
       {loading && (
-        <div className="py-6 text-center text-sm text-ink-400">Claude 正在生成，请稍候…</div>
+        <div className="py-6 text-center text-sm text-ink-400">模型正在生成，请稍候…</div>
       )}
       {!loading && error && <div className="text-sm text-red-400">失败：{error}</div>}
       {!loading && response?.status === "failed" && (
-        <div className="text-sm text-red-400">失败：{response.error}</div>
+        <div className="text-sm text-red-400">
+          失败：{friendlyErrorMessage(response.error, "生成失败，请稍后重试。")}
+        </div>
       )}
       {!loading && response?.status === "completed" && options.length > 0 && (
         <ul className="space-y-3">

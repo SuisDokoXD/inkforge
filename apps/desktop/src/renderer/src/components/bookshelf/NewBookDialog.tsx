@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { projectApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface NewBookDialogProps {
   open: boolean;
@@ -34,7 +35,7 @@ export function NewBookDialog({
       setError(null);
       onClose();
     },
-    onError: (err) => setError(String(err)),
+    onError: (err) => setError(friendlyErrorMessage(err, "新建书籍失败，请检查书名后重试。")),
   });
 
   if (!open) return null;

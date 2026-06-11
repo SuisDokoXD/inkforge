@@ -43,6 +43,7 @@ export function EntryListItem({
           onClick={onMoveUp}
           className="rounded p-0.5 text-ink-400 hover:text-accent-300 disabled:opacity-30"
           title="上移"
+          aria-label="上移条目"
         >
           <ChevronUp className="h-3 w-3" />
         </button>
@@ -51,6 +52,7 @@ export function EntryListItem({
           onClick={onMoveDown}
           className="rounded p-0.5 text-ink-400 hover:text-accent-300 disabled:opacity-30"
           title="下移"
+          aria-label="下移条目"
         >
           <ChevronDown className="h-3 w-3" />
         </button>
@@ -71,6 +73,7 @@ export function EntryListItem({
         }}
         className="rounded p-1 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
         title="删除"
+        aria-label={`删除条目「${entry.title}」`}
       >
         <Trash2 className="h-3 w-3" />
       </button>

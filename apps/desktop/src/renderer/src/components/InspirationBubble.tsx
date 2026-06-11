@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { LLMQuickActionResponse } from "@inkforge/shared";
 import { llmApi } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 const CONTEXT_WINDOW = 500;
 
@@ -60,14 +61,14 @@ export function InspirationBubble(props: InspirationBubbleProps): JSX.Element | 
         chapterId,
       });
       if (response.status === "failed") {
-        setError(response.error ?? "unknown_error");
+        setError(friendlyErrorMessage(response.error, "灵感生成失败，请稍后重试。"));
         setPhase("error");
         return;
       }
       setOptions(response.options ?? []);
       setPhase("ready");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyErrorMessage(err, "灵感生成失败，请稍后重试。"));
       setPhase("error");
     }
   }, [editor, providerId, projectId, chapterId]);
@@ -140,7 +141,7 @@ export function InspirationBubble(props: InspirationBubbleProps): JSX.Element | 
         <div className="py-6 text-center text-xs text-ink-400">思考中…</div>
       )}
       {phase === "error" && (
-        <div className="py-2 text-xs text-red-400">出错：{error}</div>
+        <div className="py-2 text-xs text-red-400">生成失败：{error}</div>
       )}
       {phase === "ready" && options.length === 0 && (
         <div className="py-2 text-xs text-ink-400">没有生成建议，试着多写一点再呼出。</div>

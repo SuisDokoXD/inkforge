@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, FileText, PenLine } from "lucide-react";
+import { BookOpen, ClipboardList, FileText, PenLine } from "lucide-react";
 import type { ChapterRecord, ProjectRecord } from "@inkforge/shared";
 import { chapterApi, projectApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { AutoWriterPanel } from "../components/auto-writer/AutoWriterPanel";
 
 export function AutoWriterPage(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
+  const currentChapterId = useAppStore((s) => s.currentChapterId);
   const setCurrentProject = useAppStore((s) => s.setProject);
+  const setCurrentChapter = useAppStore((s) => s.setChapter);
+  const setMainView = useAppStore((s) => s.setMainView);
+  const flowActions = useWritingFlowActions();
 
   const projectsQuery = useQuery({
     queryKey: ["projects"],
@@ -40,10 +45,25 @@ export function AutoWriterPage(): JSX.Element {
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!activeChapterId && chapters.length > 0) {
-      setActiveChapterId(chapters[chapters.length - 1].id);
+    if (chapters.length === 0) {
+      if (activeChapterId) setActiveChapterId(null);
+      return;
     }
-  }, [activeChapterId, chapters]);
+
+    const currentChapter = currentChapterId
+      ? chapters.find((chapter) => chapter.id === currentChapterId)
+      : null;
+    if (currentChapter) {
+      if (activeChapterId !== currentChapter.id) setActiveChapterId(currentChapter.id);
+      return;
+    }
+
+    if (!activeChapterId || !chapters.some((chapter) => chapter.id === activeChapterId)) {
+      const fallback = chapters[chapters.length - 1];
+      setActiveChapterId(fallback.id);
+      setCurrentChapter(fallback.id);
+    }
+  }, [activeChapterId, chapters, currentChapterId, setCurrentChapter]);
 
   const activeChapter = chapters.find((c) => c.id === activeChapterId) ?? null;
 
@@ -81,8 +101,26 @@ export function AutoWriterPage(): JSX.Element {
             章节
           </div>
           {chapters.length === 0 ? (
-            <div className="px-4 py-8 text-sm text-ink-500">
-              这本书还没有章节。先到书房创建一章，再回来安排自动写作。
+            <div className="space-y-3 px-4 py-8 text-sm text-ink-500">
+              <p>这本书还没有章节。可以先去大纲生成章节，或回到正文页新建一章。</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-xs text-ink-300 hover:bg-ink-800"
+                  onClick={() => flowActions.openOutline()}
+                >
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  去大纲
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-xs text-ink-300 hover:bg-ink-800"
+                  onClick={() => setMainView("writing")}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  去正文
+                </button>
+              </div>
             </div>
           ) : (
             <ul className="divide-y divide-ink-700/70">
@@ -92,7 +130,10 @@ export function AutoWriterPage(): JSX.Element {
                   <li key={chapter.id}>
                     <button
                       type="button"
-                      onClick={() => setActiveChapterId(chapter.id)}
+                      onClick={() => {
+                        setActiveChapterId(chapter.id);
+                        setCurrentChapter(chapter.id);
+                      }}
                       className={`w-full px-4 py-3 text-left transition ${
                         active ? "bg-accent-500/12" : "hover:bg-ink-800/70"
                       }`}

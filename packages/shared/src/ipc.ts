@@ -1124,6 +1124,8 @@ export interface ResearchSearchResponse {
   usedProvider: ResearchProvider;
   fellBackToLlm?: boolean;
   error?: string;
+  expandedQueries?: string[];
+  attemptedProviders?: ResearchProvider[];
 }
 export interface ResearchListInput {
   projectId: string;
@@ -1638,6 +1640,8 @@ export interface AutoWriterStartInput {
   maxRewritesPerSegment?: number;
   /** 是否启用 OOC 守门员（默认 true）。 */
   enableOocGate?: boolean;
+  /** Optional sample libraries to use as style references. Empty/omitted = auto from all imported libs. */
+  sampleLibIds?: string[];
   /**
    * 速度策略：
    * - fast: Planner + Writer，跳过逐段 Critic / Reflector / 自动重写，适合长章快速出稿。
@@ -2335,6 +2339,7 @@ export interface OutlineGenerateMasterInput {
   genre?: string;
   subGenre?: string;
   tags?: string[];
+  globalWorldview?: string;
   /** Provider override (else use scene_binding 'outline_generation'). */
   providerId?: string;
   model?: string;
@@ -2403,6 +2408,8 @@ export interface ChapterGenerateFromOutlineInput {
   prevChapterId?: string;
   providerId?: string;
   model?: string;
+  /** Optional sample libraries to use as style references. Empty/omitted = auto from all imported libs. */
+  sampleLibIds?: string[];
   /** Override; default 1500. */
   maxTokens?: number;
 }

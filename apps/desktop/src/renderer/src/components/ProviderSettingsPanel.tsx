@@ -55,6 +55,24 @@ const VENDOR_OPTIONS: Array<{ value: ProviderVendor; labelKey: string }> = [
   { value: "openai-compat", labelKey: "provider.vendor.openaiCompat" },
 ];
 
+function friendlyModelServiceError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (!message) return "模型服务操作失败，请检查配置后重试。";
+  if (/api.?key|key|unauthori[sz]ed|401|403/i.test(message)) {
+    return "服务密钥无效或权限不足，请检查后重试。";
+  }
+  if (/base.?url|url|endpoint|openai-compat/i.test(message)) {
+    return "接口地址无效，请检查模型服务的接口地址。";
+  }
+  if (/model|404/i.test(message)) {
+    return "模型名称不可用，请换一个模型后重试。";
+  }
+  if (/network|fetch|timeout|ECONN|ENOTFOUND|ETIMEDOUT/i.test(message)) {
+    return "网络或模型服务连接异常，请稍后重试。";
+  }
+  return "模型服务操作失败，请检查配置后重试。";
+}
+
 function normalizeUrl(value: string): string {
   return value.trim().replace(/\/+$/, "");
 }
@@ -136,10 +154,9 @@ export function ProviderSettingsPanel(): JSX.Element | null {
           })
         : await providerApi.listRemoteModels({ providerId: form.id });
       setRemoteModels(res.models.map((m) => m.id));
-      setRemoteFetchStatus(`✓ 拉到 ${res.count} 个模型 · ${res.durationMs}ms`);
+      setRemoteFetchStatus(`✓ 已读取 ${res.count} 个模型 · 用时 ${res.durationMs} 毫秒`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setRemoteFetchStatus(`✗ 拉取失败：${msg}`);
+      setRemoteFetchStatus(`✗ 读取失败：${friendlyModelServiceError(err)}`);
     } finally {
       setFetchingModels(false);
     }
@@ -150,6 +167,10 @@ export function ProviderSettingsPanel(): JSX.Element | null {
 
   const selectedCatalog = form.catalogId ? findCatalogEntry(form.catalogId) : undefined;
   const suggestedModels = selectedCatalog?.knownModels ?? [];
+  const vendorLabel = (vendor: ProviderVendor): string => {
+    const labelKey = VENDOR_OPTIONS.find((item) => item.value === vendor)?.labelKey;
+    return labelKey ? t(labelKey) : "模型服务";
+  };
 
   const resolveCatalogDescription = (id: string, fallback: string): string => {
     const key = `provider.catalog.${id}.description`;
@@ -197,7 +218,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
       setTimeout(() => setSaveStatus(null), 2000);
     },
     onError: (err) => {
-      setSaveStatus(err instanceof Error ? err.message : String(err));
+      setSaveStatus(friendlyModelServiceError(err));
     },
   });
 
@@ -221,12 +242,14 @@ export function ProviderSettingsPanel(): JSX.Element | null {
       } else {
         setTestStatus(
           t("provider.panel.status.failed", {
-            error: result.error ?? t("provider.panel.unknownError"),
+            error: result.error
+              ? friendlyModelServiceError(new Error(result.error))
+              : t("provider.panel.unknownError"),
           }),
         );
       }
     },
-    onError: (err) => setTestStatus(err instanceof Error ? err.message : String(err)),
+    onError: (err) => setTestStatus(friendlyModelServiceError(err)),
   });
 
   const setActiveMutation = useMutation({
@@ -276,7 +299,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       )}
                     </div>
                     <span className="mt-0.5 text-xs text-ink-400">
-                      {p.vendor} · {p.defaultModel}
+                      {vendorLabel(p.vendor)} · {p.defaultModel}
                     </span>
                   </button>
                 </li>
@@ -294,6 +317,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
             <button
               className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
               onClick={() => setOpen(false)}
+              aria-label={t("common.close")}
               title={t("common.close")}
             >
               ×
@@ -341,6 +365,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 <input
                   className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.label}
+                  aria-label={t("provider.panel.displayName")}
                   onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 />
               </label>
@@ -376,6 +401,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       list="provider-settings-models"
                       className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                       value={form.defaultModel}
+                      aria-label={t("provider.panel.defaultModel")}
                       onChange={(e) => setForm((f) => ({ ...f, defaultModel: e.target.value }))}
                     />
                     <button
@@ -383,9 +409,9 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       className="shrink-0 rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700 disabled:opacity-50"
                       disabled={fetchingModels}
                       onClick={handleFetchRemoteModels}
-                      title="从 provider API 拉取可用模型列表"
+                      title="从模型服务读取可用模型列表"
                     >
-                      {fetchingModels ? "拉取中…" : "📡 拉取"}
+                      {fetchingModels ? "读取中…" : "读取模型"}
                     </button>
                   </div>
                   {(() => {
@@ -420,7 +446,9 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                         </button>
                       ))}
                       {remoteModels.length > 8 ? (
-                        <span className="text-[11px] text-ink-500">… +{remoteModels.length - 8} 个 (用 datalist 下拉)</span>
+                        <span className="text-[11px] text-ink-500">
+                          另有 {remoteModels.length - 8} 个，可在输入框候选中选择
+                        </span>
                       ) : null}
                     </div>
                   ) : null}
@@ -432,6 +460,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 <input
                   className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.baseUrl}
+                  aria-label={t("provider.panel.baseUrl")}
                   placeholder={
                     form.vendor === "openai-compat"
                       ? "https://api.deepseek.com/v1"
@@ -452,7 +481,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                   className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm focus:border-accent-500 focus:outline-none"
                   type="password"
                   value={form.apiKey}
-                  placeholder={form.id ? "******" : "sk-..."}
+                  aria-label={t("provider.panel.apiKey")}
+                  placeholder={form.id ? "留空则继续使用原密钥" : "粘贴服务密钥"}
                   onChange={(e) => setForm((f) => ({ ...f, apiKey: e.target.value }))}
                 />
               </label>
@@ -462,6 +492,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                 <input
                   className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
                   value={form.tags}
+                  aria-label={t("provider.panel.tags")}
                   onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
                 />
               </label>

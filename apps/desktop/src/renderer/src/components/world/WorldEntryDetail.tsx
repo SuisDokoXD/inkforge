@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { WorldEntryRecord } from "@inkforge/shared";
 import { worldApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 const CATEGORY_OPTIONS = ["地点", "门派", "物件", "事件", "概念"];
 
@@ -116,7 +117,7 @@ export function WorldEntryDetail({
       void queryClient.invalidateQueries({ queryKey: ["world-entry", record.id] });
     },
     onError: (err) => {
-      setSaveStatus(`保存失败：${err instanceof Error ? err.message : String(err)}`);
+      setSaveStatus(`保存失败：${friendlyErrorMessage(err)}`);
       window.setTimeout(() => setSaveStatus(null), 3500);
     },
   });
@@ -131,7 +132,7 @@ export function WorldEntryDetail({
       void queryClient.invalidateQueries({ queryKey: ["world-entries", projectId] });
     },
     onError: (err) => {
-      setSaveStatus(`删除失败：${err instanceof Error ? err.message : String(err)}`);
+      setSaveStatus(`删除失败：${friendlyErrorMessage(err)}`);
       window.setTimeout(() => setSaveStatus(null), 3500);
     },
   });
@@ -183,6 +184,7 @@ export function WorldEntryDetail({
           <input
             type="text"
             value={title}
+            aria-label="条目标题"
             onChange={(e) => setTitle(e.target.value)}
             placeholder="例：青松门"
             className="w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100"
@@ -210,6 +212,7 @@ export function WorldEntryDetail({
               <input
                 type="text"
                 value={customCategory}
+                aria-label="自定义分类名"
                 onChange={(e) => setCustomCategory(e.target.value)}
                 placeholder="输入新分类"
                 className="w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100"
@@ -225,6 +228,7 @@ export function WorldEntryDetail({
           <input
             type="text"
             value={aliasesText}
+            aria-label="条目别名"
             onChange={(e) => setAliasesText(e.target.value)}
             placeholder="常用别称、旧称"
             className="w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100"
@@ -250,6 +254,7 @@ export function WorldEntryDetail({
           <input
             type="text"
             value={tagsText}
+            aria-label="条目标签"
             onChange={(e) => setTagsText(e.target.value)}
             placeholder="江湖、门派、剑宗"
             className="w-full rounded border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-ink-100"
@@ -269,10 +274,11 @@ export function WorldEntryDetail({
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
           <label className="block text-xs text-ink-400 mb-1">
-            正文（支持 Markdown）
+            正文（可使用简单排版语法）
           </label>
           <textarea
             value={content}
+            aria-label="条目正文"
             onChange={(e) => setContent(e.target.value)}
             placeholder="描述这一条目的设定、历史、与主线的关系…"
             className="min-h-[260px] w-full flex-1 resize-none rounded border border-ink-700 bg-ink-900 px-3 py-2 font-mono text-sm leading-6 text-ink-100"

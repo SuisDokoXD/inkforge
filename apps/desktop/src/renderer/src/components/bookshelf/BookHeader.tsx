@@ -71,7 +71,7 @@ export function BookHeader({
         )}
         {project.globalWorldview && project.globalWorldview.trim().length > 0 && (
           <div className="text-[11px] text-accent-300/80">
-            🌍 已设定全局世界观（{project.globalWorldview.length} 字，AutoWriter 会自动注入）
+            🌍 已设定全局世界观（{project.globalWorldview.length} 字，自动写作会参考）
           </div>
         )}
       </div>

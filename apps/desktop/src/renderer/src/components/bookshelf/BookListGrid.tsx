@@ -93,7 +93,7 @@ export function BookListGrid({
             <BookOpen size={36} className="text-ink-500" />
             <div className="text-sm font-medium text-ink-200">还没有任何书籍</div>
             <p className="max-w-xs text-xs leading-6 text-ink-500">
-              先创建一本书，之后章节、素材、人物和 AI 写作都会围绕这本书组织。
+              先创建一本书，之后章节、素材、人物和模型写作都会围绕这本书组织。
             </p>
             {onCreateBook && (
               <button
@@ -164,7 +164,7 @@ export function BookListGrid({
                         )}
                       </div>
                       {opened && (
-                        <div className="mt-1 text-[10px] text-accent-300">已在 Tab 中打开</div>
+                        <div className="mt-1 text-[10px] text-accent-300">已打开为标签页</div>
                       )}
                     </div>
                   </button>
@@ -285,7 +285,7 @@ export function BookListGrid({
             <section className="rounded-xl border border-ink-700 bg-ink-800/20 p-5">
               <h3 className="text-sm font-semibold text-ink-100">这里可以做什么</h3>
               <div className="mt-3 grid gap-2 text-xs leading-6 text-ink-400 md:grid-cols-2">
-                <p className="rounded-md bg-ink-950/45 p-3">打开一本书，管理它的章节、来源标签、快照和章节日志。</p>
+                <p className="rounded-md bg-ink-950/45 p-3">打开一本书，管理它的章节、来源标签、版本备份和章节日志。</p>
                 <p className="rounded-md bg-ink-950/45 p-3">给书籍补充设定和世界观，后续自动写作会读取这些资料。</p>
                 <p className="rounded-md bg-ink-950/45 p-3">把不同作品同时打开成标签页，在多本书之间快速切换。</p>
                 <p className="rounded-md bg-ink-950/45 p-3">从这里新建书籍，再去写作页继续正文创作。</p>

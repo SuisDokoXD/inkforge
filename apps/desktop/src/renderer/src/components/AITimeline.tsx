@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAppStore } from "../stores/app-store";
 import { feedbackApi } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import type { AIFeedbackRecord } from "@inkforge/shared";
 
 type DisplayItem = {
@@ -143,12 +144,12 @@ export function AITimeline(): JSX.Element {
             <button
               className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
               onClick={() => {
-                if (window.confirm(`清空当前章节的 ${historyCount} 条 AI 时间线历史？此操作不可撤销。`)) {
+                if (window.confirm(`清空当前章节的 ${historyCount} 条写作建议历史？此操作不可撤销。`)) {
                   clearChapter.mutate(currentChapterId);
                 }
               }}
               disabled={deleteEmpty.isPending || clearChapter.isPending}
-              title="清空当前章节所有已保存的 AI 时间线历史"
+              title="清空当前章节所有已保存的写作建议历史"
             >
               清空本章
             </button>
@@ -165,10 +166,10 @@ export function AITimeline(): JSX.Element {
       )}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto scrollbar-thin px-3 py-3">
         {!currentChapterId && (
-          <p className="text-xs text-ink-400">选定一章后，AI 建议会在这里出现。</p>
+          <p className="text-xs text-ink-400">选定一章后，写作建议会在这里出现。</p>
         )}
         {currentChapterId && visible.length === 0 && (
-          <p className="text-xs text-ink-400">写满 200 字后，AI 会在这里留下一条静默建议。</p>
+          <p className="text-xs text-ink-400">写满 200 字后，这里会出现一条静默建议。</p>
         )}
         {visible.length > 0 && (
           <div
@@ -220,7 +221,7 @@ export function AITimeline(): JSX.Element {
                         {item.status === "streaming"
                           ? "生成中…"
                           : item.status === "failed"
-                            ? `失败：${item.error ?? ""}`
+                            ? `失败：${friendlyErrorMessage(item.error, "分析暂时不可用，请稍后重试。")}`
                             : summarize(item.text || "", 40) || "无正文"}
                       </span>
                       <time className="shrink-0 text-[10px] text-ink-500">

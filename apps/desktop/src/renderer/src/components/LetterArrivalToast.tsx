@@ -6,6 +6,7 @@ import type { CharacterLetterRecord } from "@inkforge/shared";
 import { letterApi, novelCharacterApi } from "../lib/api";
 import { SPRING_GENTLE } from "../lib/motion-tokens";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 const NUDGE_COOLDOWN_MS = 12 * 60 * 60 * 1000;
 const AFTER_GENERATE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -110,7 +111,7 @@ export function LetterArrivalToast(): JSX.Element | null {
       setMode("arrived");
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(friendlyErrorMessage(err, "来信生成失败，请稍后重试。"));
       setMode("error");
     },
   });
@@ -155,7 +156,7 @@ export function LetterArrivalToast(): JSX.Element | null {
                     有人物想给你写信
                   </div>
                   <p className="mt-1 text-xs leading-5 text-ink-400">
-                    这只是提醒，不会自动消耗 token。点“收下”后才会生成正文。
+                    这只是提醒，不会自动产生生成消耗。点“收下”后才会生成正文。
                   </p>
                 </div>
               </div>

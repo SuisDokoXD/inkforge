@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LLMQuickActionInput } from "@inkforge/shared";
 import { chapterApi, chapterGenApi, llmApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 /**
  * v22+: AutoWriter 完成后，让用户对任意段落"否决重写"。
@@ -92,7 +93,7 @@ export function PostRunSegmentRewriter({
       };
       const res = await llmApi.quick(input);
       const newText = (res.text ?? "").trim();
-      if (!newText) throw new Error("LLM 未返回任何文本");
+      if (!newText) throw new Error("模型没有返回可用文本");
 
       // 替换该段，重组章节
       const nextParagraphs = split.paragraphs.map((p) =>
@@ -104,7 +105,7 @@ export function PostRunSegmentRewriter({
         projectId,
         chapterId,
         text: nextMd.replace(/^#\s+[^\n]+\n+/, "").trim(),
-        title: chapterTitle ?? "AI 生成章节",
+        title: chapterTitle ?? "模型生成章节",
       });
     },
     onSuccess: () => {
@@ -134,7 +135,7 @@ export function PostRunSegmentRewriter({
         <span className="rounded bg-ink-700 px-1.5 py-0.5 text-[10px] text-ink-200">
           ✏ 段落审改
         </span>
-        <span className="text-ink-400">点 👎 让 AI 用你的反馈重写该段</span>
+        <span className="text-ink-400">点重写，让模型按你的反馈改这一段</span>
         <span className="ml-auto text-ink-500">{split.paragraphs.length} 段</span>
       </header>
       <ul className="space-y-1">
@@ -169,7 +170,7 @@ export function PostRunSegmentRewriter({
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     rows={2}
-                    placeholder="说明为什么不喜欢（可空）：太啰嗦 / 角色 OOC / 节奏太快 / 比喻不贴切…"
+                    placeholder="说明为什么不喜欢（可空）：太啰嗦 / 角色不一致 / 节奏太快 / 比喻不贴切…"
                     className="w-full resize-none rounded border border-ink-700 bg-ink-900 p-1.5 text-[11px]"
                   />
                   <div className="flex gap-1">
@@ -191,7 +192,7 @@ export function PostRunSegmentRewriter({
                   </div>
                   {rewriteMut.isError && (
                     <div className="text-[10px] text-rose-300">
-                      {String(rewriteMut.error)}
+                      {friendlyErrorMessage(rewriteMut.error, "重写失败，请稍后重试。")}
                     </div>
                   )}
                 </div>

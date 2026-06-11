@@ -28,7 +28,7 @@ export function OnboardingStepComplete(): JSX.Element {
         <div className="p-4 rounded-xl border border-ink-700 bg-ink-900/40">
           <div className="text-xs font-semibold text-accent-400 uppercase tracking-wider mb-2">贴士</div>
           <p className="text-xs text-ink-400 leading-relaxed">
-            你可以在技能页 (Ctrl+4) 发现更多 AI 插件。在侧边栏右键章节点击“导入”可快速迁移旧稿。
+            你可以在技能页 (Ctrl+4) 发现更多写作工具。在侧边栏右键章节点击“导入”可快速迁移旧稿。
           </p>
         </div>
       </div>

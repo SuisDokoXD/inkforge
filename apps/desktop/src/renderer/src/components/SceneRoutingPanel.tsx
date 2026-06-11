@@ -12,18 +12,18 @@ import { useT } from "../lib/i18n";
 const SCENE_LABEL_BASIC: Record<string, string> = {
   outline_generation: "大纲生成",
   main_generation: "主线写作",
-  extract: "提取/批评/审查",
+  extract: "文本提取与审查",
   summarize: "每日总结",
-  inline: "内联润色/续写",
+  inline: "选中片段润色/续写",
 };
 
 const SCENE_LABEL_ADVANCED: Record<string, string> = {
-  analyze: "200 字分析",
-  quick: "选段快速操作",
-  chat: "聊天",
-  skill: "Skill",
-  tavern: "酒馆",
-  "auto-writer": "AutoWriter",
+  analyze: "正文分析",
+  quick: "选中片段处理",
+  chat: "写作聊天",
+  skill: "写作技能",
+  tavern: "角色讨论",
+  "auto-writer": "自动写作",
   review: "全文审查",
   "daily-summary": "每日总结",
   letter: "角色来信",
@@ -118,7 +118,7 @@ export function SceneRoutingPanel(): JSX.Element {
             value={providerId}
             onChange={(e) => handleProviderChange(targetMode, sceneKey, e.target.value)}
           >
-            <option value="">— 默认 —</option>
+            <option value="">使用默认</option>
             {providers.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.label}
@@ -133,6 +133,7 @@ export function SceneRoutingPanel(): JSX.Element {
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed"
             value={model}
             placeholder={provider?.defaultModel ?? ""}
+            aria-label={`${label}使用的模型名称`}
             disabled={!providerId}
             onChange={(e) => handleModelChange(targetMode, sceneKey, providerId, e.target.value)}
           />
@@ -151,27 +152,27 @@ export function SceneRoutingPanel(): JSX.Element {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 text-xs">
-        <span className="text-ink-300">路由粒度</span>
+        <span className="text-ink-300">模型分配方式</span>
         <div className="flex overflow-hidden rounded-md border border-ink-600">
           <button
             className={`px-3 py-1 ${mode === "basic" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "basic" })}
           >
-            基础（5 大类）
+            常用功能（5 项）
           </button>
           <button
             className={`px-3 py-1 ${mode === "advanced" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "advanced" })}
           >
-            高级（9 种）
+            全部功能（9 项）
           </button>
         </div>
-        <span className="text-ink-500">切换不丢失另一套配置</span>
+        <span className="text-ink-500">切换时会保留另一套选择</span>
       </div>
 
       <details open={mode === "basic"} className="rounded-md border border-ink-700 p-3">
         <summary className="cursor-pointer text-xs font-medium text-ink-200">
-          基础映射（5 行）{mode === "basic" ? "· 当前生效" : "· 未生效"}
+          常用功能（5 项）{mode === "basic" ? "· 当前生效" : "· 未生效"}
         </summary>
         <table className="mt-3 w-full table-fixed text-xs">
           <colgroup>
@@ -181,9 +182,9 @@ export function SceneRoutingPanel(): JSX.Element {
           </colgroup>
           <thead>
             <tr className="text-ink-400">
-              <th className="pb-1 pr-3 text-left font-normal">场景</th>
-              <th className="pb-1 pr-3 text-left font-normal">Provider</th>
-              <th className="pb-1 text-left font-normal">Model</th>
+              <th className="pb-1 pr-3 text-left font-normal">功能</th>
+              <th className="pb-1 pr-3 text-left font-normal">模型服务</th>
+              <th className="pb-1 text-left font-normal">模型名称</th>
             </tr>
           </thead>
           <tbody>
@@ -196,7 +197,7 @@ export function SceneRoutingPanel(): JSX.Element {
 
       <details open={mode === "advanced"} className="rounded-md border border-ink-700 p-3">
         <summary className="cursor-pointer text-xs font-medium text-ink-200">
-          高级映射（9 行）{mode === "advanced" ? "· 当前生效" : "· 未生效"}
+          全部功能（9 项）{mode === "advanced" ? "· 当前生效" : "· 未生效"}
         </summary>
         <table className="mt-3 w-full table-fixed text-xs">
           <colgroup>
@@ -206,9 +207,9 @@ export function SceneRoutingPanel(): JSX.Element {
           </colgroup>
           <thead>
             <tr className="text-ink-400">
-              <th className="pb-1 pr-3 text-left font-normal">场景</th>
-              <th className="pb-1 pr-3 text-left font-normal">Provider</th>
-              <th className="pb-1 text-left font-normal">Model</th>
+              <th className="pb-1 pr-3 text-left font-normal">功能</th>
+              <th className="pb-1 pr-3 text-left font-normal">模型服务</th>
+              <th className="pb-1 text-left font-normal">模型名称</th>
             </tr>
           </thead>
           <tbody>

@@ -10,7 +10,7 @@ import { achievementApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 
 /**
- * 作家 ID 卡 + 成就大厅。
+ * 作家档案 + 成就大厅。
  * 顶部展示作家信息 + 总览数据；下方按 rarity / category 分组徽章。
  */
 export function AchievementHallPage(): JSX.Element {
@@ -54,7 +54,7 @@ export function AchievementHallPage(): JSX.Element {
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-gradient-to-br from-ink-900 via-ink-800/40 to-ink-900 p-6">
       <div className="mx-auto w-full max-w-4xl">
-        {/* ID 卡 */}
+        {/* 作家档案 */}
         <div className="relative mb-6 overflow-hidden rounded-2xl border border-accent-500/20 bg-gradient-to-br from-accent-500/10 via-fuchsia-500/5 to-sky-500/10 p-6 shadow-2xl">
           <div
             aria-hidden
@@ -71,7 +71,7 @@ export function AchievementHallPage(): JSX.Element {
             </div>
             <div className="flex-1">
               <div className="text-[11px] uppercase tracking-widest text-accent-300/80">
-                InkForge · 作家 ID 卡
+                InkForge · 作家档案
               </div>
               <div className="mt-1 text-2xl font-bold text-ink-50">
                 你的写作档案
@@ -107,12 +107,12 @@ export function AchievementHallPage(): JSX.Element {
                 value={`${stats.stats.longestStreak} 天`}
               />
               <Stat
-                label="AutoWriter"
+                label="自动写作"
                 value={`${stats.stats.autoWriterRuns} 次`}
               />
               <Stat
-                label="手动快照"
-                value={`${stats.stats.snapshotsManual} 张`}
+                label="手动备份"
+                value={`${stats.stats.snapshotsManual} 份`}
               />
             </div>
           )}
@@ -232,7 +232,7 @@ function labelOfCategory(cat: string): string {
     rhythm: "🔥 节奏",
     character: "👥 人物",
     world: "🌍 世界观",
-    ai: "🤖 AI 协作",
+    ai: "🤖 模型协作",
     craft: "🛠 匠艺",
   };
   return map[cat] ?? cat;

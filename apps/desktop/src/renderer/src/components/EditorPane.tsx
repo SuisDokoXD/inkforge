@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChapterRecord,
+  OutlineCardRecord,
   ProviderRecord,
   SkillDefinition,
   SkillOutputTarget,
@@ -13,13 +14,16 @@ import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/edi
 import type { Editor } from "@tiptap/react";
 import {
   Archive,
+  ClipboardList,
   ChevronDown,
   ChevronUp,
   Download,
+  FileSearch,
   Focus,
   GripVertical,
   Minus,
   NotepadText,
+  PenLine,
   RefreshCw,
   RotateCcw,
   RotateCw,
@@ -28,9 +32,11 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { chapterApi, fsApi, llmApi, skillApi } from "../lib/api";
+import { chapterApi, fsApi, llmApi, outlineApi, skillApi } from "../lib/api";
 import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
+import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
@@ -74,6 +80,7 @@ export function EditorPane({
   const activeProviderId = settings.activeProviderId;
   const analysisEnabled = settings.analysisEnabled;
   const analysisThreshold = settings.analysisThreshold;
+  const flowActions = useWritingFlowActions();
 
   const [content, setContent] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -220,7 +227,7 @@ export function EditorPane({
             saveQueueRef.current = request;
           }
           setSavePhase("error");
-          setSaveError(err instanceof Error ? err.message : String(err));
+          setSaveError(friendlyErrorMessage(err, "保存失败，请稍后重试。"));
           throw err;
         }
       }
@@ -481,7 +488,7 @@ export function EditorPane({
       if (result.path) setExportStatus("已导出");
       else setExportStatus(null);
     } catch (err) {
-      setExportStatus(`导出失败：${err instanceof Error ? err.message : String(err)}`);
+      setExportStatus(`导出失败：${friendlyErrorMessage(err, "导出失败，请稍后重试。")}`);
     }
     setTimeout(() => setExportStatus(null), 3000);
   };
@@ -509,6 +516,29 @@ export function EditorPane({
       skill.triggers.some((t) => t.type === "manual" && t.enabled),
     );
   }, [manualSkillsQuery.data]);
+
+  const outlineCardsQuery = useQuery<OutlineCardRecord[]>({
+    queryKey: ["outline-cards", chapter?.projectId ?? null],
+    queryFn: () => (chapter ? outlineApi.list({ projectId: chapter.projectId }) : Promise.resolve([])),
+    enabled: !!chapter,
+  });
+
+  const linkedOutlineCard = useMemo(
+    () => (outlineCardsQuery.data ?? []).find((card) => card.chapterId === chapter?.id) ?? null,
+    [chapter?.id, outlineCardsQuery.data],
+  );
+  const chapterResearchQuery = useMemo(() => {
+    const seed = [
+      linkedOutlineCard?.title,
+      linkedOutlineCard?.content,
+      chapter?.title,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return seed ? `${seed.slice(0, 120)} 资料 背景` : "本章资料 背景";
+  }, [chapter?.title, linkedOutlineCard?.content, linkedOutlineCard?.title]);
 
   useEffect(() => {
     if (!skillMenuOpen) return;
@@ -552,7 +582,9 @@ export function EditorPane({
           }
         }
       } else if (payload.status === "failed") {
-        setSkillStatus(`「${active.skillName}」失败：${payload.error ?? "unknown"}`);
+        setSkillStatus(
+          `「${active.skillName}」失败：${friendlyErrorMessage(payload.error, "技能运行失败，请稍后重试。")}`,
+        );
       } else if (payload.status === "cancelled") {
         setSkillStatus(`「${active.skillName}」已取消`);
       }
@@ -586,7 +618,7 @@ export function EditorPane({
       activeSkillRunRef.current = { runId: response.runId, skillName: skill.name, output: skill.output };
     } catch (err) {
       setSkillStatus(
-        `「${skill.name}」启动失败：${err instanceof Error ? err.message : String(err)}`,
+        `「${skill.name}」启动失败：${friendlyErrorMessage(err, "技能启动失败，请稍后重试。")}`,
       );
       window.setTimeout(() => setSkillStatus(null), 3500);
     }
@@ -653,7 +685,7 @@ export function EditorPane({
       <EmptyState
         icon="✍"
         title="开始你的第一章"
-        description="左侧可新建、导入或拖入章节。选中一章即可进入沉浸式写作，AI 会在你停笔时给出建议。"
+        description="左侧可新建、导入或拖入章节。选中一章即可进入沉浸式写作，停笔后会出现写作建议。"
         action={
           onCreateChapter
             ? {
@@ -686,7 +718,7 @@ export function EditorPane({
                 e?.commands?.undo?.();
               }}
               disabled={!editorInstance}
-              title="撤回（Ctrl+Z）— 包括手输、黏贴、AI 润色"
+              title="撤回（Ctrl+Z）— 包括手输、黏贴、模型润色"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               撤回
@@ -730,10 +762,10 @@ export function EditorPane({
                 snapshotMenuOpen ? "border-accent-500 text-accent-300" : "border-ink-600"
               }`}
               onClick={() => setSnapshotMenuOpen((v) => !v)}
-              title="章节快照：手动备份 / 还原历史版本"
+              title="章节版本备份：手动备份 / 还原历史版本"
             >
               <Archive className="h-3.5 w-3.5" />
-              快照
+              备份
             </button>
             {snapshotMenuOpen && (
               <div className="absolute right-0 top-full z-40 mt-2">
@@ -765,7 +797,7 @@ export function EditorPane({
           <button
             className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={() => setOutlineDialogOpen(true)}
-            title="基于章节大纲卡 AI 生成本章正文"
+            title="基于章节大纲卡生成本章正文"
           >
             <Sparkles className="h-3.5 w-3.5" />
             大纲生成
@@ -777,12 +809,12 @@ export function EditorPane({
               disabled={manualSkills.length === 0}
               title={
                 manualSkills.length === 0
-                ? "暂无可手动运行的 Skill（去 Skill 页创建或启用「手动触发」）"
-                  : "运行一个 Skill"
+                ? "暂无可手动运行的技能（可在技能页创建或启用「手动触发」）"
+                  : "运行一个技能"
               }
             >
               <Sparkles className="h-3.5 w-3.5" />
-              Skill
+              技能
               <span className="text-[10px] opacity-70">▾</span>
             </button>
             {skillMenuOpen && manualSkills.length > 0 && (
@@ -816,12 +848,75 @@ export function EditorPane({
           </button>
         </div>
       </div>
+      <div
+        className={`flex min-h-10 flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-900/45 px-4 py-2 text-xs text-ink-300 transition-opacity duration-300 ${
+          focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""
+        }`}
+      >
+        <div className="min-w-0 flex-1 truncate">
+          <span className="text-ink-500">当前章节</span>
+          <span className="mx-1 text-ink-600">·</span>
+          <span>{stats.graphemes} 字</span>
+          {linkedOutlineCard ? (
+            <>
+              <span className="mx-1 text-ink-600">·</span>
+              <span className="truncate text-ink-400" title={linkedOutlineCard.title}>
+                大纲卡：{linkedOutlineCard.title}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="mx-1 text-ink-600">·</span>
+              <span className="text-ink-500">未关联大纲卡</span>
+            </>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
+            onClick={() => flowActions.reviewChapter(chapter.id)}
+          >
+            <FileSearch className="h-3.5 w-3.5" />
+            本章审查
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
+            onClick={() => flowActions.autoWriteChapter(chapter.id)}
+          >
+            <PenLine className="h-3.5 w-3.5" />
+            继续自动写作
+          </button>
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
+            onClick={() => flowActions.researchChapter(chapter.id, chapterResearchQuery)}
+            title="打开资料检索，并带入本章关键词"
+          >
+            <Search className="h-3.5 w-3.5" />
+            查本章资料
+          </button>
+          {linkedOutlineCard ? (
+            <button
+              type="button"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
+              onClick={() => flowActions.openOutline(linkedOutlineCard.id)}
+              title={`查看大纲卡：${linkedOutlineCard.title}`}
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              查看大纲卡
+            </button>
+          ) : null}
+        </div>
+      </div>
       {findOpen && (
         <div className="flex items-center justify-end gap-2 border-b border-ink-700 bg-ink-900/50 px-4 py-2 text-xs text-ink-300">
           <div className="flex w-full max-w-md items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 py-1 focus-within:border-accent-500">
             <Search className="h-3.5 w-3.5 text-ink-500" />
             <input
               ref={findInputRef}
+              aria-label="在当前章节中查找"
               className="min-w-0 flex-1 bg-transparent text-sm text-ink-100 outline-none placeholder:text-ink-500"
               value={findText}
               onChange={(e) => setFindText(e.target.value)}

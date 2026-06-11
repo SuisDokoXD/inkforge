@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Loader2, Play, SlidersHorizontal, Sparkles, X } from "lucide-react";
 import type { ProviderRecord, TavernMode } from "@inkforge/shared";
 import { providerApi, tavernSessionApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface NewSessionDialogProps {
   open: boolean;
@@ -64,7 +65,7 @@ export function NewSessionDialog({
       setAdvancedOpen(false);
     },
     onError: (err) => {
-      alert(`创建失败：${err instanceof Error ? err.message : String(err)}`);
+      alert(`创建失败：${friendlyErrorMessage(err, "角色讨论创建失败，请稍后重试。")}`);
     },
   });
 
@@ -183,6 +184,7 @@ export function NewSessionDialog({
                 <div>
                   <label className="mb-1 block text-xs text-ink-300">会话标题</label>
                   <input
+                    aria-label="会话标题"
                     type="text"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -193,8 +195,9 @@ export function NewSessionDialog({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-ink-300">上下文预算</label>
+                    <label className="mb-1 block text-xs text-ink-300">讨论记忆范围</label>
                     <select
+                      aria-label="讨论记忆范围"
                       value={budgetTokens}
                       onChange={(e) => setBudgetTokens(Number(e.target.value))}
                       className="h-9 w-full rounded-md border border-ink-700 bg-ink-900 px-2.5 text-sm text-ink-100 outline-none focus:border-accent-400/60"
@@ -205,8 +208,9 @@ export function NewSessionDialog({
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-ink-300">保留最近消息</label>
+                    <label className="mb-1 block text-xs text-ink-300">重点保留</label>
                     <select
+                      aria-label="重点保留的消息数量"
                       value={lastK}
                       onChange={(e) => setLastK(Number(e.target.value))}
                       className="h-9 w-full rounded-md border border-ink-700 bg-ink-900 px-2.5 text-sm text-ink-100 outline-none focus:border-accent-400/60"
@@ -219,9 +223,10 @@ export function NewSessionDialog({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs text-ink-300">历史压缩模型</label>
+                  <label className="mb-1 block text-xs text-ink-300">长讨论整理服务</label>
                   <div className="grid grid-cols-2 gap-2">
                     <select
+                      aria-label="长讨论整理服务"
                       value={summaryProviderId}
                       onChange={(e) => setSummaryProviderId(e.target.value)}
                       className="h-9 rounded-md border border-ink-700 bg-ink-900 px-2.5 text-sm text-ink-100 outline-none focus:border-accent-400/60"
@@ -234,10 +239,11 @@ export function NewSessionDialog({
                       ))}
                     </select>
                     <input
+                      aria-label="长讨论整理模型名称"
                       type="text"
                       value={summaryModel}
                       onChange={(e) => setSummaryModel(e.target.value)}
-                      placeholder="模型名，可留空"
+                      placeholder="模型名称，可留空"
                       disabled={!summaryProviderId}
                       className="h-9 rounded-md border border-ink-700 bg-ink-900 px-2.5 text-sm text-ink-100 outline-none placeholder:text-ink-500 disabled:opacity-50"
                     />

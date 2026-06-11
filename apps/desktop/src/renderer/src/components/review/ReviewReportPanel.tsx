@@ -20,6 +20,8 @@ import type {
   ReviewSeverity,
 } from "@inkforge/shared";
 import { reviewApi } from "../../lib/api";
+import { getReviewDimensionHelp } from "../../lib/review-dimension-copy";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 interface ReviewReportPanelProps {
   reportId: string;
@@ -186,7 +188,7 @@ export function ReviewReportPanel({
         ) : null}
         {report.status === "failed" && report.error ? (
           <div className="mt-3 rounded-md border border-rose-500/35 bg-rose-500/8 px-3 py-2 text-xs text-rose-200">
-            审查失败：{report.error}
+            审查失败：{friendlyErrorMessage(report.error, "审查服务暂时不可用，请稍后重试。")}
           </div>
         ) : null}
       </div>
@@ -205,15 +207,15 @@ export function ReviewReportPanel({
               </div>
               <p className="text-xs text-ink-500">
                 {isRunning
-                  ? "报告完成后会按维度展示 findings。"
-                  : "当前报告没有产生 findings，可以调整维度后重新运行。"}
+                  ? "报告完成后会按维度展示问题条目。"
+                  : "当前报告没有产生问题条目，可以调整维度后重新运行。"}
               </p>
             </div>
           </div>
         ) : (
           <div className="p-4">
             <div className="mb-3 text-xs text-ink-500">
-              显示 {visibleFindings.length} 条未忽略 findings，已忽略的条目会变淡保留。
+              显示 {visibleFindings.length} 条未忽略问题，已忽略的条目会变淡保留。
             </div>
             <div className="space-y-3">
               {groupedByDimension.map(([dimensionId, list]) => {
@@ -228,8 +230,8 @@ export function ReviewReportPanel({
                         <div className="truncate text-sm font-medium text-ink-100">
                           {dim?.name ?? dimensionId}
                         </div>
-                        <div className="truncate text-[11px] text-ink-500">
-                          {dim?.kind === "builtin" ? dim.builtinId : "自定义维度"}
+                        <div className="text-[11px] leading-4 text-ink-500">
+                          {getReviewDimensionHelp(dim)}
                         </div>
                       </div>
                       <span className="rounded bg-ink-950 px-2 py-0.5 text-xs text-ink-400">
@@ -266,11 +268,11 @@ export function ReviewReportPanel({
       {fixPreview ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
-          onClick={() => setFixPreview(null)}
+          onMouseDown={() => setFixPreview(null)}
         >
           <div
             className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-ink-700 bg-ink-900 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
+            onMouseDown={(event) => event.stopPropagation()}
           >
             <header className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
               <div>
@@ -281,6 +283,7 @@ export function ReviewReportPanel({
                 type="button"
                 onClick={() => setFixPreview(null)}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+                aria-label="关闭修复预览"
                 title="关闭"
               >
                 <X className="h-4 w-4" />
@@ -288,7 +291,7 @@ export function ReviewReportPanel({
             </header>
             <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-auto p-4">
               <PreviewBlock title="原文片段" text={fixPreview.response.originalExcerpt} />
-              <PreviewBlock title="AI 修订" text={fixPreview.response.patchedExcerpt} accent />
+              <PreviewBlock title="修订建议" text={fixPreview.response.patchedExcerpt} accent />
             </div>
             <footer className="flex items-center justify-between gap-2 border-t border-ink-700 px-4 py-3 text-xs">
               <span className="text-ink-500">

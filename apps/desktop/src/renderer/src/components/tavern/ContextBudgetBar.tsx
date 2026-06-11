@@ -10,7 +10,7 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
   if (!budget) {
     return (
       <div className="border-b border-ink-700 bg-ink-800/40 px-4 py-2 text-[11px] text-ink-500">
-        暂无预算数据（推进一轮后显示）
+        暂无讨论记忆数据（推进一轮后显示）
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
     <div className="border-b border-ink-700 bg-ink-800/40 px-4 py-2">
       <div className="flex items-center gap-3 text-[11px]">
         <span className={`font-medium ${textColor}`}>
-          已用 {usedTokens} / {budgetTokens}
+          讨论记忆 {usedTokens} / {budgetTokens}
         </span>
         <div className="flex-1 h-2 rounded-full bg-ink-900 overflow-hidden">
           <div
@@ -49,7 +49,7 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
       </div>
       {budget.shouldWarn && (
         <div className="mt-1 text-[10px] text-accent-300/80">
-          ⚠ 预算吃紧，建议下一轮前压缩历史
+          讨论记忆快满了，建议下一轮前整理较早内容
         </div>
       )}
     </div>

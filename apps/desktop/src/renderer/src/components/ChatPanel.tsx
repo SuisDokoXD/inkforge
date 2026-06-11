@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { LLMChatMessage } from "@inkforge/shared";
 import { chapterApi, llmApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 type DisplayMessage = LLMChatMessage & {
   id: string;
@@ -130,12 +131,12 @@ export function ChatPanel(): JSX.Element {
             role: "assistant",
             content: "",
             status: "failed",
-            error: response.error ?? "unknown_error",
+            error: friendlyErrorMessage(response.error, "助手暂时无法回复，请稍后重试。"),
           },
         ]);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = friendlyErrorMessage(error, "助手暂时无法回复，请稍后重试。");
       setMessages((prev) => [
         ...prev,
         {

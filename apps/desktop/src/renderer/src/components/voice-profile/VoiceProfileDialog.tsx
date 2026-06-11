@@ -1,8 +1,8 @@
 // =============================================================================
 // Voice Profile（写作声音档案）问卷对话框
 // =============================================================================
-// 让用户用一份结构化问卷把自己的写作风格"喂"给系统，所有 AI 生成走系统时
-// 都自动把这段配方拼到 system prompt 里，避免 AI 用通用 GPT 口吻写小说。
+// 让用户用一份结构化问卷描述自己的写作风格，后续模型生成时
+// 会自动把这段写作声音加入参考，避免落入通用口吻。
 //
 // 设计要点：
 //   - 单页滚动表单（不是多步向导）：作者一次性扫一遍更省心
@@ -39,7 +39,7 @@ const QUESTIONS: QuestionSpec[] = [
   },
   {
     key: "voice_register",
-    label: "语体登记",
+    label: "叙述语气",
     hint: "你的叙述更像哪种？",
     presets: ["口语化", "中性文笔", "偏文雅书面", "文白参半"],
   },
@@ -50,7 +50,7 @@ const QUESTIONS: QuestionSpec[] = [
   },
   {
     key: "pov",
-    label: "视点 POV",
+    label: "叙述视角",
     presets: ["第一人称", "第三人称限制视角", "第三人称全知"],
   },
   {
@@ -110,7 +110,7 @@ const QUESTIONS: QuestionSpec[] = [
   {
     key: "forbidden_words",
     label: "禁用词",
-    hint: "AI 写作时坚决避免使用的词（逗号分隔）",
+    hint: "模型写作时坚决避免使用的词（逗号分隔）",
     presets: [],
     freeText: true,
   },
@@ -182,12 +182,15 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
               写作声音档案
             </h2>
             <p className="mt-0.5 text-xs text-ink-400">
-              填完后所有 AI 生成都会按你的风格输出 · {completion.filled}/{completion.total} 已填写
+              填完后，模型生成会按你的风格输出 · {completion.filled}/{completion.total} 已填写
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+            aria-label="关闭写作声音档案"
+            title="关闭"
           >
             <X className="h-4 w-4" />
           </button>
@@ -197,12 +200,13 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
           <label className="mb-4 flex cursor-pointer items-center gap-2 rounded-md border border-ink-700 bg-ink-800/50 p-3 text-sm">
             <input
               type="checkbox"
+              aria-label="启用写作声音档案"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
               className="h-4 w-4 accent-accent-500"
             />
             <span className="text-ink-100">
-              启用本档案 — 让 AI 生成跟随这套写作声音
+              启用本档案 — 让模型生成跟随这套写作声音
             </span>
           </label>
 
@@ -242,6 +246,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                 )}
                 {q.freeText ? (
                   <textarea
+                    aria-label={`${q.label}自由填写`}
                     value={answers[q.key] ?? ""}
                     onChange={(e) => setAnswer(q.key, e.target.value)}
                     rows={2}
@@ -250,6 +255,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                   />
                 ) : (
                   <input
+                    aria-label={`${q.label}填写`}
                     value={answers[q.key] ?? ""}
                     onChange={(e) => setAnswer(q.key, e.target.value)}
                     className="w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
@@ -267,12 +273,14 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
           </span>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClose}
               className="rounded-md px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800"
             >
               取消
             </button>
             <button
+              type="button"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
               className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"

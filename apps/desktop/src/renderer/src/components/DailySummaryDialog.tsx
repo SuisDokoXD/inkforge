@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { dailySummaryApi } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 
 interface DailySummaryDialogProps {
   open: boolean;
@@ -42,7 +43,7 @@ export function DailySummaryDialog({
     },
     onError: (err) => {
       setStatus(
-        `启动失败：${err instanceof Error ? err.message : String(err)}`,
+        `启动失败：${friendlyErrorMessage(err, "总结生成失败，请稍后重试。")}`,
       );
       setStreaming(null);
     },
@@ -64,7 +65,7 @@ export function DailySummaryDialog({
           queryKey: ["daily-summary", projectId, date],
         });
       } else if (event.status === "failed") {
-        setStatus(`生成失败：${event.error ?? "unknown"}`);
+        setStatus(`生成失败：${friendlyErrorMessage(event.error, "总结生成失败，请稍后重试。")}`);
       } else {
         setStatus("已取消");
         setStreaming(null);
@@ -92,7 +93,7 @@ export function DailySummaryDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
-      onClick={(e) => {
+      onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
@@ -102,6 +103,7 @@ export function DailySummaryDialog({
             <h2 className="text-sm font-semibold text-accent-300">📝 每日写作总结</h2>
             <input
               type="date"
+              aria-label="选择总结日期"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               className="rounded border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-ink-100"
@@ -113,6 +115,8 @@ export function DailySummaryDialog({
               type="button"
               onClick={onClose}
               className="rounded px-2 py-1 text-sm text-ink-400 hover:bg-ink-700"
+              aria-label="关闭每日写作总结"
+              title="关闭"
             >
               ×
             </button>
@@ -136,16 +140,12 @@ export function DailySummaryDialog({
                   {new Date(summary.generatedAt).toLocaleString("zh-CN")}
                 </span>
               )}
-              {summary.summaryProviderId && summary.summaryModel && (
-                <span>
-                  {summary.summaryProviderId} / {summary.summaryModel}
-                </span>
-              )}
+              {summary.summaryProviderId && summary.summaryModel && <span>由模型服务生成</span>}
             </div>
           )}
           {displayed.trim().length === 0 ? (
             <div className="rounded border border-dashed border-ink-700 px-4 py-8 text-center text-sm text-ink-400">
-              还没有总结。点击下方「生成总结」让 AI 基于今日字数与最近章节节选生成日报。
+              还没有总结。点击下方「生成总结」，系统会基于今日字数与最近章节节选生成日报。
             </div>
           ) : (
             <article className="whitespace-pre-wrap rounded-md border border-ink-700 bg-ink-900/60 px-4 py-3 text-sm leading-7 text-ink-100">
@@ -158,7 +158,7 @@ export function DailySummaryDialog({
         </div>
         <div className="flex items-center justify-between border-t border-ink-700 bg-ink-900/30 px-5 py-3 text-xs">
           <span className="text-ink-500">
-            基于 daily_logs.words_added + 最近 8 章节首 600 字作为上下文
+            基于今日字数和最近章节片段生成，只作写作回顾。
           </span>
           <div className="flex items-center gap-2">
             <button

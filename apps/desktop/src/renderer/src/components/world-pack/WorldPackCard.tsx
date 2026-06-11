@@ -85,6 +85,7 @@ export function WorldPackCard({
     <div
       ref={ref}
       role="button"
+      aria-label={`打开世界观卡牌：${pack.name}`}
       tabIndex={0}
       onClick={() => onClick?.(pack)}
       onDoubleClick={() => onDoubleClick?.(pack)}
@@ -174,7 +175,7 @@ export function WorldPackCard({
       {/* 左上角：已插槽指示 */}
       {selected && selectionIndex === undefined && (
         <span className="absolute left-2 top-10 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
-          ✓ 已插槽
+          ✓ 本书使用
         </span>
       )}
 
