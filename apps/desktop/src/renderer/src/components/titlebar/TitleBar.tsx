@@ -29,7 +29,7 @@ const PLATFORM = (() => {
 
 const VIEW_LABEL: Record<string, { icon: string; label: string }> = {
   writing: { icon: "✍", label: "写作" },
-  skill: { icon: "🧩", label: "技能" },
+  skill: { icon: "🧩", label: "写作指令" },
   character: { icon: "👥", label: "人物" },
   tavern: { icon: "🎭", label: "酒馆" },
   world: { icon: "🌍", label: "世界观" },

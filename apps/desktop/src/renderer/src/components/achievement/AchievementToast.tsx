@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import {
   findAchievement,
   rarityColor,
+  type AchievementRarity,
   type AchievementUnlockedRecord,
 } from "@inkforge/shared";
 import { achievementApi } from "../../lib/api";
@@ -21,6 +23,7 @@ const VISIBLE_MS = 6000;
  */
 export function AchievementToast(): JSX.Element | null {
   const [items, setItems] = useState<ToastItem[]>([]);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const off = achievementApi.onUnlocked((evt) => {
@@ -28,9 +31,15 @@ export function AchievementToast(): JSX.Element | null {
         ...prev,
         { rec: evt.achievement, expiresAt: Date.now() + VISIBLE_MS },
       ]);
+      void queryClient.invalidateQueries({
+        queryKey: ["achievement-list", evt.projectId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["achievement-stats", evt.projectId],
+      });
     });
     return off;
-  }, []);
+  }, [queryClient]);
 
   // 每秒清理过期项
   useEffect(() => {
@@ -84,7 +93,7 @@ function ToastCard({
       <span className="text-2xl">{def.icon}</span>
       <div className="flex-1">
         <div className={`text-[10px] uppercase tracking-wider ${color.text}`}>
-          🏆 解锁成就 · {def.rarity.toUpperCase()}
+          新徽章到手 · {rarityLabel(def.rarity)}
         </div>
         <div className="text-sm font-semibold text-ink-100">{def.title}</div>
         <div className="text-[11px] text-ink-300">{def.description}</div>
@@ -99,4 +108,17 @@ function ToastCard({
       </button>
     </motion.div>
   );
+}
+
+function rarityLabel(rarity: AchievementRarity): string {
+  switch (rarity) {
+    case "common":
+      return "普通";
+    case "rare":
+      return "稀有";
+    case "epic":
+      return "史诗";
+    case "legendary":
+      return "传说";
+  }
 }

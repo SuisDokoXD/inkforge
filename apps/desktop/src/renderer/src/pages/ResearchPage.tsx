@@ -23,10 +23,26 @@ import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyActionError, friendlyErrorMessage } from "../lib/friendly-error";
 
 const PROVIDER_OPTIONS: Array<{ value: ResearchProvider; label: string; hint: string }> = [
-  { value: "llm-fallback", label: "模型综述（不联网）", hint: "不会访问网页，只整理方向和关键词；查真实地点、人物、事件时请用联网搜索" },
-  { value: "tavily", label: "联网网页检索", hint: "需要配置搜索服务密钥，适合查网页资料" },
-  { value: "bing", label: "联网通用搜索", hint: "需要配置搜索服务密钥，适合查广泛网页" },
-  { value: "serpapi", label: "联网聚合搜索", hint: "需要配置搜索服务密钥，适合查搜索结果页" },
+  {
+    value: "llm-fallback",
+    label: "整理查找思路（不查网页）",
+    hint: "不联网，只帮你整理关键词、背景方向和可追问的问题；真实地点、制度、事件请改用网页搜索。",
+  },
+  {
+    value: "tavily",
+    label: "快速网页搜索",
+    hint: "联网查网页资料，适合地点、职业、制度、事件等事实信息。",
+  },
+  {
+    value: "bing",
+    label: "Bing 网页搜索",
+    hint: "联网使用 Bing 搜索，适合需要更宽泛的中文或英文网页结果。",
+  },
+  {
+    value: "serpapi",
+    label: "多来源对照搜索",
+    hint: "联网汇总搜索结果页，适合需要更多来源互相核对时使用。",
+  },
 ];
 
 function providerLabel(value: ResearchProvider | null | undefined): string {
@@ -84,10 +100,10 @@ function researchErrorMessage(error?: string): string | null {
     return "所选搜索服务还没有配置密钥，已尝试使用可用的兜底来源。";
   }
   if (error.includes("requires_provider")) {
-    return "模型综述需要先配置一个可用的模型服务。";
+    return "整理查找思路需要先配置一个可用的模型服务。";
   }
   if (error.includes("invalid_json")) {
-    return "模型综述返回格式异常，请重试或换一个检索来源。";
+    return "整理查找思路返回格式异常，请重试或换一个检索来源。";
   }
   return "检索服务返回异常，请换一个来源或稍后重试。";
 }
@@ -146,7 +162,7 @@ export function ResearchPage(): JSX.Element {
       const queryCount = res.expandedQueries?.length ?? 1;
       setStatus(
         res.fellBackToLlm
-          ? `已改用模型综述（不联网）${detail ? `：${detail}` : ""}`
+          ? `已改用整理查找思路（不查网页）${detail ? `：${detail}` : ""}`
           : res.hits.length === 0
             ? `没有命中结果${detail ? `：${detail}` : ""}`
             : `命中 ${res.hits.length} 条 · 已尝试 ${queryCount} 种查法 · ${providerLabel(res.usedProvider)}`,
@@ -269,7 +285,7 @@ export function ResearchPage(): JSX.Element {
             </button>
           </div>
 
-          <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_190px_auto]">
+          <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_210px_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
               <input
@@ -313,8 +329,11 @@ export function ResearchPage(): JSX.Element {
             </button>
           </div>
 
+          <div className="mt-2 rounded-md border border-ink-800 bg-ink-950/35 px-3 py-2 text-[11px] leading-5 text-ink-400">
+            {providerHint}
+          </div>
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] text-ink-500">{providerHint}</span>
             {QUERY_CHIPS.map((chip) => (
               <button
                 key={chip}
@@ -396,7 +415,7 @@ function ResearchStarter({
             <p className="mt-3 text-sm leading-7 text-ink-300">
               不要只搜一个宽泛词。查真实地点、山脉、制度或历史时，优先选择联网搜索；
               再把问题写成“地点 + 时代 + 人物职业 + 场景细节”，更容易得到能放进小说里的信息。
-              如果只是选择“模型综述（不联网）”，它不会去网上查资料，只会帮你整理可能的关键词和提问方向。
+              如果只是选择“整理查找思路（不查网页）”，它不会去网上查资料，只会帮你整理可能的关键词和提问方向。
             </p>
           </div>
         </section>
@@ -508,7 +527,7 @@ function SearchResults({
           <p className="mt-2 text-sm leading-6 text-ink-400">
             {state.error
               ? researchErrorMessage(state.error)
-              : "换一个更具体的问题，或切到模型综述先整理关键词。"}
+              : "换一个更具体的问题，或切到整理查找思路先列关键词。"}
           </p>
           <SearchQueryTrail queries={state.expandedQueries} className="mt-4 text-left" />
         </div>
@@ -536,7 +555,7 @@ function SearchResults({
             )}
             {state.fellBackToLlm && (
               <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-800 ring-1 ring-amber-400/20 dark:text-amber-200">
-                已改用模型综述（不联网）
+                已改用整理查找思路（不查网页）
               </span>
             )}
           </div>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Trash2 } from "lucide-react";
 import { NovelCharacterRecord, TavernCardRecord } from "@inkforge/shared";
 import { novelCharacterApi, tavernCardApi, characterSyncApi } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 
 interface NovelCharacterDetailProps {
   novelCharacter: NovelCharacterRecord;
+  characters: NovelCharacterRecord[];
   tavernCards: TavernCardRecord[];
 }
 
@@ -17,6 +19,7 @@ function syncModeLabel(mode: TavernCardRecord["syncMode"]): string {
 
 export function NovelCharacterDetail({
   novelCharacter,
+  characters,
   tavernCards,
 }: NovelCharacterDetailProps): JSX.Element {
   const queryClient = useQueryClient();
@@ -71,6 +74,34 @@ export function NovelCharacterDetail({
     saveTimeoutRef.current = setTimeout(() => {
       updateMut.mutate({ [field]: value });
     }, 500);
+  };
+
+  const relationTargets = characters.filter((character) => character.id !== novelCharacter.id);
+
+  const updateRelation = (
+    index: number,
+    patch: Partial<NovelCharacterRecord["relations"][number]>,
+  ) => {
+    const next = localData.relations.map((relation, i) =>
+      i === index ? { ...relation, ...patch } : relation,
+    );
+    handleFieldChange("relations", next);
+  };
+
+  const addRelation = () => {
+    const firstTarget = relationTargets[0];
+    if (!firstTarget) return;
+    handleFieldChange("relations", [
+      ...localData.relations,
+      { otherId: firstTarget.id, label: "" },
+    ]);
+  };
+
+  const removeRelation = (index: number) => {
+    handleFieldChange(
+      "relations",
+      localData.relations.filter((_relation, i) => i !== index),
+    );
   };
 
   const handleUnbind = async () => {
@@ -133,9 +164,74 @@ export function NovelCharacterDetail({
         </section>
 
         <section>
-          <label className="mb-2 block text-xs font-medium text-ink-400">特征</label>
-          <div className="rounded-md border border-ink-700 bg-ink-800/40 p-3 text-sm text-ink-500 italic">
-            结构化特征编辑将在后续版本支持...
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <label className="block text-xs font-medium text-ink-400">人物关系</label>
+            <button
+              type="button"
+              onClick={addRelation}
+              disabled={relationTargets.length === 0}
+              className="inline-flex items-center gap-1 rounded border border-ink-700 px-2 py-1 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              新增关系
+            </button>
+          </div>
+          <div className="rounded-md border border-ink-700 bg-ink-800/40">
+            {localData.relations.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-ink-500">
+                暂无关系。可以手动添加，或从章节识别人物时一起导入关系。
+              </div>
+            ) : (
+              <div className="divide-y divide-ink-700/70">
+                {localData.relations.map((relation, index) => {
+                  const targetExists = relationTargets.some((target) => target.id === relation.otherId);
+                  return (
+                    <div key={`${relation.otherId}-${index}`} className="grid gap-2 p-3 md:grid-cols-[1fr_1fr_auto]">
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] text-ink-500">对象</span>
+                        <select
+                          value={relation.otherId}
+                          onChange={(event) =>
+                            updateRelation(index, { otherId: event.target.value })
+                          }
+                          className={`h-8 w-full rounded border bg-ink-900 px-2 text-xs text-ink-100 outline-none focus:border-accent-400 ${
+                            targetExists ? "border-ink-700" : "border-amber-500/50"
+                          }`}
+                        >
+                          {!targetExists ? (
+                            <option value={relation.otherId}>已删除的人物</option>
+                          ) : null}
+                          {relationTargets.map((target) => (
+                            <option key={target.id} value={target.id}>
+                              {target.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-1 block text-[10px] text-ink-500">关系</span>
+                        <input
+                          value={relation.label}
+                          onChange={(event) =>
+                            updateRelation(index, { label: event.target.value })
+                          }
+                          placeholder="例如：同伴、敌对、师徒"
+                          className="h-8 w-full rounded border border-ink-700 bg-ink-900 px-2 text-xs text-ink-100 outline-none placeholder:text-ink-600 focus:border-accent-400"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => removeRelation(index)}
+                        aria-label="删除关系"
+                        className="mt-auto flex h-8 w-8 items-center justify-center rounded border border-ink-700 text-ink-400 hover:border-red-500/50 hover:text-red-300"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </section>
       </div>

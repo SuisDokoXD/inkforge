@@ -10,6 +10,29 @@ interface DirectorPanelProps {
   cards: TavernCardRecord[];
 }
 
+const QUICK_DIRECTOR_PROMPTS = [
+  {
+    label: "追问动机",
+    prompt: "追问每个角色的真实动机，不要让他们只说表面理由。",
+  },
+  {
+    label: "反对者先发",
+    prompt: "让反对者先发言，必须指出当前方案最大的风险。",
+  },
+  {
+    label: "下一步行动",
+    prompt: "要求每位角色给出一个下一步行动，而不是只评价。",
+  },
+  {
+    label: "关系矛盾",
+    prompt: "指出人物关系里最矛盾的一点，并让当事人回应。",
+  },
+  {
+    label: "说出私心",
+    prompt: "让每位角色说出一个不愿公开承认的私心。",
+  },
+];
+
 export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Element {
   const queryClient = useQueryClient();
   const autoPickedSessionRef = useRef<string | null>(null);
@@ -164,6 +187,18 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
           <div className="flex items-center gap-2 border-b border-ink-700 px-2.5 py-1.5 text-xs text-ink-400">
             <MessageSquareText size={14} />
             给下一轮一点方向
+          </div>
+          <div className="flex flex-wrap gap-1.5 border-b border-ink-800 px-2.5 py-2">
+            {QUICK_DIRECTOR_PROMPTS.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => setDirectorMessage(item.prompt)}
+                className="rounded border border-ink-700 bg-ink-900 px-2 py-1 text-[11px] text-ink-400 hover:border-accent-500/40 hover:text-accent-200"
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
           <textarea
             aria-label="下一轮讨论方向"

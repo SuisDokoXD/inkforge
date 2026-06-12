@@ -12,6 +12,38 @@ interface NewSessionDialogProps {
   onCreated?: (sessionId: string) => void;
 }
 
+const PLAY_PRESETS: Array<{
+  title: string;
+  description: string;
+  topic: string;
+  mode: TavernMode;
+}> = [
+  {
+    title: "冲突圆桌",
+    description: "让角色站在不同立场上争论一个选择。",
+    topic: "围绕下一章的关键选择开一场冲突圆桌：每位角色必须提出不同立场、代价和反驳理由，最后给出最有戏剧张力的走向。",
+    mode: "auto",
+  },
+  {
+    title: "关系审问",
+    description: "追问动机、隐瞒点和关系里的矛盾。",
+    topic: "围绕人物关系做一次审问：让相关角色互相追问真实动机、隐瞒的信息和彼此误解的地方，找出下一章能爆发的关系矛盾。",
+    mode: "director",
+  },
+  {
+    title: "剧情急诊",
+    description: "让角色指出当前桥段哪里不自然。",
+    topic: "把当前剧情当成急诊：请角色指出最不自然、最缺动机或最容易让读者出戏的地方，并给出可以马上改的一步行动。",
+    mode: "director",
+  },
+  {
+    title: "秘密投票",
+    description: "每个角色给路线投票并说明私心。",
+    topic: "进行一次秘密投票：每位角色选择赞成或反对当前剧情路线，并说出公开理由和真正私心，最后总结最值得保留的矛盾。",
+    mode: "auto",
+  },
+];
+
 export function NewSessionDialog({
   open,
   onOpenChange,
@@ -71,11 +103,6 @@ export function NewSessionDialog({
 
   if (!open) return null;
 
-  const topicPresets = [
-    "让几位角色讨论下一章最自然的转折。",
-    "比较两个结局方向，判断哪个更有余味。",
-    "检查主角这次选择是否符合一贯性格。",
-  ];
   const canSubmit = topic.trim().length > 0 && !createMut.isPending;
 
   return (
@@ -115,8 +142,37 @@ export function NewSessionDialog({
               placeholder="例如：让角色讨论下一章的选择，找出更自然、更有张力的走向。"
               className="h-28 w-full resize-none rounded-md border border-ink-700 bg-ink-950 px-3 py-3 text-sm leading-6 text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-400/60 focus:ring-2 focus:ring-accent-400/10"
             />
+            <div className="mt-3">
+              <div className="mb-2 text-xs font-medium text-ink-400">玩法模板</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PLAY_PRESETS.map((preset) => (
+                  <button
+                    key={preset.title}
+                    type="button"
+                    onClick={() => {
+                      setTopic(preset.topic);
+                      setTitle(preset.title);
+                      setMode(preset.mode);
+                    }}
+                    className="rounded-md border border-ink-700 bg-ink-800/60 p-3 text-left transition hover:border-accent-500/40 hover:bg-accent-500/10"
+                  >
+                    <span className="block text-sm font-medium text-ink-100">
+                      {preset.title}
+                    </span>
+                    <span className="mt-1 block text-xs leading-5 text-ink-400">
+                      {preset.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-2 flex flex-wrap gap-2">
-              {topicPresets.map((preset) => (
+              {[
+                "让几位角色讨论下一章最自然的转折。",
+                "比较两个结局方向，判断哪个更有余味。",
+                "检查主角这次选择是否符合一贯性格。",
+              ].map((preset) => (
                 <button
                   key={preset}
                   type="button"

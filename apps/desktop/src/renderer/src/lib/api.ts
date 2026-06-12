@@ -218,6 +218,8 @@ export const novelCharacterApi = {
   get: (input: import("@inkforge/shared").NovelCharacterGetInput): Promise<import("@inkforge/shared").NovelCharacterRecord | null> => api().novelCharacter.get(input),
   list: (input: import("@inkforge/shared").NovelCharacterListInput): Promise<import("@inkforge/shared").NovelCharacterRecord[]> => api().novelCharacter.list(input),
   delete: (input: import("@inkforge/shared").NovelCharacterDeleteInput): Promise<{ id: string }> => api().novelCharacter.delete(input),
+  extractFromChapter: (input: import("@inkforge/shared").NovelCharacterExtractInput): Promise<import("@inkforge/shared").NovelCharacterExtractResponse> => api().novelCharacter.extractFromChapter(input),
+  importCandidates: (input: import("@inkforge/shared").NovelCharacterImportCandidatesInput): Promise<import("@inkforge/shared").NovelCharacterImportCandidatesResponse> => api().novelCharacter.importCandidates(input),
 };
 
 export const tavernCardApi = {
