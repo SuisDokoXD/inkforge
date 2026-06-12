@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ChapterRecord,
@@ -14,23 +13,14 @@ import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/edi
 import type { Editor } from "@tiptap/react";
 import {
   Archive,
-  ClipboardList,
-  ChevronDown,
-  ChevronUp,
   Download,
-  FileSearch,
   Focus,
-  GripVertical,
-  Minus,
-  NotepadText,
-  PenLine,
   RefreshCw,
   RotateCcw,
   RotateCw,
   Save,
   Search,
   Sparkles,
-  X,
 } from "lucide-react";
 import { chapterApi, fsApi, llmApi, outlineApi, skillApi } from "../lib/api";
 import { applySkillOutputToEditor } from "../lib/skill-output";
@@ -42,6 +32,10 @@ import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
 import { EmptyState } from "./EmptyState";
 import { SnapshotMenu } from "./snapshot";
+import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
+import { EditorFindBar } from "./editor/EditorFindBar";
+import { FocusDraftBoard } from "./editor/FocusDraftBoard";
+import { RecoveryPromptBanner } from "./editor/RecoveryPromptBanner";
 
 interface EditorPaneProps {
   chapter: ChapterRecord | null;
@@ -848,147 +842,40 @@ export function EditorPane({
           </button>
         </div>
       </div>
-      <div
-        className={`flex min-h-10 flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-900/45 px-4 py-2 text-xs text-ink-300 transition-opacity duration-300 ${
-          focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""
-        }`}
-      >
-        <div className="min-w-0 flex-1 truncate">
-          <span className="text-ink-500">当前章节</span>
-          <span className="mx-1 text-ink-600">·</span>
-          <span>{stats.graphemes} 字</span>
-          {linkedOutlineCard ? (
-            <>
-              <span className="mx-1 text-ink-600">·</span>
-              <span className="truncate text-ink-400" title={linkedOutlineCard.title}>
-                大纲卡：{linkedOutlineCard.title}
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="mx-1 text-ink-600">·</span>
-              <span className="text-ink-500">未关联大纲卡</span>
-            </>
-          )}
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
-            onClick={() => flowActions.reviewChapter(chapter.id)}
-          >
-            <FileSearch className="h-3.5 w-3.5" />
-            本章审查
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
-            onClick={() => flowActions.autoWriteChapter(chapter.id)}
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            继续自动写作
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
-            onClick={() => flowActions.researchChapter(chapter.id, chapterResearchQuery)}
-            title="打开资料检索，并带入本章关键词"
-          >
-            <Search className="h-3.5 w-3.5" />
-            查本章资料
-          </button>
-          {linkedOutlineCard ? (
-            <button
-              type="button"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
-              onClick={() => flowActions.openOutline(linkedOutlineCard.id)}
-              title={`查看大纲卡：${linkedOutlineCard.title}`}
-            >
-              <ClipboardList className="h-3.5 w-3.5" />
-              查看大纲卡
-            </button>
-          ) : null}
-        </div>
-      </div>
+      <ChapterWorkflowBar
+        focusMode={focusMode}
+        graphemes={stats.graphemes}
+        linkedOutlineCard={linkedOutlineCard}
+        onReviewChapter={() => flowActions.reviewChapter(chapter.id)}
+        onAutoWriteChapter={() => flowActions.autoWriteChapter(chapter.id)}
+        onResearchChapter={() => flowActions.researchChapter(chapter.id, chapterResearchQuery)}
+        onOpenOutlineCard={() => {
+          if (linkedOutlineCard) flowActions.openOutline(linkedOutlineCard.id);
+        }}
+      />
       {findOpen && (
-        <div className="flex items-center justify-end gap-2 border-b border-ink-700 bg-ink-900/50 px-4 py-2 text-xs text-ink-300">
-          <div className="flex w-full max-w-md items-center gap-1 rounded-md border border-ink-600 bg-ink-800 px-2 py-1 focus-within:border-accent-500">
-            <Search className="h-3.5 w-3.5 text-ink-500" />
-            <input
-              ref={findInputRef}
-              aria-label="在当前章节中查找"
-              className="min-w-0 flex-1 bg-transparent text-sm text-ink-100 outline-none placeholder:text-ink-500"
-              value={findText}
-              onChange={(e) => setFindText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  runFind(e.shiftKey);
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setFindOpen(false);
-                }
-              }}
-              placeholder="在当前章节中查找"
-            />
-            <button
-              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-40"
-              onClick={() => runFind(true)}
-              disabled={!findText.trim()}
-              title="上一个"
-            >
-              <ChevronUp className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-40"
-              onClick={() => runFind(false)}
-              disabled={!findText.trim()}
-              title="下一个"
-            >
-              <ChevronDown className="h-3.5 w-3.5" />
-            </button>
-            <button
-              className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-ink-100"
-              onClick={() => setFindOpen(false)}
-              title="关闭查找"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+        <EditorFindBar
+          inputRef={findInputRef}
+          findText={findText}
+          setFindText={setFindText}
+          runFind={runFind}
+          onClose={() => setFindOpen(false)}
+        />
       )}
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
         <div className={`mx-auto ${editorWidthClass} px-8 py-8`}>
           {recoveryPrompt && (
-            <div className="mb-4 flex items-start justify-between gap-3 rounded-md border border-accent-600/60 bg-accent-900/20 px-3 py-2 text-xs text-accent-100">
-              <div>
-                检测到未保存的自动备份（{new Date(recoveryPrompt.savedAt).toLocaleString()}），
-                可能来自上次异常退出。是否恢复？
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <button
-                  className="rounded border border-accent-500 px-2 py-0.5 hover:bg-accent-800/40"
-                  onClick={() => {
-                    if (!recoveryPrompt) return;
-                    setContent(recoveryPrompt.content);
-                    setRecoveryPrompt(null);
-                  }}
-                >
-                  恢复
-                </button>
-                <button
-                  className="rounded border border-ink-600 px-2 py-0.5 hover:bg-ink-700"
-                  onClick={() => {
-                    if (!chapter) return;
-                    void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
-                    setRecoveryPrompt(null);
-                  }}
-                >
-                  丢弃
-                </button>
-              </div>
-            </div>
+            <RecoveryPromptBanner
+              recoveryPrompt={recoveryPrompt}
+              onRestore={(text) => {
+                setContent(text);
+                setRecoveryPrompt(null);
+              }}
+              onDiscard={() => {
+                void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
+                setRecoveryPrompt(null);
+              }}
+            />
           )}
           <NovelEditor
             key={chapter?.id ?? "empty"}
@@ -1034,169 +921,6 @@ export function EditorPane({
           onClose={() => setOutlineDialogOpen(false)}
         />
       ) : null}
-    </div>
-  );
-}
-
-interface DraftPosition {
-  x: number;
-  y: number;
-}
-
-function FocusDraftBoard({
-  chapterId,
-  projectId,
-}: {
-  chapterId: string;
-  projectId: string;
-}): JSX.Element {
-  const contentKey = `inkforge:focus-draft:${projectId}:${chapterId}`;
-  const posKey = "inkforge:focus-draft:position";
-  const [open, setOpen] = useState(true);
-  const [collapsed, setCollapsed] = useState(false);
-  const [text, setText] = useState("");
-  const [position, setPosition] = useState<DraftPosition>({ x: 32, y: 96 });
-  const dragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null);
-
-  useEffect(() => {
-    setText(window.localStorage.getItem(contentKey) ?? "");
-  }, [contentKey]);
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(posKey);
-    if (!raw) return;
-    try {
-      const parsed = JSON.parse(raw) as Partial<DraftPosition>;
-      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-        setPosition({
-          x: Math.max(8, Math.min(parsed.x, window.innerWidth - 280)),
-          y: Math.max(56, Math.min(parsed.y, window.innerHeight - 160)),
-        });
-      }
-    } catch {
-      // Ignore corrupted local UI state.
-    }
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem(contentKey, text);
-  }, [contentKey, text]);
-
-  useEffect(() => {
-    window.localStorage.setItem(posKey, JSON.stringify(position));
-  }, [posKey, position]);
-
-  useEffect(() => {
-    const handleMove = (event: PointerEvent) => {
-      const drag = dragRef.current;
-      if (!drag) return;
-      const nextX = drag.originX + event.clientX - drag.startX;
-      const nextY = drag.originY + event.clientY - drag.startY;
-      setPosition({
-        x: Math.max(8, Math.min(nextX, window.innerWidth - 288)),
-        y: Math.max(56, Math.min(nextY, window.innerHeight - 96)),
-      });
-    };
-    const handleUp = () => {
-      dragRef.current = null;
-    };
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-    };
-  }, []);
-
-  const startDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: position.x,
-      originY: position.y,
-    };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="fixed z-30 flex h-9 items-center gap-2 rounded-md border border-ink-700 bg-ink-900/90 px-3 text-xs text-ink-200 shadow-xl backdrop-blur hover:border-accent-500/50 hover:text-accent-100"
-        style={{ left: position.x, top: position.y }}
-      >
-        <NotepadText className="h-4 w-4 text-accent-300" />
-        草稿
-      </button>
-    );
-  }
-
-  return (
-    <div
-      className="fixed z-30 w-80 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/92 text-ink-100 shadow-2xl backdrop-blur"
-      style={{ left: position.x, top: position.y }}
-    >
-      <div
-        className="flex cursor-move items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/80 px-2.5 py-2"
-        onPointerDown={startDrag}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <GripVertical className="h-4 w-4 shrink-0 text-ink-500" />
-          <NotepadText className="h-4 w-4 shrink-0 text-accent-300" />
-          <span className="truncate text-sm font-medium">专注草稿</span>
-          {text.trim() && (
-            <span className="rounded bg-ink-950 px-1.5 py-0.5 text-[10px] text-ink-500">
-              {text.trim().length} 字
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setCollapsed((v) => !v)}
-            className="flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-ink-700 hover:text-ink-100"
-            title={collapsed ? "展开" : "收起"}
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setOpen(false)}
-            className="flex h-6 w-6 items-center justify-center rounded text-ink-400 hover:bg-ink-700 hover:text-ink-100"
-            title="隐藏草稿板"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-      {!collapsed && (
-        <div className="p-2.5">
-          <textarea
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            placeholder="临时记一下下一段想写什么、人物动机、伏笔、句子碎片……"
-            className="h-48 w-full resize-y rounded-md border border-ink-700 bg-ink-950/85 p-2.5 text-sm leading-6 text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500/60"
-          />
-          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-500">
-            <span>只在专注模式显示，按当前章节保存。</span>
-            {text && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm("清空这张草稿板？")) setText("");
-                }}
-                className="rounded px-1.5 py-0.5 text-ink-400 hover:bg-ink-800 hover:text-rose-200"
-              >
-                清空
-              </button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
