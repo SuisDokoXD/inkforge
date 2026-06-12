@@ -37,9 +37,7 @@ function loadPty(): typeof NodePty {
     ptyModule = require("node-pty") as typeof NodePty;
   } catch (error) {
     logger.warn("node-pty failed to load", error);
-    ptyLoadError = new Error(
-      `Terminal unavailable: node-pty failed to load (${errorMessage(error)})`,
-    );
+    ptyLoadError = new Error("当前版本未启用内嵌终端。");
     throw ptyLoadError;
   }
   return ptyModule;

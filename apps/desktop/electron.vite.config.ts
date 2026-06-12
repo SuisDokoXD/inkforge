@@ -94,14 +94,11 @@ export default defineConfig({
             if (id.includes("@xyflow") || id.includes("@dagrejs")) {
               return "vendor-graph";
             }
-            if (id.includes("@xterm") || id.includes("node-pty")) {
+            if (id.includes("@xterm")) {
               return "vendor-terminal";
             }
             if (id.includes("motion")) {
               return "vendor-motion";
-            }
-            if (id.includes("lottie")) {
-              return "vendor-lottie";
             }
             if (id.includes("lucide-react")) {
               return "vendor-icons";

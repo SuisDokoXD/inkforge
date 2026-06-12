@@ -60,10 +60,8 @@
     "cmdk": "^1.1.1",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.9",
-    "lottie-react": "^2.4.1",
     "lucide-react": "^1.14.0",
-    "motion": "^12.40.0",
-    "node-pty": "^1.0.0"
+    "motion": "^12.40.0"
   },
   "devDependencies": {
     "@inkforge/auto-writer-engine": "workspace:*",
@@ -88,6 +86,7 @@
     "electron": "^32.2.5",
     "electron-builder": "^25.1.8",
     "electron-vite": "^2.3.0",
+    "node-pty": "^1.0.0",
     "postcss": "^8.4.49",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -121,7 +120,6 @@
       "!**/node_modules/@inkforge/*/tsconfig*.json"
     ],
     "asarUnpack": [
-      "**/node_modules/node-pty/**",
       "**/node_modules/better-sqlite3/**"
     ],
     "directories": {
