@@ -11,6 +11,14 @@ interface NovelCharacterDetailProps {
   tavernCards: TavernCardRecord[];
 }
 
+type EditableNovelCharacterField =
+  | "name"
+  | "persona"
+  | "backstory"
+  | "relations"
+  | "traits"
+  | "linkedTavernCardId";
+
 function syncModeLabel(mode: TavernCardRecord["syncMode"]): string {
   if (mode === "two-way") return "双向同步";
   if (mode === "snapshot") return "创建时复制";
@@ -67,12 +75,15 @@ export function NovelCharacterDetail({
     },
   });
 
-  const handleFieldChange = (field: keyof NovelCharacterRecord, value: any) => {
+  const handleFieldChange = <K extends EditableNovelCharacterField>(
+    field: K,
+    value: NovelCharacterRecord[K],
+  ) => {
     setLocalData((prev) => ({ ...prev, [field]: value }));
     
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      updateMut.mutate({ [field]: value });
+      updateMut.mutate({ [field]: value } as Partial<NovelCharacterRecord>);
     }, 500);
   };
 

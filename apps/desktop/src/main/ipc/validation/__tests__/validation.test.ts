@@ -4,6 +4,7 @@ import path from "node:path";
 import { parseAutoWriterStartInput } from "../auto-writer";
 import { parseCharacterSyncApplyInput } from "../character";
 import { asObject } from "../core";
+import { parseExternalOpenUrlInput } from "../external";
 import { parseLLMChatInput } from "../llm";
 import {
   parseProviderListRemoteModelsInput,
@@ -81,6 +82,21 @@ describe("settings validation", () => {
     expectInvalid(
       () => parseSettingsSetInput({ updates: { editorFontSize: "large" } }),
       "editorFontSize must be a finite number",
+    );
+  });
+});
+
+describe("external URL validation", () => {
+  it("allows only http/https URLs", () => {
+    expect(parseExternalOpenUrlInput({ url: "https://example.com/docs" })).toEqual({
+      url: "https://example.com/docs",
+    });
+    expect(parseExternalOpenUrlInput({ url: "http://example.com" })).toEqual({
+      url: "http://example.com",
+    });
+    expectInvalid(
+      () => parseExternalOpenUrlInput({ url: "file:///C:/Windows/System32/calc.exe" }),
+      "external:open-url.url must be an http/https URL",
     );
   });
 });

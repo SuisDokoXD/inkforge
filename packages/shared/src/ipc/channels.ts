@@ -33,6 +33,7 @@
   dailyProgress: "daily:progress",
   settingsGet: "settings:get",
   settingsSet: "settings:set",
+  externalOpenUrl: "external:open-url",
   fsPickFile: "fs:pick-file",
   fsSaveFile: "fs:save-file",
   terminalSpawn: "terminal:spawn",

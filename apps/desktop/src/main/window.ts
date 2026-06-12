@@ -1,7 +1,8 @@
-import { BrowserWindow, app, screen, shell } from "electron";
+import { BrowserWindow, app, screen } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
+import { isHttpOrHttpsUrl, openExternalHttpUrl } from "./external-url";
 
 interface SavedBounds {
   width: number;
@@ -74,15 +75,6 @@ function clampToDisplay(b: SavedBounds): SavedBounds {
   return { width: b.width, height: b.height };
 }
 
-function isHttpOrHttps(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function isAllowedAppNavigation(url: string, devUrl: string | undefined, rendererEntry: string): boolean {
   try {
     const parsed = new URL(url);
@@ -130,16 +122,16 @@ export function createMainWindow(): BrowserWindow {
     if (saved.isMaximized) window.maximize();
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (isHttpOrHttps(url)) {
-      void shell.openExternal(url);
+    if (isHttpOrHttpsUrl(url)) {
+      void openExternalHttpUrl(url);
     }
     return { action: "deny" };
   });
   window.webContents.on("will-navigate", (event, url) => {
     if (isAllowedAppNavigation(url, process.env.ELECTRON_RENDERER_URL, rendererEntry)) return;
     event.preventDefault();
-    if (isHttpOrHttps(url)) {
-      void shell.openExternal(url);
+    if (isHttpOrHttpsUrl(url)) {
+      void openExternalHttpUrl(url);
     }
   });
   window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {

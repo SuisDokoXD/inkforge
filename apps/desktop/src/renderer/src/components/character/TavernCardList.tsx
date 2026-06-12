@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { NovelCharacterRecord, TavernCardRecord } from "@inkforge/shared";
+import type { NovelCharacterRecord, TavernCardCreateInput, TavernCardRecord } from "@inkforge/shared";
 import { tavernCardApi, providerApi } from "../../lib/api";
 import { useQuery } from "@tanstack/react-query";
 
@@ -31,7 +31,7 @@ export function TavernCardList({
   });
 
   const createMut = useMutation({
-    mutationFn: (input: any) => tavernCardApi.create(input),
+    mutationFn: (input: TavernCardCreateInput) => tavernCardApi.create(input),
     onSuccess: (newCard) => {
       queryClient.invalidateQueries({ queryKey: ["tavernCards"] });
       onSelect(newCard.id);
@@ -46,7 +46,7 @@ export function TavernCardList({
       providerId: defaultProvider,
       model: "default",
       linkedNovelCharacterId: char.id,
-      syncMode: "two-way"
+      syncMode: "two-way",
     });
   };
 

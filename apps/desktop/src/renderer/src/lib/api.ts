@@ -195,6 +195,11 @@ export const diagApi = {
   crashDismiss: (): Promise<{ ok: true }> => api().diag.crashDismiss(),
 };
 
+export const externalApi = {
+  openUrl: (input: import("@inkforge/shared").ExternalOpenUrlInput): Promise<{ ok: true }> =>
+    api().external.openUrl(input),
+};
+
 export const fsApi = {
   pickFile: (input: FsPickFileInput = {}): Promise<FsPickFileResponse> => api().fs.pickFile(input),
   saveFile: (input: FsSaveFileInput): Promise<FsSaveFileResponse> => api().fs.saveFile(input),

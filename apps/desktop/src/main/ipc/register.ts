@@ -11,6 +11,7 @@ import { registerDailyHandlers } from "./daily";
 import { registerDailySummaryHandlers } from "./daily-summary";
 import { registerDiagHandlers } from "./diag";
 import { registerFeedbackHandlers } from "./feedback";
+import { registerExternalHandlers } from "./external";
 import { registerFsHandlers } from "./fs";
 import { registerLLMHandlers } from "./llm";
 import { registerMarketHandlers } from "./market";
@@ -46,6 +47,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerProviderHandlers();
   registerLLMHandlers(getWindow);
   registerFeedbackHandlers();
+  registerExternalHandlers();
   registerOutlineHandlers();
   registerDailyHandlers();
   registerSettingsHandlers();

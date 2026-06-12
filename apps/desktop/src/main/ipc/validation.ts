@@ -9,6 +9,7 @@ export * from "./validation/chapter-log";
 export * from "./validation/core";
 export * from "./validation/daily";
 export * from "./validation/feedback";
+export * from "./validation/external";
 export * from "./validation/fs-terminal";
 export * from "./validation/letter";
 export * from "./validation/llm";

@@ -1,6 +1,7 @@
 import { autoUpdater } from "electron-updater";
-import { BrowserWindow, shell } from "electron";
+import { BrowserWindow } from "electron";
 import { logger } from "./logger";
+import { openExternalHttpUrl } from "../external-url";
 
 export type UpdateStatus =
   | { state: "idle" }
@@ -102,5 +103,5 @@ export function quitAndInstall(): void {
 }
 
 export async function openDownloadPage(): Promise<void> {
-  await shell.openExternal("https://github.com/tompignofind123-cyber/inkforge/releases/latest");
+  await openExternalHttpUrl("https://github.com/tompignofind123-cyber/inkforge/releases/latest");
 }

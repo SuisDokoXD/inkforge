@@ -628,6 +628,10 @@ export interface TavernCardDeleteInput {
   id: string;
 }
 
+export interface ExternalOpenUrlInput {
+  url: string;
+}
+
 export interface NovelCharacterCreateInput {
   projectId: string;
   name: string;
@@ -1156,6 +1160,7 @@ declare module "./maps" {
     [ipcChannels.dailyProgress]: { req: DailyProgressInput; res: DailyProgressRecord };
     [ipcChannels.settingsGet]: { req: SettingsGetInput; res: AppSettings };
     [ipcChannels.settingsSet]: { req: SettingsSetInput; res: AppSettings };
+    [ipcChannels.externalOpenUrl]: { req: ExternalOpenUrlInput; res: { ok: true } };
     [ipcChannels.fsPickFile]: { req: FsPickFileInput; res: FsPickFileResponse };
     [ipcChannels.fsSaveFile]: { req: FsSaveFileInput; res: FsSaveFileResponse };
     [ipcChannels.terminalSpawn]: { req: TerminalSpawnInput; res: TerminalSpawnResponse };

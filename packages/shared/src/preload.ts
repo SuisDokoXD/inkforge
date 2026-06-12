@@ -27,6 +27,7 @@ import type {
   FeedbackDeleteEmptyInput,
   FeedbackDismissInput,
   FeedbackListInput,
+  ExternalOpenUrlInput,
   FsPickFileInput,
   FsPickFileResponse,
   FsSaveFileInput,
@@ -236,6 +237,9 @@ export interface InkforgeApi {
     status(): Promise<UpdateStatus>;
     openDownloadPage(): Promise<{ ok: true }>;
     onStatus(listener: (status: UpdateStatus) => void): () => void;
+  };
+  external: {
+    openUrl(input: ExternalOpenUrlInput): Promise<{ ok: true }>;
   };
   market: {
     fetchRegistry(input?: MarketFetchRegistryInput): Promise<MarketRegistryDTO>;

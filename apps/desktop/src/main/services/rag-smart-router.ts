@@ -51,7 +51,7 @@ export function shouldRunRag(prompt: string | undefined | null): boolean {
 // 给 skill-service / autoWriter 调用：
 //   const ragBlock = shouldRunRag(query) ? buildRagBlock(projectId, query) : "";
 // 也可以直接调本模块的 maybeBuildRagBlock 短路版本。
-export function maybeBuildRagBlock<T extends (...args: any[]) => string>(
+export function maybeBuildRagBlock<T extends (...args: never[]) => string>(
   query: string | undefined | null,
   build: T,
   ...args: Parameters<T>

@@ -12,6 +12,8 @@ interface SyncDiffDialogProps {
   onApplied: () => void;
 }
 
+type SyncResolution = { winner: "novel" | "card"; manualValue?: string };
+
 export function SyncDiffDialog({
   open,
   previewData,
@@ -23,8 +25,8 @@ export function SyncDiffDialog({
   if (!open) return null;
 
   const queryClient = useQueryClient();
-  const [resolutions, setResolutions] = useState<Record<string, { winner: "novel" | "card"; manualValue?: string }>>(() => {
-    const initial: any = {};
+  const [resolutions, setResolutions] = useState<Record<string, SyncResolution>>(() => {
+    const initial: Record<string, SyncResolution> = {};
     previewData.forEach(row => {
       initial[row.field] = { winner: row.winner || "novel" };
     });

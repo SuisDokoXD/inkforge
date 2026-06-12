@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useT } from "../../lib/i18n";
 import { useAppStore } from "../../stores/app-store";
-import { settingsApi } from "../../lib/api";
+import { externalApi, settingsApi } from "../../lib/api";
 import { ShortcutCheatSheet } from "../ShortcutCheatSheet";
 
 export function HelpMenu(): JSX.Element {
@@ -42,8 +42,10 @@ export function HelpMenu(): JSX.Element {
     }
   };
 
-  const handleOpenDocs = () => {
-    window.open("https://github.com/tompignofind123-cyber/inkforge#readme", "_blank", "noopener,noreferrer");
+  const handleOpenDocs = async () => {
+    await externalApi.openUrl({
+      url: "https://github.com/tompignofind123-cyber/inkforge#readme",
+    });
     setOpen(false);
   };
 

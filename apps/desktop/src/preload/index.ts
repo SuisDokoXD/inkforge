@@ -90,6 +90,9 @@ const api: InkforgeApi = {
     openDownloadPage: () => ipcRenderer.invoke(ipcChannels.updateOpenDownloadPage),
     onStatus: (listener) => subscribe(ipcEventChannels.updateStatus, listener),
   },
+  external: {
+    openUrl: (input) => ipcRenderer.invoke(ipcChannels.externalOpenUrl, input),
+  },
   market: {
     fetchRegistry: (input) =>
       ipcRenderer.invoke(ipcChannels.marketFetchRegistry, input ?? {}),

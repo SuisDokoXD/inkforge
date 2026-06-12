@@ -10,6 +10,7 @@ import * as path from "path";
 import { buildDiagSnapshot } from "./services/diag-service";
 import { getAppSettings } from "@inkforge/storage";
 import { getAppContext } from "./services/app-state";
+import { openExternalHttpUrl } from "./external-url";
 
 async function copyDiagToClipboard(): Promise<void> {
   try {
@@ -121,7 +122,7 @@ export function buildAppMenu(): void {
         {
           label: "访问 GitHub",
           click: () => {
-            void shell.openExternal("https://github.com/tompignofind123-cyber/inkforge");
+            void openExternalHttpUrl("https://github.com/tompignofind123-cyber/inkforge");
           },
         },
         {

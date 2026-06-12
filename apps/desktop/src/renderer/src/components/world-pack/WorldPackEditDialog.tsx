@@ -52,7 +52,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
   const { dataUrl: coverPreview } = usePackCover(packQuery.data);
 
   // 统一的"保存中→已保存→淡出"状态机
-  function withSaveIndicator<T extends (...args: any[]) => Promise<unknown>>(fn: T): T {
+  function withSaveIndicator<T extends (...args: never[]) => Promise<unknown>>(fn: T): T {
     return (async (...args: Parameters<T>) => {
       setSaveState("saving");
       try {
