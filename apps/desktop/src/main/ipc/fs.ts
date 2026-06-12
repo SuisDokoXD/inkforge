@@ -2,12 +2,11 @@ import { ipcMain, dialog, type BrowserWindow } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import type {
-  FsPickFileInput,
   FsPickFileResponse,
-  FsSaveFileInput,
   FsSaveFileResponse,
   ipcChannels,
 } from "@inkforge/shared";
+import { parseFsPickFileInput, parseFsSaveFileInput } from "./validation";
 
 const FS_PICK_FILE: typeof ipcChannels.fsPickFile = "fs:pick-file";
 const FS_SAVE_FILE: typeof ipcChannels.fsSaveFile = "fs:save-file";
@@ -18,7 +17,8 @@ const DEFAULT_MD_FILTERS = [
 ];
 
 export function registerFsHandlers(getWindow: () => BrowserWindow | null): void {
-  ipcMain.handle(FS_PICK_FILE, async (_event, input: FsPickFileInput): Promise<FsPickFileResponse> => {
+  ipcMain.handle(FS_PICK_FILE, async (_event, payload: unknown): Promise<FsPickFileResponse> => {
+    const input = parseFsPickFileInput(payload);
     const win = getWindow();
     const result = win
       ? await dialog.showOpenDialog(win, {
@@ -39,7 +39,8 @@ export function registerFsHandlers(getWindow: () => BrowserWindow | null): void 
     return { path: filePath, content, fileName: path.basename(filePath) };
   });
 
-  ipcMain.handle(FS_SAVE_FILE, async (_event, input: FsSaveFileInput): Promise<FsSaveFileResponse> => {
+  ipcMain.handle(FS_SAVE_FILE, async (_event, payload: unknown): Promise<FsSaveFileResponse> => {
+    const input = parseFsSaveFileInput(payload);
     const win = getWindow();
     const result = win
       ? await dialog.showSaveDialog(win, {

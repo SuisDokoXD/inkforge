@@ -1,20 +1,11 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import type {
   CompactResult,
-  TavernDirectorPostInput,
   TavernDirectorPostResponse,
-  TavernMessageListInput,
   TavernMessageRecord,
-  TavernRoundRunInput,
   TavernRoundRunResponse,
-  TavernRoundStopInput,
   TavernRoundStopResponse,
-  TavernSessionCreateInput,
-  TavernSessionDeleteInput,
-  TavernSessionGetInput,
-  TavernSessionListInput,
   TavernSessionRecord,
-  TavernSummaryCompactInput,
   ipcChannels,
 } from "@inkforge/shared";
 import {
@@ -30,6 +21,17 @@ import {
   stopTavernRound,
 } from "../services/tavern-round-service";
 import { compactTavernHistory } from "../services/tavern-summary-service";
+import {
+  parseTavernDirectorPostInput,
+  parseTavernMessageListInput,
+  parseTavernRoundRunInput,
+  parseTavernRoundStopInput,
+  parseTavernSessionCreateInput,
+  parseTavernSessionDeleteInput,
+  parseTavernSessionGetInput,
+  parseTavernSessionListInput,
+  parseTavernSummaryCompactInput,
+} from "./validation";
 
 const TAVERN_SESSION_CREATE: typeof ipcChannels.tavernSessionCreate = "tavern-session:create";
 const TAVERN_SESSION_GET: typeof ipcChannels.tavernSessionGet = "tavern-session:get";
@@ -44,56 +46,56 @@ const TAVERN_SUMMARY_COMPACT: typeof ipcChannels.tavernSummaryCompact = "tavern-
 export function registerTavernHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(
     TAVERN_SESSION_CREATE,
-    async (_event, input: TavernSessionCreateInput): Promise<TavernSessionRecord> => {
-      return createTavernSession(input);
+    async (_event, input: unknown): Promise<TavernSessionRecord> => {
+      return createTavernSession(parseTavernSessionCreateInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_SESSION_GET,
-    async (_event, input: TavernSessionGetInput): Promise<TavernSessionRecord | null> => {
-      return getTavernSession(input);
+    async (_event, input: unknown): Promise<TavernSessionRecord | null> => {
+      return getTavernSession(parseTavernSessionGetInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_SESSION_LIST,
-    async (_event, input: TavernSessionListInput): Promise<TavernSessionRecord[]> => {
-      return listTavernSessionsByProject(input);
+    async (_event, input: unknown): Promise<TavernSessionRecord[]> => {
+      return listTavernSessionsByProject(parseTavernSessionListInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_SESSION_DELETE,
-    async (_event, input: TavernSessionDeleteInput): Promise<{ sessionId: string }> => {
-      return deleteTavernSessionRecord(input);
+    async (_event, input: unknown): Promise<{ sessionId: string }> => {
+      return deleteTavernSessionRecord(parseTavernSessionDeleteInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_MESSAGE_LIST,
-    async (_event, input: TavernMessageListInput): Promise<TavernMessageRecord[]> => {
-      return listTavernMessagesForSession(input);
+    async (_event, input: unknown): Promise<TavernMessageRecord[]> => {
+      return listTavernMessagesForSession(parseTavernMessageListInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_DIRECTOR_POST,
-    async (_event, input: TavernDirectorPostInput): Promise<TavernDirectorPostResponse> => {
-      return postDirectorMessage(input);
+    async (_event, input: unknown): Promise<TavernDirectorPostResponse> => {
+      return postDirectorMessage(parseTavernDirectorPostInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_ROUND_RUN,
-    async (_event, input: TavernRoundRunInput): Promise<TavernRoundRunResponse> => {
-      return startTavernRound(input, getWindow());
+    async (_event, input: unknown): Promise<TavernRoundRunResponse> => {
+      return startTavernRound(parseTavernRoundRunInput(input), getWindow());
     },
   );
   ipcMain.handle(
     TAVERN_ROUND_STOP,
-    async (_event, input: TavernRoundStopInput): Promise<TavernRoundStopResponse> => {
-      return stopTavernRound(input);
+    async (_event, input: unknown): Promise<TavernRoundStopResponse> => {
+      return stopTavernRound(parseTavernRoundStopInput(input));
     },
   );
   ipcMain.handle(
     TAVERN_SUMMARY_COMPACT,
-    async (_event, input: TavernSummaryCompactInput): Promise<CompactResult> => {
-      return compactTavernHistory(input);
+    async (_event, input: unknown): Promise<CompactResult> => {
+      return compactTavernHistory(parseTavernSummaryCompactInput(input));
     },
   );
 }

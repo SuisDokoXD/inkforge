@@ -58,6 +58,10 @@ import { appendAiEntry } from "./chapter-log-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 import { findSampleReferences } from "./rag-service";
+import {
+  checkAchievementsAndNotify,
+  unlockAchievementAndNotify,
+} from "./achievement-service";
 
 interface RuntimeController {
   runId: string;
@@ -418,6 +422,20 @@ export async function startAutoWriter(
       });
     } catch (error) {
       logger.warn("auto-writer: updateAutoWriterRun failed", error);
+    }
+    if (status === "completed" || status === "partial") {
+      try {
+        checkAchievementsAndNotify(project.id, "auto-writer-done");
+        if ((stats?.totalRewrites ?? 0) >= 3) {
+          unlockAchievementAndNotify(project.id, "rewrite_master", {
+            trigger: "auto-writer-done",
+            runId,
+            totalRewrites: stats?.totalRewrites ?? 0,
+          });
+        }
+      } catch (error) {
+        logger.warn("auto-writer achievement check failed", error);
+      }
     }
 
     // 章节日志：本次 AI 运行总结

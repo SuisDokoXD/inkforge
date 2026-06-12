@@ -71,7 +71,8 @@ function tryParseBeats(raw: string): PlannerBeat[] {
  */
 function buildFallbackBeats(userIdeas: string, maxSegments: number): PlannerBeat[] {
   const ideas = (userIdeas ?? "").trim();
-  const segCount = Math.max(3, Math.min(maxSegments, 8));
+  const clampedMaxSegments = Math.max(1, maxSegments);
+  const segCount = Math.min(Math.max(3, Math.min(clampedMaxSegments, 8)), clampedMaxSegments);
   if (!ideas) {
     // 实在没思路：生成空段，让 writer 完全靠角色 / 世界观 / 上下文发挥
     return Array.from({ length: segCount }, (_, i) => ({

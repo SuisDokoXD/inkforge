@@ -14,11 +14,13 @@ import { getProject } from "@inkforge/storage";
 import { getAppContext } from "../services/app-state";
 import type {
   ChapterImportBulkResponse,
-  ChapterImportEpubInput,
-  ChapterImportTxtInput,
-  ProjectExportInput,
   ProjectExportResponse,
 } from "@inkforge/shared";
+import {
+  parseChapterImportEpubInput,
+  parseChapterImportTxtInput,
+  parseProjectExportInput,
+} from "./validation";
 
 interface ExportFormat {
   channel: string;
@@ -46,7 +48,8 @@ export function registerProjectExportHandlers(getWindow: () => BrowserWindow | n
   for (const fmt of FORMATS) {
     ipcMain.handle(
       fmt.channel,
-      async (_e, input: ProjectExportInput): Promise<ProjectExportResponse> => {
+      async (_e, payload: unknown): Promise<ProjectExportResponse> => {
+        const input = parseProjectExportInput(payload, fmt.channel);
         const ctx = getAppContext();
         const project = getProject(ctx.db, input.projectId);
         if (!project) throw new Error(`Project not found: ${input.projectId}`);
@@ -85,15 +88,15 @@ export function registerProjectExportHandlers(getWindow: () => BrowserWindow | n
 
   ipcMain.handle(
     "chapter:import-txt",
-    async (_e, input: ChapterImportTxtInput): Promise<ChapterImportBulkResponse> => {
-      return importTxtChapters(input);
+    async (_e, payload: unknown): Promise<ChapterImportBulkResponse> => {
+      return importTxtChapters(parseChapterImportTxtInput(payload));
     },
   );
 
   ipcMain.handle(
     "chapter:import-epub",
-    async (_e, input: ChapterImportEpubInput): Promise<ChapterImportBulkResponse> => {
-      return importEpubChapters(input);
+    async (_e, payload: unknown): Promise<ChapterImportBulkResponse> => {
+      return importEpubChapters(parseChapterImportEpubInput(payload));
     },
   );
 }

@@ -136,6 +136,8 @@ export const ipcChannels = {
   novelCharacterGet: "novel-character:get",
   novelCharacterList: "novel-character:list",
   novelCharacterDelete: "novel-character:delete",
+  novelCharacterExtractFromChapter: "novel-character:extract-from-chapter",
+  novelCharacterImportCandidates: "novel-character:import-candidates",
   characterSyncPreview: "character-sync:preview",
   characterSyncApply: "character-sync:apply",
   characterSyncHistory: "character-sync:history",
@@ -921,6 +923,58 @@ export interface NovelCharacterDeleteInput {
   id: string;
 }
 
+export interface NovelCharacterExtractInput {
+  projectId: string;
+  chapterId: string;
+  maxCandidates?: number;
+}
+
+export interface NovelCharacterExtractCandidate {
+  name: string;
+  aliases: string[];
+  persona: string;
+  backstory: string;
+  evidence: string;
+  confidence: number;
+}
+
+export interface NovelCharacterExtractRelation {
+  sourceName: string;
+  targetName: string;
+  label: string;
+  evidence: string;
+  confidence: number;
+}
+
+export interface NovelCharacterExtractResponse {
+  chapterId: string;
+  chapterTitle: string;
+  candidates: NovelCharacterExtractCandidate[];
+  relationships: NovelCharacterExtractRelation[];
+  providerId: string | null;
+  model: string | null;
+}
+
+export interface NovelCharacterImportCandidatesInput {
+  projectId: string;
+  chapterId?: string;
+  candidates: NovelCharacterExtractCandidate[];
+  relationships?: NovelCharacterExtractRelation[];
+}
+
+export interface NovelCharacterImportCandidatesResponse {
+  created: NovelCharacterRecord[];
+  skipped: Array<{
+    name: string;
+    reason: "empty" | "exists";
+  }>;
+  relationships: Array<{
+    sourceId: string;
+    targetId: string;
+    label: string;
+  }>;
+}
+
 export type CharacterSyncRequestDirection = "novel_to_card" | "card_to_novel" | "auto";
 
 export interface CharacterSyncPreviewInput {
@@ -1388,6 +1442,8 @@ export interface IpcRequestMap {
   [ipcChannels.novelCharacterGet]: { req: NovelCharacterGetInput; res: NovelCharacterRecord | null };
   [ipcChannels.novelCharacterList]: { req: NovelCharacterListInput; res: NovelCharacterRecord[] };
   [ipcChannels.novelCharacterDelete]: { req: NovelCharacterDeleteInput; res: { id: string } };
+  [ipcChannels.novelCharacterExtractFromChapter]: { req: NovelCharacterExtractInput; res: NovelCharacterExtractResponse };
+  [ipcChannels.novelCharacterImportCandidates]: { req: NovelCharacterImportCandidatesInput; res: NovelCharacterImportCandidatesResponse };
   [ipcChannels.characterSyncPreview]: { req: CharacterSyncPreviewInput; res: CharacterSyncPreviewResponse };
   [ipcChannels.characterSyncApply]: { req: CharacterSyncApplyInput; res: CharacterSyncApplyResponse };
   [ipcChannels.characterSyncHistory]: { req: CharacterSyncHistoryInput; res: CharacterSyncLogRecord[] };
@@ -1949,7 +2005,9 @@ export interface AchievementCheckInput {
     | "chapter-update"
     | "chapter-create"
     | "character-create"
+    | "character-update"
     | "world-create"
+    | "world-update"
     | "auto-writer-done"
     | "letter-generate"
     | "snapshot-create"

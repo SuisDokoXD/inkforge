@@ -1,13 +1,8 @@
 import { ipcMain } from "electron";
 import {
   ipcChannels,
-  type SnapshotCreateInput,
   type SnapshotCreateResponse,
-  type SnapshotDeleteInput,
-  type SnapshotGetInput,
   type SnapshotGetResponse,
-  type SnapshotListInput,
-  type SnapshotRestoreInput,
   type SnapshotRestoreResponse,
   type ChapterSnapshotRecord,
 } from "@inkforge/shared";
@@ -18,6 +13,14 @@ import {
   listSnapshots,
   restoreSnapshot,
 } from "../services/snapshot-service";
+import { checkAchievementsAndNotify } from "../services/achievement-service";
+import {
+  parseSnapshotCreateInput,
+  parseSnapshotDeleteInput,
+  parseSnapshotGetInput,
+  parseSnapshotListInput,
+  parseSnapshotRestoreInput,
+} from "./validation";
 
 const SNAPSHOT_CREATE: typeof ipcChannels.snapshotCreate = "snapshot:create";
 const SNAPSHOT_LIST: typeof ipcChannels.snapshotList = "snapshot:list";
@@ -28,7 +31,8 @@ const SNAPSHOT_DELETE: typeof ipcChannels.snapshotDelete = "snapshot:delete";
 export function registerSnapshotHandlers(): void {
   ipcMain.handle(
     SNAPSHOT_CREATE,
-    async (_event, input: SnapshotCreateInput): Promise<SnapshotCreateResponse> => {
+    async (_event, payload: unknown): Promise<SnapshotCreateResponse> => {
+      const input = parseSnapshotCreateInput(payload);
       const result = createSnapshot({
         chapterId: input.chapterId,
         projectId: input.projectId,
@@ -40,13 +44,21 @@ export function registerSnapshotHandlers(): void {
         // 手动快照默认不去重，让用户每次点都留痕
         dedupe: input.kind && input.kind !== "manual" ? true : false,
       });
+      if ((input.kind ?? "manual") === "manual") {
+        try {
+          checkAchievementsAndNotify(input.projectId, "snapshot-create");
+        } catch {
+          /* do not block snapshot creation on achievement bookkeeping */
+        }
+      }
       return { snapshot: result.snapshot };
     },
   );
 
   ipcMain.handle(
     SNAPSHOT_LIST,
-    async (_event, input: SnapshotListInput): Promise<ChapterSnapshotRecord[]> => {
+    async (_event, payload: unknown): Promise<ChapterSnapshotRecord[]> => {
+      const input = parseSnapshotListInput(payload);
       return listSnapshots(input.chapterId, {
         limit: input.limit,
         kinds: input.kinds,
@@ -57,7 +69,8 @@ export function registerSnapshotHandlers(): void {
 
   ipcMain.handle(
     SNAPSHOT_GET,
-    async (_event, input: SnapshotGetInput): Promise<SnapshotGetResponse> => {
+    async (_event, payload: unknown): Promise<SnapshotGetResponse> => {
+      const input = parseSnapshotGetInput(payload);
       const result = getSnapshotWithContent(input.snapshotId);
       return { snapshot: result.snapshot, content: result.content };
     },
@@ -65,7 +78,8 @@ export function registerSnapshotHandlers(): void {
 
   ipcMain.handle(
     SNAPSHOT_RESTORE,
-    async (_event, input: SnapshotRestoreInput): Promise<SnapshotRestoreResponse> => {
+    async (_event, payload: unknown): Promise<SnapshotRestoreResponse> => {
+      const input = parseSnapshotRestoreInput(payload);
       const result = restoreSnapshot(input.snapshotId);
       return {
         restored: result.restored,
@@ -77,7 +91,8 @@ export function registerSnapshotHandlers(): void {
 
   ipcMain.handle(
     SNAPSHOT_DELETE,
-    async (_event, input: SnapshotDeleteInput): Promise<{ snapshotId: string }> => {
+    async (_event, payload: unknown): Promise<{ snapshotId: string }> => {
+      const input = parseSnapshotDeleteInput(payload);
       return deleteSnapshot(input.snapshotId);
     },
   );

@@ -136,6 +136,10 @@ const api: InkforgeApi = {
     get: (input) => ipcRenderer.invoke(ipcChannels.novelCharacterGet, input),
     list: (input) => ipcRenderer.invoke(ipcChannels.novelCharacterList, input),
     delete: (input) => ipcRenderer.invoke(ipcChannels.novelCharacterDelete, input),
+    extractFromChapter: (input) =>
+      ipcRenderer.invoke(ipcChannels.novelCharacterExtractFromChapter, input),
+    importCandidates: (input) =>
+      ipcRenderer.invoke(ipcChannels.novelCharacterImportCandidates, input),
   },
   characterSync: {
     preview: (input) => ipcRenderer.invoke(ipcChannels.characterSyncPreview, input),

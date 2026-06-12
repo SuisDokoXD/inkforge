@@ -5,12 +5,7 @@ import {
   listSampleLibs,
 } from "@inkforge/storage";
 import type {
-  SampleLibCreateInput,
-  SampleLibDeleteInput,
-  SampleLibImportEpubInput,
   SampleLibImportResponse,
-  SampleLibImportTextInput,
-  SampleLibListInput,
   SampleLibRecord,
 } from "@inkforge/shared";
 import { getAppContext } from "../services/app-state";
@@ -18,6 +13,13 @@ import {
   importEpubAsLib,
   importTextAsLib,
 } from "../services/sample-lib-service";
+import {
+  parseSampleLibCreateInput,
+  parseSampleLibDeleteInput,
+  parseSampleLibImportEpubInput,
+  parseSampleLibImportTextInput,
+  parseSampleLibListInput,
+} from "./validation";
 
 const LIST = "sample-lib:list";
 const CREATE = "sample-lib:create";
@@ -26,19 +28,21 @@ const IMPORT_TEXT = "sample-lib:import-text";
 const IMPORT_EPUB = "sample-lib:import-epub";
 
 export function registerSampleLibHandlers(): void {
-  ipcMain.handle(LIST, async (_e, input: SampleLibListInput): Promise<SampleLibRecord[]> => {
+  ipcMain.handle(LIST, async (_e, input: unknown): Promise<SampleLibRecord[]> => {
+    const parsed = parseSampleLibListInput(input);
     const ctx = getAppContext();
-    return listSampleLibs(ctx.db, input.projectId);
+    return listSampleLibs(ctx.db, parsed.projectId);
   });
 
-  ipcMain.handle(CREATE, async (_e, input: SampleLibCreateInput): Promise<SampleLibRecord> => {
+  ipcMain.handle(CREATE, async (_e, input: unknown): Promise<SampleLibRecord> => {
+    const parsed = parseSampleLibCreateInput(input);
     const ctx = getAppContext();
     return createSampleLib(ctx.db, {
-      projectId: input.projectId,
-      title: input.title,
-      author: input.author ?? null,
-      notes: input.notes ?? null,
-      chunks: input.chunks?.map((c) => ({
+      projectId: parsed.projectId,
+      title: parsed.title,
+      author: parsed.author ?? null,
+      notes: parsed.notes ?? null,
+      chunks: parsed.chunks?.map((c) => ({
         ordinal: c.ordinal,
         chapterTitle: c.chapterTitle ?? null,
         text: c.text,
@@ -46,17 +50,18 @@ export function registerSampleLibHandlers(): void {
     });
   });
 
-  ipcMain.handle(DELETE, async (_e, input: SampleLibDeleteInput): Promise<{ libId: string }> => {
+  ipcMain.handle(DELETE, async (_e, input: unknown): Promise<{ libId: string }> => {
+    const parsed = parseSampleLibDeleteInput(input);
     const ctx = getAppContext();
-    deleteSampleLib(ctx.db, input.libId);
-    return { libId: input.libId };
+    deleteSampleLib(ctx.db, parsed.libId);
+    return { libId: parsed.libId };
   });
 
-  ipcMain.handle(IMPORT_TEXT, async (_e, input: SampleLibImportTextInput): Promise<SampleLibImportResponse> => {
-    return importTextAsLib(input);
+  ipcMain.handle(IMPORT_TEXT, async (_e, input: unknown): Promise<SampleLibImportResponse> => {
+    return importTextAsLib(parseSampleLibImportTextInput(input));
   });
 
-  ipcMain.handle(IMPORT_EPUB, async (_e, input: SampleLibImportEpubInput): Promise<SampleLibImportResponse> => {
-    return importEpubAsLib(input);
+  ipcMain.handle(IMPORT_EPUB, async (_e, input: unknown): Promise<SampleLibImportResponse> => {
+    return importEpubAsLib(parseSampleLibImportEpubInput(input));
   });
 }

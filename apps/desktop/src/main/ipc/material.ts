@@ -1,13 +1,9 @@
 import { ipcMain } from "electron";
 import {
   ipcChannels,
-  type MaterialCreateInput,
-  type MaterialDeleteInput,
   type MaterialDeleteResponse,
-  type MaterialListInput,
   type MaterialListResponse,
   type MaterialRecord,
-  type MaterialUpdateInput,
 } from "@inkforge/shared";
 import {
   createMaterial,
@@ -15,6 +11,12 @@ import {
   patchMaterial,
   removeMaterial,
 } from "../services/material-service";
+import {
+  parseMaterialCreateInput,
+  parseMaterialDeleteInput,
+  parseMaterialListInput,
+  parseMaterialUpdateInput,
+} from "./validation";
 
 const MAT_LIST: typeof ipcChannels.materialList = "material:list";
 const MAT_CREATE: typeof ipcChannels.materialCreate = "material:create";
@@ -24,22 +26,22 @@ const MAT_DELETE: typeof ipcChannels.materialDelete = "material:delete";
 export function registerMaterialHandlers(): void {
   ipcMain.handle(
     MAT_LIST,
-    async (_e, input: MaterialListInput): Promise<MaterialListResponse> =>
-      listProjectMaterials(input),
+    async (_e, input: unknown): Promise<MaterialListResponse> =>
+      listProjectMaterials(parseMaterialListInput(input)),
   );
   ipcMain.handle(
     MAT_CREATE,
-    async (_e, input: MaterialCreateInput): Promise<MaterialRecord> =>
-      createMaterial(input),
+    async (_e, input: unknown): Promise<MaterialRecord> =>
+      createMaterial(parseMaterialCreateInput(input)),
   );
   ipcMain.handle(
     MAT_UPDATE,
-    async (_e, input: MaterialUpdateInput): Promise<MaterialRecord> =>
-      patchMaterial(input),
+    async (_e, input: unknown): Promise<MaterialRecord> =>
+      patchMaterial(parseMaterialUpdateInput(input)),
   );
   ipcMain.handle(
     MAT_DELETE,
-    async (_e, input: MaterialDeleteInput): Promise<MaterialDeleteResponse> =>
-      removeMaterial(input),
+    async (_e, input: unknown): Promise<MaterialDeleteResponse> =>
+      removeMaterial(parseMaterialDeleteInput(input)),
   );
 }

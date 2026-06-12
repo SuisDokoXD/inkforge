@@ -9,12 +9,14 @@ import {
 import type {
   SceneBindingListResponse,
   SceneBindingRecord,
-  SceneBindingResetInput,
-  SceneBindingSetModeInput,
-  SceneBindingUpsertInput,
   SceneRoutingMode,
 } from "@inkforge/shared";
 import { getAppContext } from "../services/app-state";
+import {
+  parseSceneBindingResetInput,
+  parseSceneBindingSetModeInput,
+  parseSceneBindingUpsertInput,
+} from "./validation";
 
 const SCENE_BINDING_LIST = "scene-binding:list";
 const SCENE_BINDING_UPSERT = "scene-binding:upsert";
@@ -40,14 +42,15 @@ export function registerSceneBindingHandlers(): void {
     SCENE_BINDING_UPSERT,
     async (
       _event,
-      input: SceneBindingUpsertInput,
+      input: unknown,
     ): Promise<SceneBindingRecord> => {
+      const parsed = parseSceneBindingUpsertInput(input);
       const ctx = getAppContext();
       return upsertSceneBinding(ctx.db, {
-        mode: input.mode,
-        sceneKey: input.sceneKey,
-        providerId: input.providerId,
-        model: input.model,
+        mode: parsed.mode,
+        sceneKey: parsed.sceneKey,
+        providerId: parsed.providerId,
+        model: parsed.model,
       });
     },
   );
@@ -56,11 +59,12 @@ export function registerSceneBindingHandlers(): void {
     SCENE_BINDING_RESET,
     async (
       _event,
-      input: SceneBindingResetInput,
-    ): Promise<{ sceneKey: SceneBindingResetInput["sceneKey"] }> => {
+      input: unknown,
+    ): Promise<{ sceneKey: SceneBindingRecord["sceneKey"] }> => {
+      const parsed = parseSceneBindingResetInput(input);
       const ctx = getAppContext();
-      resetSceneBinding(ctx.db, input.mode, input.sceneKey);
-      return { sceneKey: input.sceneKey };
+      resetSceneBinding(ctx.db, parsed.mode, parsed.sceneKey);
+      return { sceneKey: parsed.sceneKey };
     },
   );
 
@@ -76,11 +80,12 @@ export function registerSceneBindingHandlers(): void {
     SCENE_BINDING_SET_MODE,
     async (
       _event,
-      input: SceneBindingSetModeInput,
+      input: unknown,
     ): Promise<{ mode: SceneRoutingMode }> => {
+      const parsed = parseSceneBindingSetModeInput(input);
       const ctx = getAppContext();
-      setAppSettings(ctx.db, { sceneRoutingMode: input.mode });
-      return { mode: input.mode };
+      setAppSettings(ctx.db, { sceneRoutingMode: parsed.mode });
+      return { mode: parsed.mode };
     },
   );
 }

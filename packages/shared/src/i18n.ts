@@ -102,7 +102,7 @@ export const i18nResources: Resources = {
 
   // ActivityBar / pages
   "page.workspace": { zh: "写作", en: "Write", ja: "執筆" },
-  "page.skill": { zh: "技能", en: "Skills", ja: "スキル" },
+  "page.skill": { zh: "写作指令", en: "Writing Instructions", ja: "執筆指示" },
   "page.character": { zh: "角色", en: "Characters", ja: "キャラ" },
   "page.tavern": { zh: "酒馆", en: "Tavern", ja: "酒場" },
   "page.world": { zh: "世界观", en: "Worldbuilding", ja: "世界設定" },
@@ -424,7 +424,7 @@ export const i18nResources: Resources = {
   "nav.aria.label":  { zh: "主导航", en: "Main navigation", ja: "メインナビゲーション" },
   "nav.writing":     { zh: "写作", en: "Write", ja: "執筆" },
   "nav.outline":     { zh: "大纲", en: "Outline", ja: "アウトライン" },
-  "nav.skill":       { zh: "技能", en: "Skill", ja: "Skill" },
+  "nav.skill":       { zh: "写作指令", en: "Writing Instructions", ja: "執筆指示" },
   "nav.character":   { zh: "人物", en: "Characters", ja: "キャラクター" },
   "nav.tavern":      { zh: "酒馆", en: "Tavern", ja: "酒場" },
   "nav.world":       { zh: "世界观", en: "World", ja: "世界観" },
@@ -441,7 +441,7 @@ export const i18nResources: Resources = {
   "shortcut.terminal":        { zh: "切换终端", en: "Toggle terminal", ja: "ターミナル切替" },
   "shortcut.commandPalette":  { zh: "命令面板", en: "Command palette", ja: "コマンドパレット" },
   "settings.replayOnboarding":     { zh: "重新观看新手引导", en: "Replay onboarding", ja: "オンボーディングをもう一度" },
-  "settings.replayOnboarding.hint":{ zh: "重走工作目录 / 模型服务 / 技能 / 项目 五步向导", en: "Walk through workspace / provider / skill / project setup again", ja: "ワークスペース / Provider / Skill / プロジェクトの初期化をやり直す" },
+  "settings.replayOnboarding.hint":{ zh: "重走工作目录 / 模型服务 / 写作指令 / 项目 五步向导", en: "Walk through workspace / provider / writing instruction / project setup again", ja: "ワークスペース / Provider / 執筆指示 / プロジェクトの初期化をやり直す" },
   // M9 Phase 3.1: command palette
   "palette.aria.label":     { zh: "命令面板", en: "Command palette", ja: "コマンドパレット" },
   "palette.placeholder":    { zh: "输入命令、跳转或动作…", en: "Type a command, jump or action…", ja: "コマンドを入力…" },

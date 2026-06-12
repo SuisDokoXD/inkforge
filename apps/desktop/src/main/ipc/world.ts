@@ -1,12 +1,6 @@
 import { ipcMain } from "electron";
 import type {
-  WorldCreateInput,
-  WorldDeleteInput,
   WorldEntryRecord,
-  WorldGetInput,
-  WorldListInput,
-  WorldSearchInput,
-  WorldUpdateInput,
   ipcChannels,
 } from "@inkforge/shared";
 import {
@@ -17,6 +11,14 @@ import {
   searchWorldEntryRecords,
   updateWorldEntryRecord,
 } from "../services/world-service";
+import {
+  parseWorldCreateInput,
+  parseWorldDeleteInput,
+  parseWorldGetInput,
+  parseWorldListInput,
+  parseWorldSearchInput,
+  parseWorldUpdateInput,
+} from "./validation";
 
 const WORLD_LIST: typeof ipcChannels.worldList = "world:list";
 const WORLD_GET: typeof ipcChannels.worldGet = "world:get";
@@ -28,32 +30,32 @@ const WORLD_SEARCH: typeof ipcChannels.worldSearch = "world:search";
 export function registerWorldHandlers(): void {
   ipcMain.handle(
     WORLD_LIST,
-    async (_event, input: WorldListInput): Promise<WorldEntryRecord[]> =>
-      listWorldEntryRecords(input),
+    async (_event, input: unknown): Promise<WorldEntryRecord[]> =>
+      listWorldEntryRecords(parseWorldListInput(input)),
   );
   ipcMain.handle(
     WORLD_GET,
-    async (_event, input: WorldGetInput): Promise<WorldEntryRecord | null> =>
-      getWorldEntry(input),
+    async (_event, input: unknown): Promise<WorldEntryRecord | null> =>
+      getWorldEntry(parseWorldGetInput(input)),
   );
   ipcMain.handle(
     WORLD_CREATE,
-    async (_event, input: WorldCreateInput): Promise<WorldEntryRecord> =>
-      createWorldEntry(input),
+    async (_event, input: unknown): Promise<WorldEntryRecord> =>
+      createWorldEntry(parseWorldCreateInput(input)),
   );
   ipcMain.handle(
     WORLD_UPDATE,
-    async (_event, input: WorldUpdateInput): Promise<WorldEntryRecord> =>
-      updateWorldEntryRecord(input),
+    async (_event, input: unknown): Promise<WorldEntryRecord> =>
+      updateWorldEntryRecord(parseWorldUpdateInput(input)),
   );
   ipcMain.handle(
     WORLD_DELETE,
-    async (_event, input: WorldDeleteInput): Promise<{ id: string }> =>
-      deleteWorldEntryRecord(input),
+    async (_event, input: unknown): Promise<{ id: string }> =>
+      deleteWorldEntryRecord(parseWorldDeleteInput(input)),
   );
   ipcMain.handle(
     WORLD_SEARCH,
-    async (_event, input: WorldSearchInput): Promise<WorldEntryRecord[]> =>
-      searchWorldEntryRecords(input),
+    async (_event, input: unknown): Promise<WorldEntryRecord[]> =>
+      searchWorldEntryRecords(parseWorldSearchInput(input)),
   );
 }

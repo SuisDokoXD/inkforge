@@ -40,7 +40,11 @@ import type {
   LLMQuickActionResponse,
   NovelCharacterCreateInput,
   NovelCharacterDeleteInput,
+  NovelCharacterExtractInput,
+  NovelCharacterExtractResponse,
   NovelCharacterGetInput,
+  NovelCharacterImportCandidatesInput,
+  NovelCharacterImportCandidatesResponse,
   NovelCharacterListInput,
   NovelCharacterUpdateInput,
   OutlineCreateInput,
@@ -278,6 +282,12 @@ export interface InkforgeApi {
     get(input: NovelCharacterGetInput): Promise<NovelCharacterRecord | null>;
     list(input: NovelCharacterListInput): Promise<NovelCharacterRecord[]>;
     delete(input: NovelCharacterDeleteInput): Promise<{ id: string }>;
+    extractFromChapter(
+      input: NovelCharacterExtractInput,
+    ): Promise<NovelCharacterExtractResponse>;
+    importCandidates(
+      input: NovelCharacterImportCandidatesInput,
+    ): Promise<NovelCharacterImportCandidatesResponse>;
   };
   characterSync: {
     preview(input: CharacterSyncPreviewInput): Promise<CharacterSyncPreviewResponse>;

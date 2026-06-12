@@ -10,16 +10,18 @@ import {
 } from "@inkforge/storage";
 import type {
   ProviderHealthSnapshot,
-  ProviderKeyDeleteInput,
-  ProviderKeyHealthInput,
-  ProviderKeyListInput,
   ProviderKeyRecord,
-  ProviderKeySetDisabledInput,
-  ProviderKeyUpsertInput,
   ipcChannels,
 } from "@inkforge/shared";
 import { getAppContext } from "../services/app-state";
 import { getProviderHealth } from "../services/llm-runtime";
+import {
+  parseProviderKeyDeleteInput,
+  parseProviderKeyHealthInput,
+  parseProviderKeyListInput,
+  parseProviderKeySetDisabledInput,
+  parseProviderKeyUpsertInput,
+} from "./validation";
 
 const PROVIDER_KEY_LIST: typeof ipcChannels.providerKeyList = "provider-key:list";
 const PROVIDER_KEY_UPSERT: typeof ipcChannels.providerKeyUpsert = "provider-key:upsert";
@@ -31,7 +33,8 @@ const PROVIDER_KEY_HEALTH: typeof ipcChannels.providerKeyHealth = "provider-key:
 export function registerProviderKeyHandlers(): void {
   ipcMain.handle(
     PROVIDER_KEY_LIST,
-    async (_event, input: ProviderKeyListInput): Promise<ProviderKeyRecord[]> => {
+    async (_event, payload: unknown): Promise<ProviderKeyRecord[]> => {
+      const input = parseProviderKeyListInput(payload);
       const ctx = getAppContext();
       return listProviderKeys(ctx.db, input.providerId);
     },
@@ -39,7 +42,8 @@ export function registerProviderKeyHandlers(): void {
 
   ipcMain.handle(
     PROVIDER_KEY_UPSERT,
-    async (_event, input: ProviderKeyUpsertInput): Promise<ProviderKeyRecord> => {
+    async (_event, payload: unknown): Promise<ProviderKeyRecord> => {
+      const input = parseProviderKeyUpsertInput(payload);
       const ctx = getAppContext();
       if (input.strategy || typeof input.cooldownMs === "number") {
         updateProviderKeyStrategy(ctx.db, {
@@ -91,7 +95,8 @@ export function registerProviderKeyHandlers(): void {
 
   ipcMain.handle(
     PROVIDER_KEY_DELETE,
-    async (_event, input: ProviderKeyDeleteInput): Promise<{ id: string }> => {
+    async (_event, payload: unknown): Promise<{ id: string }> => {
+      const input = parseProviderKeyDeleteInput(payload);
       const ctx = getAppContext();
       try {
         await ctx.keystore.deleteKey(input.id);
@@ -105,7 +110,8 @@ export function registerProviderKeyHandlers(): void {
 
   ipcMain.handle(
     PROVIDER_KEY_SET_DISABLED,
-    async (_event, input: ProviderKeySetDisabledInput): Promise<ProviderKeyRecord> => {
+    async (_event, payload: unknown): Promise<ProviderKeyRecord> => {
+      const input = parseProviderKeySetDisabledInput(payload);
       const ctx = getAppContext();
       return updateProviderKey(ctx.db, { id: input.id, disabled: input.disabled });
     },
@@ -113,7 +119,8 @@ export function registerProviderKeyHandlers(): void {
 
   ipcMain.handle(
     PROVIDER_KEY_HEALTH,
-    async (_event, input: ProviderKeyHealthInput): Promise<ProviderHealthSnapshot> => {
+    async (_event, payload: unknown): Promise<ProviderHealthSnapshot> => {
+      const input = parseProviderKeyHealthInput(payload);
       return getProviderHealth(input.providerId);
     },
   );

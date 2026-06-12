@@ -7,18 +7,20 @@ import {
   upsertProvider,
 } from "@inkforge/storage";
 import type {
-  ProviderDeleteInput,
-  ProviderListRemoteModelsInput,
   ProviderListRemoteModelsResponse,
   ProviderRecord,
-  ProviderSaveInput,
-  ProviderTestInput,
   ProviderTestResponse,
   ipcChannels,
 } from "@inkforge/shared";
 import { createProvider } from "@inkforge/llm-core";
 import { getAppContext } from "../services/app-state";
 import { listRemoteModels } from "../services/provider-models-service";
+import {
+  parseProviderDeleteInput,
+  parseProviderListRemoteModelsInput,
+  parseProviderSaveInput,
+  parseProviderTestInput,
+} from "./validation";
 
 const PROVIDER_SAVE: typeof ipcChannels.providerSave = "provider:save";
 const PROVIDER_LIST: typeof ipcChannels.providerList = "provider:list";
@@ -28,14 +30,15 @@ const PROVIDER_LIST_REMOTE_MODELS: typeof ipcChannels.providerListRemoteModels =
   "provider:list-remote-models";
 
 export function registerProviderHandlers(): void {
-  ipcMain.handle(PROVIDER_SAVE, async (_event, input: ProviderSaveInput): Promise<ProviderRecord> => {
+  ipcMain.handle(PROVIDER_SAVE, async (_event, input: unknown): Promise<ProviderRecord> => {
+    const parsed = parseProviderSaveInput(input);
     const ctx = getAppContext();
-    const id = input.id ?? randomUUID();
+    const id = parsed.id ?? randomUUID();
 
     let encrypted = null;
     let storedInKeychain = false;
-    if (input.apiKey && input.apiKey.trim()) {
-      const keyResult = await ctx.keystore.setKey(id, input.apiKey);
+    if (parsed.apiKey && parsed.apiKey.trim()) {
+      const keyResult = await ctx.keystore.setKey(id, parsed.apiKey);
       encrypted = keyResult.encrypted ?? null;
       storedInKeychain = keyResult.storedInKeychain;
     } else {
@@ -48,11 +51,11 @@ export function registerProviderHandlers(): void {
 
     return upsertProvider(ctx.db, {
       id,
-      label: input.label,
-      vendor: input.vendor,
-      baseUrl: input.baseUrl ?? "",
-      defaultModel: input.defaultModel,
-      tags: input.tags ?? [],
+      label: parsed.label,
+      vendor: parsed.vendor,
+      baseUrl: parsed.baseUrl ?? "",
+      defaultModel: parsed.defaultModel,
+      tags: parsed.tags ?? [],
       encrypted,
       storedInKeychain,
     });
@@ -63,27 +66,29 @@ export function registerProviderHandlers(): void {
     return listProviders(ctx.db);
   });
 
-  ipcMain.handle(PROVIDER_DELETE, async (_event, input: ProviderDeleteInput): Promise<{ id: string }> => {
+  ipcMain.handle(PROVIDER_DELETE, async (_event, input: unknown): Promise<{ id: string }> => {
+    const parsed = parseProviderDeleteInput(input);
     const ctx = getAppContext();
     try {
-      await ctx.keystore.deleteKey(input.id);
+      await ctx.keystore.deleteKey(parsed.id);
     } catch {
       // ignore
     }
-    deleteProviderRow(ctx.db, input.id);
-    return { id: input.id };
+    deleteProviderRow(ctx.db, parsed.id);
+    return { id: parsed.id };
   });
 
   ipcMain.handle(
     PROVIDER_LIST_REMOTE_MODELS,
-    async (_event, input: ProviderListRemoteModelsInput): Promise<ProviderListRemoteModelsResponse> => {
-      return listRemoteModels(input);
+    async (_event, input: unknown): Promise<ProviderListRemoteModelsResponse> => {
+      return listRemoteModels(parseProviderListRemoteModelsInput(input));
     },
   );
 
-  ipcMain.handle(PROVIDER_TEST, async (_event, input: ProviderTestInput): Promise<ProviderTestResponse> => {
+  ipcMain.handle(PROVIDER_TEST, async (_event, input: unknown): Promise<ProviderTestResponse> => {
+    const parsed = parseProviderTestInput(input);
     const ctx = getAppContext();
-    const record = getProviderPersistenceRecord(ctx.db, input.id);
+    const record = getProviderPersistenceRecord(ctx.db, parsed.id);
     if (!record) return { ok: false, durationMs: 0, error: "provider_not_found" };
     const apiKey = (await ctx.keystore.getKey(record.id, record.encrypted)) ?? "";
     if (record.vendor !== "openai-compat" && !apiKey.trim()) {

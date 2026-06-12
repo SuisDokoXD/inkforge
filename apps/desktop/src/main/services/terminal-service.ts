@@ -23,11 +23,25 @@ interface Session {
 
 const sessions: Map<string, Session> = new Map();
 let ptyModule: typeof NodePty | null = null;
+let ptyLoadError: Error | null = null;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function loadPty(): typeof NodePty {
   if (ptyModule) return ptyModule;
+  if (ptyLoadError) throw ptyLoadError;
   // Lazy load — avoid crashing main if native module has issues until terminal is used.
-  ptyModule = require("node-pty") as typeof NodePty;
+  try {
+    ptyModule = require("node-pty") as typeof NodePty;
+  } catch (error) {
+    logger.warn("node-pty failed to load", error);
+    ptyLoadError = new Error(
+      `Terminal unavailable: node-pty failed to load (${errorMessage(error)})`,
+    );
+    throw ptyLoadError;
+  }
   return ptyModule;
 }
 
@@ -55,13 +69,19 @@ export function spawnSession(
   const cols = Math.max(20, Math.min(400, input.cols ?? 80));
   const rows = Math.max(5, Math.min(200, input.rows ?? 24));
 
-  const proc = pty.spawn(shell, [], {
-    name: "xterm-color",
-    cols,
-    rows,
-    cwd,
-    env: process.env as { [key: string]: string },
-  });
+  let proc: NodePty.IPty;
+  try {
+    proc = pty.spawn(shell, [], {
+      name: "xterm-color",
+      cols,
+      rows,
+      cwd,
+      env: process.env as { [key: string]: string },
+    });
+  } catch (error) {
+    logger.warn("terminal spawn failed", error);
+    throw new Error(`Terminal unavailable: ${errorMessage(error)}`);
+  }
 
   proc.onData((data: string) => {
     const win = getWindow();

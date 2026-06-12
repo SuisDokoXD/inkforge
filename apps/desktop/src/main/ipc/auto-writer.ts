@@ -2,17 +2,9 @@ import type { BrowserWindow } from "electron";
 import { ipcMain } from "electron";
 import {
   ipcChannels,
-  type AutoWriterCorrectInput,
   type AutoWriterCorrectResponse,
-  type AutoWriterGetRunInput,
-  type AutoWriterInjectIdeaInput,
-  type AutoWriterListRunsInput,
-  type AutoWriterPauseInput,
-  type AutoWriterResumeInput,
   type AutoWriterRunRecord,
-  type AutoWriterStartInput,
   type AutoWriterStartResponse,
-  type AutoWriterStopInput,
   type AutoWriterStopResponse,
 } from "@inkforge/shared";
 import {
@@ -25,6 +17,16 @@ import {
   startAutoWriter,
   stopAutoWriter,
 } from "../services/auto-writer-service";
+import {
+  parseAutoWriterCorrectInput,
+  parseAutoWriterGetRunInput,
+  parseAutoWriterInjectIdeaInput,
+  parseAutoWriterListRunsInput,
+  parseAutoWriterPauseInput,
+  parseAutoWriterResumeInput,
+  parseAutoWriterStartInput,
+  parseAutoWriterStopInput,
+} from "./validation";
 
 const AW_START: typeof ipcChannels.autoWriterStart = "auto-writer:start";
 const AW_STOP: typeof ipcChannels.autoWriterStop = "auto-writer:stop";
@@ -40,60 +42,62 @@ export function registerAutoWriterHandlers(
 ): void {
   ipcMain.handle(
     AW_START,
-    async (_event, input: AutoWriterStartInput): Promise<AutoWriterStartResponse> => {
-      const { runId } = await startAutoWriter(input, getWindow);
+    async (_event, input: unknown): Promise<AutoWriterStartResponse> => {
+      const { runId } = await startAutoWriter(parseAutoWriterStartInput(input), getWindow);
       return { runId, status: "started" };
     },
   );
 
   ipcMain.handle(
     AW_STOP,
-    async (_event, input: AutoWriterStopInput): Promise<AutoWriterStopResponse> => {
-      stopAutoWriter(input.runId);
-      return { runId: input.runId, stopped: true };
+    async (_event, input: unknown): Promise<AutoWriterStopResponse> => {
+      const parsed = parseAutoWriterStopInput(input);
+      stopAutoWriter(parsed.runId);
+      return { runId: parsed.runId, stopped: true };
     },
   );
 
   ipcMain.handle(
     AW_PAUSE,
-    async (_event, input: AutoWriterPauseInput): Promise<AutoWriterRunRecord> => {
-      return pauseAutoWriter(input.runId);
+    async (_event, input: unknown): Promise<AutoWriterRunRecord> => {
+      return pauseAutoWriter(parseAutoWriterPauseInput(input).runId);
     },
   );
 
   ipcMain.handle(
     AW_RESUME,
-    async (_event, input: AutoWriterResumeInput): Promise<AutoWriterRunRecord> => {
-      return resumeAutoWriter(input.runId);
+    async (_event, input: unknown): Promise<AutoWriterRunRecord> => {
+      return resumeAutoWriter(parseAutoWriterResumeInput(input).runId);
     },
   );
 
   ipcMain.handle(
     AW_GET,
-    async (_event, input: AutoWriterGetRunInput): Promise<AutoWriterRunRecord | null> => {
-      return getAutoWriterRunRecord(input.runId);
+    async (_event, input: unknown): Promise<AutoWriterRunRecord | null> => {
+      return getAutoWriterRunRecord(parseAutoWriterGetRunInput(input).runId);
     },
   );
 
   ipcMain.handle(
     AW_LIST,
-    async (_event, input: AutoWriterListRunsInput): Promise<AutoWriterRunRecord[]> => {
-      return listAutoWriterRuns(input);
+    async (_event, input: unknown): Promise<AutoWriterRunRecord[]> => {
+      return listAutoWriterRuns(parseAutoWriterListRunsInput(input));
     },
   );
 
   ipcMain.handle(
     AW_INJECT,
-    async (_event, input: AutoWriterInjectIdeaInput): Promise<AutoWriterRunRecord> => {
-      return injectIdea(input);
+    async (_event, input: unknown): Promise<AutoWriterRunRecord> => {
+      return injectIdea(parseAutoWriterInjectIdeaInput(input));
     },
   );
 
   ipcMain.handle(
     AW_CORRECT,
-    async (_event, input: AutoWriterCorrectInput): Promise<AutoWriterCorrectResponse> => {
-      const { run, correction } = correctSegment(input);
-      return { runId: input.runId, correction, run };
+    async (_event, input: unknown): Promise<AutoWriterCorrectResponse> => {
+      const parsed = parseAutoWriterCorrectInput(input);
+      const { run, correction } = correctSegment(parsed);
+      return { runId: parsed.runId, correction, run };
     },
   );
 }

@@ -1,6 +1,7 @@
 import { BrowserWindow, app, screen, shell } from "electron";
 import * as fs from "fs";
 import * as path from "path";
+import { fileURLToPath } from "url";
 
 interface SavedBounds {
   width: number;
@@ -73,9 +74,32 @@ function clampToDisplay(b: SavedBounds): SavedBounds {
   return { width: b.width, height: b.height };
 }
 
+function isHttpOrHttps(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedAppNavigation(url: string, devUrl: string | undefined, rendererEntry: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (devUrl) {
+      return parsed.origin === new URL(devUrl).origin;
+    }
+    if (parsed.protocol !== "file:") return false;
+    return path.resolve(fileURLToPath(parsed)) === rendererEntry;
+  } catch {
+    return false;
+  }
+}
+
 export function createMainWindow(): BrowserWindow {
   const isMac = process.platform === "darwin";
   const saved = clampToDisplay(loadSavedBounds());
+  const rendererEntry = path.resolve(__dirname, "../renderer/index.html");
   const window = new BrowserWindow({
     width: saved.width,
     height: saved.height,
@@ -97,7 +121,7 @@ export function createMainWindow(): BrowserWindow {
       preload: path.join(__dirname, "../preload/index.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
@@ -106,8 +130,20 @@ export function createMainWindow(): BrowserWindow {
     if (saved.isMaximized) window.maximize();
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (isHttpOrHttps(url)) {
+      void shell.openExternal(url);
+    }
     return { action: "deny" };
+  });
+  window.webContents.on("will-navigate", (event, url) => {
+    if (isAllowedAppNavigation(url, process.env.ELECTRON_RENDERER_URL, rendererEntry)) return;
+    event.preventDefault();
+    if (isHttpOrHttps(url)) {
+      void shell.openExternal(url);
+    }
+  });
+  window.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
   });
 
   // 持久化窗口尺寸/位置：debounce 写盘，关窗时强制写一次

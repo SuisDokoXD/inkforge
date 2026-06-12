@@ -879,15 +879,21 @@ export type AchievementId =
   | "first_character"
   | "characters_5"
   | "characters_15"
+  | "character_breathes" // 有一张较完整的人物档案
   | "first_world_entry"
   | "worldbuilder" // 5 条世界观条目
+  | "lore_keeper" // 有一条较完整的世界观条目
   // AI / 工具
   | "first_auto_writer_run"
   | "auto_writer_3"
   | "first_letter_received"
   | "letters_pen_pal" // 收 5 封信
   | "first_review" // 第一次 Review
+  | "backup_charm" // 第一次手动快照
   | "snapshot_keeper" // 创建 10 个手动快照
+  | "named_chapter" // 标题有戏的章节
+  | "short_blade" // 短章节
+  | "long_breath" // 单章 2000 字
   | "rewrite_master"; // 单段重写 ≥3 次仍出稿
 
 export type AchievementRarity = "common" | "rare" | "epic" | "legendary";

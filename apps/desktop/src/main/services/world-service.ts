@@ -18,6 +18,7 @@ import type {
   WorldUpdateInput,
 } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
+import { checkAchievementsAndNotify } from "./achievement-service";
 
 function normalizeStringArray(input: unknown): string[] | undefined {
   if (!input) return undefined;
@@ -36,7 +37,7 @@ export function createWorldEntry(input: WorldCreateInput): WorldEntryRecord {
   const ctx = getAppContext();
   if (!input.title?.trim()) throw new Error("world entry title required");
   if (!input.category?.trim()) throw new Error("world entry category required");
-  return insertWorldEntry(ctx.db, {
+  const record = insertWorldEntry(ctx.db, {
     id: randomUUID(),
     projectId: input.projectId,
     category: input.category.trim(),
@@ -55,13 +56,19 @@ export function createWorldEntry(input: WorldCreateInput): WorldEntryRecord {
     constant: input.constant,
     extensions: input.extensions,
   });
+  try {
+    checkAchievementsAndNotify(record.projectId, "world-create");
+  } catch {
+    /* do not block world entry creation on achievement bookkeeping */
+  }
+  return record;
 }
 
 export function updateWorldEntryRecord(
   input: WorldUpdateInput,
 ): WorldEntryRecord {
   const ctx = getAppContext();
-  return updateWorldEntry(ctx.db, {
+  const record = updateWorldEntry(ctx.db, {
     id: input.id,
     category: input.category?.trim(),
     title: input.title?.trim(),
@@ -78,6 +85,12 @@ export function updateWorldEntryRecord(
     constant: input.constant,
     extensions: input.extensions,
   });
+  try {
+    checkAchievementsAndNotify(record.projectId, "world-update");
+  } catch {
+    /* do not block world entry updates on achievement bookkeeping */
+  }
+  return record;
 }
 
 export function getWorldEntry(input: WorldGetInput): WorldEntryRecord | null {

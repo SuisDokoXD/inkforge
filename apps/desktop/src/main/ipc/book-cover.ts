@@ -1,10 +1,7 @@
 import { ipcMain } from "electron";
 import {
   ipcChannels,
-  type BookCoverDeleteInput,
-  type BookCoverGetInput,
   type BookCoverGetResponse,
-  type BookCoverUploadInput,
   type BookCoverUploadResponse,
 } from "@inkforge/shared";
 import {
@@ -12,6 +9,11 @@ import {
   removeCover,
   uploadCover,
 } from "../services/cover-service";
+import {
+  parseBookCoverDeleteInput,
+  parseBookCoverGetInput,
+  parseBookCoverUploadInput,
+} from "./validation";
 
 const COVER_UPLOAD: typeof ipcChannels.bookCoverUpload = "book-cover:upload";
 const COVER_GET: typeof ipcChannels.bookCoverGet = "book-cover:get";
@@ -20,22 +22,22 @@ const COVER_DELETE: typeof ipcChannels.bookCoverDelete = "book-cover:delete";
 export function registerBookCoverHandlers(): void {
   ipcMain.handle(
     COVER_UPLOAD,
-    async (_event, input: BookCoverUploadInput): Promise<BookCoverUploadResponse> => {
-      return { cover: uploadCover(input) };
+    async (_event, input: unknown): Promise<BookCoverUploadResponse> => {
+      return { cover: uploadCover(parseBookCoverUploadInput(input)) };
     },
   );
 
   ipcMain.handle(
     COVER_GET,
-    async (_event, input: BookCoverGetInput): Promise<BookCoverGetResponse> => {
-      return getCoverWithContent(input.projectId);
+    async (_event, input: unknown): Promise<BookCoverGetResponse> => {
+      return getCoverWithContent(parseBookCoverGetInput(input).projectId);
     },
   );
 
   ipcMain.handle(
     COVER_DELETE,
-    async (_event, input: BookCoverDeleteInput): Promise<{ projectId: string }> => {
-      return removeCover(input.projectId);
+    async (_event, input: unknown): Promise<{ projectId: string }> => {
+      return removeCover(parseBookCoverDeleteInput(input).projectId);
     },
   );
 }

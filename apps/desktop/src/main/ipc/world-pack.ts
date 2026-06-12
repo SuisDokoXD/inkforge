@@ -8,28 +8,11 @@
 import { ipcMain } from "electron";
 import type {
   ProjectWorldPackSlotRecord,
-  WorldPackCoverReadInput,
   WorldPackCoverReadResponse,
-  WorldPackCoverWriteInput,
   WorldPackCoverWriteResponse,
-  WorldPackCreateInput,
-  WorldPackDeleteInput,
-  WorldPackEntryCreateInput,
-  WorldPackEntryDeleteInput,
-  WorldPackEntryListInput,
   WorldPackEntryRecord,
-  WorldPackEntryUpdateInput,
-  WorldPackFuseInput,
   WorldPackFuseResponse,
-  WorldPackGetInput,
-  WorldPackListInput,
   WorldPackRecord,
-  WorldPackSlotAddInput,
-  WorldPackSlotListInput,
-  WorldPackSlotRemoveInput,
-  WorldPackSlotReorderInput,
-  WorldPackSlotToggleInput,
-  WorldPackUpdateInput,
 } from "@inkforge/shared";
 import {
   addProjectPackSlotRecord,
@@ -50,101 +33,122 @@ import {
   writeWorldPackCover,
 } from "../services/world-pack-service";
 import { fuseWorldPacks } from "../services/world-pack-fusion-service";
+import {
+  parseWorldPackCoverReadInput,
+  parseWorldPackCoverWriteInput,
+  parseWorldPackCreateInput,
+  parseWorldPackDeleteInput,
+  parseWorldPackEntryCreateInput,
+  parseWorldPackEntryDeleteInput,
+  parseWorldPackEntryListInput,
+  parseWorldPackEntryUpdateInput,
+  parseWorldPackFuseInput,
+  parseWorldPackGetInput,
+  parseWorldPackListInput,
+  parseWorldPackSlotAddInput,
+  parseWorldPackSlotListInput,
+  parseWorldPackSlotRemoveInput,
+  parseWorldPackSlotReorderInput,
+  parseWorldPackSlotToggleInput,
+  parseWorldPackUpdateInput,
+} from "./validation";
 
 export function registerWorldPackHandlers(): void {
   ipcMain.handle(
     "world-pack:list",
-    async (_e, input: WorldPackListInput): Promise<WorldPackRecord[]> =>
-      listWorldPackRecords(input),
+    async (_e, input: unknown): Promise<WorldPackRecord[]> =>
+      listWorldPackRecords(parseWorldPackListInput(input)),
   );
   ipcMain.handle(
     "world-pack:get",
-    async (_e, input: WorldPackGetInput): Promise<WorldPackRecord | null> =>
-      getWorldPackRecord(input),
+    async (_e, input: unknown): Promise<WorldPackRecord | null> =>
+      getWorldPackRecord(parseWorldPackGetInput(input)),
   );
   ipcMain.handle(
     "world-pack:create",
-    async (_e, input: WorldPackCreateInput): Promise<WorldPackRecord> =>
-      createWorldPack(input),
+    async (_e, input: unknown): Promise<WorldPackRecord> =>
+      createWorldPack(parseWorldPackCreateInput(input)),
   );
   ipcMain.handle(
     "world-pack:update",
-    async (_e, input: WorldPackUpdateInput): Promise<WorldPackRecord> =>
-      updateWorldPackRecord(input),
+    async (_e, input: unknown): Promise<WorldPackRecord> =>
+      updateWorldPackRecord(parseWorldPackUpdateInput(input)),
   );
   ipcMain.handle(
     "world-pack:delete",
-    async (_e, input: WorldPackDeleteInput): Promise<{ id: string }> =>
-      deleteWorldPackRecord(input),
+    async (_e, input: unknown): Promise<{ id: string }> =>
+      deleteWorldPackRecord(parseWorldPackDeleteInput(input)),
   );
   ipcMain.handle(
     "world-pack:entry-list",
-    async (_e, input: WorldPackEntryListInput): Promise<WorldPackEntryRecord[]> =>
-      listWorldPackEntryRecords(input),
+    async (_e, input: unknown): Promise<WorldPackEntryRecord[]> =>
+      listWorldPackEntryRecords(parseWorldPackEntryListInput(input)),
   );
   ipcMain.handle(
     "world-pack:entry-create",
-    async (_e, input: WorldPackEntryCreateInput): Promise<WorldPackEntryRecord> =>
-      createWorldPackEntry(input),
+    async (_e, input: unknown): Promise<WorldPackEntryRecord> =>
+      createWorldPackEntry(parseWorldPackEntryCreateInput(input)),
   );
   ipcMain.handle(
     "world-pack:entry-update",
-    async (_e, input: WorldPackEntryUpdateInput): Promise<WorldPackEntryRecord> =>
-      updateWorldPackEntryRecord(input),
+    async (_e, input: unknown): Promise<WorldPackEntryRecord> =>
+      updateWorldPackEntryRecord(parseWorldPackEntryUpdateInput(input)),
   );
   ipcMain.handle(
     "world-pack:entry-delete",
-    async (_e, input: WorldPackEntryDeleteInput): Promise<{ id: string }> =>
-      deleteWorldPackEntryRecord(input),
+    async (_e, input: unknown): Promise<{ id: string }> =>
+      deleteWorldPackEntryRecord(parseWorldPackEntryDeleteInput(input)),
   );
   ipcMain.handle(
     "world-pack:slot-list",
-    async (_e, input: WorldPackSlotListInput): Promise<ProjectWorldPackSlotRecord[]> =>
-      listProjectPackSlotRecords(input),
+    async (_e, input: unknown): Promise<ProjectWorldPackSlotRecord[]> =>
+      listProjectPackSlotRecords(parseWorldPackSlotListInput(input)),
   );
   ipcMain.handle(
     "world-pack:slot-add",
-    async (_e, input: WorldPackSlotAddInput): Promise<ProjectWorldPackSlotRecord> =>
-      addProjectPackSlotRecord(input),
+    async (_e, input: unknown): Promise<ProjectWorldPackSlotRecord> =>
+      addProjectPackSlotRecord(parseWorldPackSlotAddInput(input)),
   );
   ipcMain.handle(
     "world-pack:slot-remove",
     async (
       _e,
-      input: WorldPackSlotRemoveInput,
+      input: unknown,
     ): Promise<{ projectId: string; packId: string }> =>
-      removeProjectPackSlotRecord(input),
+      removeProjectPackSlotRecord(parseWorldPackSlotRemoveInput(input)),
   );
   ipcMain.handle(
     "world-pack:slot-toggle",
     async (
       _e,
-      input: WorldPackSlotToggleInput,
+      input: unknown,
     ): Promise<ProjectWorldPackSlotRecord | null> =>
-      toggleProjectPackSlotRecord(input),
+      toggleProjectPackSlotRecord(parseWorldPackSlotToggleInput(input)),
   );
   ipcMain.handle(
     "world-pack:slot-reorder",
-    async (_e, input: WorldPackSlotReorderInput): Promise<{ ok: true }> =>
-      reorderProjectPackSlotRecords(input),
+    async (_e, input: unknown): Promise<{ ok: true }> =>
+      reorderProjectPackSlotRecords(parseWorldPackSlotReorderInput(input)),
   );
   ipcMain.handle(
     "world-pack:cover-write",
     async (
       _e,
-      input: WorldPackCoverWriteInput,
-    ): Promise<WorldPackCoverWriteResponse> => writeWorldPackCover(input),
+      input: unknown,
+    ): Promise<WorldPackCoverWriteResponse> =>
+      writeWorldPackCover(parseWorldPackCoverWriteInput(input)),
   );
   ipcMain.handle(
     "world-pack:cover-read",
     async (
       _e,
-      input: WorldPackCoverReadInput,
-    ): Promise<WorldPackCoverReadResponse> => readWorldPackCover(input),
+      input: unknown,
+    ): Promise<WorldPackCoverReadResponse> =>
+      readWorldPackCover(parseWorldPackCoverReadInput(input)),
   );
   ipcMain.handle(
     "world-pack:fuse",
-    async (_e, input: WorldPackFuseInput): Promise<WorldPackFuseResponse> =>
-      fuseWorldPacks(input),
+    async (_e, input: unknown): Promise<WorldPackFuseResponse> =>
+      fuseWorldPacks(parseWorldPackFuseInput(input)),
   );
 }

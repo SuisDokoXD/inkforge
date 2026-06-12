@@ -1,23 +1,12 @@
 import { ipcMain, type BrowserWindow } from "electron";
 import type {
-  ReviewApplyFixInput,
   ReviewApplyFixResponse,
-  ReviewCancelInput,
   ReviewCancelResponse,
-  ReviewDimDeleteInput,
-  ReviewDimListInput,
-  ReviewDimReorderInput,
-  ReviewDimUpsertInput,
   ReviewDimensionRecord,
-  ReviewDismissFindingInput,
   ReviewDismissFindingResponse,
-  ReviewExportInput,
   ReviewExportResponse,
-  ReviewGetInput,
   ReviewGetResponse,
-  ReviewListInput,
   ReviewReportRecord,
-  ReviewRunInput,
   ReviewRunResponse,
   ipcChannels,
 } from "@inkforge/shared";
@@ -34,6 +23,19 @@ import {
   startReview,
   upsertReviewDimensionRecord,
 } from "../services/review-service";
+import {
+  parseReviewApplyFixInput,
+  parseReviewCancelInput,
+  parseReviewDimDeleteInput,
+  parseReviewDimListInput,
+  parseReviewDimReorderInput,
+  parseReviewDimUpsertInput,
+  parseReviewDismissFindingInput,
+  parseReviewExportInput,
+  parseReviewGetInput,
+  parseReviewListInput,
+  parseReviewRunInput,
+} from "./validation";
 
 const REVIEW_DIM_LIST: typeof ipcChannels.reviewDimList = "review-dim:list";
 const REVIEW_DIM_UPSERT: typeof ipcChannels.reviewDimUpsert = "review-dim:upsert";
@@ -52,57 +54,57 @@ export function registerReviewHandlers(
 ): void {
   ipcMain.handle(
     REVIEW_DIM_LIST,
-    async (_event, input: ReviewDimListInput): Promise<ReviewDimensionRecord[]> =>
-      listReviewDimensionsEnsuringBuiltins(input),
+    async (_event, input: unknown): Promise<ReviewDimensionRecord[]> =>
+      listReviewDimensionsEnsuringBuiltins(parseReviewDimListInput(input)),
   );
   ipcMain.handle(
     REVIEW_DIM_UPSERT,
-    async (_event, input: ReviewDimUpsertInput): Promise<ReviewDimensionRecord> =>
-      upsertReviewDimensionRecord(input),
+    async (_event, input: unknown): Promise<ReviewDimensionRecord> =>
+      upsertReviewDimensionRecord(parseReviewDimUpsertInput(input)),
   );
   ipcMain.handle(
     REVIEW_DIM_DELETE,
-    async (_event, input: ReviewDimDeleteInput): Promise<{ id: string }> =>
-      deleteReviewDimensionRecord(input),
+    async (_event, input: unknown): Promise<{ id: string }> =>
+      deleteReviewDimensionRecord(parseReviewDimDeleteInput(input)),
   );
   ipcMain.handle(
     REVIEW_DIM_REORDER,
-    async (_event, input: ReviewDimReorderInput): Promise<ReviewDimensionRecord[]> =>
-      reorderReviewDimensionRecords(input),
+    async (_event, input: unknown): Promise<ReviewDimensionRecord[]> =>
+      reorderReviewDimensionRecords(parseReviewDimReorderInput(input)),
   );
   ipcMain.handle(
     REVIEW_RUN,
-    async (_event, input: ReviewRunInput): Promise<ReviewRunResponse> =>
-      startReview(input, getWindow()),
+    async (_event, input: unknown): Promise<ReviewRunResponse> =>
+      startReview(parseReviewRunInput(input), getWindow()),
   );
   ipcMain.handle(
     REVIEW_CANCEL,
-    async (_event, input: ReviewCancelInput): Promise<ReviewCancelResponse> =>
-      cancelReview(input),
+    async (_event, input: unknown): Promise<ReviewCancelResponse> =>
+      cancelReview(parseReviewCancelInput(input)),
   );
   ipcMain.handle(
     REVIEW_LIST,
-    async (_event, input: ReviewListInput): Promise<ReviewReportRecord[]> =>
-      listReviewReportsForProject(input),
+    async (_event, input: unknown): Promise<ReviewReportRecord[]> =>
+      listReviewReportsForProject(parseReviewListInput(input)),
   );
   ipcMain.handle(
     REVIEW_GET,
-    async (_event, input: ReviewGetInput): Promise<ReviewGetResponse | null> =>
-      getReviewReportWithFindings(input),
+    async (_event, input: unknown): Promise<ReviewGetResponse | null> =>
+      getReviewReportWithFindings(parseReviewGetInput(input)),
   );
   ipcMain.handle(
     REVIEW_DISMISS_FINDING,
-    async (_event, input: ReviewDismissFindingInput): Promise<ReviewDismissFindingResponse> =>
-      dismissReviewFinding(input),
+    async (_event, input: unknown): Promise<ReviewDismissFindingResponse> =>
+      dismissReviewFinding(parseReviewDismissFindingInput(input)),
   );
   ipcMain.handle(
     REVIEW_EXPORT,
-    async (_event, input: ReviewExportInput): Promise<ReviewExportResponse> =>
-      exportReviewReport(input),
+    async (_event, input: unknown): Promise<ReviewExportResponse> =>
+      exportReviewReport(parseReviewExportInput(input)),
   );
   ipcMain.handle(
     REVIEW_APPLY_FIX,
-    async (_event, input: ReviewApplyFixInput): Promise<ReviewApplyFixResponse> =>
-      applyReviewFix(input),
+    async (_event, input: unknown): Promise<ReviewApplyFixResponse> =>
+      applyReviewFix(parseReviewApplyFixInput(input)),
   );
 }

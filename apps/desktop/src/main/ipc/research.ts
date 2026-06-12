@@ -1,17 +1,8 @@
 import { ipcMain } from "electron";
 import type {
-  ResearchCredentialDeleteInput,
   ResearchCredentialStatus,
-  ResearchCredentialStatusInput,
-  ResearchCredentialUpsertInput,
-  ResearchDeleteInput,
-  ResearchGetInput,
-  ResearchListInput,
   ResearchNoteRecord,
-  ResearchSaveInput,
-  ResearchSearchInput,
   ResearchSearchResponse,
-  ResearchUpdateInput,
   ipcChannels,
 } from "@inkforge/shared";
 import {
@@ -25,6 +16,17 @@ import {
   updateResearchNoteRecord,
   upsertResearchCredential,
 } from "../services/research-service";
+import {
+  parseResearchCredentialDeleteInput,
+  parseResearchCredentialStatusInput,
+  parseResearchCredentialUpsertInput,
+  parseResearchDeleteInput,
+  parseResearchGetInput,
+  parseResearchListInput,
+  parseResearchSaveInput,
+  parseResearchSearchInput,
+  parseResearchUpdateInput,
+} from "./validation";
 
 const RESEARCH_SEARCH: typeof ipcChannels.researchSearch = "research:search";
 const RESEARCH_LIST: typeof ipcChannels.researchList = "research:list";
@@ -42,53 +44,56 @@ const RESEARCH_CRED_DELETE: typeof ipcChannels.researchCredentialDelete =
 export function registerResearchHandlers(): void {
   ipcMain.handle(
     RESEARCH_SEARCH,
-    async (_event, input: ResearchSearchInput): Promise<ResearchSearchResponse> =>
-      searchResearch(input),
+    async (_event, input: unknown): Promise<ResearchSearchResponse> =>
+      searchResearch(parseResearchSearchInput(input)),
   );
   ipcMain.handle(
     RESEARCH_LIST,
-    async (_event, input: ResearchListInput): Promise<ResearchNoteRecord[]> =>
-      listResearchNoteRecords(input),
+    async (_event, input: unknown): Promise<ResearchNoteRecord[]> =>
+      listResearchNoteRecords(parseResearchListInput(input)),
   );
   ipcMain.handle(
     RESEARCH_GET,
-    async (_event, input: ResearchGetInput): Promise<ResearchNoteRecord | null> =>
-      getResearchNote(input),
+    async (_event, input: unknown): Promise<ResearchNoteRecord | null> =>
+      getResearchNote(parseResearchGetInput(input)),
   );
   ipcMain.handle(
     RESEARCH_SAVE,
-    async (_event, input: ResearchSaveInput): Promise<ResearchNoteRecord> =>
-      saveResearchNote(input),
+    async (_event, input: unknown): Promise<ResearchNoteRecord> =>
+      saveResearchNote(parseResearchSaveInput(input)),
   );
   ipcMain.handle(
     RESEARCH_UPDATE,
-    async (_event, input: ResearchUpdateInput): Promise<ResearchNoteRecord> =>
-      updateResearchNoteRecord(input),
+    async (_event, input: unknown): Promise<ResearchNoteRecord> =>
+      updateResearchNoteRecord(parseResearchUpdateInput(input)),
   );
   ipcMain.handle(
     RESEARCH_DELETE,
-    async (_event, input: ResearchDeleteInput): Promise<{ id: string }> =>
-      deleteResearchNoteRecord(input),
+    async (_event, input: unknown): Promise<{ id: string }> =>
+      deleteResearchNoteRecord(parseResearchDeleteInput(input)),
   );
   ipcMain.handle(
     RESEARCH_CRED_STATUS,
     async (
       _event,
-      input: ResearchCredentialStatusInput,
-    ): Promise<ResearchCredentialStatus[]> => getResearchCredentialStatuses(input ?? {}),
+      input: unknown,
+    ): Promise<ResearchCredentialStatus[]> =>
+      getResearchCredentialStatuses(parseResearchCredentialStatusInput(input)),
   );
   ipcMain.handle(
     RESEARCH_CRED_UPSERT,
     async (
       _event,
-      input: ResearchCredentialUpsertInput,
-    ): Promise<ResearchCredentialStatus> => upsertResearchCredential(input),
+      input: unknown,
+    ): Promise<ResearchCredentialStatus> =>
+      upsertResearchCredential(parseResearchCredentialUpsertInput(input)),
   );
   ipcMain.handle(
     RESEARCH_CRED_DELETE,
     async (
       _event,
-      input: ResearchCredentialDeleteInput,
-    ): Promise<ResearchCredentialStatus> => deleteResearchCredential(input),
+      input: unknown,
+    ): Promise<ResearchCredentialStatus> =>
+      deleteResearchCredential(parseResearchCredentialDeleteInput(input)),
   );
 }

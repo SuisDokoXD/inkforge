@@ -3,6 +3,7 @@ import {
   ACHIEVEMENT_CATALOG,
   type AchievementId,
   type AchievementRarity,
+  type AchievementStatsResponse,
   type AchievementUnlockedRecord,
 } from "@inkforge/shared";
 import {
@@ -13,16 +14,44 @@ import {
   listChapters,
   listNovelCharacters,
   listWorldEntries,
+  todayKey as formatDailyLogDate,
 } from "@inkforge/storage";
 import { getAppContext } from "./app-state";
 import { logger } from "./logger";
+
+type AchievementUnlockPublisher = (
+  projectId: string,
+  records: AchievementUnlockedRecord[],
+) => void;
+
+let achievementUnlockPublisher: AchievementUnlockPublisher | null = null;
+
+export function setAchievementUnlockPublisher(
+  publisher: AchievementUnlockPublisher | null,
+): void {
+  achievementUnlockPublisher = publisher;
+}
+
+function publishAchievementUnlocks(
+  projectId: string,
+  records: AchievementUnlockedRecord[],
+): void {
+  if (records.length === 0 || !achievementUnlockPublisher) return;
+  try {
+    achievementUnlockPublisher(projectId, records);
+  } catch (error) {
+    logger.warn("achievement unlock publish failed", error);
+  }
+}
 
 /** 触发条件来源（可与已有事件挂钩；目前手动 + 定期 check） */
 export type AchievementTrigger =
   | "chapter-update"
   | "chapter-create"
   | "character-create"
+  | "character-update"
   | "world-create"
+  | "world-update"
   | "auto-writer-done"
   | "letter-generate"
   | "snapshot-create"
@@ -40,15 +69,32 @@ interface ProjectStats {
   reviews: number;
   streakDays: number;
   longestStreak: number;
+  todayWords: number;
+  hasShortChapter: boolean;
+  hasLongChapter: boolean;
+  hasNamedChapter: boolean;
+  hasRichCharacter: boolean;
+  hasDetailedWorldEntry: boolean;
 }
 
 function gatherStats(projectId: string): ProjectStats {
   const ctx = getAppContext();
+  const today = new Date();
+  const fmtDate = (d: Date): string => formatDailyLogDate(d);
   const chapters = listChapters(ctx.db, projectId);
   const totalWords = chapters.reduce((sum, c) => sum + (c.wordCount ?? 0), 0);
   const totalChapters = chapters.length;
-  const totalCharacters = listNovelCharacters(ctx.db, projectId).length;
-  const totalWorldEntries = listWorldEntries(ctx.db, { projectId }).length;
+  const totalCharactersList = listNovelCharacters(ctx.db, projectId);
+  const worldEntries = listWorldEntries(ctx.db, { projectId });
+  const totalCharacters = totalCharactersList.length;
+  const totalWorldEntries = worldEntries.length;
+  const hasShortChapter = chapters.some((c) => (c.wordCount ?? 0) > 0 && (c.wordCount ?? 0) <= 500);
+  const hasLongChapter = chapters.some((c) => (c.wordCount ?? 0) >= 2_000);
+  const hasNamedChapter = chapters.some((c) => c.title.trim().length >= 8);
+  const hasRichCharacter = totalCharactersList.some(
+    (c) => (c.persona ?? "").trim().length + c.backstory.trim().length >= 120,
+  );
+  const hasDetailedWorldEntry = worldEntries.some((e) => e.content.trim().length >= 200);
   // count auto-writer-runs / snapshots / letters / reviews via raw SQL fallback
   const autoWriterRuns = (
     ctx.db
@@ -87,9 +133,15 @@ function gatherStats(projectId: string): ProjectStats {
        ORDER BY date DESC LIMIT 90`,
     )
     .all(projectId) as { date: string }[];
+  const todayKey = fmtDate(today);
+  const todayWords = (
+    ctx.db
+      .prepare(
+        `SELECT words_added AS n FROM daily_logs WHERE project_id = ? AND date = ?`,
+      )
+      .get(projectId, todayKey) as { n: number } | undefined
+  )?.n ?? 0;
   const dates = new Set(dailyRows.map((r) => r.date));
-  const today = new Date();
-  const fmtDate = (d: Date): string => d.toISOString().slice(0, 10);
   let streakDays = 0;
   for (let i = 0; ; i++) {
     const d = new Date(today);
@@ -126,6 +178,12 @@ function gatherStats(projectId: string): ProjectStats {
     reviews,
     streakDays,
     longestStreak,
+    todayWords,
+    hasShortChapter,
+    hasLongChapter,
+    hasNamedChapter,
+    hasRichCharacter,
+    hasDetailedWorldEntry,
   };
 }
 
@@ -151,18 +209,24 @@ const RULES: Record<
   night_owl: (s, c) => s.totalWords >= 1 && c.hour >= 0 && c.hour < 3,
   early_bird: (s, c) => s.totalWords >= 1 && c.hour >= 5 && c.hour < 7,
   weekend_warrior: (s, c) =>
-    c.weekend && s.streakDays >= 1 && s.totalWords >= 1,
+    c.weekend && s.streakDays >= 1 && s.todayWords >= 1_000,
   first_character: (s) => s.totalCharacters >= 1,
   characters_5: (s) => s.totalCharacters >= 5,
   characters_15: (s) => s.totalCharacters >= 15,
+  character_breathes: (s) => s.hasRichCharacter,
   first_world_entry: (s) => s.totalWorldEntries >= 1,
   worldbuilder: (s) => s.totalWorldEntries >= 5,
+  lore_keeper: (s) => s.hasDetailedWorldEntry,
   first_auto_writer_run: (s) => s.autoWriterRuns >= 1,
   auto_writer_3: (s) => s.autoWriterRuns >= 3,
   first_letter_received: (s) => s.letters >= 1,
   letters_pen_pal: (s) => s.letters >= 5,
   first_review: (s) => s.reviews >= 1,
+  backup_charm: (s) => s.snapshotsManual >= 1,
   snapshot_keeper: (s) => s.snapshotsManual >= 10,
+  named_chapter: (s) => s.hasNamedChapter,
+  short_blade: (s) => s.hasShortChapter,
+  long_breath: (s) => s.hasLongChapter,
   // rewrite_master 由 auto-writer 引擎单独触发，rules 表里返回 false
   rewrite_master: () => false,
 };
@@ -203,6 +267,15 @@ export function checkAchievements(
   return newlyUnlocked;
 }
 
+export function checkAchievementsAndNotify(
+  projectId: string,
+  trigger: AchievementTrigger = "manual",
+): AchievementUnlockedRecord[] {
+  const newlyUnlocked = checkAchievements(projectId, trigger);
+  publishAchievementUnlocks(projectId, newlyUnlocked);
+  return newlyUnlocked;
+}
+
 /** 直接解锁单个成就（用于 auto-writer 引擎 rewrite_master 等特殊触发） */
 export function unlockAchievement(
   projectId: string,
@@ -219,6 +292,16 @@ export function unlockAchievement(
   });
 }
 
+export function unlockAchievementAndNotify(
+  projectId: string,
+  achievementId: AchievementId,
+  metadata: Record<string, unknown> = {},
+): AchievementUnlockedRecord | null {
+  const rec = unlockAchievement(projectId, achievementId, metadata);
+  if (rec) publishAchievementUnlocks(projectId, [rec]);
+  return rec;
+}
+
 export function listAchievements(
   projectId: string,
 ): AchievementUnlockedRecord[] {
@@ -226,12 +309,7 @@ export function listAchievements(
   return repoListAchievements(ctx.db, projectId);
 }
 
-export function getAchievementStats(projectId: string): {
-  totalUnlocked: number;
-  totalCatalog: number;
-  byRarity: Record<AchievementRarity, number>;
-  stats: Omit<ProjectStats, "letters" | "reviews">;
-} {
+export function getAchievementStats(projectId: string): AchievementStatsResponse {
   const ctx = getAppContext();
   const totalUnlocked = countAchievements(ctx.db, projectId);
   const totalCatalog = ACHIEVEMENT_CATALOG.length;

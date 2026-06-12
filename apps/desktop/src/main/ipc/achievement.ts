@@ -3,24 +3,43 @@ import { ipcMain } from "electron";
 import {
   ipcChannels,
   ipcEventChannels,
-  type AchievementCheckInput,
   type AchievementCheckResponse,
-  type AchievementListInput,
   type AchievementStatsResponse,
 } from "@inkforge/shared";
 import {
-  checkAchievements,
+  checkAchievementsAndNotify,
   getAchievementStats,
   listAchievements,
+  setAchievementUnlockPublisher,
 } from "../services/achievement-service";
+import {
+  parseAchievementCheckInput,
+  parseAchievementListInput,
+  parseAchievementStatsInput,
+} from "./validation";
 
 export function registerAchievementHandlers(
   getWindow: () => BrowserWindow | null,
 ): void {
+  setAchievementUnlockPublisher((projectId, records) => {
+    const win = getWindow();
+    if (!win || win.isDestroyed()) return;
+    for (const ach of records) {
+      try {
+        win.webContents.send(ipcEventChannels.achievementUnlocked, {
+          projectId,
+          achievement: ach,
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+  });
+
   ipcMain.handle(
     ipcChannels.achievementList,
-    async (_event, input: AchievementListInput) => {
-      return listAchievements(input.projectId);
+    async (_event, input: unknown) => {
+      return listAchievements(parseAchievementListInput(input).projectId);
     },
   );
 
@@ -28,34 +47,21 @@ export function registerAchievementHandlers(
     ipcChannels.achievementCheck,
     async (
       _event,
-      input: AchievementCheckInput,
+      input: unknown,
     ): Promise<AchievementCheckResponse> => {
-      const newlyUnlocked = checkAchievements(
-        input.projectId,
-        input.trigger ?? "manual",
+      const parsed = parseAchievementCheckInput(input);
+      const newlyUnlocked = checkAchievementsAndNotify(
+        parsed.projectId,
+        parsed.trigger ?? "manual",
       );
-      // 给渲染端推 toast
-      const win = getWindow();
-      if (win && !win.isDestroyed()) {
-        for (const ach of newlyUnlocked) {
-          try {
-            win.webContents.send(ipcEventChannels.achievementUnlocked, {
-              projectId: input.projectId,
-              achievement: ach,
-            });
-          } catch {
-            /* ignore */
-          }
-        }
-      }
       return { newlyUnlocked };
     },
   );
 
   ipcMain.handle(
     ipcChannels.achievementStats,
-    async (_event, input: { projectId: string }): Promise<AchievementStatsResponse> => {
-      return getAchievementStats(input.projectId);
+    async (_event, input: unknown): Promise<AchievementStatsResponse> => {
+      return getAchievementStats(parseAchievementStatsInput(input).projectId);
     },
   );
 }

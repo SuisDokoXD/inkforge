@@ -1,19 +1,12 @@
 import { ipcMain } from "electron";
 import type {
-  ChapterCommitDraftInput,
   ChapterCommitDraftResponse,
-  ChapterGenerateFromOutlineInput,
   ChapterGenerateFromOutlineResponse,
-  OutlineGenerateChaptersInput,
   OutlineGenerateChaptersResponse,
-  OutlineGenerateMasterInput,
   OutlineGenerateMasterResponse,
-  OutlineRefineInput,
   OutlineRefineResponse,
-  OutlineUndoRefineInput,
   OutlineUndoRefineResponse,
   ProjectRecord,
-  ProjectUpdateMetaInput,
 } from "@inkforge/shared";
 import {
   generateChapterOutlines,
@@ -26,54 +19,63 @@ import {
   commitChapterDraft,
   generateChapterFromOutline,
 } from "../services/chapter-generation-service";
+import {
+  parseChapterCommitDraftInput,
+  parseChapterGenerateFromOutlineInput,
+  parseOutlineGenerateChaptersInput,
+  parseOutlineGenerateMasterInput,
+  parseOutlineRefineInput,
+  parseOutlineUndoRefineInput,
+  parseProjectUpdateMetaInput,
+} from "./validation";
 
 export function registerOutlineGenerationHandlers(): void {
   ipcMain.handle(
     "project:update-meta",
-    async (_e, input: ProjectUpdateMetaInput): Promise<ProjectRecord> => {
-      return updateProjectCreativeMeta(input);
+    async (_e, input: unknown): Promise<ProjectRecord> => {
+      return updateProjectCreativeMeta(parseProjectUpdateMetaInput(input));
     },
   );
 
   ipcMain.handle(
     "outline:generate-master",
-    async (_e, input: OutlineGenerateMasterInput): Promise<OutlineGenerateMasterResponse> => {
-      return generateMasterOutline(input);
+    async (_e, input: unknown): Promise<OutlineGenerateMasterResponse> => {
+      return generateMasterOutline(parseOutlineGenerateMasterInput(input));
     },
   );
 
   ipcMain.handle(
     "outline:generate-chapters",
-    async (_e, input: OutlineGenerateChaptersInput): Promise<OutlineGenerateChaptersResponse> => {
-      return generateChapterOutlines(input);
+    async (_e, input: unknown): Promise<OutlineGenerateChaptersResponse> => {
+      return generateChapterOutlines(parseOutlineGenerateChaptersInput(input));
     },
   );
 
   ipcMain.handle(
     "outline:refine",
-    async (_e, input: OutlineRefineInput): Promise<OutlineRefineResponse> => {
-      return refineOutline(input);
+    async (_e, input: unknown): Promise<OutlineRefineResponse> => {
+      return refineOutline(parseOutlineRefineInput(input));
     },
   );
 
   ipcMain.handle(
     "outline:undo-refine",
-    async (_e, input: OutlineUndoRefineInput): Promise<OutlineUndoRefineResponse> => {
-      return undoRefineMaster(input);
+    async (_e, input: unknown): Promise<OutlineUndoRefineResponse> => {
+      return undoRefineMaster(parseOutlineUndoRefineInput(input));
     },
   );
 
   ipcMain.handle(
     "chapter:generate-from-outline",
-    async (_e, input: ChapterGenerateFromOutlineInput): Promise<ChapterGenerateFromOutlineResponse> => {
-      return generateChapterFromOutline(input);
+    async (_e, input: unknown): Promise<ChapterGenerateFromOutlineResponse> => {
+      return generateChapterFromOutline(parseChapterGenerateFromOutlineInput(input));
     },
   );
 
   ipcMain.handle(
     "chapter:commit-draft",
-    async (_e, input: ChapterCommitDraftInput): Promise<ChapterCommitDraftResponse> => {
-      return commitChapterDraft(input);
+    async (_e, input: unknown): Promise<ChapterCommitDraftResponse> => {
+      return commitChapterDraft(parseChapterCommitDraftInput(input));
     },
   );
 }
