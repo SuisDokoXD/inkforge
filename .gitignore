@@ -10,6 +10,11 @@ node_modules/
 **/out/
 **/*.tsbuildinfo
 
+# Test and visual audit artifacts
+**/playwright-report/
+**/test-results/
+output/visual-audit/
+
 # Electron runtime data
 apps/desktop/.electron/
 
