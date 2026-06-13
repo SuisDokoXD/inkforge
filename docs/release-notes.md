@@ -52,8 +52,10 @@
 
 ### 📎 校验和
 
+正式 Release 会自动上传 `SHA256SUMS.txt`。如需把校验和复制进 notes，从该文件粘贴对应行；手动发布时也必须按同样格式列出每个安装/压缩产物。
+
 ```
-<sha256 of each artifact>
+<sha256>  <artifact file name>
 ```
 
 ---
@@ -65,7 +67,7 @@
 3. 破坏性变更必须单独列「💥 破坏性变更」+ 「📦 升级须知」
 4. 验收区实打实写命令行返回，不堆砌绿勾
 5. 打 tag：`git tag v{X.Y.Z} && git push --tags`
-6. `gh release create v{X.Y.Z} --title "InkForge v{X.Y.Z}" --notes-file CHANGELOG.md [--draft|--prerelease]`
+6. `gh release create v{X.Y.Z} --title "InkForge v{X.Y.Z}" --notes-file CHANGELOG.md [--draft|--prerelease]`；如果走 GitHub Actions release workflow，会自动生成并上传 `SHA256SUMS.txt`
 
 ## 版本号规则
 

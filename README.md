@@ -33,9 +33,15 @@ InkForge 是一款面向长篇写作者的本地 AI 写作工作台。
 
 ### 下载
 
-前往 [Releases](https://github.com/tompignofind123-cyber/inkforge/releases) 下载对应平台的安装包。
+前往 [GitHub Releases](https://github.com/SuisDokoXD/inkforge/releases) 下载对应平台的安装包。请只从这个页面下载 beta 版本，不要使用第三方转载包。
 
-Windows 用户首次运行未签名的 beta 版本时，系统可能出现安全提示。确认来源可信后继续运行即可。
+每次 Release 都会附带 `SHA256SUMS.txt`。下载后可以用下面的命令核对安装包是否完整，输出值应与 `SHA256SUMS.txt` 中对应文件一致：
+
+```powershell
+Get-FileHash .\InkForge-*-setup.exe -Algorithm SHA256
+```
+
+Windows beta 版本目前未做代码签名，首次运行时 SmartScreen 可能提示“Windows 已保护你的电脑”。确认文件来自上面的 GitHub Releases 且 SHA256 校验一致后，可点击“更多信息”→“仍要运行”。正式写作前仍建议先备份作品目录；InkForge 还在 beta 阶段，数据结构可能继续演进。
 
 ### 从源码运行
 

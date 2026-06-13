@@ -318,6 +318,14 @@ jobs:
             exit 1
           fi
 
+      - name: Generate SHA256 checksums
+        shell: bash
+        run: |
+          find release-assets -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" \) -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > release-assets/SHA256SUMS.txt
+          cat release-assets/SHA256SUMS.txt
+
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -334,3 +342,4 @@ jobs:
             release-assets/**/*.tar.gz
             release-assets/**/*.yml
             release-assets/**/*.blockmap
+            release-assets/SHA256SUMS.txt

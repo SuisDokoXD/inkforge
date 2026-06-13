@@ -251,11 +251,11 @@ pnpm --filter @inkforge/desktop run bench:storage
 
 ## 8. 参考
 
-- 主计划：[novel-writing-app.md](../C:/Users/123/.claude/plan/novel-writing-app.md)（存于 Claude 用户目录）
-- M3 细案：[novel-writing-app-m3.md](../C:/Users/123/.claude/plan/novel-writing-app-m3.md)
-- M4 细案：[novel-writing-app-m4.md](../C:/Users/123/.claude/plan/novel-writing-app-m4.md)
-- M5 细案：[novel-writing-app-m5.md](../C:/Users/123/.claude/plan/novel-writing-app-m5.md)
-- M7 细案：[shiny-booping-honey.md](../C:/Users/123/.claude/plans/shiny-booping-honey.md)（书房 + AutoWriter + 快照 + 章节日志）
+- 主计划：`C:\Users\123\.claude\plan\novel-writing-app.md`（存于 Claude 用户目录）
+- M3 细案：`C:\Users\123\.claude\plan\novel-writing-app-m3.md`
+- M4 细案：`C:\Users\123\.claude\plan\novel-writing-app-m4.md`
+- M5 细案：`C:\Users\123\.claude\plan\novel-writing-app-m5.md`
+- M7 细案：`C:\Users\123\.claude\plans\shiny-booping-honey.md`（书房 + AutoWriter + 快照 + 章节日志）
 
 ---
 

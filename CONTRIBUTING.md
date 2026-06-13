@@ -1,6 +1,6 @@
 # 贡献指南 · Contributing to InkForge
 
-感谢你愿意为 InkForge 投入时间。本文是给"想动手改代码或提交 Skill"的人看的；只是想报 Bug 请直接到 [Issues](../../issues/new/choose)。
+感谢你愿意为 InkForge 投入时间。本文是给"想动手改代码或提交 Skill"的人看的；只是想报 Bug 请直接到 [Issues](https://github.com/SuisDokoXD/inkforge/issues/new/choose)。
 
 ---
 

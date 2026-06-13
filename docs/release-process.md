@@ -32,14 +32,16 @@ git push origin main v0.1.0-beta.0
 
 推标签会触发 `.github/workflows/release.yml`：
 
-- 在 windows / macos / ubuntu 三个 runner 上各自跑 typecheck + `electron-builder`
-- 生成 `apps/desktop/release/` 下的产物（.exe / .dmg / .AppImage / .deb + latest*.yml）
-- 创建正式 GitHub Release 并上传产物；这样 Releases 页面会直接显示可下载安装包
-- 更重的 verify 流程留在 CI 和本地预检里，避免某个平台的辅助检查阻塞发布
+- 先在 ubuntu runner 上跑 `pnpm typecheck`、`pnpm test` 和 desktop `verify:all`
+- 再在 windows / macos / ubuntu runner 上分别运行 `electron-builder`
+- 生成 `apps/desktop/release/` 下的产物（当前 CI 默认：Windows `.exe`、macOS `.zip`、Linux `.AppImage`，以及 `latest*.yml` / `.blockmap` 更新元数据）
+- publish job 会为下载产物生成 `SHA256SUMS.txt`，再创建正式 GitHub Release 并上传产物
+- publish 对 macOS 宽容：Windows + Linux 成功即可发布；macOS 成功时会自动包含 macOS 产物
 
 ## Step 4. 人工检查 + 发布
 
 - 打开 GitHub Releases，确认三平台产物齐全
+- 对照 `SHA256SUMS.txt` 抽查至少一个安装包的 SHA256
 - 下载 Windows / Mac 各至少一个产物，跑一遍欢迎向导 + 写 200 字 + 生成日报
 - 填写 Release Notes（`docs/release-notes.md` 模板）
 - 如果是手动触发且选择了 draft，先点击 "Publish release"；tag 推送则会直接发布
@@ -59,4 +61,4 @@ git push origin main v0.1.0-beta.0
 - **macOS**: Apple Developer 账号 → Developer ID Application 证书 → notarization 需要 `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`
 - **Linux**: AppImage 无需签名；deb 如需 apt repo 签名，用 gpg key
 
-GitHub Actions workflow 已预留环境变量占位，只需在 Settings → Secrets 填入即可。
+当前 workflow 明确按未签名 beta 发布：`CSC_IDENTITY_AUTO_DISCOVERY=false`，并且 `apps/desktop/package.json` 的 Windows 配置为 `signAndEditExecutable=false`。等确认证书和密钥管理流程后，再单独启用签名变量，不要在 beta 流程里半接入签名。

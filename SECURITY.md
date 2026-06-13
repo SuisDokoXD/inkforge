@@ -4,7 +4,7 @@
 
 **请不要**在公开 Issue 或 Discussion 中讨论尚未公开的安全问题。
 
-- 通过 GitHub 的 [Private vulnerability reporting](../../security/advisories/new) 提交（推荐）
+- 通过 GitHub 的 [Private vulnerability reporting](https://github.com/SuisDokoXD/inkforge/security/advisories/new) 提交（推荐）
 - 或邮件至 `security@inkforge.app`（PGP 公钥可附后跟进）
 
 请在报告中包含：
