@@ -1,19 +1,20 @@
 # InkForge 产品价值验证报告
 
 > 日期：2026-06-13
-> 范围：本地优先写作闭环、Electron e2e、可验证的产品假设。真实模型输出质量和真人试用尚未完成。
+> 范围：本地优先写作闭环、AutoWriter / Review mock LLM 链路、Electron e2e、Windows unpacked 启动 smoke、可验证的产品假设。真实模型输出质量和真人试用尚未完成。
 
 ## 本轮结论
 
-本轮能证明：InkForge 的本地优先写作闭环已经可以在 Electron 测试环境中真实跑通。测试覆盖项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志、Markdown 导出，以及重载后的章节可见性。
+本轮能证明：InkForge 的本地优先写作闭环已经可以在 Electron 测试环境中真实跑通；AutoWriter 和 Review 的主进程模型调用路径也可以在 deterministic mock LLM 下端到端跑通。测试覆盖项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志、Markdown 导出、AutoWriter 多 Agent 流水线、Review 报告，以及重载后的章节可见性。
 
-本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些需要固定样例、真实模型服务和用户试用。
+本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些需要固定样例、真实模型服务和用户试用。Windows unpacked 目录版已做本机进程级启动 smoke，但这仍不等于签名安装包在干净机器上的安装/升级/卸载体验已成熟。
 
 ## 新增自动化证明
 
 新增 e2e：
 
 - `apps/desktop/e2e/local-first-writing-loop.spec.ts`
+- `apps/desktop/e2e/auto-writer-mock.spec.ts`
 
 它通过 preload API 执行以下链路：
 
@@ -30,6 +31,16 @@
 11. 导出项目 Markdown，并确认导出文件存在且包含章节正文。
 12. 重载窗口，确认章节仍能在写作页看到。
 
+`auto-writer-mock.spec.ts` 通过 `INKFORGE_MOCK_LLM=1` 执行以下链路：
+
+1. 使用真实 preload API 创建项目、章节、人物和世界条目。
+2. 通过真实 `auto-writer:start` IPC 启动 AutoWriter。
+3. main 进程模型运行时返回确定性的 Planner JSON、Writer 正文、Critic JSON 和 Reflector 备忘。
+4. AutoWriter 写入章节正文，创建快照，写入章节日志和 token 统计。
+5. 通过真实 `review:run` IPC 启动 Review。
+6. Review 使用同一 mock LLM 返回 finding，完成报告汇总。
+7. 重载窗口，确认生成章节仍可见。
+
 ## 本轮验证命令
 
 ```powershell
@@ -39,7 +50,7 @@ pnpm --filter @inkforge/desktop run e2e
 结果：
 
 ```text
-8 passed
+9 passed
 ```
 
 通过项包括：
@@ -47,6 +58,7 @@ pnpm --filter @inkforge/desktop run e2e
 - 6 条基础 smoke。
 - 1 条角色导入/资料/酒馆入口视觉路径。
 - 1 条新增本地写作闭环。
+- 1 条新增 AutoWriter / Review mock LLM 闭环。
 
 ## 证明了什么
 
@@ -59,7 +71,11 @@ pnpm --filter @inkforge/desktop run e2e
 | 快照可创建并读回正文 | 已证明 | e2e 创建手动快照并读取快照内容 |
 | 写作日志可记录 | 已证明 | e2e 写入章节日志并读取列表 |
 | Markdown 导出可生成文件 | 已证明 | e2e 使用指定 `outputPath` 导出，并读取文件断言正文存在 |
+| AutoWriter 主进程链路可跑通 | 已证明 | `INKFORGE_MOCK_LLM=1` 时，e2e 启动真实 `auto-writer:start`，完成 2 段生成、快照、章节日志和 token 统计 |
+| Review 主进程链路可跑通 | 已证明 | e2e 启动真实 `review:run`，mock LLM 返回 finding，报告状态完成 |
 | 重载后工作区仍可见 | 已证明 | e2e 写入 store 后 reload，断言章节标题可见 |
+| Windows unpacked 目录版可构建 | 已证明 | `electron-builder --dir` 输出 `release-verify-20260614-0005/win-unpacked/InkForge.exe` |
+| Windows unpacked 目录版本机可启动 | 部分证明 | 系统方式启动 `InkForge.exe`，8 秒后进程仍存活，并生成 workspace 数据库；未验证安装器和干净机器 |
 
 ## 发现的产品边界
 
@@ -74,10 +90,10 @@ pnpm --filter @inkforge/desktop run e2e
 
 | 待证明项 | 为什么还没证明 | 下一步 |
 |---|---|---|
-| AutoWriter 真实输出质量 | 当前没有 deterministic mock LLM，也没有真实模型评分样例 | 实装 `INKFORGE_MOCK_LLM=1` 或使用固定真实模型跑样例评分 |
+| AutoWriter 真实输出质量 | deterministic mock LLM 只能证明流程，不代表真实模型长文质量 | 使用固定真实模型跑样例评分 |
 | 比普通 AI 聊天更省上下文整理成本 | 需要同题对照实验 | 固定任务，记录准备时间、粘贴资料量、错误数、修改耗时、可保留比例 |
 | 真人首次使用成功率 | 需要真实或半真实用户 | 找 1-3 人独立完成第一章流程，记录卡点 |
-| 打包安装包首次启动 | 当前 e2e 启动的是构建后的 main 入口，不是安装包 | 用 `dist:dir` 或安装包在干净目录跑启动验证 |
+| 签名安装包首次启动 | 本轮只验证了本机 unpacked 目录版进程级启动 | 用未签名安装包或后续签名安装包在干净 Windows 用户环境跑安装、启动、卸载 |
 
 ## 下一轮验证标准
 
@@ -94,6 +110,6 @@ pnpm --filter @inkforge/desktop run e2e
 
 ## 当前判断
 
-InkForge 现在已经能证明本地写作资产闭环成立：项目、正文、设定、素材、快照、日志和导出不是散落的演示功能，而是能在同一个 Electron 应用里通过真实 API 串起来。
+InkForge 现在已经能证明本地写作资产闭环成立：项目、正文、设定、素材、快照、日志和导出不是散落的演示功能，而是能在同一个 Electron 应用里通过真实 API 串起来。AutoWriter 和 Review 也已经从“只有纯逻辑验证”推进到“真实主进程 IPC + 模型运行时 + 落库”的自动化证明。
 
-下一步真正决定产品价值的是 AutoWriter 质量和用户首次使用成功率。那部分不能靠现有 e2e 代替。
+下一步真正决定产品价值的是真实模型下的 AutoWriter 质量、对普通聊天窗口的效率收益，以及用户首次使用成功率。那部分不能靠 mock e2e 代替。

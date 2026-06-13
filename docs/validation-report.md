@@ -17,7 +17,9 @@
 | `pnpm --filter @inkforge/desktop run sqlite:node` | 通过 | 将 `better-sqlite3` 切换到当前 Node ABI |
 | `pnpm --filter @inkforge/desktop run verify:all` | 通过 | 桌面端迁移、引擎、模型服务、导出、RAG、快捷键等守门脚本通过 |
 | `pnpm --filter @inkforge/desktop run sqlite:electron` | 通过 | 将 `better-sqlite3` 切回 Electron ABI |
-| `pnpm --filter @inkforge/desktop run e2e` | 通过 | 8 条 Electron e2e 通过，包含本地写作闭环 |
+| `pnpm --filter @inkforge/desktop run e2e` | 通过 | 9 条 Electron e2e 通过，包含本地写作闭环和 AutoWriter / Review mock LLM 闭环 |
+| `pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never` | 通过 | 生成 Windows unpacked 目录版到独立验证目录 |
+| Windows unpacked 启动 smoke | 通过 | `InkForge.exe` 用独立 `user-data-dir` 启动，8 秒后进程仍存活，并生成 workspace 数据库 |
 
 ## verify:all 覆盖范围
 
@@ -40,7 +42,9 @@
 
 ## e2e 覆盖范围
 
-本轮新增并通过 `apps/desktop/e2e/local-first-writing-loop.spec.ts`，覆盖：
+本轮通过的 Electron e2e 共 9 条。新增重点包括 `apps/desktop/e2e/local-first-writing-loop.spec.ts` 和 `apps/desktop/e2e/auto-writer-mock.spec.ts`。
+
+`local-first-writing-loop.spec.ts` 覆盖：
 
 - 项目元数据写入。
 - 章节 Markdown 正文保存和读回。
@@ -50,7 +54,35 @@
 - 项目 Markdown 导出到指定路径。
 - 窗口重载后章节标题仍可见。
 
+`auto-writer-mock.spec.ts` 覆盖：
+
+- `INKFORGE_MOCK_LLM=1` 下，主进程模型运行时返回确定性流式响应。
+- AutoWriter 真实 IPC 入口启动，Planner/Writer/Critic/Reflector 经过同一条主进程流水线。
+- 自动写作正文写入章节文件。
+- AutoWriter 快照、章节日志和 token 统计落库。
+- Review 真实 IPC 入口使用 mock LLM 生成 finding，并完成报告汇总。
+- 重载后生成章节仍可见。
+
 详细产品验证结论见 [InkForge 产品价值验证报告](product-validation-report.md)。
+
+## 打包产物验证
+
+本轮没有覆盖安装器安装/卸载，也没有覆盖干净机器。已验证的是 Windows unpacked 目录版：
+
+- 输出目录：`apps/desktop/release-verify-20260614-0005/win-unpacked`
+- 主程序：`InkForge.exe`
+- 大小：186,328,576 bytes
+- SHA-256：`cb3e6d7ac3c5582fae609ebe7412d4e82d0d990fe88ec5506adbf0144d730dc0`
+
+启动验证使用独立 appdata：
+
+```text
+output/visual-audit/dist-dir-launch-verify/appdata
+```
+
+结果：系统方式启动 `InkForge.exe`，8 秒后进程仍存活，随后关闭；appdata 下生成了 `workspace/inkforge.db`。这证明 unpacked 目录版在本机可以启动到稳定运行状态。
+
+限制：Playwright 直接用 Electron driver 挂载 packaged `InkForge.exe` 时 renderer 报 `page crashed`，因此本轮没有把 packaged UI 级自动化断言写成通过项。源码构建入口的 UI e2e 已通过，packaged 目录版只做了进程级启动 smoke。
 
 ## 运行环境记录
 
@@ -62,7 +94,7 @@
 
 本地验证期间曾遇到 `better-sqlite3` ABI 不匹配：native 模块处于 Electron ABI 128 时，Node 24 侧的 `pnpm test`/`verify:all` 需要 ABI 137，会报 `NODE_MODULE_VERSION 128` 与 `137` 不匹配。执行 `pnpm --filter @inkforge/desktop run sqlite:node` 后，Node 侧单测和 verify 全量通过。该失败属于本地原生模块状态问题，不是 TypeScript 或业务逻辑回归。
 
-验证结束前已执行 `pnpm --filter @inkforge/desktop run sqlite:electron`，把本地 `better-sqlite3` 切回 Electron ABI，避免影响后续启动桌面开发版和 Electron e2e。
+验证结束前已执行 `pnpm --filter @inkforge/desktop run sqlite:electron`，把本地 `better-sqlite3` 切回 Electron ABI，避免影响后续启动桌面开发版、Electron e2e 和打包产物。
 
 ## 还不能证明的内容
 
@@ -71,13 +103,13 @@
 - 真实用户能否在 30 分钟内独立完成第一章写作闭环。
 - AutoWriter 在真实模型上的输出质量、保留率、人物一致性和世界观一致性。
 - 与普通 AI 聊天窗口相比，真实写作耗时和上下文整理成本是否明显下降。
-- Windows/macOS/Linux 安装包在干净机器上的首次启动、升级和卸载体验。
+- Windows/macOS/Linux 安装包在干净机器上的首次启动、升级和卸载体验；本轮只验证了本机 Windows unpacked 目录版进程级启动。
 - 长时间写作、异常断电、数据库损坏、复杂项目迁移等压力场景。
 
 ## 下一轮应该验证
 
 1. 用 3 个固定样例项目跑 AutoWriter 输出评分：大纲遵循、人物一致、世界观一致、前文承接、可读性、可编辑性、排版。
-2. 做一条端到端写作闭环：新建项目、创建人物/世界观、写章节、AutoWriter 续写、审查、快照、导出、重启恢复。
+2. 用真实模型做一条端到端写作闭环：新建项目、创建人物/世界观、写章节、AutoWriter 续写、审查、快照、导出、重启恢复。
 3. 与普通 AI 聊天窗口做同题对比：记录准备上下文耗时、明显设定错误、作者修改耗时、可保留字数比例。
 4. 在打包产物上跑首次启动验证，而不是只验证源码开发环境。
 5. 找 1-3 个真实或半真实用户试用，记录卡点和第二天是否愿意继续打开。
@@ -90,5 +122,7 @@ pnpm test
 pnpm build
 pnpm --filter @inkforge/desktop run sqlite:node
 pnpm --filter @inkforge/desktop run verify:all
+pnpm --filter @inkforge/desktop run sqlite:electron
 pnpm --filter @inkforge/desktop run e2e
+pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never
 ```

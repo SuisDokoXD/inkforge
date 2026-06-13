@@ -18,10 +18,11 @@ pnpm --filter @inkforge/desktop run e2e           # 跑测试
 5. 审查页 ▶ 一键审查（走 INKFORGE_MOCK_LLM）出至少一条 finding
 6. 诊断摘要按钮能把 "诊断摘要" 复制到剪贴板
 7. 本地写作闭环：通过 preload API 创建项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志，并导出 Markdown；重载后确认章节仍可见。
+8. AutoWriter / Review mock LLM 闭环：`INKFORGE_MOCK_LLM=1` 时走真实主进程模型入口，完成 Planner/Writer/Critic/Reflector、快照、章节日志和 Review 报告。
 
 ## TODO
 
 - 在关键 UI 节点加 `data-testid`（`onboarding-next` / `activity-skill` / `activity-review` /
   `open-settings` / `diag-copy`）
-- 实装 `INKFORGE_MOCK_LLM=1` 时在 main 进程替换 LLMProvider（回一个 deterministic 流），再把 AutoWriter / Review 的真实调用路径纳入 e2e。
+- 用固定真实模型跑 AutoWriter 质量样例，记录保留率、设定错误和修改成本。
 - 在 CI 中加 `e2e` job（需要额外安装 Chromium，CI 上用 `xvfb-run`）

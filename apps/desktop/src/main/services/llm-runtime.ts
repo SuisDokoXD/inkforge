@@ -1,5 +1,10 @@
 import { createProvider } from "@inkforge/llm-core";
-import type { LLMMessage, LLMProvider } from "@inkforge/llm-core";
+import type {
+  LLMChunk,
+  LLMMessage,
+  LLMProvider,
+  LLMRequest,
+} from "@inkforge/llm-core";
 import {
   getFirstProviderPersistenceRecord,
   getProviderPersistenceRecord,
@@ -17,7 +22,42 @@ import type {
 } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
 
+const MOCK_PROVIDER_ID = "inkforge-mock";
+const MOCK_KEY_ID = "inkforge-mock-key";
+
+function isMockLlmEnabled(): boolean {
+  return process.env.INKFORGE_MOCK_LLM === "1";
+}
+
+function isMockProviderId(providerId?: string | null): boolean {
+  return (
+    providerId === MOCK_PROVIDER_ID ||
+    providerId === "mock" ||
+    providerId === "mock-llm"
+  );
+}
+
+const MOCK_PROVIDER_RECORD: ProviderPersistenceRecord = {
+  id: MOCK_PROVIDER_ID,
+  label: "InkForge Mock LLM",
+  vendor: "openai-compat",
+  baseUrl: "mock://inkforge",
+  defaultModel: "inkforge-mock",
+  tags: ["test", "mock"],
+  encrypted: null,
+  storedInKeychain: false,
+  keyStrategy: "single",
+  cooldownMs: 0,
+};
+
+function isMockProviderRecord(record: ProviderPersistenceRecord): boolean {
+  return record.id === MOCK_PROVIDER_ID || record.baseUrl === "mock://inkforge";
+}
+
 export function resolveProviderRecord(providerId?: string): ProviderPersistenceRecord | null {
+  if (isMockLlmEnabled() && (!providerId || isMockProviderId(providerId))) {
+    return MOCK_PROVIDER_RECORD;
+  }
   const ctx = getAppContext();
   return providerId
     ? getProviderPersistenceRecord(ctx.db, providerId)
@@ -136,6 +176,9 @@ async function tryKeys(
 export async function pickProviderKey(
   record: ProviderPersistenceRecord,
 ): Promise<PickedKey | null> {
+  if (isMockLlmEnabled() && isMockProviderRecord(record)) {
+    return { keyId: MOCK_KEY_ID, apiKey: "mock-key" };
+  }
   const ctx = getAppContext();
   const allKeys = listProviderKeyPersistenceRecords(ctx.db, record.id);
   const enabled = allKeys.filter((k) => !k.disabled);
@@ -163,6 +206,7 @@ export async function resolveApiKey(
 }
 
 export function reportProviderKeyResult(keyId: string, ok: boolean): void {
+  if (keyId === MOCK_KEY_ID) return;
   const ctx = getAppContext();
   if (ok) markProviderKeySuccess(ctx.db, keyId);
   else markProviderKeyFailure(ctx.db, keyId);
@@ -195,6 +239,9 @@ export function instantiateProvider(
   record: ProviderPersistenceRecord,
   apiKey: string,
 ): LLMProvider {
+  if (isMockLlmEnabled() && isMockProviderRecord(record)) {
+    return new MockLlmProvider(record, apiKey);
+  }
   return createProvider({
     id: record.id,
     label: record.label,
@@ -204,6 +251,129 @@ export function instantiateProvider(
     defaultModel: record.defaultModel,
     tags: record.tags,
   });
+}
+
+class MockLlmProvider implements LLMProvider {
+  id: string;
+  label: string;
+  vendor: "openai-compat" = "openai-compat";
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string;
+  tags: string[];
+
+  constructor(record: ProviderPersistenceRecord, apiKey: string) {
+    this.id = record.id;
+    this.label = record.label;
+    this.baseUrl = record.baseUrl;
+    this.apiKey = apiKey;
+    this.defaultModel = record.defaultModel;
+    this.tags = record.tags;
+  }
+
+  estimateTokens(text: string): number {
+    return Math.ceil(text.length / 4);
+  }
+
+  async *complete(req: LLMRequest): AsyncIterable<LLMChunk> {
+    const text = buildMockCompletion(req);
+    const chunks = text.match(/[\s\S]{1,48}/g) ?? [text];
+    for (const textDelta of chunks) {
+      yield {
+        type: "delta",
+        vendor: this.vendor,
+        textDelta,
+      };
+    }
+    const promptText = [
+      req.systemPrompt ?? "",
+      ...req.messages.map((message) => message.content),
+    ].join("\n");
+    yield {
+      type: "done",
+      vendor: this.vendor,
+      raw: {
+        usage: {
+          prompt_tokens: this.estimateTokens(promptText),
+          completion_tokens: this.estimateTokens(text),
+        },
+      },
+    };
+  }
+}
+
+function buildMockCompletion(req: LLMRequest): string {
+  const systemPrompt = req.systemPrompt ?? "";
+  const userPrompt = req.messages.map((message) => message.content).join("\n\n");
+
+  if (systemPrompt.includes("提纲师")) {
+    return buildMockPlannerOutput(userPrompt);
+  }
+  if (systemPrompt.includes("执笔者")) {
+    return buildMockWriterOutput(userPrompt);
+  }
+  if (systemPrompt.includes("审稿人")) {
+    return "[]";
+  }
+  if (systemPrompt.includes("反思者")) {
+    return "保持雨声茶馆的规则和沈青禾的克制观察，下一段继续推进朱砂印与送信人的关系。";
+  }
+  if (systemPrompt.includes("小说审查助手")) {
+    return buildMockReviewOutput(userPrompt);
+  }
+  return "这是 INKFORGE_MOCK_LLM 的确定性回复，用于验证本地模型调用链路。";
+}
+
+function buildMockPlannerOutput(userPrompt: string): string {
+  const maxSegments = Math.max(1, Math.min(3, extractNumberAfter(userPrompt, "# 段数上限") ?? 2));
+  const beats = [
+    "沈青禾进入雨声茶馆，收到封口压着师门朱砂印的来信。",
+    "阿迟透露自己见过送信人，陆闻舟提出记忆茶资，迫使沈青禾作出选择。",
+    "茶馆灯火忽暗，信纸显出第二行字，指向师父失踪前最后停留的地方。",
+  ].slice(0, maxSegments);
+  return JSON.stringify(
+    beats.map((beat, index) => ({
+      index: index + 1,
+      beat,
+    })),
+  );
+}
+
+function buildMockWriterOutput(userPrompt: string): string {
+  const segment = extractNumberAfter(userPrompt, "# 本段 Beat") ?? 1;
+  if (segment <= 1) {
+    return [
+      "沈青禾推开雨声茶馆的木门时，檐下的水线像被谁用刀裁齐。灯火贴着桌沿浮动，掌柜陆闻舟把一封潮湿的信推到她面前，信封没有署名，封口却压着青松门独有的朱砂印。",
+      "她没有立刻拆信，只用指腹轻轻按住那一点红。三年前师父失踪前，也带走过同样的印泥。角落里的阿迟抱剑不语，视线却先一步落在信纸上，像是等这一刻已经等了很久。",
+    ].join("\n\n");
+  }
+  return [
+    "阿迟终于开口，说送信人来时没有影子，只在门槛边留下半枚被雨泡软的铜钱。陆闻舟替沈青禾续了一盏茶，语气平静得近乎冷淡：雨声茶馆从不白收消息，想知道下一句，就要交出一段真实记忆。",
+    "沈青禾望着茶盏里晃开的灯影，想起师父离山那夜也是这样的雨。她把信拆开，纸上只有一行字：天亮前找到送信人，否则朱砂印会替故人说完最后一句谎。",
+  ].join("\n\n");
+}
+
+function buildMockReviewOutput(userPrompt: string): string {
+  if (userPrompt.includes("朱砂印")) {
+    return JSON.stringify([
+      {
+        severity: "info",
+        excerpt: "封口却压着青松门独有的朱砂印",
+        suggestion: "这枚朱砂印已经形成有效悬念，后续章节需要安排来源或伪造可能性。",
+      },
+    ]);
+  }
+  return "[]";
+}
+
+function extractNumberAfter(text: string, marker: string): number | null {
+  const start = text.indexOf(marker);
+  if (start < 0) return null;
+  const slice = text.slice(start + marker.length, start + marker.length + 80);
+  const match = slice.match(/(\d+)/);
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export interface StreamTextInput {
