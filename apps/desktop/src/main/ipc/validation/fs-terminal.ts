@@ -8,13 +8,40 @@ import type {
 } from "@inkforge/shared";
 import {
   asObject,
+  fail,
   optionalFilters,
   optionalNumber,
   optionalString,
   requiredNonEmptyString,
-  requiredNumber,
   requiredString,
 } from "./core";
+
+function optionalTerminalDimension(
+  obj: Record<string, unknown>,
+  key: "cols" | "rows",
+  channel: string,
+  min: number,
+  max: number,
+): number | undefined {
+  const value = optionalNumber(obj, key, channel);
+  if (value === undefined) return undefined;
+  if (!Number.isInteger(value) || value < min || value > max) {
+    fail(channel, key, `an integer between ${min} and ${max}`);
+  }
+  return value;
+}
+
+function requiredTerminalDimension(
+  obj: Record<string, unknown>,
+  key: "cols" | "rows",
+  channel: string,
+  min: number,
+  max: number,
+): number {
+  const value = optionalTerminalDimension(obj, key, channel, min, max);
+  if (value === undefined) fail(channel, key, `an integer between ${min} and ${max}`);
+  return value;
+}
 
 export function parseFsPickFileInput(value: unknown): FsPickFileInput {
   const channel = "fs:pick-file";
@@ -40,8 +67,8 @@ export function parseTerminalSpawnInput(value: unknown): TerminalSpawnInput {
   const obj = asObject(value, channel);
   return {
     cwd: optionalString(obj, "cwd", channel),
-    cols: optionalNumber(obj, "cols", channel),
-    rows: optionalNumber(obj, "rows", channel),
+    cols: optionalTerminalDimension(obj, "cols", channel, 20, 400),
+    rows: optionalTerminalDimension(obj, "rows", channel, 5, 200),
     shell: optionalString(obj, "shell", channel),
   };
 }
@@ -60,8 +87,8 @@ export function parseTerminalResizePayload(value: unknown): TerminalResizePayloa
   const obj = asObject(value, channel);
   return {
     id: requiredNonEmptyString(obj, "id", channel),
-    cols: requiredNumber(obj, "cols", channel),
-    rows: requiredNumber(obj, "rows", channel),
+    cols: requiredTerminalDimension(obj, "cols", channel, 20, 400),
+    rows: requiredTerminalDimension(obj, "rows", channel, 5, 200),
   };
 }
 

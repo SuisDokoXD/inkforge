@@ -36,6 +36,16 @@ import {
   updateProviderKeyStrategy,
   upsertProvider,
 } from "../repositories/provider-repo";
+import {
+  deleteProviderKey,
+  getProviderKeyPersistenceRecord,
+  insertProviderKey,
+  listProviderKeyPersistenceRecords,
+  listProviderKeys,
+  markProviderKeyFailure,
+  markProviderKeySuccess,
+  updateProviderKey,
+} from "../repositories/provider-key-repo";
 
 describe("SQLite repository integration", () => {
   let workspaceDir = "";
@@ -251,5 +261,105 @@ describe("SQLite repository integration", () => {
 
     deleteProvider(database, "provider-1");
     expect(getProviderPersistenceRecord(database, "provider-1")).toBeNull();
+  });
+
+  it("persists provider keys while keeping encrypted material out of public records", () => {
+    const database = currentDb();
+
+    upsertProvider(database, {
+      id: "provider-keys",
+      label: "Keyed Service",
+      vendor: "openai",
+      baseUrl: "https://keys.example.test/v1",
+      defaultModel: "model-key",
+      tags: [],
+      encrypted: null,
+      storedInKeychain: false,
+    });
+
+    const created = insertProviderKey(database, {
+      id: "key-1",
+      providerId: "provider-keys",
+      label: "Primary",
+      encrypted: {
+        ciphertext: "cipher-key",
+        iv: "iv-key",
+        tag: "tag-key",
+      },
+      weight: 2.6,
+    });
+
+    expect(created).toMatchObject({
+      id: "key-1",
+      providerId: "provider-keys",
+      label: "Primary",
+      weight: 3,
+      disabled: false,
+      storedInKeychain: false,
+      failCount: 0,
+      lastFailedAt: null,
+    });
+    expect((created as unknown as Record<string, unknown>).encrypted).toBeUndefined();
+
+    expect(listProviderKeys(database, "provider-keys")).toHaveLength(1);
+    expect(
+      (listProviderKeys(database, "provider-keys")[0] as unknown as Record<string, unknown>)
+        .encrypted,
+    ).toBeUndefined();
+
+    expect(getProviderKeyPersistenceRecord(database, "key-1")).toMatchObject({
+      encrypted: {
+        ciphertext: "cipher-key",
+        iv: "iv-key",
+        tag: "tag-key",
+      },
+    });
+    expect(listProviderKeyPersistenceRecords(database, "provider-keys")[0]).toMatchObject({
+      id: "key-1",
+      encrypted: {
+        ciphertext: "cipher-key",
+      },
+    });
+
+    const updated = updateProviderKey(database, {
+      id: "key-1",
+      label: "Primary rotated",
+      storedInKeychain: true,
+      weight: 4,
+      disabled: true,
+    });
+    expect(updated).toMatchObject({
+      label: "Primary rotated",
+      storedInKeychain: true,
+      weight: 4,
+      disabled: true,
+    });
+
+    const failedAt = "2026-06-13T12:00:00.000Z";
+    expect(markProviderKeyFailure(database, "key-1", failedAt)).toMatchObject({
+      failCount: 1,
+      lastFailedAt: failedAt,
+    });
+    expect(markProviderKeyFailure(database, "missing-key")).toBeNull();
+    expect(markProviderKeySuccess(database, "key-1")).toMatchObject({
+      failCount: 0,
+      lastFailedAt: null,
+    });
+    expect(markProviderKeySuccess(database, "missing-key")).toBeNull();
+
+    const cleared = updateProviderKey(database, {
+      id: "key-1",
+      label: "Primary cleared",
+      clearKey: true,
+    });
+    expect(cleared).toMatchObject({
+      label: "Primary cleared",
+      storedInKeychain: false,
+    });
+    expect(getProviderKeyPersistenceRecord(database, "key-1")?.encrypted).toBeNull();
+
+    deleteProviderKey(database, "key-1");
+    expect(getProviderKeyPersistenceRecord(database, "key-1")).toBeNull();
+    expect(listProviderKeys(database, "provider-keys")).toEqual([]);
   });
 });

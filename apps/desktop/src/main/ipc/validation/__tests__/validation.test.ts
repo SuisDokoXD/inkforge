@@ -5,7 +5,22 @@ import { parseAutoWriterStartInput } from "../auto-writer";
 import { parseCharacterSyncApplyInput } from "../character";
 import { asObject } from "../core";
 import { parseExternalOpenUrlInput } from "../external";
+import {
+  parseChapterImportEpubInput,
+  parseChapterImportTxtInput,
+  parseProjectExportInput,
+} from "../project-export";
+import {
+  parseFsSaveFileInput,
+  parseTerminalInputPayload,
+  parseTerminalResizePayload,
+  parseTerminalSpawnInput,
+} from "../fs-terminal";
 import { parseLLMChatInput } from "../llm";
+import {
+  parseProviderKeySetDisabledInput,
+  parseProviderKeyUpsertInput,
+} from "../provider-key";
 import {
   parseProviderListRemoteModelsInput,
   parseProviderSaveInput,
@@ -97,6 +112,143 @@ describe("external URL validation", () => {
     expectInvalid(
       () => parseExternalOpenUrlInput({ url: "file:///C:/Windows/System32/calc.exe" }),
       "external:open-url.url must be an http/https URL",
+    );
+  });
+});
+
+describe("file, import, and terminal validation", () => {
+  it("keeps project export/import payloads explicit about project and paths", () => {
+    expect(
+      parseProjectExportInput({
+        projectId: "project-1",
+        outputPath: "C:/tmp/book.md",
+        fileName: "book.md",
+      }),
+    ).toEqual({
+      projectId: "project-1",
+      outputPath: "C:/tmp/book.md",
+      fileName: "book.md",
+    });
+
+    expect(parseChapterImportTxtInput({ projectId: "project-1", filePath: "C:/tmp/book.txt" }))
+      .toEqual({ projectId: "project-1", filePath: "C:/tmp/book.txt" });
+    expect(parseChapterImportEpubInput({ projectId: "project-1", filePath: "C:/tmp/book.epub" }))
+      .toEqual({ projectId: "project-1", filePath: "C:/tmp/book.epub" });
+
+    expectInvalid(
+      () => parseProjectExportInput({ projectId: "", outputPath: "C:/tmp/book.md" }),
+      "projectId must be a non-empty string",
+    );
+    expectInvalid(
+      () => parseChapterImportTxtInput({ projectId: "project-1", filePath: "" }),
+      "filePath must be a non-empty string",
+    );
+  });
+
+  it("validates save-file filters and string content", () => {
+    expect(
+      parseFsSaveFileInput({
+        defaultPath: "draft.md",
+        content: "# Draft",
+        filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+      }),
+    ).toEqual({
+      defaultPath: "draft.md",
+      content: "# Draft",
+      filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
+    });
+
+    expectInvalid(
+      () => parseFsSaveFileInput({ content: 123 }),
+      "content must be a string",
+    );
+    expectInvalid(
+      () =>
+        parseFsSaveFileInput({
+          content: "",
+          filters: [{ name: "Bad", extensions: ["md", 1] }],
+        }),
+      "filters[0].extensions[1] must be a non-empty string",
+    );
+  });
+
+  it("bounds terminal dimensions and requires session ids", () => {
+    expect(parseTerminalSpawnInput({ cwd: "C:/work", cols: 120, rows: 32 })).toEqual({
+      cwd: "C:/work",
+      cols: 120,
+      rows: 32,
+      shell: undefined,
+    });
+    expect(parseTerminalInputPayload({ id: "term-1", data: "pnpm test\r" })).toEqual({
+      id: "term-1",
+      data: "pnpm test\r",
+    });
+    expect(parseTerminalResizePayload({ id: "term-1", cols: 80, rows: 24 })).toEqual({
+      id: "term-1",
+      cols: 80,
+      rows: 24,
+    });
+
+    expectInvalid(
+      () => parseTerminalSpawnInput({ cols: 19, rows: 24 }),
+      "cols must be an integer between 20 and 400",
+    );
+    expectInvalid(
+      () => parseTerminalResizePayload({ id: "term-1", cols: 80.5, rows: 24 }),
+      "cols must be an integer between 20 and 400",
+    );
+    expectInvalid(
+      () => parseTerminalInputPayload({ id: "", data: "x" }),
+      "id must be a non-empty string",
+    );
+  });
+});
+
+describe("provider-key validation", () => {
+  it("accepts strategy updates and rejects invalid key metadata", () => {
+    expect(
+      parseProviderKeyUpsertInput({
+        providerId: "provider-1",
+        id: "key-1",
+        label: "Primary",
+        weight: 2,
+        strategy: "weighted",
+        cooldownMs: 30000,
+      }),
+    ).toEqual({
+      providerId: "provider-1",
+      id: "key-1",
+      label: "Primary",
+      apiKey: undefined,
+      weight: 2,
+      disabled: undefined,
+      strategy: "weighted",
+      cooldownMs: 30000,
+    });
+
+    expect(parseProviderKeySetDisabledInput({ id: "key-1", disabled: true }))
+      .toEqual({ id: "key-1", disabled: true });
+
+    expectInvalid(
+      () => parseProviderKeyUpsertInput({ providerId: "provider-1", label: "" }),
+      "label must be a non-empty string",
+    );
+    expectInvalid(
+      () => parseProviderKeyUpsertInput({ providerId: "provider-1", label: "x", weight: -1 }),
+      "weight must be a non-negative integer",
+    );
+    expectInvalid(
+      () =>
+        parseProviderKeyUpsertInput({
+          providerId: "provider-1",
+          label: "x",
+          strategy: "random",
+        }),
+      "strategy must be one of",
+    );
+    expectInvalid(
+      () => parseProviderKeySetDisabledInput({ id: "key-1", disabled: "true" }),
+      "disabled must be a boolean",
     );
   });
 });

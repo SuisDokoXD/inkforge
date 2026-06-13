@@ -1,12 +1,7 @@
 import { ipcMain } from "electron";
-import { randomUUID } from "crypto";
 import {
-  deleteProviderKey,
-  getProviderKeyPersistenceRecord,
-  insertProviderKey,
   listProviderKeys,
   updateProviderKey,
-  updateProviderKeyStrategy,
 } from "@inkforge/storage";
 import type {
   ProviderHealthSnapshot,
@@ -15,6 +10,10 @@ import type {
 } from "@inkforge/shared";
 import { getAppContext } from "../services/app-state";
 import { getProviderHealth } from "../services/llm-runtime";
+import {
+  deleteProviderKeyWithSecret,
+  upsertProviderKeyWithSecret,
+} from "../services/provider-key-service";
 import {
   parseProviderKeyDeleteInput,
   parseProviderKeyHealthInput,
@@ -45,51 +44,7 @@ export function registerProviderKeyHandlers(): void {
     async (_event, payload: unknown): Promise<ProviderKeyRecord> => {
       const input = parseProviderKeyUpsertInput(payload);
       const ctx = getAppContext();
-      if (input.strategy || typeof input.cooldownMs === "number") {
-        updateProviderKeyStrategy(ctx.db, {
-          id: input.providerId,
-          keyStrategy: input.strategy,
-          cooldownMs: input.cooldownMs,
-        });
-      }
-
-      const id = input.id ?? randomUUID();
-      const existing = input.id
-        ? getProviderKeyPersistenceRecord(ctx.db, input.id)
-        : null;
-
-      if (input.apiKey && input.apiKey.trim().length > 0) {
-        const keyResult = await ctx.keystore.setKey(id, input.apiKey);
-        if (existing) {
-          return updateProviderKey(ctx.db, {
-            id: existing.id,
-            label: input.label,
-            encrypted: keyResult.encrypted ?? null,
-            storedInKeychain: keyResult.storedInKeychain,
-            weight: input.weight,
-            disabled: input.disabled,
-          });
-        }
-        return insertProviderKey(ctx.db, {
-          id,
-          providerId: input.providerId,
-          label: input.label,
-          encrypted: keyResult.encrypted ?? null,
-          storedInKeychain: keyResult.storedInKeychain,
-          weight: input.weight,
-          disabled: input.disabled,
-        });
-      }
-
-      if (existing) {
-        return updateProviderKey(ctx.db, {
-          id: existing.id,
-          label: input.label,
-          weight: input.weight,
-          disabled: input.disabled,
-        });
-      }
-      throw new Error("provider-key:upsert requires apiKey when creating a new key");
+      return upsertProviderKeyWithSecret(ctx, input);
     },
   );
 
@@ -98,13 +53,7 @@ export function registerProviderKeyHandlers(): void {
     async (_event, payload: unknown): Promise<{ id: string }> => {
       const input = parseProviderKeyDeleteInput(payload);
       const ctx = getAppContext();
-      try {
-        await ctx.keystore.deleteKey(input.id);
-      } catch {
-        /* ignore */
-      }
-      deleteProviderKey(ctx.db, input.id);
-      return { id: input.id };
+      return deleteProviderKeyWithSecret(ctx, input.id);
     },
   );
 
