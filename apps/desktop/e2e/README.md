@@ -1,6 +1,6 @@
 # M5-G · E2E 冒烟测试
 
-> 用 Playwright + Electron driver。默认 6 条骨架测试，运行需先 `pnpm build`。
+> 用 Playwright + Electron driver。运行前会先执行 `electron-vite build`。
 
 ## 跑法
 
@@ -17,10 +17,11 @@ pnpm --filter @inkforge/desktop run e2e           # 跑测试
 4. Skill 页能打开并列出预设
 5. 审查页 ▶ 一键审查（走 INKFORGE_MOCK_LLM）出至少一条 finding
 6. 诊断摘要按钮能把 "诊断摘要" 复制到剪贴板
+7. 本地写作闭环：通过 preload API 创建项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志，并导出 Markdown；重载后确认章节仍可见。
 
 ## TODO
 
 - 在关键 UI 节点加 `data-testid`（`onboarding-next` / `activity-skill` / `activity-review` /
   `open-settings` / `diag-copy`）
-- 实装 `INKFORGE_MOCK_LLM=1` 时在 main 进程替换 LLMProvider（回一个 deterministic 流）
+- 实装 `INKFORGE_MOCK_LLM=1` 时在 main 进程替换 LLMProvider（回一个 deterministic 流），再把 AutoWriter / Review 的真实调用路径纳入 e2e。
 - 在 CI 中加 `e2e` job（需要额外安装 Chromium，CI 上用 `xvfb-run`）

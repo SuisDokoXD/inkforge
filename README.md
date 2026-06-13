@@ -88,6 +88,22 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 
 项目仍处于 beta 阶段，界面、功能和数据结构还会继续调整。正式使用前，请保持作品目录备份。
 
+## 验证状态
+
+最近一次本地验证见 [InkForge 验证报告](docs/validation-report.md)。
+
+已通过的机器验证包括：
+
+- `pnpm --filter @inkforge/desktop run sqlite:node`
+- `pnpm typecheck`
+- `pnpm test`
+- `pnpm build`
+- `pnpm --filter @inkforge/desktop run verify:all`
+- `pnpm --filter @inkforge/desktop run sqlite:electron`
+- `pnpm --filter @inkforge/desktop run e2e`
+
+`better-sqlite3` 是 native 模块：跑 Node 侧单测和 verify 前需要切到 Node ABI，跑 Electron e2e 或桌面版前需要切回 Electron ABI。上述检查证明当前仓库的类型契约、单元测试、生产构建、数据库迁移、核心守门脚本和本地写作闭环 e2e 可以通过。产品侧的第一轮验证见 [InkForge 产品价值验证报告](docs/product-validation-report.md)。它们不等同于真实用户体验或真实模型输出质量已经被证明；AutoWriter 的长文质量、与普通 AI 聊天窗口的效率对比、打包产物在干净机器上的首次启动体验，仍需要单独验证。
+
 ## License
 
 [MIT](LICENSE)
