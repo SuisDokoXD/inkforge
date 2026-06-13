@@ -1,7 +1,7 @@
 // M9 Phase 3.1: Command palette registry. Each entry is independent of UI; the
 // CommandPalette component renders them with cmdk + i18n labels.
 import type { MainView } from "../stores/app-store";
-import { NAV_SHORTCUTS, ACTION_SHORTCUTS } from "./shortcuts";
+import { NAV_SHORTCUTS, getActionShortcuts } from "./shortcuts";
 
 export type CommandGroup = "navigate" | "action" | "tool";
 
@@ -27,8 +27,12 @@ export interface CommandContext {
   copyDiagnostic: () => Promise<void> | void;
 }
 
+export interface CommandBuildOptions {
+  terminalEnabled?: boolean;
+}
+
 /** Build the static command list. Translated labels are resolved by the renderer. */
-export function buildCommands(): Command[] {
+export function buildCommands(options: CommandBuildOptions = {}): Command[] {
   const cmds: Command[] = [];
 
   // Navigate (one entry per main view).
@@ -47,9 +51,11 @@ export function buildCommands(): Command[] {
   const actionMap: Record<string, (ctx: CommandContext) => void> = {
     "open-settings": (ctx) => ctx.openSettings(),
     "open-providers": (ctx) => ctx.openProviders(),
-    "toggle-terminal": (ctx) => ctx.toggleTerminal(),
   };
-  for (const s of ACTION_SHORTCUTS) {
+  if (options.terminalEnabled ?? true) {
+    actionMap["toggle-terminal"] = (ctx) => ctx.toggleTerminal();
+  }
+  for (const s of getActionShortcuts({ terminalEnabled: options.terminalEnabled })) {
     if (!(s.action in actionMap)) continue;
     cmds.push({
       id: `action:${s.action}`,

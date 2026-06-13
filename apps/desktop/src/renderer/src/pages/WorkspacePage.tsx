@@ -68,6 +68,7 @@ export function WorkspacePage(): JSX.Element {
   const setSettings = useAppStore((s) => s.setSettings);
   const settings = useAppStore((s) => s.settings);
   const focusMode = settings.focusMode;
+  const terminalEnabled = settings.devModeEnabled;
 
   const [exportOpen, setExportOpen] = useState(false);
   const [headingJumpTarget, setHeadingJumpTarget] = useState<HeadingJumpTarget | null>(null);
@@ -120,6 +121,10 @@ export function WorkspacePage(): JSX.Element {
       setChapter(chapters[0].id);
     }
   }, [chapters, currentChapterId, setChapter]);
+
+  useEffect(() => {
+    if (!terminalEnabled && terminalOpen) toggleTerminal(false);
+  }, [terminalEnabled, terminalOpen, toggleTerminal]);
 
   useEffect(() => {
     if (headingJumpTarget && headingJumpTarget.chapterId !== currentChapterId) return;
@@ -262,17 +267,19 @@ export function WorkspacePage(): JSX.Element {
         </div>
         <div className="flex items-center gap-2">
           <ProviderSwitcher providers={providersQuery.data ?? []} />
-          <button
-            className={`rounded-md border px-2 py-1 text-xs transition-colors ${
-              terminalOpen
-                ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
-                : "border-ink-600 text-ink-300 hover:bg-ink-700"
-            }`}
-            onClick={() => toggleTerminal()}
-            title="切换终端 (Ctrl+J)"
-          >
-            终端
-          </button>
+          {terminalEnabled && (
+            <button
+              className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                terminalOpen
+                  ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
+                  : "border-ink-600 text-ink-300 hover:bg-ink-700"
+              }`}
+              onClick={() => toggleTerminal()}
+              title="切换终端 (Ctrl+J)"
+            >
+              终端
+            </button>
+          )}
           <button
             className="rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
             onClick={() => setExportOpen(true)}
@@ -360,7 +367,7 @@ export function WorkspacePage(): JSX.Element {
         )}
       </main>
 
-      {terminalOpen && (
+      {terminalEnabled && terminalOpen && (
         <TerminalPanel
           height={terminalHeight}
           onClose={() => toggleTerminal(false)}

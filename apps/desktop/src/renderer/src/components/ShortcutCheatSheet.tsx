@@ -1,6 +1,7 @@
 // M9 Phase 4.3: Auto-rendered cheat sheet from lib/shortcuts.ts so it can never lie.
 import { useT } from "../lib/i18n";
-import { NAV_SHORTCUTS, ACTION_SHORTCUTS } from "../lib/shortcuts";
+import { useAppStore } from "../stores/app-store";
+import { NAV_SHORTCUTS, getActionShortcuts } from "../lib/shortcuts";
 import { AnimatedDialog } from "./AnimatedDialog";
 
 export interface ShortcutCheatSheetProps {
@@ -10,6 +11,8 @@ export interface ShortcutCheatSheetProps {
 
 export function ShortcutCheatSheet({ open, onClose }: ShortcutCheatSheetProps): JSX.Element {
   const t = useT();
+  const terminalEnabled = useAppStore((s) => s.settings.devModeEnabled);
+  const actionShortcuts = getActionShortcuts({ terminalEnabled });
   return (
     <AnimatedDialog
       open={open}
@@ -37,7 +40,7 @@ export function ShortcutCheatSheet({ open, onClose }: ShortcutCheatSheetProps): 
           ))}
         </Section>
         <Section title={t("help.shortcuts.actions")}>
-          {ACTION_SHORTCUTS.map((s) => (
+          {actionShortcuts.map((s) => (
             <Row key={s.action} combo={s.combo} label={t(s.labelKey)} />
           ))}
           <Row combo="Ctrl+N" label={t("help.shortcuts.newChapter")} />

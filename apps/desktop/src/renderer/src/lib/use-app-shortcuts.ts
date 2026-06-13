@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import type { MainView } from "../stores/app-store";
 import {
   NAV_SHORTCUTS,
-  ACTION_SHORTCUTS,
+  getActionShortcuts,
   matchShortcut,
   isEditableTarget,
 } from "./shortcuts";
@@ -17,6 +17,7 @@ export interface GlobalShortcutHandlers {
   onOpenProviders: () => void;
   onToggleTerminal: () => void;
   onOpenCommandPalette?: () => void;
+  terminalEnabled?: boolean;
 }
 
 export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
@@ -34,7 +35,7 @@ export function useGlobalShortcuts(handlers: GlobalShortcutHandlers): void {
       }
 
       // 动作类：设置 / Provider / 终端 / 命令面板
-      for (const s of ACTION_SHORTCUTS) {
+      for (const s of getActionShortcuts({ terminalEnabled: handlers.terminalEnabled })) {
         if (!matchShortcut(e, s)) continue;
         // 设置/Provider/命令面板 不忽略可编辑焦点（用户期望随时可开）
         e.preventDefault();

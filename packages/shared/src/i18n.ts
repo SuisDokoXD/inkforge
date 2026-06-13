@@ -149,9 +149,9 @@ export const i18nResources: Resources = {
   "settings.theme.paper": { zh: "纸感", en: "Paper", ja: "紙" },
   "settings.devMode": { zh: "启用排查工具", en: "Enable developer mode", ja: "開発者モードを有効化" },
   "settings.devModeHint": {
-    zh: "显示排查菜单与排查摘要入口",
-    en: "Shows the Developer menu and diagnostic snapshot",
-    ja: "開発者メニューと診断スナップショットを表示",
+    zh: "显示排查菜单、排查摘要与内嵌终端入口",
+    en: "Shows the Developer menu, diagnostic snapshot, and embedded terminal",
+    ja: "開発者メニュー、診断スナップショット、内蔵ターミナルを表示",
   },
 
   // Status bar

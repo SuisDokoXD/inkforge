@@ -15,11 +15,20 @@ export interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
   ctx: CommandContext;
+  terminalEnabled?: boolean;
 }
 
-export function CommandPalette({ open, onClose, ctx }: CommandPaletteProps): JSX.Element {
+export function CommandPalette({
+  open,
+  onClose,
+  ctx,
+  terminalEnabled,
+}: CommandPaletteProps): JSX.Element {
   const t = useT();
-  const commands = useMemo(() => buildCommands(), []);
+  const commands = useMemo(
+    () => buildCommands({ terminalEnabled }),
+    [terminalEnabled],
+  );
 
   const groups: Array<["navigate" | "action" | "tool", typeof commands]> = [
     ["navigate", commands.filter((c) => c.group === "navigate")],

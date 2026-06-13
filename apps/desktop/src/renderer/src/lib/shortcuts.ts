@@ -52,6 +52,19 @@ export const ACTION_SHORTCUTS: readonly ActionShortcut[] = [
   { combo: "Ctrl+K", key: "k", action: "open-command-palette", labelKey: "shortcut.commandPalette" },
 ] as const;
 
+export interface ActionShortcutOptions {
+  terminalEnabled?: boolean;
+}
+
+export function getActionShortcuts(
+  options: ActionShortcutOptions = {},
+): readonly ActionShortcut[] {
+  const terminalEnabled = options.terminalEnabled ?? true;
+  return ACTION_SHORTCUTS.filter(
+    (shortcut) => terminalEnabled || shortcut.action !== "toggle-terminal",
+  );
+}
+
 export function matchShortcut(
   e: KeyboardEvent,
   s: { key: string; shift?: boolean; alt?: boolean },

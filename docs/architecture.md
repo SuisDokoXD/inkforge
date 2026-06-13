@@ -8,7 +8,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Renderer (React 18 + TypeScript)                           │
-│  ├ WorkspacePage (编辑器 / 时间线 / 终端)                  │
+│  ├ WorkspacePage (编辑器 / 时间线 / 开发模式终端)          │
 │  ├ SkillPage / CharacterPage / TavernPage                  │
 │  ├ WorldPage / ResearchPage / ReviewPage                   │
 │  └ StatusBar (日进度 + 📝 今日总结)                        │
@@ -21,7 +21,7 @@
 │  ├ services/*   (LLM + DB + 订阅式事件广播)               │
 │  └ preload/     (InkforgeApi 类型化 IPC 封装)              │
 └─────────────────────────────────────────────────────────────┘
-         │ better-sqlite3 / fs / keytar / node-pty
+         │ better-sqlite3 / fs / keytar / node-pty(开发模式)
          ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Workspace (用户自选目录)                                   │
@@ -172,7 +172,7 @@ ipc research:search
   - 优先 OS Keychain（`keytar` 动态 require，不可用时悄悄降级）
   - 回退：AES-256-GCM + 32B 主密钥（`<workspace>/keystore.master`，权限 0o600）
   - Renderer 永远拿不到明文 Key：`provider:save` 只接收，不返回；诊断摘要也不含
-- **§R6 CLI 安全**：xterm + node-pty 继承用户权限（设计决策）；未来考虑对 `rm -rf` / `format` 前缀做二次确认（M5-A 范围可选）
+- **§R6 CLI 安全**：内嵌终端是开发/排查模式入口。生产包默认不携带 `node-pty`，普通用户界面不显示终端；开发构建中 xterm + node-pty 继承用户权限，并在危险命令前做二次确认。
 - **崩溃行为**：Renderer 崩溃显示本地错误页；Main 崩溃下次启动给「查看日志」选项，**不发送任何数据**
 - **§5.4 持久化加固（M6-D）**：
   - 编辑器双层落盘：DB 1.2s 防抖写 + `<project>/.inkforge/autosave/<chapterId>.md` 5s 旁挂；切换章节时 `chapter:autosave-peek` 比对，若旁挂副本与 DB 不一致则提示恢复

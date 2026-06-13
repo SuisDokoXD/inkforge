@@ -86,6 +86,7 @@ export function App(): JSX.Element {
   const toggleTerminal = useAppStore((s) => s.toggleTerminal);
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const lang = settings.uiLanguage;
+  const terminalEnabled = settings.devModeEnabled;
 
   const settingsQuery = useQuery({
     queryKey: ["app-settings"],
@@ -112,13 +113,20 @@ export function App(): JSX.Element {
       onSwitchMainView: setMainView,
       onOpenSettings: () => openSettings(true),
       onOpenProviders: () => openProviderPanel(true),
-      onToggleTerminal: () => toggleTerminal(),
+      onToggleTerminal: () => {
+        if (terminalEnabled) toggleTerminal();
+      },
       onOpenCommandPalette: () => setPaletteOpen((v) => !v),
+      terminalEnabled,
     }),
-    [setMainView, openSettings, openProviderPanel, toggleTerminal],
+    [setMainView, openSettings, openProviderPanel, toggleTerminal, terminalEnabled],
   );
   useGlobalShortcuts(shortcutHandlers);
   useWindowResizePerf();
+
+  useEffect(() => {
+    if (!terminalEnabled) toggleTerminal(false);
+  }, [terminalEnabled, toggleTerminal]);
 
   // M9 Phase 3.1: command palette context. copyDiag uses preload api directly.
   const paletteCtx = useMemo(
@@ -126,7 +134,9 @@ export function App(): JSX.Element {
       setMainView,
       openSettings: () => openSettings(true),
       openProviders: () => openProviderPanel(true),
-      toggleTerminal: () => toggleTerminal(),
+      toggleTerminal: () => {
+        if (terminalEnabled) toggleTerminal();
+      },
       replayOnboarding: () => {
         void settingsApi.set({ updates: { onboardingCompleted: false } }).then((next) => {
           setSettings(next);
@@ -142,7 +152,7 @@ export function App(): JSX.Element {
         }
       },
     }),
-    [setMainView, openSettings, openProviderPanel, toggleTerminal, setSettings],
+    [setMainView, openSettings, openProviderPanel, toggleTerminal, terminalEnabled, setSettings],
   );
 
   const providersQuery = useQuery({
@@ -243,7 +253,12 @@ export function App(): JSX.Element {
           </div>
         </div>
         <CompanionMount projectId={currentProjectId ?? null} />
-        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} ctx={paletteCtx} />
+        <CommandPalette
+          open={paletteOpen}
+          onClose={() => setPaletteOpen(false)}
+          ctx={paletteCtx}
+          terminalEnabled={terminalEnabled}
+        />
         <SettingsDialog />
       </div>
     </ErrorBoundary>
