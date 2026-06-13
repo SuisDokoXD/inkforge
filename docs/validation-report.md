@@ -1,6 +1,6 @@
 # InkForge 验证报告
 
-> 日期：2026-06-13
+> 日期：2026-06-14
 > 范围：本地机器可复现的工程质量门、存储迁移、核心纯逻辑验证、桌面端构建验证。
 
 ## 结论
@@ -17,9 +17,10 @@
 | `pnpm --filter @inkforge/desktop run sqlite:node` | 通过 | 将 `better-sqlite3` 切换到当前 Node ABI |
 | `pnpm --filter @inkforge/desktop run verify:all` | 通过 | 桌面端迁移、引擎、模型服务、导出、RAG、快捷键等守门脚本通过 |
 | `pnpm --filter @inkforge/desktop run sqlite:electron` | 通过 | 将 `better-sqlite3` 切回 Electron ABI |
-| `pnpm --filter @inkforge/desktop run e2e` | 通过 | 9 条 Electron e2e 通过，包含本地写作闭环和 AutoWriter / Review mock LLM 闭环 |
+| `pnpm --filter @inkforge/desktop run e2e` | 通过 | 9 条源码入口 Electron e2e 通过，packaged UI spec 在未设置环境变量时跳过 |
 | `pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never` | 通过 | 生成 Windows unpacked 目录版到独立验证目录 |
 | Windows unpacked 启动 smoke | 通过 | `InkForge.exe` 用独立 `user-data-dir` 启动，8 秒后进程仍存活，并生成 workspace 数据库 |
+| `pnpm --filter @inkforge/desktop run e2e:packaged` | 通过 | Playwright 通过 CDP 连接 Windows unpacked `InkForge.exe`，断言真实 packaged renderer、preload API 和 workspace 数据库 |
 
 ## verify:all 覆盖范围
 
@@ -42,7 +43,7 @@
 
 ## e2e 覆盖范围
 
-本轮通过的 Electron e2e 共 9 条。新增重点包括 `apps/desktop/e2e/local-first-writing-loop.spec.ts` 和 `apps/desktop/e2e/auto-writer-mock.spec.ts`。
+本轮默认 Electron e2e 是源码入口测试：9 条通过，`packaged-ui.spec.ts` 在未设置环境变量时跳过。新增重点包括 `apps/desktop/e2e/local-first-writing-loop.spec.ts`、`apps/desktop/e2e/auto-writer-mock.spec.ts` 和单独运行的 `apps/desktop/e2e/packaged-ui.spec.ts`。
 
 `local-first-writing-loop.spec.ts` 覆盖：
 
@@ -63,6 +64,15 @@
 - Review 真实 IPC 入口使用 mock LLM 生成 finding，并完成报告汇总。
 - 重载后生成章节仍可见。
 
+`packaged-ui.spec.ts` 覆盖：
+
+- 通过真实 Windows unpacked `InkForge.exe` 启动应用，而不是源码 `out/main/index.js`。
+- 使用 `--remote-debugging-port` 暴露本地 DevTools 端口，再用 Playwright `chromium.connectOverCDP` 连接真实 packaged renderer。
+- 断言页面 URL 来自 `resources/app.asar/out/renderer/index.html`。
+- 断言主界面出现 `InkForge` 文案。
+- 断言 preload 注入的 `window.inkforge` 可用。
+- 断言独立 appdata 下生成 `workspace/inkforge.db`。
+
 详细产品验证结论见 [InkForge 产品价值验证报告](product-validation-report.md)。
 
 ## 打包产物验证
@@ -82,7 +92,13 @@ output/visual-audit/dist-dir-launch-verify/appdata
 
 结果：系统方式启动 `InkForge.exe`，8 秒后进程仍存活，随后关闭；appdata 下生成了 `workspace/inkforge.db`。这证明 unpacked 目录版在本机可以启动到稳定运行状态。
 
-限制：Playwright 直接用 Electron driver 挂载 packaged `InkForge.exe` 时 renderer 报 `page crashed`，因此本轮没有把 packaged UI 级自动化断言写成通过项。源码构建入口的 UI e2e 已通过，packaged 目录版只做了进程级启动 smoke。
+packaged UI 自动化使用独立 appdata：
+
+```text
+output/playwright/packaged-ui/appdata
+```
+
+结果：Playwright 通过 CDP 连接 `InkForge.exe` 的真实 renderer，确认页面来自 `resources/app.asar/out/renderer/index.html`，主界面出现 `InkForge`，preload API 可用，并生成 workspace 数据库。之前直接用 Playwright Electron driver 挂载 packaged `InkForge.exe` 会触发 renderer `page crashed`；本轮改为“系统启动 packaged exe + CDP 连接 renderer”，避免把源码入口测试误当成打包产物测试。
 
 ## 运行环境记录
 
@@ -125,4 +141,5 @@ pnpm --filter @inkforge/desktop run verify:all
 pnpm --filter @inkforge/desktop run sqlite:electron
 pnpm --filter @inkforge/desktop run e2e
 pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never
+$env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packaged
 ```

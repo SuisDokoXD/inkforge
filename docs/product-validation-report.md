@@ -1,13 +1,13 @@
 # InkForge 产品价值验证报告
 
-> 日期：2026-06-13
-> 范围：本地优先写作闭环、AutoWriter / Review mock LLM 链路、Electron e2e、Windows unpacked 启动 smoke、可验证的产品假设。真实模型输出质量和真人试用尚未完成。
+> 日期：2026-06-14
+> 范围：本地优先写作闭环、AutoWriter / Review mock LLM 链路、Electron e2e、Windows unpacked 启动与 packaged UI smoke、可验证的产品假设。真实模型输出质量和真人试用尚未完成。
 
 ## 本轮结论
 
 本轮能证明：InkForge 的本地优先写作闭环已经可以在 Electron 测试环境中真实跑通；AutoWriter 和 Review 的主进程模型调用路径也可以在 deterministic mock LLM 下端到端跑通。测试覆盖项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志、Markdown 导出、AutoWriter 多 Agent 流水线、Review 报告，以及重载后的章节可见性。
 
-本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些需要固定样例、真实模型服务和用户试用。Windows unpacked 目录版已做本机进程级启动 smoke，但这仍不等于签名安装包在干净机器上的安装/升级/卸载体验已成熟。
+本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些需要固定样例、真实模型服务和用户试用。Windows unpacked 目录版已做本机进程级启动和 packaged UI smoke，但这仍不等于签名安装包在干净机器上的安装/升级/卸载体验已成熟。
 
 ## 新增自动化证明
 
@@ -15,6 +15,7 @@
 
 - `apps/desktop/e2e/local-first-writing-loop.spec.ts`
 - `apps/desktop/e2e/auto-writer-mock.spec.ts`
+- `apps/desktop/e2e/packaged-ui.spec.ts`
 
 它通过 preload API 执行以下链路：
 
@@ -41,16 +42,29 @@
 6. Review 使用同一 mock LLM 返回 finding，完成报告汇总。
 7. 重载窗口，确认生成章节仍可见。
 
+`packaged-ui.spec.ts` 通过 `INKFORGE_RUN_PACKAGED_UI=1` 执行以下链路：
+
+1. 启动真实 Windows unpacked `InkForge.exe`。
+2. 使用独立 appdata 和 `--remote-debugging-port`。
+3. 通过 Playwright CDP 连接 packaged renderer。
+4. 断言页面来自 `resources/app.asar/out/renderer/index.html`。
+5. 断言主界面、preload API 和 workspace 数据库初始化正常。
+
 ## 本轮验证命令
 
 ```powershell
 pnpm --filter @inkforge/desktop run e2e
+$env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packaged
 ```
 
 结果：
 
 ```text
-9 passed
+pnpm --filter @inkforge/desktop run e2e
+9 passed, 1 skipped
+
+$env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packaged
+1 passed
 ```
 
 通过项包括：
@@ -59,6 +73,7 @@ pnpm --filter @inkforge/desktop run e2e
 - 1 条角色导入/资料/酒馆入口视觉路径。
 - 1 条新增本地写作闭环。
 - 1 条新增 AutoWriter / Review mock LLM 闭环。
+- 1 条单独运行的 packaged UI smoke。
 
 ## 证明了什么
 
@@ -76,6 +91,7 @@ pnpm --filter @inkforge/desktop run e2e
 | 重载后工作区仍可见 | 已证明 | e2e 写入 store 后 reload，断言章节标题可见 |
 | Windows unpacked 目录版可构建 | 已证明 | `electron-builder --dir` 输出 `release-verify-20260614-0005/win-unpacked/InkForge.exe` |
 | Windows unpacked 目录版本机可启动 | 部分证明 | 系统方式启动 `InkForge.exe`，8 秒后进程仍存活，并生成 workspace 数据库；未验证安装器和干净机器 |
+| Windows unpacked 目录版 packaged UI 可自动化检查 | 已证明 | `e2e:packaged` 启动真实 `InkForge.exe`，通过 CDP 连接 packaged renderer，断言主界面、preload API 和 workspace 数据库 |
 
 ## 发现的产品边界
 

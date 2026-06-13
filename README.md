@@ -102,8 +102,9 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 - `pnpm --filter @inkforge/desktop run sqlite:electron`
 - `pnpm --filter @inkforge/desktop run e2e`
 - `pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never`
+- `$env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packaged`
 
-`better-sqlite3` 是 native 模块：跑 Node 侧单测和 verify 前需要切到 Node ABI，跑 Electron e2e、打包或桌面版前需要切回 Electron ABI。上述检查证明当前仓库的类型契约、单元测试、生产构建、数据库迁移、核心守门脚本、本地写作闭环 e2e、AutoWriter / Review mock LLM 主进程链路，以及 Windows unpacked 目录版构建可以通过。产品侧的第一轮验证见 [InkForge 产品价值验证报告](docs/product-validation-report.md)。它们不等同于真实用户体验或真实模型输出质量已经被证明；AutoWriter 的真实长文质量、与普通 AI 聊天窗口的效率对比、签名安装包在干净机器上的首次启动体验，仍需要单独验证。
+`better-sqlite3` 是 native 模块：跑 Node 侧单测和 verify 前需要切到 Node ABI，跑 Electron e2e、打包或桌面版前需要切回 Electron ABI。上述检查证明当前仓库的类型契约、单元测试、生产构建、数据库迁移、核心守门脚本、本地写作闭环 e2e、AutoWriter / Review mock LLM 主进程链路，以及 Windows unpacked 目录版构建和 packaged UI smoke 可以通过。产品侧的第一轮验证见 [InkForge 产品价值验证报告](docs/product-validation-report.md)。它们不等同于真实用户体验或真实模型输出质量已经被证明；AutoWriter 的真实长文质量、与普通 AI 聊天窗口的效率对比、签名安装包在干净机器上的首次启动体验，仍需要单独验证。
 
 ## License
 

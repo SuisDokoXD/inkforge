@@ -44,6 +44,7 @@
     "dist:ci:linux": "electron-vite build && electron-builder --linux AppImage --x64 --publish never",
     "dist:all": "electron-vite build && electron-builder -mwl",
     "e2e": "electron-vite build && playwright test",
+    "e2e:packaged": "playwright test e2e/packaged-ui.spec.ts",
     "e2e:install": "playwright install chromium",
     "postinstall": "node -e \"if(process.env.CI){console.log('skip install-app-deps on CI');process.exit(0)};try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'inherit'})}catch(e){console.log('skip install-app-deps');}\"",
     "verify:shortcuts": "node scripts/verify-shortcuts.cjs",

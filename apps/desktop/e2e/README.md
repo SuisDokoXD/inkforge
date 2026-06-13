@@ -4,9 +4,10 @@
 
 ## 跑法
 
-```bash
+```powershell
 pnpm --filter @inkforge/desktop run e2e:install   # 首次：装 Chromium
 pnpm --filter @inkforge/desktop run e2e           # 跑测试
+$env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packaged
 ```
 
 ## 覆盖路径
@@ -19,6 +20,7 @@ pnpm --filter @inkforge/desktop run e2e           # 跑测试
 6. 诊断摘要按钮能把 "诊断摘要" 复制到剪贴板
 7. 本地写作闭环：通过 preload API 创建项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志，并导出 Markdown；重载后确认章节仍可见。
 8. AutoWriter / Review mock LLM 闭环：`INKFORGE_MOCK_LLM=1` 时走真实主进程模型入口，完成 Planner/Writer/Critic/Reflector、快照、章节日志和 Review 报告。
+9. Packaged UI smoke：启动 Windows unpacked `InkForge.exe`，通过 `--remote-debugging-port` 用 Playwright CDP 连接真实打包 renderer，断言主界面、preload API 和本地数据库初始化正常。
 
 ## TODO
 

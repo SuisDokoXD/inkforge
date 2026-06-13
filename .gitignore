@@ -13,6 +13,7 @@ node_modules/
 # Test and visual audit artifacts
 **/playwright-report/
 **/test-results/
+output/playwright/
 output/visual-audit/
 inkforge/output/visual-audit/
 
