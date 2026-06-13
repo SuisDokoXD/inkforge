@@ -53,5 +53,14 @@ export {
 // ---- user-interrupt-queue ----
 export { UserInterruptQueue } from "./user-interrupt-queue";
 
+// ---- chapter draft helpers ----
+export {
+  countNonWhitespaceGraphemes,
+  prepareGeneratedChapterDraft,
+  removeConsecutiveDuplicateMarkdownHeadings,
+  tailText,
+} from "./chapter-draft";
+export type { PreparedGeneratedChapterDraft } from "./chapter-draft";
+
 // ---- pipeline orchestrator ----
 export { runAutoWriterPipeline, normalizeNovelParagraphs } from "./pipeline-orchestrator";

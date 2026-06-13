@@ -19,6 +19,10 @@ import type {
   ChapterGenerateFromOutlineResponse,
   SceneKeyBasic,
 } from "@inkforge/shared";
+import {
+  prepareGeneratedChapterDraft,
+  tailText,
+} from "@inkforge/auto-writer-engine";
 import { getAppContext } from "./app-state";
 import {
   resolveApiKey,
@@ -149,12 +153,6 @@ async function streamCollect(args: {
   };
 }
 
-function tailOf(text: string, max = 600): string {
-  const trimmed = text.trim();
-  if (trimmed.length <= max) return trimmed;
-  return "…" + trimmed.slice(-max);
-}
-
 // ---------------------------------------------------------------------------
 // generateChapterFromOutline (multi-candidate parallel)
 // ---------------------------------------------------------------------------
@@ -189,7 +187,7 @@ export async function generateChapterFromOutline(
     const prev = getChapter(ctx.db, input.prevChapterId);
     if (prev && prev.projectId === project.id) {
       const md = readChapterFile(project.path, prev.filePath);
-      prevTail = tailOf(md);
+      prevTail = tailText(md);
     }
   }
 
@@ -275,48 +273,15 @@ export async function generateChapterFromOutline(
 // commitChapterDraft (write file + insert/update chapter row + link card)
 // ---------------------------------------------------------------------------
 
-function countGraphemes(text: string): number {
-  // Lightweight grapheme count: codepoints excluding whitespace.
-  return Array.from(text).filter((c) => /\S/.test(c)).length;
-}
-
-function headingTitle(line: string): string | null {
-  const match = line.match(/^\s{0,3}#{2,4}\s+(.+?)\s*#*\s*$/);
-  return match?.[1]?.trim() || null;
-}
-
-function removeConsecutiveDuplicateHeadings(text: string): string {
-  const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const kept: string[] = [];
-  let lastHeadingTitle: string | null = null;
-  let lastHeadingIndex = -1;
-
-  for (const line of lines) {
-    const title = headingTitle(line);
-    if (title && lastHeadingTitle === title) {
-      const between = kept.slice(lastHeadingIndex + 1);
-      const hasBodyBetween = between.some((item) => item.trim() && !headingTitle(item));
-      if (!hasBodyBetween) continue;
-    }
-    kept.push(line);
-    if (title) {
-      lastHeadingTitle = title;
-      lastHeadingIndex = kept.length - 1;
-    }
-  }
-
-  return kept.join("\n").trim();
-}
-
 export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommitDraftResponse {
   const ctx = getAppContext();
   const project = getProject(ctx.db, input.projectId);
   if (!project) throw new Error("project_not_found");
 
-  const title = input.title.trim() || "AI 生成章节";
-  const cleanedText = removeConsecutiveDuplicateHeadings(input.text);
-  const md = `# ${title}\n\n${cleanedText}\n`;
-  const wordCount = countGraphemes(cleanedText);
+  const { title, markdown: md, wordCount } = prepareGeneratedChapterDraft({
+    title: input.title,
+    text: input.text,
+  });
 
   let chapterId = input.chapterId;
   let filePath: string;
