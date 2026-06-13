@@ -129,10 +129,12 @@ When adding a new feature: add `verify-<name>.cjs` + register in `package.json` 
 
 ## Pitfall: ABI mismatch
 
-verify scripts use system Node (e.g. v22 ABI 127). Dev mode uses Electron 32 (ABI 128). The same `better_sqlite3.node` binary cannot serve both. Switch via:
+verify scripts use system Node. Dev/package mode uses Electron. The same `better_sqlite3.node` binary cannot serve both. Switch via the guarded helper:
 
 ```bash
-cd node_modules/.pnpm/better-sqlite3@.../node_modules/better-sqlite3
-rm -rf build && npx prebuild-install --runtime=node --target=22.11.0       # for verify
-rm -rf build && npx prebuild-install --runtime=electron --target=32.2.5    # for dev
+pnpm --filter @inkforge/desktop sqlite:status
+pnpm --filter @inkforge/desktop sqlite:node      # for verify/tests
+pnpm --filter @inkforge/desktop sqlite:electron  # for dev/package
 ```
+
+If a prebuilt binary does not exist for the current Node/Electron target, the helper falls back to `node-gyp rebuild` and prints the native toolchain error directly.

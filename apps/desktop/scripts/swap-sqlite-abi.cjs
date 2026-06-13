@@ -44,7 +44,26 @@ function detectCurrentAbi() {
   }
 }
 
-// 调 prebuild-install 拉取/重建指定 runtime 的预编译 binding。
+function rebuildFromSource(dir, runtime, version) {
+  const args = [
+    "node-gyp",
+    "rebuild",
+    `--runtime=${runtime}`,
+    `--target=${version}`,
+    `--arch=${process.arch}`,
+  ];
+  if (runtime === "electron") {
+    args.push("--dist-url=https://electronjs.org/headers");
+  }
+  console.log(`[swap-sqlite-abi] 改用 node-gyp 从源码编译 ${runtime}@${version} …`);
+  execFileSync("npx", args, {
+    cwd: dir,
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
+}
+
+// 先尝试 prebuild-install；没有预编译包时自动降级到 node-gyp 源码编译。
 function swap(target) {
   const dir = resolveBetterSqliteDir();
   const runtime = target; // "node" | "electron"
@@ -58,15 +77,21 @@ function swap(target) {
       { cwd: dir, stdio: "inherit", shell: process.platform === "win32" },
     );
     console.log(`\x1b[32m[swap-sqlite-abi] 已切到 ${runtime} ABI。\x1b[0m`);
-  } catch {
-    // 无对应预编译包时 prebuild-install 退非零。给出降级指引而非静默失败。
-    console.error(
-      `\x1b[31m[swap-sqlite-abi] 未找到 ${runtime}@${version} 的预编译包。\x1b[0m\n` +
-        `  需从源码编译（需 node-gyp + 构建工具）：\n` +
-        `    cd "${dir}" && npx node-gyp rebuild --runtime=${runtime} --target=${version} --arch=${process.arch}` +
-        (runtime === "electron" ? " --dist-url=https://electronjs.org/headers" : ""),
+    return;
+  } catch (err) {
+    console.warn(
+      `\x1b[33m[swap-sqlite-abi] 未找到 ${runtime}@${version} 的预编译包，尝试源码编译。\x1b[0m`,
     );
-    process.exit(1);
+    try {
+      rebuildFromSource(dir, runtime, version);
+      console.log(`\x1b[32m[swap-sqlite-abi] 已切到 ${runtime} ABI。\x1b[0m`);
+    } catch (rebuildErr) {
+      console.error(
+        `\x1b[31m[swap-sqlite-abi] 源码编译 ${runtime}@${version} 失败。\x1b[0m\n` +
+          "  请确认已安装 node-gyp、Python 和 Visual Studio C++ 构建工具。",
+      );
+      process.exit(rebuildErr && typeof rebuildErr.status === "number" ? rebuildErr.status : 1);
+    }
   }
 }
 

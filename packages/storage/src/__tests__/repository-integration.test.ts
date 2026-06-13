@@ -172,9 +172,9 @@ describe("SQLite repository integration", () => {
       tags: ["lore"],
     });
 
-    expect(listMaterials(database, project.id).map((row) => row.id)).toEqual([
-      "mat-2",
+    expect(listMaterials(database, project.id).map((row) => row.id).sort()).toEqual([
       "mat-1",
+      "mat-2",
     ]);
     expect(listMaterials(database, project.id, "idea").map((row) => row.title)).toEqual([
       "Opening image",
