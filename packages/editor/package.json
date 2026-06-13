@@ -15,18 +15,18 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "peerDependencies": {
-    "@tiptap/core": "^2.10.0",
-    "@tiptap/react": "^2.10.0",
-    "@tiptap/starter-kit": "^2.10.0",
+    "@tiptap/core": "^3.23.6",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
     "react": "^18.3.0"
   },
   "dependencies": {
     "@inkforge/shared": "workspace:*"
   },
   "devDependencies": {
-    "@tiptap/core": "^2.10.0",
-    "@tiptap/react": "^2.10.0",
-    "@tiptap/starter-kit": "^2.10.0",
+    "@tiptap/core": "^3.23.6",
+    "@tiptap/react": "^3.23.6",
+    "@tiptap/starter-kit": "^3.23.6",
     "@types/react": "^18.3.12",
     "react": "^18.3.1",
     "vitest": "^2.1.8"
