@@ -20,6 +20,7 @@ apps/desktop/.electron/
 
 # Electron-builder output (installers go to GitHub Releases, not git)
 apps/desktop/release/
+apps/desktop/release-verify-*/
 
 # Local env / secrets
 .env
