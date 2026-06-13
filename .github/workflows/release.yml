@@ -42,8 +42,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Ensure SQLite ABI for Node checks
+        run: pnpm --filter @inkforge/desktop run sqlite:node
+
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
 
       - name: Verify desktop checks
         run: pnpm --filter @inkforge/desktop run verify:all
