@@ -24,3 +24,50 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm --filter @inkforge/desktop run verify:all
+      - run: pnpm --filter @inkforge/desktop exec node --check scripts/run-real-model-proof-suite.cjs
+
+  desktop-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: sudo apt-get update && sudo apt-get install -y xvfb
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @inkforge/desktop run sqlite:electron
+      - run: xvfb-run -a pnpm --filter @inkforge/desktop run e2e
+
+  packaged-ui-windows:
+    runs-on: windows-2022
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - shell: pwsh
+        run: |
+          "npm_config_msvs_version=2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - run: pnpm install --frozen-lockfile
+      - shell: pwsh
+        run: pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-ci --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - shell: pwsh
+        run: pnpm --filter @inkforge/desktop run e2e:packaged
+        env:
+          INKFORGE_RUN_PACKAGED_UI: "1"
+          INKFORGE_PACKAGED_EXE: release-verify-ci/win-unpacked/InkForge.exe

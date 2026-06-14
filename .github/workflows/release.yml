@@ -118,6 +118,13 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
           DEBUG: electron-builder,electron-rebuild
 
+      - name: Packaged UI smoke
+        shell: pwsh
+        run: pnpm --filter @inkforge/desktop run e2e:packaged
+        env:
+          INKFORGE_RUN_PACKAGED_UI: "1"
+          INKFORGE_PACKAGED_EXE: release/win-unpacked/InkForge.exe
+
       - name: Show release files
         if: always()
         shell: pwsh

@@ -34,6 +34,7 @@ git push origin main v0.1.0-beta.0
 
 - 先在 ubuntu runner 上跑 `pnpm typecheck`、`pnpm test` 和 desktop `verify:all`
 - 再在 windows / macos / ubuntu runner 上分别运行 `electron-builder`
+- Windows 产物会额外跑 packaged UI smoke：系统启动 `win-unpacked/InkForge.exe`，通过 CDP 检查真实 packaged renderer、preload API 和 workspace 数据库
 - 生成 `apps/desktop/release/` 下的产物（当前 CI 默认：Windows `.exe`、macOS `.zip`、Linux `.AppImage`，以及 `latest*.yml` / `.blockmap` 更新元数据）
 - publish job 会为下载产物生成 `SHA256SUMS.txt`，再创建正式 GitHub Release 并上传产物
 - publish 对 macOS 宽容：Windows + Linux 成功即可发布；macOS 成功时会自动包含 macOS 产物
