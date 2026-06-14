@@ -106,7 +106,9 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 
 `better-sqlite3` 是 native 模块：跑 Node 侧单测和 verify 前需要切到 Node ABI，跑 Electron e2e、打包或桌面版前需要切回 Electron ABI。上述检查证明当前仓库的类型契约、单元测试、生产构建、数据库迁移、核心守门脚本、本地写作闭环 e2e、AutoWriter / Review mock LLM 主进程链路，以及 Windows unpacked 目录版构建和 packaged UI smoke 可以通过。产品侧的第一轮验证见 [InkForge 产品价值验证报告](docs/product-validation-report.md)。
 
-2026-06-14 还完成了一条真实模型 AutoWriter 短样例烟测：`quality` 模式下 Planner / Writer / Critic / Reflector 全阶段完成，2 段生成成功，硬性线索覆盖 6/6，无无关文本，重复章节标题被兜底去除。这个结果证明固定短样例和调参后的写作闭环可跑通，但不等同于真实长文质量、与普通 AI 聊天窗口的效率收益、真人首次使用体验或签名安装包在干净机器上的安装体验已经被充分证明。
+2026-06-14 还完成了一条真实模型 AutoWriter 短样例烟测：`quality` 模式下 Planner / Writer / Critic / Reflector 全阶段完成，2 段生成成功，硬性线索覆盖 6/6，无无关文本，重复章节标题被兜底去除。这个结果证明固定短样例和调参后的写作闭环可跑通。
+
+同日追加了一次真实模型长篇连续 smoke：同一测试项目连续生成 3 章，每章 `quality` 模式 5 段，合计 15 段、约 1.8 万个非空白字符，3/3 章完成 Planner / Writer / Critic / Reflector / done 全阶段，未命中禁忌直揭、未重复章节标题。机器严格短语评分为 1/3 章全通过，另外两章的缺项是“第二枚”和“朱砂印”分开表达、以及“真实的记忆”替代“真实记忆”。这个结果证明长篇连续技术闭环可跑通，但仍不等同于真实长文质量、与普通 AI 聊天窗口的效率收益、真人首次使用体验或签名安装包在干净机器上的安装体验已经被充分证明。
 
 ## License
 
