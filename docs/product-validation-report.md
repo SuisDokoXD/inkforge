@@ -120,6 +120,58 @@ output/playwright/real-model-eval/autowriter-proof-suite-2026-06-14T04-06-12-050
 
 解释边界：这轮 proof suite 初步证明 AutoWriter 在 3 个题材上可以产出与普通聊天基线同级的可用草稿，并且减少手工上下文拼接；它不能证明 AutoWriter 比聊天窗口生成更快，也不能替代真人作者对人物一致、世界观一致、文风满意度和实际修改时间的评分。
 
+## 后续 proof 流程固化
+
+已新增仓库内脚本：
+
+```powershell
+pnpm --filter @inkforge/desktop run proof:real-model
+```
+
+脚本位置：
+
+```text
+apps/desktop/scripts/run-real-model-proof-suite.cjs
+```
+
+它把第 2 点和第 6 点变成可复现流程：
+
+- AutoWriter 多题材、多模型候选验证：最多选择 2 个本机可用模型服务，每个服务运行固定题材样例，记录完成数、机器规则通过数、平均机器评分、估算保留率、硬性线索漏传和禁忌命中。
+- Review 真实模型验证：创建一个故意包含人物口吻突变、世界规则冲突、过早揭露的章节，运行真实 `review:run`，记录 findings 数、严重度统计和 Markdown 报告导出是否可用。
+
+完整说明见：
+
+```text
+docs/real-model-validation.md
+```
+
+解释边界：默认 CI 不调用真实模型，不需要 API Key；真实模型 proof 仍是手动命令，会产生费用。若本机只有 1 个可用模型服务，结果只能证明“多题材”，不能证明“多模型”。
+
+本轮已实际运行一次新脚本：
+
+```text
+output/playwright/real-model-eval/real-model-proof-suite-2026-06-14T05-35-16-915Z.json
+```
+
+结果摘要：
+
+| 指标 | 结果 |
+|---|---|
+| 计划模型服务数 | 最多 2 个 |
+| 实际可用模型服务数 | 1 个；另一个已保存服务测试返回 403 余额不足，未纳入 |
+| AutoWriter 用例 | 3 个题材 |
+| AutoWriter 完成数 | 3/3 |
+| AutoWriter 机器规则通过数 | 1/3 |
+| AutoWriter 平均机器评分 | 96 |
+| AutoWriter 平均估算保留率 | 0.96 |
+| 禁忌内容命中 | 0 |
+| 严格短语漏传 | 2 项：近未来科幻漏“穹顶城”，都市现实漏“旧照相馆” |
+| Review 真实模型链路 | completed |
+| Review findings | 8 条 |
+| Review Markdown 导出 | 通过 |
+
+解释边界：这次把第 6 点“Review 真实模型验证”补上了，也再次证明 AutoWriter 多题材技术闭环可跑通；但由于只有 1 个服务可用，第 2 点的“多模型”部分仍只能算流程已支持、当前环境未充分证明。
+
 ## 新增自动化证明
 
 新增 e2e：
@@ -210,8 +262,9 @@ $env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packa
 
 这个边界不一定是 bug，但需要产品决策：
 
-- 如果“导出作品正文”是目标，当前行为合理。
-- 如果“导出完整项目备份”是目标，需要另做项目包导出，包含数据库元数据、章节、素材、人物、世界观、样本库和快照索引。
+本轮产品决策：当前 TXT / Markdown / HTML / DOCX / EPUB 明确定位为“作品正文导出”，不冒充完整项目备份。导出弹窗已改成“导出作品正文”，并说明人物、世界观、素材、快照和日志会留在本地项目中。
+
+如果后续要做“完整项目迁移/备份”，应新增独立的项目包导出，而不是塞进现有正文导出按钮。项目包至少要包含数据库元数据、章节 Markdown、人物、世界观、素材、样本库、快照索引和版本信息。
 
 ## 还没有证明的产品价值
 

@@ -130,6 +130,15 @@ output/playwright/packaged-ui/appdata
 4. 在打包产物上跑首次启动验证，而不是只验证源码开发环境。
 5. 找 1-3 个真实或半真实用户试用，记录卡点和第二天是否愿意继续打开。
 
+## 已固化的新守门项
+
+- `pnpm --filter @inkforge/desktop run proof:real-model`：手动真实模型 proof，覆盖 AutoWriter 多题材/多模型候选和 Review 真实模型链路。默认 CI 只做语法检查，不调用真实模型。
+- CI `desktop-e2e` job：在 Ubuntu + Xvfb 中运行源码入口 Electron e2e。
+- CI `packaged-ui-windows` job：在 Windows 上构建 unpacked 包，并通过 CDP 跑 packaged UI smoke。
+- Release Windows build：产物上传前额外跑 packaged UI smoke，避免只发布“能打包但打不开主界面”的产物。
+
+2026-06-14 已本机运行一次新 proof runner：AutoWriter 3 题材 3/3 completed，机器规则 1/3 通过，平均评分 96，估算保留率 0.96；Review 真实模型 completed，产出 8 条 findings，Markdown 导出通过。由于第二个已保存模型服务返回 403 余额不足，本轮只实际验证到 1 个可用模型服务，不能写成多模型质量已证明。
+
 ## 可复现命令
 
 ```powershell

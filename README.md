@@ -112,6 +112,10 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 
 同日还跑了一轮 3 题材真实模型同题对照 proof suite：AutoWriter、普通聊天最小提示、普通聊天完整上下文提示在同一模型下各跑 3 个任务。AutoWriter 3/3 完成，机器规则通过 1/3，平均机器评分 96，平均估算保留率 0.96；两个聊天基线平均评分和保留率同为 96 / 0.96，但墙钟耗时明显更短。这个结果证明 AutoWriter 可以产出与聊天基线同级的机器评分草稿，并减少约 511 个手工上下文拼接字符；它不证明 AutoWriter 生成更快，也不替代真人作者对修改耗时、人物一致性、世界观一致性和文风满意度的判断。
 
+后续真实模型验证流程已固化到 [真实模型验证流程](docs/real-model-validation.md)。默认 CI 不调用真实模型，只检查 proof runner 语法；源码入口 e2e 和 Windows packaged UI smoke 已作为 CI / Release 守门项。
+
+新 proof runner 已在本机跑过一次：AutoWriter 3 题材 3/3 完成，机器规则 1/3 通过，平均机器评分 96，估算保留率 0.96；Review 真实模型链路 completed，产出 8 条 findings 并成功导出 Markdown 报告。由于第二个已保存模型服务返回 403 余额不足，本轮只实际验证到 1 个可用模型服务，不能把它写成多模型稳定性已证明。
+
 ## License
 
 [MIT](LICENSE)

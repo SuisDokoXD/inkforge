@@ -18,11 +18,11 @@ interface ExportDialogProps {
 }
 
 const EXPORT_OPTIONS: Array<{ key: ExportFormat; label: string; desc: string }> = [
-  { key: "txt", label: "TXT", desc: "纯文本，发布起点/番茄等渠道" },
-  { key: "md", label: "Markdown", desc: "GitHub / Obsidian 等" },
-  { key: "html", label: "HTML", desc: "浏览器打开，可打印为 PDF" },
-  { key: "docx", label: "Word DOCX", desc: "投稿出版社 / 印刷" },
-  { key: "epub", label: "EPUB", desc: "Kindle / 多看 / 静读天下" },
+  { key: "txt", label: "TXT", desc: "章节正文，纯文本渠道" },
+  { key: "md", label: "Markdown", desc: "章节正文，GitHub / Obsidian" },
+  { key: "html", label: "HTML", desc: "章节正文，浏览器打开或打印" },
+  { key: "docx", label: "Word DOCX", desc: "章节正文，投稿或印刷" },
+  { key: "epub", label: "EPUB", desc: "章节正文，电子书阅读器" },
 ];
 
 export function ExportDialog({ projectId, open, onClose, onImported }: ExportDialogProps): JSX.Element {
@@ -110,7 +110,10 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
       </div>
 
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase text-ink-400">导出整本书</h3>
+        <h3 className="text-xs font-semibold uppercase text-ink-400">导出作品正文</h3>
+        <p className="text-xs text-ink-500">
+          这些格式只包含章节正文；人物、世界观、素材、快照和日志会留在本地项目中。
+        </p>
         <ul className="space-y-2">
           {EXPORT_OPTIONS.map((opt) => (
             <li key={opt.key}>

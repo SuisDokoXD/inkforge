@@ -48,6 +48,7 @@
     "e2e:install": "playwright install chromium",
     "postinstall": "node -e \"if(process.env.CI){console.log('skip install-app-deps on CI');process.exit(0)};try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'inherit'})}catch(e){console.log('skip install-app-deps');}\"",
     "verify:shortcuts": "node scripts/verify-shortcuts.cjs",
+    "proof:real-model": "node scripts/run-real-model-proof-suite.cjs",
     "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs"
   },
   "dependencies": {
