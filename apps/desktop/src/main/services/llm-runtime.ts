@@ -321,7 +321,20 @@ function buildMockCompletion(req: LLMRequest): string {
   if (systemPrompt.includes("小说审查助手")) {
     return buildMockReviewOutput(userPrompt);
   }
+  if (systemPrompt.includes("小说里的虚构角色") && systemPrompt.includes("写一封短信")) {
+    return buildMockLetterOutput(userPrompt);
+  }
   return "这是 INKFORGE_MOCK_LLM 的确定性回复，用于验证本地模型调用链路。";
+}
+
+function buildMockLetterOutput(userPrompt: string): string {
+  const nameMatch = userPrompt.match(/姓名：(.+)/);
+  const characterName = nameMatch?.[1]?.trim() || "Mock character";
+  return JSON.stringify({
+    subject: "Mock letter",
+    body: `I am ${characterName}, writing from the deterministic InkForge mock path. This letter exists so the inbox can verify generated-letter actions without touching a real model.`,
+    tone: "neutral",
+  });
 }
 
 function buildMockPlannerOutput(userPrompt: string): string {

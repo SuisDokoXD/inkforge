@@ -86,6 +86,9 @@ export function LetterInboxPage(): JSX.Element {
   const [filter, setFilter] = useState<LetterFilter>("all");
   const [showGen, setShowGen] = useState(false);
   const [presetTone, setPresetTone] = useState<CharacterLetterTone | undefined>();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [letterActionError, setLetterActionError] = useState<string | null>(null);
 
   const lettersQuery = useQuery({
     queryKey: ["letters", projectId],
@@ -122,9 +125,20 @@ export function LetterInboxPage(): JSX.Element {
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => letterApi.delete({ letterId: id }),
-    onSuccess: () => {
-      setSelectedId(null);
-      queryClient.invalidateQueries({ queryKey: ["letters", projectId] });
+    onMutate: (id) => {
+      setDeletingId(id);
+      setLetterActionError(null);
+    },
+    onSuccess: async (_result, id) => {
+      setSelectedId((current) => (current === id ? null : current));
+      setDeleteConfirmId(null);
+      await queryClient.invalidateQueries({ queryKey: ["letters", projectId] });
+    },
+    onError: (err) => {
+      setLetterActionError(friendlyErrorMessage(err, "删除来信失败，请稍后重试。"));
+    },
+    onSettled: () => {
+      setDeletingId(null);
     },
   });
 
@@ -226,6 +240,8 @@ export function LetterInboxPage(): JSX.Element {
           }
           onSelect={(id, l) => {
             setSelectedId(id);
+            setDeleteConfirmId(null);
+            setLetterActionError(null);
             if (!l.read) markReadMut.mutate({ id, read: true });
           }}
           onPin={(l) => pinMut.mutate({ id: l.id, pinned: !l.pinned })}
@@ -238,8 +254,20 @@ export function LetterInboxPage(): JSX.Element {
           <LetterDetail
             letter={selected}
             characterName={characterMap.get(selected.characterId)?.name ?? "未知人物"}
-            onDelete={() => {
-              if (confirm("确定删除这封来信吗？")) deleteMut.mutate(selected.id);
+            deleteConfirming={deleteConfirmId === selected.id}
+            deleting={deletingId === selected.id}
+            deleteError={letterActionError}
+            onRequestDelete={() => {
+              setLetterActionError(null);
+              if (deleteConfirmId === selected.id) {
+                deleteMut.mutate(selected.id);
+                return;
+              }
+              setDeleteConfirmId(selected.id);
+            }}
+            onCancelDelete={() => {
+              setDeleteConfirmId(null);
+              setLetterActionError(null);
             }}
           />
         ) : (
@@ -488,11 +516,19 @@ function LetterRow({
 function LetterDetail({
   letter,
   characterName,
-  onDelete,
+  deleteConfirming,
+  deleting,
+  deleteError,
+  onRequestDelete,
+  onCancelDelete,
 }: {
   letter: CharacterLetterRecord;
   characterName: string;
-  onDelete: () => void;
+  deleteConfirming: boolean;
+  deleting: boolean;
+  deleteError: string | null;
+  onRequestDelete: () => void;
+  onCancelDelete: () => void;
 }): JSX.Element {
   const tone = TONE_LABEL[letter.tone];
   return (
@@ -505,15 +541,40 @@ function LetterDetail({
           <span className="text-xs text-ink-500">
             {new Date(letter.generatedAt).toLocaleString("zh-CN")}
           </span>
+          {deleteConfirming && !deleting && (
+            <button
+              type="button"
+              data-testid="letter-delete-cancel"
+              onClick={onCancelDelete}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+            >
+              取消
+            </button>
+          )}
           <button
             type="button"
-            onClick={onDelete}
-            className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-500 hover:bg-ink-800 hover:text-rose-300"
+            data-testid="letter-delete-button"
+            onClick={onRequestDelete}
+            disabled={deleting}
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ${
+              deleteConfirming
+                ? "bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
+                : "text-ink-500 hover:bg-ink-800 hover:text-rose-300"
+            } disabled:cursor-wait disabled:opacity-70 ${deleteConfirming ? "" : "ml-auto"}`}
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            删除
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+            {deleting ? "删除中" : deleteConfirming ? "确认删除" : "删除"}
           </button>
         </div>
+        {deleteError && (
+          <div className="mb-4 rounded-md border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+            {deleteError}
+          </div>
+        )}
         <h1 className="text-2xl font-semibold text-ink-50">{letter.subject}</h1>
         <div className="mt-2 text-sm text-ink-400">来自：{characterName}</div>
 
