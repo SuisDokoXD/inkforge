@@ -62,6 +62,7 @@ jobs:
         run: |
           "npm_config_msvs_version=2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @inkforge/desktop run build
       - shell: pwsh
         run: pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-ci --publish never
         env:
