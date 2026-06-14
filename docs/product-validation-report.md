@@ -264,7 +264,7 @@ $env:INKFORGE_RUN_PACKAGED_UI="1"; pnpm --filter @inkforge/desktop run e2e:packa
 
 本轮产品决策：当前 TXT / Markdown / HTML / DOCX / EPUB 明确定位为“作品正文导出”，不冒充完整项目备份。导出弹窗已改成“导出作品正文”，并说明人物、世界观、素材、快照和日志会留在本地项目中。
 
-如果后续要做“完整项目迁移/备份”，应新增独立的项目包导出，而不是塞进现有正文导出按钮。项目包至少要包含数据库元数据、章节 Markdown、人物、世界观、素材、样本库、快照索引和版本信息。
+后续已按这个边界新增独立的 `.inkforge.zip` 项目备份包，而不是塞进现有正文导出按钮。项目包导出/导入覆盖项目元数据、章节 Markdown、人物、世界观、素材、样本库、版本备份、日志和审查记录，并通过 `local-first-writing-loop.spec.ts` 增加基础导出/导入断言；格式边界见 [项目备份包设计](project-package-export-design.md)。
 
 ## 还没有证明的产品价值
 

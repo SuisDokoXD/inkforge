@@ -27,6 +27,7 @@ InkForge 是一款面向长篇写作者的本地 AI 写作工作台。
 - AI：多模型接入、场景化模型绑定、选中文本改写与审查
 - 自动写作：章节简报、快速出稿、严谨校阅、分段续写
 - 审查：人物一致性、时间线、伏笔、世界观、语言风格
+- 备份：`.inkforge.zip` 项目备份包，可把项目导入为新项目
 - 本地：SQLite 与 Markdown 文件，作品数据不依赖云端账号
 
 ## 使用方式
@@ -72,6 +73,8 @@ pnpm --filter @inkforge/desktop build
 
 InkForge 不提供云同步。建议使用网盘、Git、外部硬盘或自己的备份方案保存作品目录。
 
+如果需要跨工作区迁移完整项目，可以在导出弹窗中使用“项目备份包”。项目包会包含项目元数据、章节正文、人物、世界观、素材、参考库、版本备份和日志；不会包含模型服务密钥、工作区配置或真实模型 proof 输出。格式和导入边界见 [项目备份包设计](docs/project-package-export-design.md)。
+
 ## 设计取向
 
 - 本地优先：作品和资料先保存在自己的电脑上
@@ -92,6 +95,8 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 
 最近一次本地验证见 [InkForge 验证报告](docs/validation-report.md)。
 
+安全边界和后续审计重点见 [InkForge 威胁模型](docs/inkforge-threat-model.md)。
+
 已通过的机器验证包括：
 
 - `pnpm --filter @inkforge/desktop run sqlite:node`
@@ -99,6 +104,7 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 - `pnpm test`
 - `pnpm build`
 - `pnpm --filter @inkforge/desktop run verify:all`
+- `pnpm --filter @inkforge/desktop run verify:project-package`
 - `pnpm --filter @inkforge/desktop run sqlite:electron`
 - `pnpm --filter @inkforge/desktop run e2e`
 - `pnpm --filter @inkforge/desktop exec electron-builder --dir --config.directories.output=release-verify-20260614-0005 --publish never`
@@ -113,6 +119,12 @@ InkForge 使用 Electron、React、TypeScript、TipTap、better-sqlite3、Tailwi
 同日还跑了一轮 3 题材真实模型同题对照 proof suite：AutoWriter、普通聊天最小提示、普通聊天完整上下文提示在同一模型下各跑 3 个任务。AutoWriter 3/3 完成，机器规则通过 1/3，平均机器评分 96，平均估算保留率 0.96；两个聊天基线平均评分和保留率同为 96 / 0.96，但墙钟耗时明显更短。这个结果证明 AutoWriter 可以产出与聊天基线同级的机器评分草稿，并减少约 511 个手工上下文拼接字符；它不证明 AutoWriter 生成更快，也不替代真人作者对修改耗时、人物一致性、世界观一致性和文风满意度的判断。
 
 后续真实模型验证流程已固化到 [真实模型验证流程](docs/real-model-validation.md)。默认 CI 不调用真实模型，只检查 proof runner 语法；源码入口 e2e 和 Windows packaged UI smoke 已作为 CI / Release 守门项。
+
+真实模型 proof JSON 默认保存在 `output/playwright/real-model-eval/`，不纳入仓库。可用下面的命令把最近一次 proof JSON 汇总成 Markdown 报告：
+
+```powershell
+pnpm --filter @inkforge/desktop run proof:report
+```
 
 新 proof runner 已在本机跑过一次：AutoWriter 3 题材 3/3 完成，机器规则 1/3 通过，平均机器评分 96，估算保留率 0.96；Review 真实模型链路 completed，产出 8 条 findings 并成功导出 Markdown 报告。由于第二个已保存模型服务返回 403 余额不足，本轮只实际验证到 1 个可用模型服务，不能把它写成多模型稳定性已证明。
 

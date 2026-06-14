@@ -55,6 +55,14 @@ output/playwright/real-model-eval/real-model-proof-suite-*.json
 
 `output/` 是忽略目录。证据文件用于本机审计，不默认提交。
 
+把最近一次 proof JSON 汇总成 Markdown：
+
+```powershell
+pnpm --filter @inkforge/desktop run proof:report
+```
+
+汇总报告会写入 `output/playwright/real-model-eval/real-model-proof-summary.md`。报告只包含聚合指标、可用模型服务标签、失败原因、漏线索、禁忌命中和“能证明/不能证明”边界，不输出生成正文或服务密钥。
+
 ## 结果解释
 
 重点看 `aggregate`：
