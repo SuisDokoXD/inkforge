@@ -3,6 +3,7 @@ import {
   chapterImportApi,
   fsApi,
   projectExportApi,
+  projectPackageApi,
 } from "../lib/api";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { AnimatedDialog } from "./AnimatedDialog";
@@ -88,6 +89,56 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
     }
   };
 
+  const handlePackageExport = async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await projectPackageApi.export({ projectId });
+      const mb = (res.byteCount / 1024 / 1024).toFixed(2);
+      setStatus({
+        kind: "ok",
+        text: `✓ 项目备份包已导出：${res.chapterCount} 章 · ${res.characterCount} 人物 · ${res.worldEntryCount} 世界条目 · ${mb} MB · ${res.outputPath}`,
+      });
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      if (raw === "export_cancelled") {
+        setStatus({ kind: "err", text: "已取消" });
+      } else {
+        setStatus({
+          kind: "err",
+          text: `项目备份导出失败：${friendlyErrorMessage(err, "导出失败，请稍后重试。")}`,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePackageImport = async () => {
+    setBusy(true);
+    setStatus(null);
+    try {
+      const res = await projectPackageApi.import({});
+      setStatus({
+        kind: "ok",
+        text: `✓ 已导入为新项目「${res.name}」：${res.chapterCount} 章 · ${res.characterCount} 人物 · ${res.worldEntryCount} 世界条目`,
+      });
+      onImported?.();
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      if (raw === "import_cancelled") {
+        setStatus({ kind: "err", text: "已取消" });
+      } else {
+        setStatus({
+          kind: "err",
+          text: `项目备份导入失败：${friendlyErrorMessage(err, "导入失败，请检查文件后重试。")}`,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <AnimatedDialog
       open={open}
@@ -131,6 +182,31 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
             </li>
           ))}
         </ul>
+      </section>
+
+      <hr className="my-5 border-ink-700" />
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase text-ink-400">项目备份包</h3>
+        <p className="text-xs text-ink-500">
+          `.inkforge.zip` 会包含项目元数据、章节正文、人物、世界观、素材、参考库、版本备份和日志；不会包含模型服务密钥。
+        </p>
+        <div className="flex gap-2">
+          <button
+            className="flex-1 rounded-md border border-emerald-600/70 px-3 py-2 text-sm text-emerald-100 hover:bg-emerald-600/15 disabled:opacity-50"
+            disabled={busy}
+            onClick={handlePackageExport}
+          >
+            导出项目备份
+          </button>
+          <button
+            className="flex-1 rounded-md border border-sky-600/70 px-3 py-2 text-sm text-sky-100 hover:bg-sky-600/15 disabled:opacity-50"
+            disabled={busy}
+            onClick={handlePackageImport}
+          >
+            导入为新项目
+          </button>
+        </div>
       </section>
 
       <hr className="my-5 border-ink-700" />

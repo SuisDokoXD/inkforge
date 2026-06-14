@@ -25,6 +25,8 @@ jobs:
       - run: pnpm build
       - run: pnpm --filter @inkforge/desktop run verify:all
       - run: pnpm --filter @inkforge/desktop exec node --check scripts/run-real-model-proof-suite.cjs
+      - run: pnpm --filter @inkforge/desktop exec node --check scripts/summarize-real-model-proof.cjs
+      - run: pnpm --filter @inkforge/desktop exec node --check scripts/verify-project-package.cjs
 
   desktop-e2e:
     runs-on: ubuntu-latest

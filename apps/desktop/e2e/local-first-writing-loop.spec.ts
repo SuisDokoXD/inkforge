@@ -28,12 +28,14 @@ async function launch() {
 
 test("local-first writing loop persists chapters, book assets, snapshots, logs, and export", async () => {
   const exportPath = path.join(AUDIT_DIR, "local-first-loop.md");
+  const packagePath = path.join(AUDIT_DIR, "local-first-loop.inkforge.zip");
   fs.rmSync(exportPath, { force: true });
+  fs.rmSync(packagePath, { force: true });
 
   const { app, win } = await launch();
-  await win.waitForFunction(() => Boolean(window.inkforge?.project));
+  await win.waitForFunction(() => Boolean(window.inkforge?.project && window.inkforge?.projectPackage));
 
-  const result = await win.evaluate(async ({ exportPath }) => {
+  const result = await win.evaluate(async ({ exportPath, packagePath }) => {
     const api = window.inkforge;
     await api.settings.set({ updates: { onboardingCompleted: true, theme: "paper" } });
 
@@ -135,6 +137,21 @@ test("local-first writing loop persists chapters, book assets, snapshots, logs, 
       outputPath: exportPath,
       fileName: "local-first-loop",
     });
+    const packageExported = await api.projectPackage.export({
+      projectId: project.id,
+      outputPath: packagePath,
+      fileName: "local-first-loop",
+    });
+    const imported = await api.projectPackage.import({
+      filePath: packagePath,
+      nameOverride: `Imported local-first-loop ${Date.now()}`,
+    });
+    const importedChapters = await api.chapter.list({ projectId: imported.projectId });
+    const importedRead = await api.chapter.read({ id: importedChapters[0].id });
+    const importedCharacters = await api.novelCharacter.list({ projectId: imported.projectId });
+    const importedWorlds = await api.world.list({ projectId: imported.projectId });
+    const importedMaterials = await api.material.list({ projectId: imported.projectId });
+    const importedSamples = await api.sampleLib.list({ projectId: imported.projectId });
 
     const characters = await api.novelCharacter.list({ projectId: project.id });
     const worlds = await api.world.list({ projectId: project.id });
@@ -176,12 +193,21 @@ test("local-first writing loop persists chapters, book assets, snapshots, logs, 
       chapterMdContent: chapterMd.content,
       exportByteCount: exported.byteCount,
       exportChapterCount: exported.chapterCount,
+      packageByteCount: packageExported.byteCount,
+      packageChapterCount: packageExported.chapterCount,
+      importedProjectId: imported.projectId,
+      importedChapterCount: importedChapters.length,
+      importedReadContent: importedRead.content,
+      importedCharactersCount: importedCharacters.length,
+      importedWorldsCount: importedWorlds.length,
+      importedMaterialsCount: importedMaterials.length,
+      importedSamplesCount: importedSamples.length,
       charactersCount: characters.length,
       worldsCount: worlds.length,
       materialsCount: materials.length,
       samplesCount: samples.length,
     };
-  }, { exportPath });
+  }, { exportPath, packagePath });
 
   expect(result.projectName).toContain("本地闭环验证");
   expect(result.synopsis).toContain("沈青禾");
@@ -204,7 +230,17 @@ test("local-first writing loop persists chapters, book assets, snapshots, logs, 
   expect(result.chapterMdContent).toContain("雨夜来客");
   expect(result.exportChapterCount).toBe(1);
   expect(result.exportByteCount).toBeGreaterThan(100);
+  expect(result.packageChapterCount).toBe(1);
+  expect(result.packageByteCount).toBeGreaterThan(500);
+  expect(result.importedProjectId).toBeTruthy();
+  expect(result.importedChapterCount).toBe(1);
+  expect(result.importedReadContent).toBe(result.readContent);
+  expect(result.importedCharactersCount).toBe(1);
+  expect(result.importedWorldsCount).toBe(1);
+  expect(result.importedMaterialsCount).toBe(1);
+  expect(result.importedSamplesCount).toBe(1);
   expect(fs.existsSync(exportPath)).toBeTruthy();
+  expect(fs.existsSync(packagePath)).toBeTruthy();
   expect(fs.readFileSync(exportPath, "utf8")).toContain("师门独有的朱砂印");
 
   await win.reload({ waitUntil: "domcontentloaded" });

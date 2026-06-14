@@ -183,6 +183,8 @@
   projectExportHtml: "project:export-html",
   projectExportDocx: "project:export-docx",
   projectExportEpub: "project:export-epub",
+  projectPackageExport: "project-package:export",
+  projectPackageImport: "project-package:import",
   chapterImportTxt: "chapter:import-txt",
   chapterImportEpub: "chapter:import-epub",
   // ----- Module 6: AI outline + chapter generation (ainovel-style chained) -----

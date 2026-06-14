@@ -256,6 +256,47 @@ export interface ProjectExportResponse {
   chapterCount: number;
 }
 
+export interface ProjectPackageExportInput {
+  projectId: string;
+  /** Optional override; absent triggers save dialog. */
+  outputPath?: string;
+  /** Optional override; falls back to project name. */
+  fileName?: string;
+}
+
+export interface ProjectPackageExportResponse {
+  projectId: string;
+  outputPath: string;
+  byteCount: number;
+  manifestVersion: number;
+  chapterCount: number;
+  characterCount: number;
+  worldEntryCount: number;
+  materialCount: number;
+  sampleLibCount: number;
+  snapshotCount: number;
+}
+
+export interface ProjectPackageImportInput {
+  /** Absolute path to a `.inkforge.zip` package. Absent triggers open dialog. */
+  filePath?: string;
+  /** Optional imported project name. Absent uses the package project name plus an import suffix. */
+  nameOverride?: string;
+}
+
+export interface ProjectPackageImportResponse {
+  projectId: string;
+  name: string;
+  path: string;
+  manifestVersion: number;
+  chapterCount: number;
+  characterCount: number;
+  worldEntryCount: number;
+  materialCount: number;
+  sampleLibCount: number;
+  snapshotCount: number;
+}
+
 export interface ChapterImportTxtInput {
   projectId: string;
   filePath: string;
@@ -280,6 +321,8 @@ declare module "./maps" {
     [ipcChannels.projectExportHtml]: { req: ProjectExportInput; res: ProjectExportResponse };
     [ipcChannels.projectExportDocx]: { req: ProjectExportInput; res: ProjectExportResponse };
     [ipcChannels.projectExportEpub]: { req: ProjectExportInput; res: ProjectExportResponse };
+    [ipcChannels.projectPackageExport]: { req: ProjectPackageExportInput; res: ProjectPackageExportResponse };
+    [ipcChannels.projectPackageImport]: { req: ProjectPackageImportInput; res: ProjectPackageImportResponse };
     [ipcChannels.chapterImportTxt]: { req: ChapterImportTxtInput; res: ChapterImportBulkResponse };
     [ipcChannels.chapterImportEpub]: { req: ChapterImportEpubInput; res: ChapterImportBulkResponse };
   }

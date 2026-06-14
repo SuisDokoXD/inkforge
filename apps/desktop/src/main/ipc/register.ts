@@ -34,6 +34,7 @@ import { registerSceneBindingHandlers } from "./scene-binding";
 import { registerSampleLibHandlers } from "./sample-lib";
 import { registerWorldRelationshipHandlers } from "./world-relationship";
 import { registerProjectExportHandlers } from "./project-export";
+import { registerProjectPackageHandlers } from "./project-package";
 import { registerOutlineGenerationHandlers } from "./outline-generation";
 import { registerMaterialHandlers } from "./material";
 import { registerWorldPackHandlers } from "./world-pack";
@@ -84,6 +85,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerWorldRelationshipHandlers();
   // ----- Project Export + Chapter Bulk Import (ported from ainovel) -----
   registerProjectExportHandlers(getWindow);
+  registerProjectPackageHandlers(getWindow);
   // ----- Module 6: AI outline + chapter generation (ainovel-style) -----
   registerOutlineGenerationHandlers();
   // ----- v20: Materials (素材库) -----

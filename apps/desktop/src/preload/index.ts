@@ -318,6 +318,10 @@ const api: InkforgeApi = {
     docx: (input) => ipcRenderer.invoke(ipcChannels.projectExportDocx, input),
     epub: (input) => ipcRenderer.invoke(ipcChannels.projectExportEpub, input),
   },
+  projectPackage: {
+    export: (input) => ipcRenderer.invoke(ipcChannels.projectPackageExport, input),
+    import: (input) => ipcRenderer.invoke(ipcChannels.projectPackageImport, input),
+  },
   chapterImport: {
     txt: (input) => ipcRenderer.invoke(ipcChannels.chapterImportTxt, input),
     epub: (input) => ipcRenderer.invoke(ipcChannels.chapterImportEpub, input),

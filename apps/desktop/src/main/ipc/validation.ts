@@ -20,6 +20,7 @@ export * from "./validation/outline";
 export * from "./validation/outline-generation";
 export * from "./validation/project";
 export * from "./validation/project-export";
+export * from "./validation/project-package";
 export * from "./validation/provider";
 export * from "./validation/provider-key";
 export * from "./validation/research";

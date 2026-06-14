@@ -439,6 +439,17 @@ export const projectExportApi = {
   epub: (input: import("@inkforge/shared").ProjectExportInput): Promise<import("@inkforge/shared").ProjectExportResponse> => api().projectExport.epub(input),
 };
 
+export const projectPackageApi = {
+  export: (
+    input: import("@inkforge/shared").ProjectPackageExportInput,
+  ): Promise<import("@inkforge/shared").ProjectPackageExportResponse> =>
+    api().projectPackage.export(input),
+  import: (
+    input: import("@inkforge/shared").ProjectPackageImportInput = {},
+  ): Promise<import("@inkforge/shared").ProjectPackageImportResponse> =>
+    api().projectPackage.import(input),
+};
+
 export const chapterImportApi = {
   txt: (input: import("@inkforge/shared").ChapterImportTxtInput): Promise<import("@inkforge/shared").ChapterImportBulkResponse> => api().chapterImport.txt(input),
   epub: (input: import("@inkforge/shared").ChapterImportEpubInput): Promise<import("@inkforge/shared").ChapterImportBulkResponse> => api().chapterImport.epub(input),

@@ -601,6 +601,10 @@ import type {
   ChapterImportBulkResponse,
   ChapterImportEpubInput,
   ChapterImportTxtInput,
+  ProjectPackageExportInput,
+  ProjectPackageExportResponse,
+  ProjectPackageImportInput,
+  ProjectPackageImportResponse,
   ProjectExportInput,
   ProjectExportResponse,
 } from "./ipc";
@@ -612,6 +616,10 @@ export interface InkforgeApi {
     html(input: ProjectExportInput): Promise<ProjectExportResponse>;
     docx(input: ProjectExportInput): Promise<ProjectExportResponse>;
     epub(input: ProjectExportInput): Promise<ProjectExportResponse>;
+  };
+  projectPackage: {
+    export(input: ProjectPackageExportInput): Promise<ProjectPackageExportResponse>;
+    import(input: ProjectPackageImportInput): Promise<ProjectPackageImportResponse>;
   };
   chapterImport: {
     txt(input: ChapterImportTxtInput): Promise<ChapterImportBulkResponse>;
