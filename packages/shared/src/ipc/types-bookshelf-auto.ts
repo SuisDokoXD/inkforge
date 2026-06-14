@@ -188,11 +188,11 @@ export interface AutoWriterStartInput {
    *   - 高级（分别绑定）：传 4 条 binding，每条对应一个角色
    */
   agents: AutoWriterAgentBinding[];
-  /** 单段长度目标（字数），默认 400。 */
+  /** 单段长度目标（字数），默认 650。 */
   targetSegmentLength?: number;
-  /** 期望段数上限（含 Planner 提的 beat 数）。默认 12。 */
+  /** 期望段数上限（含 Planner 提的 beat 数）。默认 5。 */
   maxSegments?: number;
-  /** 单段最多重写次数（Critic 不通过时回炉次数上限），默认 3。 */
+  /** 单段最多重写次数（Critic 不通过时回炉次数上限），默认 1。 */
   maxRewritesPerSegment?: number;
   /** 是否启用 OOC 守门员（默认 true）。 */
   enableOocGate?: boolean;

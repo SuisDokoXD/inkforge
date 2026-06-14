@@ -46,6 +46,7 @@ describe("context merger prompt builders", () => {
     const firstExcerpt = `sample-one-prefix ${"a".repeat(350)} sample-one-tail`;
 
     const prompt = buildWriterUser({
+      userIdeas: "must mention the blue key",
       beat: "write the discovery",
       segmentIndex: 1,
       targetLength: 800,
@@ -66,6 +67,7 @@ describe("context merger prompt builders", () => {
       worldEntries: [],
     });
 
+    expect(prompt).toContain("must mention the blue key");
     expect(prompt).toContain("write the discovery");
     expect(prompt).toContain("chapter start");
     expect(prompt).toContain("tighten the scene");

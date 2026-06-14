@@ -726,6 +726,40 @@ export type ChapterSnapshotKind =
 /** AutoWriter 多 Agent 协作中的 4 个角色。 */
 export type AutoWriterAgentRole = "planner" | "writer" | "critic" | "reflector";
 
+export const AUTO_WRITER_DEFAULTS = {
+  targetSegmentLength: 650,
+  maxSegments: 5,
+  maxRewritesPerSegment: 1,
+  enableOocGate: true,
+  speedMode: "quality",
+} as const;
+
+export const AUTO_WRITER_FAST_PRESET = {
+  targetSegmentLength: 700,
+  maxSegments: 7,
+  maxRewritesPerSegment: 0,
+  enableOocGate: false,
+  speedMode: "fast",
+} as const;
+
+export const AUTO_WRITER_PARAMETER_LIMITS = {
+  targetSegmentLength: { min: 120, max: 1200 },
+  maxSegments: { min: 1, max: 16 },
+  maxRewritesPerSegment: { min: 0, max: 3 },
+  temperature: { min: 0, max: 1 },
+  maxTokens: { min: 256, max: 6000 },
+} as const;
+
+export const AUTO_WRITER_ROLE_DEFAULTS = {
+  planner: { temperature: 0.25, maxTokens: 900 },
+  writer: { temperature: 0.72, maxTokens: 1800 },
+  critic: { temperature: 0.15, maxTokens: 900 },
+  reflector: { temperature: 0.25, maxTokens: 450 },
+} as const satisfies Record<
+  AutoWriterAgentRole,
+  { temperature: number; maxTokens: number }
+>;
+
 /** AutoWriter 一次运行的状态机。
  * v22+: 加 `partial` —— 跑到一半失败但已落盘 N 段，UI 用此状态告诉用户
  * "前 N 段保留可用"，区别于完全空跑的 `failed`。

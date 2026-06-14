@@ -26,6 +26,11 @@ import type {
   OutlineCardRecord,
   SampleLibRecord,
 } from "@inkforge/shared";
+import {
+  AUTO_WRITER_DEFAULTS,
+  AUTO_WRITER_FAST_PRESET,
+  AUTO_WRITER_PARAMETER_LIMITS,
+} from "@inkforge/shared";
 import { autoWriterApi, outlineApi, providerApi, sampleLibApi } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 import { useWritingFlowActions } from "../../lib/use-writing-flow-actions";
@@ -84,13 +89,19 @@ export function AutoWriterPanel({
     >) ?? {},
   );
   const [targetSegmentLength, setTargetSegmentLength] = useState(
-    remembered?.targetSegmentLength ?? 700,
+    remembered?.targetSegmentLength ?? AUTO_WRITER_DEFAULTS.targetSegmentLength,
   );
-  const [maxSegments, setMaxSegments] = useState(remembered?.maxSegments ?? 7);
-  const [maxRewrites, setMaxRewrites] = useState(remembered?.maxRewrites ?? 1);
-  const [enableOocGate, setEnableOocGate] = useState(remembered?.enableOocGate ?? true);
+  const [maxSegments, setMaxSegments] = useState(
+    remembered?.maxSegments ?? AUTO_WRITER_DEFAULTS.maxSegments,
+  );
+  const [maxRewrites, setMaxRewrites] = useState(
+    remembered?.maxRewrites ?? AUTO_WRITER_DEFAULTS.maxRewritesPerSegment,
+  );
+  const [enableOocGate, setEnableOocGate] = useState(
+    remembered?.enableOocGate ?? AUTO_WRITER_DEFAULTS.enableOocGate,
+  );
   const [speedMode, setSpeedMode] = useState<"fast" | "quality">(
-    remembered?.speedMode ?? "fast",
+    remembered?.speedMode ?? AUTO_WRITER_DEFAULTS.speedMode,
   );
   const [selectedSampleLibIds, setSelectedSampleLibIds] = useState<string[]>(
     remembered?.sampleLibIds ?? [],
@@ -368,10 +379,11 @@ export function AutoWriterPanel({
               type="button"
               disabled={isRunning}
               onClick={() => {
-                setSpeedMode("fast");
-                setTargetSegmentLength((value) => (value < 600 ? 700 : value));
-                setMaxSegments((value) => (value > 10 ? 7 : value));
-                setMaxRewrites(0);
+                setSpeedMode(AUTO_WRITER_FAST_PRESET.speedMode);
+                setTargetSegmentLength(AUTO_WRITER_FAST_PRESET.targetSegmentLength);
+                setMaxSegments(AUTO_WRITER_FAST_PRESET.maxSegments);
+                setMaxRewrites(AUTO_WRITER_FAST_PRESET.maxRewritesPerSegment);
+                setEnableOocGate(AUTO_WRITER_FAST_PRESET.enableOocGate);
               }}
               className={`rounded px-3 py-2 text-left transition-colors ${
                 speedMode === "fast"
@@ -385,7 +397,13 @@ export function AutoWriterPanel({
             <button
               type="button"
               disabled={isRunning}
-              onClick={() => setSpeedMode("quality")}
+              onClick={() => {
+                setSpeedMode(AUTO_WRITER_DEFAULTS.speedMode);
+                setTargetSegmentLength(AUTO_WRITER_DEFAULTS.targetSegmentLength);
+                setMaxSegments(AUTO_WRITER_DEFAULTS.maxSegments);
+                setMaxRewrites(AUTO_WRITER_DEFAULTS.maxRewritesPerSegment);
+                setEnableOocGate(AUTO_WRITER_DEFAULTS.enableOocGate);
+              }}
               className={`rounded px-3 py-2 text-left transition-colors ${
                 speedMode === "quality"
                   ? "bg-accent-500/20 text-accent-200"
@@ -401,20 +419,29 @@ export function AutoWriterPanel({
             <NumberField
               label="每段字数"
               value={targetSegmentLength}
+              min={AUTO_WRITER_PARAMETER_LIMITS.targetSegmentLength.min}
+              max={AUTO_WRITER_PARAMETER_LIMITS.targetSegmentLength.max}
+              step={50}
               disabled={isRunning}
-              onChange={(value) => setTargetSegmentLength(value || 400)}
+              onChange={(value) => setTargetSegmentLength(value || AUTO_WRITER_DEFAULTS.targetSegmentLength)}
             />
             <NumberField
               label="段数"
               value={maxSegments}
+              min={AUTO_WRITER_PARAMETER_LIMITS.maxSegments.min}
+              max={12}
+              step={1}
               disabled={isRunning}
-              onChange={(value) => setMaxSegments(value || 8)}
+              onChange={(value) => setMaxSegments(value || AUTO_WRITER_DEFAULTS.maxSegments)}
             />
             <NumberField
               label="重写上限"
               value={maxRewrites}
+              min={AUTO_WRITER_PARAMETER_LIMITS.maxRewritesPerSegment.min}
+              max={AUTO_WRITER_PARAMETER_LIMITS.maxRewritesPerSegment.max}
+              step={1}
               disabled={isRunning}
-              onChange={(value) => setMaxRewrites(value || 2)}
+              onChange={(value) => setMaxRewrites(value || AUTO_WRITER_DEFAULTS.maxRewritesPerSegment)}
             />
           </div>
 
@@ -653,11 +680,17 @@ export function AutoWriterPanel({
 function NumberField({
   label,
   value,
+  min,
+  max,
+  step,
   disabled,
   onChange,
 }: {
   label: string;
   value: number;
+  min?: number;
+  max?: number;
+  step?: number;
   disabled: boolean;
   onChange: (value: number) => void;
 }): JSX.Element {
@@ -667,6 +700,9 @@ function NumberField({
       <input
         aria-label={label}
         type="number"
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
         disabled={disabled}

@@ -32,6 +32,8 @@ import {
   type StyleSampleRef,
 } from "@inkforge/auto-writer-engine";
 import {
+  AUTO_WRITER_DEFAULTS,
+  AUTO_WRITER_PARAMETER_LIMITS,
   ipcEventChannels,
   type AutoWriterChunkEvent,
   type AutoWriterCorrectionEntry,
@@ -58,6 +60,7 @@ import { appendAiEntry } from "./chapter-log-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 import { findSampleReferences } from "./rag-service";
+import { resolveAutoWriterGenerationOptions } from "./auto-writer-generation-options";
 import {
   checkAchievementsAndNotify,
   unlockAchievementAndNotify,
@@ -88,6 +91,10 @@ function emitToWindow<T>(
 
 function countWords(text: string): number {
   return text.replace(/\s+/g, "").length;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 /**
@@ -217,10 +224,27 @@ export async function startAutoWriter(
   };
   runtimes.set(runId, controller);
 
-  const targetSegmentLength = Math.max(120, input.targetSegmentLength ?? 400);
-  const maxSegments = Math.max(1, Math.min(40, input.maxSegments ?? 12));
-  const maxRewritesPerSegment = Math.max(0, Math.min(5, input.maxRewritesPerSegment ?? 3));
-  const enableOocGate = input.enableOocGate ?? true;
+  const targetSegmentLength = clampNumber(
+    input.targetSegmentLength ?? AUTO_WRITER_DEFAULTS.targetSegmentLength,
+    AUTO_WRITER_PARAMETER_LIMITS.targetSegmentLength.min,
+    AUTO_WRITER_PARAMETER_LIMITS.targetSegmentLength.max,
+  );
+  const maxSegments = Math.round(
+    clampNumber(
+      input.maxSegments ?? AUTO_WRITER_DEFAULTS.maxSegments,
+      AUTO_WRITER_PARAMETER_LIMITS.maxSegments.min,
+      AUTO_WRITER_PARAMETER_LIMITS.maxSegments.max,
+    ),
+  );
+  const maxRewritesPerSegment = Math.round(
+    clampNumber(
+      input.maxRewritesPerSegment ?? AUTO_WRITER_DEFAULTS.maxRewritesPerSegment,
+      AUTO_WRITER_PARAMETER_LIMITS.maxRewritesPerSegment.min,
+      AUTO_WRITER_PARAMETER_LIMITS.maxRewritesPerSegment.max,
+    ),
+  );
+  const enableOocGate = input.enableOocGate ?? AUTO_WRITER_DEFAULTS.enableOocGate;
+  const speedMode = input.speedMode ?? AUTO_WRITER_DEFAULTS.speedMode;
 
   const characters = listNovelCharacters(ctx.db, input.projectId);
   const worldEntries = listWorldEntries(ctx.db, { projectId: input.projectId });
@@ -385,7 +409,7 @@ export async function startAutoWriter(
           maxSegments,
           maxRewritesPerSegment,
           enableOocGate,
-          speedMode: input.speedMode ?? "quality",
+          speedMode,
           existingChapterText,
           chapterTitle: chapter.title,
           characters,
@@ -711,8 +735,7 @@ async function invokeOneAgentOnce(args: {
     apiKey,
     systemPrompt: agentInput.systemPrompt,
     messages: [{ role: "user", content: agentInput.userPrompt }],
-    temperature: agentInput.binding.temperature,
-    maxTokens: agentInput.binding.maxTokens,
+    ...resolveAutoWriterGenerationOptions(agentInput.role, agentInput.binding),
     model: agentInput.binding.model,
   });
 

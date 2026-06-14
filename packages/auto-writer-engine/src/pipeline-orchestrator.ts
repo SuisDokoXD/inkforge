@@ -174,6 +174,29 @@ function removeConsecutiveDuplicateHeadings(text: string): string {
   return kept.join("\n");
 }
 
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stripRedundantOpeningChapterHeading(args: {
+  segmentText: string;
+  chapterTitle: string;
+  chapterSoFar: string;
+}): string {
+  const title = args.chapterTitle.trim();
+  if (!title) return args.segmentText;
+
+  const escapedTitle = escapeRegExp(title);
+  const headingInChapter = new RegExp(`^\\s{0,3}#{1,6}\\s+${escapedTitle}\\s*#*\\s*$`, "im");
+  if (!headingInChapter.test(args.chapterSoFar)) return args.segmentText;
+
+  const openingHeading = new RegExp(
+    `^\\s{0,3}#{1,6}\\s+${escapedTitle}\\s*#*\\s*(?:\\n+|$)`,
+    "i",
+  );
+  return args.segmentText.replace(openingHeading, "").trimStart();
+}
+
 export function normalizeNovelParagraphs(text: string): string {
   if (!text) return "";
   let out = text.replace(/\r\n/g, "\n");
@@ -384,6 +407,7 @@ export async function runAutoWriterPipeline(
         "writer",
         buildWriterSystem(input.targetSegmentLength),
         buildWriterUser({
+          userIdeas: input.userIdeas,
           beat: beat.beat,
           segmentIndex: i,
           targetLength: input.targetSegmentLength,
@@ -405,7 +429,11 @@ export async function runAutoWriterPipeline(
       // 一旦 writer 看过用户介入消息，消费掉
       pendingCorrections = [];
 
-      segmentText = writerOut.text.trim();
+      segmentText = stripRedundantOpeningChapterHeading({
+        segmentText: writerOut.text.trim(),
+        chapterTitle: input.chapterTitle,
+        chapterSoFar,
+      });
       if (!segmentText) {
         // 空输出视作失败，跳过
         break;

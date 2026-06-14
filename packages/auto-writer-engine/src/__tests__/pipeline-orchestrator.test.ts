@@ -80,4 +80,45 @@ describe("runAutoWriterPipeline", () => {
     expect(appliedChapterTexts.at(-1)).toContain("Segment 2.");
     expect(phases.at(-1)).toBe("done");
   });
+
+  it("removes a redundant opening chapter heading from generated segments", async () => {
+    const appliedChapterTexts: string[] = [];
+    let writerCalls = 0;
+
+    const deps: PipelineDeps = {
+      invokeAgent: async (input) => {
+        if (input.role === "planner") {
+          return {
+            text: JSON.stringify([{ index: 1, beat: "continue the scene" }]),
+            tokensIn: 1,
+            tokensOut: 1,
+          };
+        }
+        writerCalls += 1;
+        return { text: "## Chapter\n\nSegment body.", tokensIn: 2, tokensOut: 3 };
+      },
+      createSnapshot: async () => null,
+      applyChapterContent: async ({ chapterText }) => {
+        appliedChapterTexts.push(chapterText);
+      },
+      runOocGate: async () => [],
+      drainInterrupts: () => [],
+      emitPhase: () => {},
+      isCancelled: () => false,
+      isPaused: () => false,
+    };
+
+    const stats = await runAutoWriterPipeline(
+      makeInput({
+        existingChapterText: "## Chapter\n\nExisting.",
+        maxSegments: 1,
+      }),
+      deps,
+    );
+
+    expect(writerCalls).toBe(1);
+    expect(stats.totalSegments).toBe(1);
+    expect(appliedChapterTexts.at(-1)?.match(/## Chapter/g)).toHaveLength(1);
+    expect(appliedChapterTexts.at(-1)).toContain("Segment body.");
+  });
 });

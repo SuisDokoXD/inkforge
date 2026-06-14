@@ -1,13 +1,49 @@
 # InkForge 产品价值验证报告
 
 > 日期：2026-06-14
-> 范围：本地优先写作闭环、AutoWriter / Review mock LLM 链路、Electron e2e、Windows unpacked 启动与 packaged UI smoke、可验证的产品假设。真实模型输出质量和真人试用尚未完成。
+> 范围：本地优先写作闭环、AutoWriter / Review mock LLM 链路、Electron e2e、Windows unpacked 启动与 packaged UI smoke、AutoWriter 真实模型短样例烟测、可验证的产品假设。长文质量、普通聊天对比和真人试用尚未完成。
 
 ## 本轮结论
 
 本轮能证明：InkForge 的本地优先写作闭环已经可以在 Electron 测试环境中真实跑通；AutoWriter 和 Review 的主进程模型调用路径也可以在 deterministic mock LLM 下端到端跑通。测试覆盖项目元数据、章节正文、人物、世界条目、素材、样本库、手动快照、章节日志、Markdown 导出、AutoWriter 多 Agent 流水线、Review 报告，以及重载后的章节可见性。
 
-本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些需要固定样例、真实模型服务和用户试用。Windows unpacked 目录版已做本机进程级启动和 packaged UI smoke，但这仍不等于签名安装包在干净机器上的安装/升级/卸载体验已成熟。
+本轮新增证明：AutoWriter 在一条固定短样例上可以调用真实配置模型完成 `quality` 写作闭环，且调参后能覆盖用户硬性线索并避免明显跑题。本轮不能证明：AutoWriter 在真实模型上的长文质量、普通 AI 聊天对比收益、真人首次使用成功率。这些仍需要多样例、长文本、真实模型服务和用户试用。Windows unpacked 目录版已做本机进程级启动和 packaged UI smoke，但这仍不等于签名安装包在干净机器上的安装/升级/卸载体验已成熟。
+
+## 真实模型短样例调参
+
+2026-06-14 使用本机已配置的写作模型服务做了 AutoWriter 短样例烟测。测试不读取、不输出 API Key，只通过 InkForge preload API 使用已保存的模型服务配置。
+
+调参内容：
+
+- 默认 AutoWriter 从“快速出稿”调整为 `quality` 闭环：约 650 字/段、5 段、每段最多回炉 1 次、一致性检查开启。
+- 快速模式保留为显式选择：约 700 字/段、7 段、跳过逐段校阅和回炉。
+- Planner / Writer / Critic / Reflector 加入角色默认生成参数：结构和审稿低温，正文写作保留适度创造性。
+- Writer prompt 直接注入用户原始写作简报，避免 Planner 漏传“必须提到”的硬性约束。
+- Critic 把“必须、要求、不要、不得、禁止、不能”升级为硬性验收项。
+- 引擎兜底剔除生成段开头重复的既有章节标题。
+
+最终短样例结果：
+
+| 指标 | 结果 |
+|---|---|
+| 模型服务 | 已保存配置：`DeepSeek` 标签，`anthropic` vendor，`claude-sonnet-4-6` |
+| 模式 | `quality` |
+| 目标 | 2 段、约 380 字/段、最多回炉 1 次 |
+| 完成状态 | `completed` |
+| 阶段 | Planner、Writer、Critic、Reflector、done 全部执行 |
+| 生成规模 | 796 个非空白字符，17 个自然段 |
+| 硬性线索覆盖 | 6/6：沈青禾、阿迟、陆闻舟、松脂味、真实记忆、小名 |
+| 明显无关文本 | 0 |
+| 重复章节标题 | 未出现 |
+| 直接揭露师父去向 | 未出现 |
+
+记录文件位于忽略目录：
+
+```text
+output/playwright/real-model-eval/autowriter-calibration-2026-06-14T03-06-23-949Z.json
+```
+
+解释边界：这是一条 Codex operator 固定短样例自测，能证明调参后的真实模型链路、硬性约束传递和标题去重兜底有效；它不能证明长篇连续章节、不同题材、不同模型、真实作者保留率或与普通聊天窗口的时间收益。
 
 ## 新增自动化证明
 

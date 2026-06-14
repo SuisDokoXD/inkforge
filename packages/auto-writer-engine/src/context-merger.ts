@@ -87,6 +87,7 @@ export function buildPlannerUser(input: BuildPlannerPromptInput): string {
 }
 
 export interface BuildWriterPromptInput extends SharedBookContext {
+  userIdeas: string;
   beat: string;
   segmentIndex: number;
   targetLength: number;
@@ -113,6 +114,7 @@ export function buildWriterSystem(targetLength: number): string {
 
 export function buildWriterUser(input: BuildWriterPromptInput): string {
   const lines: string[] = [];
+  lines.push(`# 用户原始写作简报（硬性约束以此为准）\n${input.userIdeas || "（无）"}`);
   lines.push(`# 本段 Beat（第 ${input.segmentIndex + 1} 段）\n${input.beat}`);
   lines.push(`# 期望长度\n约 ${input.targetLength} 字`);
 
