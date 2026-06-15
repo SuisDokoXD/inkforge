@@ -167,6 +167,27 @@ export function EditorPane({
     }
   }, [readQuery.data, chapter]);
 
+  useEffect(() => {
+    if (!chapter || !loaded || !readQuery.data) return;
+    if (loadedChapterIdRef.current !== chapter.id) return;
+    const nextContent = readQuery.data.content;
+    if (nextContent === lastSavedRef.current) return;
+    // When another workflow overwrites this chapter, reload it only if the
+    // editor has no local unsaved edits. This keeps bulk rewrite visible
+    // without clobbering active typing.
+    if (contentRef.current !== lastSavedRef.current) return;
+    contentCacheRef.current.set(chapter.id, nextContent);
+    lastSavedRef.current = nextContent;
+    lastAutosavedRef.current = nextContent;
+    setContent(nextContent);
+    setSavePhase("saved");
+    setSaveError(null);
+    setLastSavedAt(
+      readQuery.data.chapter.updatedAt ? new Date(readQuery.data.chapter.updatedAt).getTime() : Date.now(),
+    );
+    setRecoveryPrompt(null);
+  }, [chapter, loaded, readQuery.data]);
+
   useEffect(() => { contentRef.current = content; }, [content]);
 
   const stats = useMemo(() => computeWordCount(content), [content]);

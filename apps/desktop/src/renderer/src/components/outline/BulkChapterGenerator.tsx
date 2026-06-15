@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import type { OutlineCardRecord } from "@inkforge/shared";
-import { chapterGenApi, outlineApi } from "../../lib/api";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { ChapterRecord, OutlineCardRecord } from "@inkforge/shared";
+import { chapterApi, chapterGenApi, outlineApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 
 function getPendingCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
@@ -23,6 +23,21 @@ function getPreviousWrittenChapterId(cards: OutlineCardRecord[], card: OutlineCa
     .filter((c) => c.chapterId && c.order < card.order)
     .sort((a, b) => b.order - a.order);
   return writtenBefore[0]?.chapterId ?? undefined;
+}
+
+async function refreshCommittedChapter(
+  queryClient: QueryClient,
+  projectId: string,
+  chapterId: string,
+): Promise<void> {
+  const readBack = await chapterApi.read({ id: chapterId });
+  queryClient.setQueryData(["chapter-content", chapterId], readBack);
+  queryClient.setQueryData<ChapterRecord[]>(["chapters", projectId], (old) =>
+    old?.map((chapter) => chapter.id === chapterId ? readBack.chapter : chapter) ?? old,
+  );
+  queryClient.removeQueries({ queryKey: ["chapter-heading-outline", chapterId] });
+  queryClient.invalidateQueries({ queryKey: ["chapter-read-for-rewrite", chapterId] });
+  queryClient.invalidateQueries({ queryKey: ["snapshots", chapterId] });
 }
 
 /**
@@ -169,6 +184,7 @@ export function BulkChapterGenerator({
             outlineCardId: card.id,
             chapterId: mode === "rewrite" ? card.chapterId ?? undefined : undefined,
           });
+          await refreshCommittedChapter(queryClient, projectId, committed.chapterId);
           processedIds.add(card.id);
           lastChapterId = committed.chapterId;
           markProgress(
@@ -180,8 +196,8 @@ export function BulkChapterGenerator({
           );
           processed += 1;
           // 让卡片列表与章节列表都刷新一次，UI 实时显示进度
-          queryClient.invalidateQueries({ queryKey: ["outline-cards"] });
-          queryClient.invalidateQueries({ queryKey: ["chapters"] });
+          queryClient.invalidateQueries({ queryKey: ["outline-cards", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["chapters", projectId] });
         } catch (e) {
           const msg = friendlyErrorMessage(e, "生成本章失败，请稍后重试。");
           markProgress(card.id, "failed", msg);
