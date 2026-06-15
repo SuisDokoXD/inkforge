@@ -34,7 +34,8 @@ import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 import { createSnapshot } from "./snapshot-service";
 
 const DEFAULT_CHAPTER_MAX_TOKENS = 6000;
-const CONTINUATION_MAX_TOKENS = 1800;
+const CONTINUATION_MAX_TOKENS = 2400;
+const MAX_CHAPTER_CONTINUATIONS = 2;
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -146,7 +147,7 @@ async function streamCollect(args: {
   let finishReason: string | undefined;
   for await (const chunk of stream) {
     if (chunk.type === "delta" && chunk.textDelta) acc += chunk.textDelta;
-    if (chunk.type === "done") finishReason = chunk.finishReason;
+    if (chunk.type === "done" && chunk.finishReason) finishReason = chunk.finishReason;
     if (chunk.type === "error" && chunk.error) throw new Error(chunk.error);
   }
   return {
@@ -157,8 +158,22 @@ async function streamCollect(args: {
   };
 }
 
-function isTokenLimitFinish(reason: string | undefined): boolean {
+export function isTokenLimitFinish(reason: string | undefined): boolean {
   return /length|max.?token|token.?limit/i.test(reason ?? "");
+}
+
+export function looksAbruptlyCutOff(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 120) return false;
+  const tail = trimmed.replace(/[\s#*_`>]+$/g, "");
+  if (!tail) return false;
+  if (/[。！？!?…」』”）\]】.]$/.test(tail)) return false;
+  return /[\u3400-\u9fffA-Za-z0-9，,、：:；;—-]$/.test(tail);
+}
+
+export function shouldContinueChapterDraft(result: { text: string; finishReason?: string }): boolean {
+  if (!result.text.trim()) return false;
+  return isTokenLimitFinish(result.finishReason) || looksAbruptlyCutOff(result.text);
 }
 
 function joinContinuation(base: string, continuation: string): string {
@@ -185,34 +200,41 @@ async function generateCandidate(args: {
     userMessage: args.user,
     maxTokens: args.maxTokens,
   });
-  if (!isTokenLimitFinish(first.finishReason) || first.text.length === 0) {
+  if (!shouldContinueChapterDraft(first)) {
     return first;
   }
 
-  const continuation = await streamCollect({
-    providerRecord: args.providerRecord,
-    apiKey: args.apiKey,
-    model: args.model,
-    systemPrompt: [
-      args.system,
-      "",
-      "上一轮正文因为输出长度上限被截断。现在只补完后续正文：不要重复已写内容，不要重写标题，不要解释原因。",
-    ].join("\n"),
-    userMessage: [
-      args.user,
-      "",
-      "已写正文末尾：",
-      first.text.slice(-1600),
-      "",
-      "请从最后一句自然接上，把本章收束完整。只输出续写正文。",
-    ].join("\n"),
-    temperature: 0.75,
-    maxTokens: CONTINUATION_MAX_TOKENS,
-  });
+  let text = first.text;
+  let durationMs = first.durationMs;
+  for (let i = 0; i < MAX_CHAPTER_CONTINUATIONS; i += 1) {
+    const continuation = await streamCollect({
+      providerRecord: args.providerRecord,
+      apiKey: args.apiKey,
+      model: args.model,
+      systemPrompt: [
+        args.system,
+        "",
+        "上一轮正文还没有完整收束。现在只补完后续正文：不要重复已写内容，不要重写标题，不要解释原因。",
+      ].join("\n"),
+      userMessage: [
+        args.user,
+        "",
+        "已写正文末尾：",
+        text.slice(-1800),
+        "",
+        "请从最后一句自然接上，把本章写到完整收束。只输出续写正文。",
+      ].join("\n"),
+      temperature: 0.75,
+      maxTokens: CONTINUATION_MAX_TOKENS,
+    });
+    text = joinContinuation(text, continuation.text);
+    durationMs += continuation.durationMs;
+    if (!shouldContinueChapterDraft({ text, finishReason: continuation.finishReason })) break;
+  }
 
   return {
-    text: joinContinuation(first.text, continuation.text),
-    durationMs: first.durationMs + continuation.durationMs,
+    text,
+    durationMs,
     providerId: first.providerId,
   };
 }

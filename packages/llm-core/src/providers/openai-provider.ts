@@ -127,8 +127,10 @@ export class OpenAIProvider implements LLMProvider {
           const payload = line.slice(5).trim();
           if (!payload) continue;
           if (payload === "[DONE]") {
-            emittedDone = true;
-            yield { type: "done", vendor: this.vendor };
+            if (!emittedDone) {
+              emittedDone = true;
+              yield { type: "done", vendor: this.vendor };
+            }
             return;
           }
           try {

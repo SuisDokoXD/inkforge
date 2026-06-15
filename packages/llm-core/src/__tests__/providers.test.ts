@@ -78,6 +78,7 @@ describe("OpenAIProvider", () => {
       streamResponse(
         'data: {"choices":[{"delta":{"content":"Hel"}}]}\n\n',
         'data: {"choices":[{"delta":{"content":"lo"},"finish_reason":"stop"}]}\n\n',
+        "data: [DONE]\n\n",
       ),
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -125,6 +126,35 @@ describe("OpenAIProvider", () => {
       max_tokens: 64,
       stream: true,
     });
+  });
+
+  it("preserves finishReason when [DONE] arrives after finish_reason", async () => {
+    const fetchMock = vi.fn(async () =>
+      streamResponse(
+        'data: {"choices":[{"delta":{"content":"First"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"Last"},"finish_reason":"length"}]}\n\n',
+        "data: [DONE]\n\n",
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const provider = new OpenAIProvider({
+      id: "openai",
+      label: "OpenAI",
+      baseUrl: "https://api.example/v1",
+      apiKey: "secret",
+      defaultModel: "gpt-default",
+      timeoutMs: 1000,
+    });
+
+    const chunks = await collect(
+      provider.complete({
+        messages: [{ role: "user", content: "write" }],
+        maxTokens: 256,
+      }),
+    );
+
+    expect(chunks.at(-1)?.finishReason).toBe("length");
   });
 
   it("marks chunks from OpenAI-compatible providers with the compatible vendor", async () => {

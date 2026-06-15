@@ -18,6 +18,10 @@ function getWrittenCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
   return cards.filter((card) => !!card.chapterId);
 }
 
+function getRewriteCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
+  return getOrderedCards(cards).filter((card) => !!card.chapterId);
+}
+
 function getPreviousWrittenChapterId(cards: OutlineCardRecord[], card: OutlineCardRecord): string | undefined {
   const writtenBefore = cards
     .filter((c) => c.chapterId && c.order < card.order)
@@ -49,8 +53,8 @@ async function refreshCommittedChapter(
  * - "补完未写"每轮重新 list 大纲卡，只挑选 chapterId === null 的卡逐张生成。
  *   于是断点续写是天然的：哪怕用户中途关闭应用，下次再点"继续"，仍会
  *   从首张未写卡片接着跑。
- * - "重写全部"按章节卡顺序重新生成每张卡对应正文。已有章节由主进程先保存
- *   pre-rewrite 版本备份，再覆盖正文。
+ * - "重写全部"只重写已绑定正文的章纲卡。未绑定卡属于"补写"流程，不能
+ *   在重写时新建章节，否则会制造同名重复章节。
  * - 上一张已写卡的 chapterId 会作为 prevChapterId 传给 fromOutline，
  *   保证跨章节衔接。
  * - 暂停/停止：通过 ref 标记，循环每步检查；正在进行的那一次 LLM 调用
@@ -104,6 +108,7 @@ export function BulkChapterGenerator({
     [cards],
   );
   const written = useMemo(() => getWrittenCards(cards), [cards]);
+  const rewriteTargets = useMemo(() => getRewriteCards(cards), [cards]);
 
   useEffect(() => {
     onBusyChange?.(status === "running");
@@ -112,8 +117,11 @@ export function BulkChapterGenerator({
   const start = async (mode: RunMode) => {
     if (runningRef.current) return;
     if (mode === "rewrite") {
+      const skipped = Math.max(0, cards.length - rewriteTargets.length);
       const ok = window.confirm(
-        `重新生成全部 ${cards.length} 张章节卡对应的正文？\n\n已有章节会先保存为“重写前”版本备份，然后被新正文覆盖。`,
+        `重新生成已写的 ${rewriteTargets.length} 张正文？\n\n已有章节会先保存为“重写前”版本备份，然后被新正文覆盖。${
+          skipped > 0 ? `\n\n另有 ${skipped} 张章纲还没有正文，本次不会新建重复章节。` : ""
+        }`,
       );
       if (!ok) return;
     }
@@ -150,7 +158,7 @@ export function BulkChapterGenerator({
         // 每一轮重新 list 一次，避免本地 cards 缓存过期：
         // 用户可能并行手写了一章，或前面循环刚落盘但 props 还没刷新。
         const fresh = await outlineApi.list({ projectId });
-        const ordered = (mode === "rewrite" ? getOrderedCards(fresh) : getPendingCards(fresh))
+        const ordered = (mode === "rewrite" ? getRewriteCards(fresh) : getPendingCards(fresh))
           .filter((card) => !processedIds.has(card.id));
         if (ordered.length === 0) {
           setStatus("done");
@@ -177,12 +185,16 @@ export function BulkChapterGenerator({
           if (!candidate || !candidate.text.trim()) {
             throw new Error("模型没有返回正文");
           }
+          const targetChapterId: string | undefined = mode === "rewrite" ? card.chapterId ?? undefined : undefined;
+          if (mode === "rewrite" && !targetChapterId) {
+            throw new Error("这张章纲还没有正文，请先补写后再重写。");
+          }
           const committed = await chapterGenApi.commitDraft({
             projectId,
             text: candidate.text,
             title: res.outlineTitle,
             outlineCardId: card.id,
-            chapterId: mode === "rewrite" ? card.chapterId ?? undefined : undefined,
+            chapterId: targetChapterId,
           });
           await refreshCommittedChapter(queryClient, projectId, committed.chapterId);
           processedIds.add(card.id);
@@ -315,11 +327,11 @@ export function BulkChapterGenerator({
             </button>
             <button
               type="button"
-              disabled={totalCards === 0}
+              disabled={rewriteTargets.length === 0}
               onClick={() => void start("rewrite")}
               className="rounded-md border border-amber-500/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-40"
             >
-              ↻ 重写全部正文
+              ↻ 重写全部已写正文
             </button>
           </>
         )}
@@ -372,7 +384,7 @@ export function BulkChapterGenerator({
 
       {!isBusy && totalCards > 0 ? (
         <p className="mt-2 text-[11px] leading-5 text-ink-500">
-          重写全部会按当前章纲顺序覆盖已有正文；覆盖前会自动保存“重写前”版本备份。
+          重写会按当前章纲顺序覆盖已有正文；还没有正文的章纲请先补写，避免新建同名重复章节。
         </p>
       ) : null}
 
