@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
   deleteOutline,
-  getAppSettings,
   getProject,
   getSceneBinding,
   insertOutline,
@@ -211,22 +210,17 @@ async function resolveProviderForScene(
   apiKey: string;
   model: string | undefined;
 }> {
-  // Direct basic-mode lookup — outline_generation / main_generation are basic keys
-  // that don't exist in the advanced enum, so we bypass scene-binding-service
-  // and read scene_bindings_basic directly.
+  // outline_generation/main_generation are basic keys even when the app is in
+  // advanced routing mode. Always honor the basic binding before falling back.
   const ctx = getAppContext();
   let providerId = explicit.providerId;
   let model = explicit.model;
   if (!providerId) {
-    const mode = getAppSettings(ctx.db).sceneRoutingMode;
-    if (mode === "basic") {
-      const binding = getSceneBinding(ctx.db, "basic", basicKey);
-      if (binding?.providerId) {
-        providerId = binding.providerId;
-        model = model ?? binding.model ?? undefined;
-      }
+    const binding = getSceneBinding(ctx.db, "basic", basicKey);
+    if (binding?.providerId) {
+      providerId = binding.providerId;
+      model = model ?? binding.model ?? undefined;
     }
-    // Advanced mode falls through to first-provider via resolveProviderRecord(undefined).
   }
   const providerRecord = resolveProviderRecord(providerId);
   if (!providerRecord) throw new Error("provider_not_configured");
@@ -288,6 +282,22 @@ function assertOutlineCardsUseful(cards: Array<{ title: string; content: string 
       "outline_cards_too_thin: 模型返回的大纲卡过薄，未达到可写正文的结构要求。请补充梗概、类型、背景语境后重新生成，或换用更强的 outline_generation 模型。",
     );
   }
+}
+
+function normalizeChapterCardTitle(rawTitle: string, index: number): string {
+  const chapterNo = index + 1;
+  const trimmed = rawTitle.trim();
+  const withoutPrefix = trimmed
+    .replace(
+      /^第\s*[\d一二三四五六七八九十百千万两〇零]+\s*[章节回卷篇]\s*[·•.\-—:：、]?\s*/u,
+      "",
+    )
+    .trim();
+  const subtitle = (withoutPrefix || trimmed || `第${chapterNo}章`).slice(0, 80);
+  if (/^第\s*[\d一二三四五六七八九十百千万两〇零]+\s*[章节回卷篇]\s*$/u.test(subtitle)) {
+    return `第${chapterNo}章`;
+  }
+  return `第${chapterNo}章 · ${subtitle}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,28 +413,47 @@ export async function generateChapterOutlines(
   const cards = parseOutlineCardsJson(text);
   if (cards.length === 0) throw new Error("LLM returned zero outline cards");
   assertOutlineCardsUseful(cards);
+  const normalizedCards = cards.map((card, index) => ({
+    ...card,
+    title: normalizeChapterCardTitle(card.title, index),
+  }));
 
-  // Optionally clear existing project-level outline cards (chapterId IS NULL)
+  // Re-splitting should refresh the plan without creating duplicate pending
+  // cards for chapters that were already written from older outline cards.
+  let reusableLinked: OutlineCardRecord[] = [];
   if (input.replaceExisting) {
-    const existing = listOutlines(ctx.db, project.id).filter((c) => c.chapterId === null);
-    for (const c of existing) deleteOutline(ctx.db, c.id);
+    const existing = listOutlines(ctx.db, project.id);
+    reusableLinked = existing
+      .filter((c) => c.chapterId !== null)
+      .sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt));
+    for (const c of existing.filter((c) => c.chapterId === null)) deleteOutline(ctx.db, c.id);
   }
 
   const existingProjectCards = listOutlines(ctx.db, project.id).filter((c) => c.chapterId === null);
-  let order = existingProjectCards.length;
+  let nextInsertOrder = input.replaceExisting ? reusableLinked.length : existingProjectCards.length;
   const created: OutlineCardRecord[] = [];
-  for (const c of cards) {
-    const record = insertOutline(ctx.db, {
-      id: randomUUID(),
-      projectId: project.id,
-      chapterId: null,
-      title: c.title || `第${order + 1}章`,
-      content: c.content,
-      status: "planned",
-      order,
-    });
+  for (let i = 0; i < normalizedCards.length; i += 1) {
+    const c = normalizedCards[i];
+    const reusable = input.replaceExisting ? reusableLinked[i] : undefined;
+    const record = reusable
+      ? updateOutline(ctx.db, {
+          id: reusable.id,
+          title: c.title,
+          content: c.content,
+          status: "written",
+          order: i,
+        })
+      : insertOutline(ctx.db, {
+          id: randomUUID(),
+          projectId: project.id,
+          chapterId: null,
+          title: c.title || `第${nextInsertOrder + 1}章`,
+          content: c.content,
+          status: "planned",
+          order: input.replaceExisting ? i : nextInsertOrder,
+        });
     created.push(record);
-    order += 1;
+    if (!reusable) nextInsertOrder += 1;
   }
 
   return {

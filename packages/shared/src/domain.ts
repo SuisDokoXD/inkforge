@@ -747,12 +747,12 @@ export const AUTO_WRITER_PARAMETER_LIMITS = {
   maxSegments: { min: 1, max: 16 },
   maxRewritesPerSegment: { min: 0, max: 3 },
   temperature: { min: 0, max: 1 },
-  maxTokens: { min: 256, max: 6000 },
+  maxTokens: { min: 256, max: 8000 },
 } as const;
 
 export const AUTO_WRITER_ROLE_DEFAULTS = {
   planner: { temperature: 0.25, maxTokens: 900 },
-  writer: { temperature: 0.72, maxTokens: 1800 },
+  writer: { temperature: 0.72, maxTokens: 3200 },
   critic: { temperature: 0.15, maxTokens: 900 },
   reflector: { temperature: 0.25, maxTokens: 450 },
 } as const satisfies Record<

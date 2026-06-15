@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import {
-  getAppSettings,
   getChapter,
   getProject,
   getSceneBinding,
@@ -32,6 +31,9 @@ import {
 import { buildRagBlock, buildSampleReferenceBlock } from "./rag-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
+
+const DEFAULT_CHAPTER_MAX_TOKENS = 6000;
+const CONTINUATION_MAX_TOKENS = 1800;
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -107,13 +109,10 @@ async function resolveProvider(
   let providerId = explicit.providerId;
   let model = explicit.model;
   if (!providerId) {
-    const mode = getAppSettings(ctx.db).sceneRoutingMode;
-    if (mode === "basic") {
-      const binding = getSceneBinding(ctx.db, "basic", basicKey);
-      if (binding?.providerId) {
-        providerId = binding.providerId;
-        model = model ?? binding.model ?? undefined;
-      }
+    const binding = getSceneBinding(ctx.db, "basic", basicKey);
+    if (binding?.providerId) {
+      providerId = binding.providerId;
+      model = model ?? binding.model ?? undefined;
     }
   }
   const providerRecord = resolveProviderRecord(providerId);
@@ -130,7 +129,8 @@ async function streamCollect(args: {
   userMessage: string;
   model?: string;
   maxTokens?: number;
-}): Promise<{ text: string; durationMs: number; providerId: string }> {
+  temperature?: number;
+}): Promise<{ text: string; durationMs: number; providerId: string; finishReason?: string }> {
   const start = Date.now();
   const stream = streamText({
     providerRecord: args.providerRecord,
@@ -138,18 +138,81 @@ async function streamCollect(args: {
     model: args.model ?? args.providerRecord.defaultModel,
     systemPrompt: args.systemPrompt,
     userMessage: args.userMessage,
-    temperature: 0.85,
-    maxTokens: args.maxTokens ?? 3000,
+    temperature: args.temperature ?? 0.85,
+    maxTokens: args.maxTokens ?? DEFAULT_CHAPTER_MAX_TOKENS,
   });
   let acc = "";
+  let finishReason: string | undefined;
   for await (const chunk of stream) {
     if (chunk.type === "delta" && chunk.textDelta) acc += chunk.textDelta;
+    if (chunk.type === "done") finishReason = chunk.finishReason;
     if (chunk.type === "error" && chunk.error) throw new Error(chunk.error);
   }
   return {
     text: acc.trim(),
     durationMs: Date.now() - start,
     providerId: args.providerRecord.id,
+    finishReason,
+  };
+}
+
+function isTokenLimitFinish(reason: string | undefined): boolean {
+  return /length|max.?token|token.?limit/i.test(reason ?? "");
+}
+
+function joinContinuation(base: string, continuation: string): string {
+  const left = base.trimEnd();
+  const right = continuation.trimStart();
+  if (!left) return right;
+  if (!right) return left;
+  return /[。！？!?」』”）\]】…]$/.test(left) ? `${left}\n\n${right}` : `${left}${right}`;
+}
+
+async function generateCandidate(args: {
+  providerRecord: NonNullable<ReturnType<typeof resolveProviderRecord>>;
+  apiKey: string;
+  model: string | undefined;
+  system: string;
+  user: string;
+  maxTokens: number;
+}): Promise<{ text: string; durationMs: number; providerId: string }> {
+  const first = await streamCollect({
+    providerRecord: args.providerRecord,
+    apiKey: args.apiKey,
+    model: args.model,
+    systemPrompt: args.system,
+    userMessage: args.user,
+    maxTokens: args.maxTokens,
+  });
+  if (!isTokenLimitFinish(first.finishReason) || first.text.length === 0) {
+    return first;
+  }
+
+  const continuation = await streamCollect({
+    providerRecord: args.providerRecord,
+    apiKey: args.apiKey,
+    model: args.model,
+    systemPrompt: [
+      args.system,
+      "",
+      "上一轮正文因为输出长度上限被截断。现在只补完后续正文：不要重复已写内容，不要重写标题，不要解释原因。",
+    ].join("\n"),
+    userMessage: [
+      args.user,
+      "",
+      "已写正文末尾：",
+      first.text.slice(-1600),
+      "",
+      "请从最后一句自然接上，把本章收束完整。只输出续写正文。",
+    ].join("\n"),
+    temperature: 0.75,
+    maxTokens: CONTINUATION_MAX_TOKENS,
+  });
+
+  return {
+    text: joinContinuation(first.text, continuation.text),
+    durationMs: first.durationMs + continuation.durationMs,
+    providerId: first.providerId,
   };
 }
 
@@ -240,13 +303,13 @@ export async function generateChapterFromOutline(
 
   const count = Math.min(3, Math.max(1, input.candidates ?? 1));
   const calls = Array.from({ length: count }, () =>
-    streamCollect({
+    generateCandidate({
       providerRecord,
       apiKey,
       model,
-      systemPrompt: system,
-      userMessage: user,
-      maxTokens: input.maxTokens ?? 3000,
+      system,
+      user,
+      maxTokens: input.maxTokens ?? DEFAULT_CHAPTER_MAX_TOKENS,
     }),
   );
   const settled = await Promise.allSettled(calls);
@@ -285,6 +348,18 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
 
   let chapterId = input.chapterId;
   let filePath: string;
+
+  if (!chapterId && input.outlineCardId) {
+    const linked = ctx.db
+      .prepare(`SELECT chapter_id FROM outline_cards WHERE id = ? AND project_id = ?`)
+      .get(input.outlineCardId, project.id) as { chapter_id: string | null } | undefined;
+    if (linked?.chapter_id) {
+      const existing = getChapter(ctx.db, linked.chapter_id);
+      if (existing && existing.projectId === project.id) {
+        chapterId = existing.id;
+      }
+    }
+  }
 
   if (chapterId) {
     // Overwrite existing chapter

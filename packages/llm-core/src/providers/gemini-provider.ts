@@ -141,7 +141,7 @@ export class GeminiProvider implements LLMProvider {
             const finish = parsed.candidates?.[0]?.finishReason;
             if (finish && finish !== "FINISH_REASON_UNSPECIFIED" && !emittedDone) {
               emittedDone = true;
-              yield { type: "done", vendor: this.vendor, raw: parsed };
+              yield { type: "done", vendor: this.vendor, finishReason: finish, raw: parsed };
             }
           } catch {
             // ignore malformed chunk; resync at next "\n\n"

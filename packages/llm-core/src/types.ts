@@ -21,5 +21,6 @@ export interface LLMChunk {
   textDelta?: string;
   vendor: LLMVendor;
   error?: string;
+  finishReason?: string;
   raw?: unknown;
 }

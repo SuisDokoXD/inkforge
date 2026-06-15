@@ -404,6 +404,7 @@ export interface StreamTextChunk {
   type: "delta" | "done" | "error";
   textDelta?: string;
   error?: string;
+  finishReason?: string;
   usage?: SkillRunUsage;
 }
 
@@ -487,6 +488,7 @@ export async function* streamText(
     if (chunk.type === "done") {
       yield {
         type: "done",
+        finishReason: chunk.finishReason,
         usage: extractUsage(chunk.raw),
       };
     }

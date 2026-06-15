@@ -104,6 +104,7 @@ describe("OpenAIProvider", () => {
 
     expect(chunks.map((chunk) => chunk.type)).toEqual(["delta", "delta", "done"]);
     expect(chunks.map((chunk) => chunk.textDelta).filter(Boolean)).toEqual(["Hel", "lo"]);
+    expect(chunks.at(-1)?.finishReason).toBe("stop");
     expect(fetchMock).toHaveBeenCalledOnce();
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
@@ -185,6 +186,7 @@ describe("GeminiProvider", () => {
 
     expect(chunks.map((chunk) => chunk.type)).toEqual(["delta", "delta", "done"]);
     expect(chunks.map((chunk) => chunk.textDelta).filter(Boolean)).toEqual(["A", "B"]);
+    expect(chunks.at(-1)?.finishReason).toBe("STOP");
 
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(

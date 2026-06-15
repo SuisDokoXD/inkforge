@@ -142,7 +142,7 @@ export class OpenAIProvider implements LLMProvider {
             const finish = parsed.choices?.[0]?.finish_reason;
             if (finish && !emittedDone) {
               emittedDone = true;
-              yield { type: "done", vendor: this.vendor, raw: parsed };
+              yield { type: "done", vendor: this.vendor, finishReason: finish, raw: parsed };
             }
           } catch {
             // ignore malformed JSON fragment; will resync at next "\n\n"

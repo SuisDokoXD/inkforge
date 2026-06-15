@@ -113,6 +113,7 @@ export class AnthropicProvider implements LLMProvider {
       const stream = await client.messages.create(payload);
 
       let emittedDone = false;
+      let finishReason: string | undefined;
       for await (const event of stream) {
         const eventType = typeof event.type === "string" ? event.type : "";
 
@@ -128,11 +129,19 @@ export class AnthropicProvider implements LLMProvider {
           }
         }
 
+        if (eventType === "message_delta") {
+          const delta = event.delta as { stop_reason?: string | null } | undefined;
+          if (typeof delta?.stop_reason === "string") {
+            finishReason = delta.stop_reason;
+          }
+        }
+
         if (eventType === "message_stop") {
           emittedDone = true;
           yield {
             type: "done",
             vendor: this.vendor,
+            finishReason,
             raw: event,
           };
         }

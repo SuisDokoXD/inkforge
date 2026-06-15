@@ -419,7 +419,7 @@ export interface ChapterGenerateFromOutlineInput {
   model?: string;
   /** Optional sample libraries to use as style references. Empty/omitted = auto from all imported libs. */
   sampleLibIds?: string[];
-  /** Override; default 1500. */
+  /** Override; default 6000. */
   maxTokens?: number;
 }
 
