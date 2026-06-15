@@ -13,8 +13,9 @@ export interface ChapterDraftState {
 
 interface ChapterDraftDialogProps {
   draft: ChapterDraftState;
+  adopting?: boolean;
   onClose(): void;
-  onAdopt(text: string): void;
+  onAdopt(text: string): void | Promise<void>;
   onOpenChapter?(chapterId: string): void;
   onReviewChapter?(chapterId: string): void;
   onAutoWriteChapter?(chapterId: string): void;
@@ -22,6 +23,7 @@ interface ChapterDraftDialogProps {
 
 export const ChapterDraftDialog = memo(function ChapterDraftDialog({
   draft,
+  adopting = false,
   onClose,
   onAdopt,
   onOpenChapter,
@@ -108,10 +110,10 @@ export const ChapterDraftDialog = memo(function ChapterDraftDialog({
               <div className="flex gap-2 border-t border-ink-700 p-2">
                 <button
                   className="flex-1 rounded-md bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 transition-colors hover:bg-accent-400"
-                  disabled={!!committedChapterId}
+                  disabled={!!committedChapterId || adopting}
                   onClick={() => onAdopt(candidate.text)}
                 >
-                  {committedChapterId ? "已采用" : "采用此版本"}
+                  {committedChapterId ? "已采用" : adopting ? "采用中…" : "采用此版本"}
                 </button>
                 <button
                   className="rounded-md border border-ink-600 px-2 py-1 text-xs transition-colors hover:bg-ink-700"

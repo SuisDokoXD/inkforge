@@ -110,6 +110,7 @@ export function OutlinePage(): JSX.Element {
   const [cardFilter, setCardFilter] = useState<"all" | "unwritten" | "written">("all");
   const [cardSearch, setCardSearch] = useState("");
   const [selectedSampleLibIds, setSelectedSampleLibIds] = useState<string[]>([]);
+  const [adoptingChapterDraft, setAdoptingChapterDraft] = useState(false);
 
   const outlineStats = useMemo(() => {
     const written = outlineCards.filter((c) => c.chapterId).length;
@@ -355,7 +356,8 @@ export function OutlinePage(): JSX.Element {
   }, [candidateCount, projectId, outlineCards, selectedSampleLibIds]);
 
   const handleAdoptCandidate = useCallback(async (text: string) => {
-    if (!projectId || !chapterDraft) return;
+    if (!projectId || !chapterDraft || adoptingChapterDraft) return;
+    setAdoptingChapterDraft(true);
     try {
       const result = await chapterGenApi.commitDraft({
         projectId,
@@ -376,8 +378,10 @@ export function OutlinePage(): JSX.Element {
       );
     } catch (e) {
       setError(friendlyErrorMessage(e, "采用草稿失败，请稍后重试。"));
+    } finally {
+      setAdoptingChapterDraft(false);
     }
-  }, [chapterDraft, projectId, queryClient]);
+  }, [adoptingChapterDraft, chapterDraft, projectId, queryClient]);
 
   if (!projectId) {
     return (
@@ -686,6 +690,7 @@ export function OutlinePage(): JSX.Element {
       {chapterDraft ? (
         <ChapterDraftDialog
           draft={chapterDraft}
+          adopting={adoptingChapterDraft}
           onClose={handleCloseChapterDraft}
           onAdopt={handleAdoptCandidate}
           onOpenChapter={flowActions.openChapter}

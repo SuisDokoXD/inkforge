@@ -5,6 +5,7 @@ import {
   getSceneBinding,
   insertChapter,
   listChapters,
+  deleteChapterFile,
   nextChapterFileName,
   readChapterFile,
   updateChapter,
@@ -38,6 +39,12 @@ export const CHAPTER_GENERATION_LIMITS = {
   continuationMaxTokens: 4000,
   maxContinuations: 3,
 } as const;
+
+type OutlineCommitCardRow = {
+  id: string;
+  project_id: string;
+  chapter_id: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -373,13 +380,17 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
 
   let chapterId = input.chapterId;
   let filePath: string;
+  let outlineCard: OutlineCommitCardRow | undefined;
 
-  if (!chapterId && input.outlineCardId) {
-    const linked = ctx.db
-      .prepare(`SELECT chapter_id FROM outline_cards WHERE id = ? AND project_id = ?`)
-      .get(input.outlineCardId, project.id) as { chapter_id: string | null } | undefined;
-    if (linked?.chapter_id) {
-      const existing = getChapter(ctx.db, linked.chapter_id);
+  if (input.outlineCardId) {
+    outlineCard = ctx.db
+      .prepare(`SELECT id, project_id, chapter_id FROM outline_cards WHERE id = ?`)
+      .get(input.outlineCardId) as OutlineCommitCardRow | undefined;
+    if (!outlineCard) throw new Error("outline_card_not_found");
+    if (outlineCard.project_id !== project.id) throw new Error("cross_project_card");
+
+    if (!chapterId && outlineCard.chapter_id) {
+      const existing = getChapter(ctx.db, outlineCard.chapter_id);
       if (existing && existing.projectId === project.id) {
         chapterId = existing.id;
       }
@@ -387,8 +398,9 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
   }
 
   if (chapterId) {
+    const targetChapterId = chapterId;
     // Overwrite existing chapter
-    const existing = getChapter(ctx.db, chapterId);
+    const existing = getChapter(ctx.db, targetChapterId);
     if (!existing) throw new Error("chapter_not_found");
     if (existing.projectId !== project.id) throw new Error("cross_project_chapter");
     createSnapshot({
@@ -399,34 +411,45 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
     });
     filePath = existing.filePath;
     writeChapterFile(project.path, filePath, md);
-    updateChapter(ctx.db, { id: chapterId, title, wordCount });
+    ctx.db.transaction(() => {
+      updateChapter(ctx.db, { id: targetChapterId, title, wordCount });
+      if (outlineCard) {
+        updateOutline(ctx.db, {
+          id: outlineCard.id,
+          chapterId: targetChapterId,
+          status: "written",
+        });
+      }
+    })();
   } else {
     // Create new chapter at end of project
     filePath = nextChapterFileName(project.path, title);
     writeChapterFile(project.path, filePath, md);
-    const order = listChapters(ctx.db, project.id).length;
-    const record = insertChapter(ctx.db, {
-      id: randomUUID(),
-      projectId: project.id,
-      title,
-      order,
-      status: "draft",
-      wordCount,
-      filePath,
-    });
-    chapterId = record.id;
-  }
-
-  // Link outline card to chapter (chapter_id) so user can see it's been written
-  if (input.outlineCardId) {
     try {
-      updateOutline(ctx.db, {
-        id: input.outlineCardId,
-        chapterId,
-        status: "written",
-      });
-    } catch {
-      // Non-fatal: outline link failure shouldn't block draft commit.
+      const record = ctx.db.transaction(() => {
+        const order = listChapters(ctx.db, project.id).length;
+        const inserted = insertChapter(ctx.db, {
+          id: randomUUID(),
+          projectId: project.id,
+          title,
+          order,
+          status: "draft",
+          wordCount,
+          filePath,
+        });
+        if (outlineCard) {
+          updateOutline(ctx.db, {
+            id: outlineCard.id,
+            chapterId: inserted.id,
+            status: "written",
+          });
+        }
+        return inserted;
+      })();
+      chapterId = record.id;
+    } catch (error) {
+      deleteChapterFile(project.path, filePath);
+      throw error;
     }
   }
 
