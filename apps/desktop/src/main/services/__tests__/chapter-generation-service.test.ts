@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHAPTER_GENERATION_LIMITS,
   isTokenLimitFinish,
   looksAbruptlyCutOff,
   shouldContinueChapterDraft,
 } from "../chapter-generation-service";
+
+describe("CHAPTER_GENERATION_LIMITS", () => {
+  it("keeps chapter generation permissive enough to favor complete drafts", () => {
+    expect(CHAPTER_GENERATION_LIMITS.defaultMaxTokens).toBeGreaterThanOrEqual(10000);
+    expect(CHAPTER_GENERATION_LIMITS.continuationMaxTokens).toBeGreaterThanOrEqual(4000);
+    expect(CHAPTER_GENERATION_LIMITS.maxContinuations).toBeGreaterThanOrEqual(3);
+  });
+});
 
 describe("isTokenLimitFinish", () => {
   it("detects token-limit finish reasons", () => {

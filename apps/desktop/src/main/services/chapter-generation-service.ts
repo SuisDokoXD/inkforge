@@ -33,9 +33,11 @@ import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
 import { createSnapshot } from "./snapshot-service";
 
-const DEFAULT_CHAPTER_MAX_TOKENS = 6000;
-const CONTINUATION_MAX_TOKENS = 2400;
-const MAX_CHAPTER_CONTINUATIONS = 2;
+export const CHAPTER_GENERATION_LIMITS = {
+  defaultMaxTokens: 10000,
+  continuationMaxTokens: 4000,
+  maxContinuations: 3,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -72,7 +74,7 @@ function buildChapterPrompt(args: ChapterPromptArgs): { system: string; user: st
       "禁止连续输出两个同名小标题；同一小节只保留一个 `## 小标题`，不要在下一行或下一段重复。",
       "散文小节要有层次：先交代行踪或触发物，再写可感的景物细节，再落到人的心绪、记忆或顿悟；避免只堆砌形容词。",
       "可以借鉴导入文集里的宏观叙事技法、场景组织、节奏和意象密度，但不要复制原文，也不要复刻任何特定作者的可识别风格。",
-      "正文长度建议 1500-2500 字。",
+      "正文以本章内容完整收束为准；篇幅可以自然展开，不要为了压缩字数而省略关键场景、转折或结尾。",
       "禁止任何分析、说明、章末总结之类的元文字。",
     ].join("\n"),
     user: [
@@ -141,7 +143,7 @@ async function streamCollect(args: {
     systemPrompt: args.systemPrompt,
     userMessage: args.userMessage,
     temperature: args.temperature ?? 0.85,
-    maxTokens: args.maxTokens ?? DEFAULT_CHAPTER_MAX_TOKENS,
+    maxTokens: args.maxTokens ?? CHAPTER_GENERATION_LIMITS.defaultMaxTokens,
   });
   let acc = "";
   let finishReason: string | undefined;
@@ -206,7 +208,7 @@ async function generateCandidate(args: {
 
   let text = first.text;
   let durationMs = first.durationMs;
-  for (let i = 0; i < MAX_CHAPTER_CONTINUATIONS; i += 1) {
+  for (let i = 0; i < CHAPTER_GENERATION_LIMITS.maxContinuations; i += 1) {
     const continuation = await streamCollect({
       providerRecord: args.providerRecord,
       apiKey: args.apiKey,
@@ -225,7 +227,7 @@ async function generateCandidate(args: {
         "请从最后一句自然接上，把本章写到完整收束。只输出续写正文。",
       ].join("\n"),
       temperature: 0.75,
-      maxTokens: CONTINUATION_MAX_TOKENS,
+      maxTokens: CHAPTER_GENERATION_LIMITS.continuationMaxTokens,
     });
     text = joinContinuation(text, continuation.text);
     durationMs += continuation.durationMs;
@@ -332,7 +334,7 @@ export async function generateChapterFromOutline(
       model,
       system,
       user,
-      maxTokens: input.maxTokens ?? DEFAULT_CHAPTER_MAX_TOKENS,
+      maxTokens: input.maxTokens ?? CHAPTER_GENERATION_LIMITS.defaultMaxTokens,
     }),
   );
   const settled = await Promise.allSettled(calls);
