@@ -117,6 +117,19 @@ export const OutlineCardItem = memo(function OutlineCardItem({
           </button>
           <button
             type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-accent-500/45 px-2.5 text-[11px] text-accent-200 transition-colors hover:bg-accent-500/10 disabled:opacity-50"
+            disabled={disabled}
+            onClick={() => onGenerate(card)}
+          >
+            {isGenerating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {isGenerating ? "生成中" : `重写正文 ×${candidateCount}`}
+          </button>
+          <button
+            type="button"
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-[11px] text-ink-200 transition-colors hover:bg-ink-700"
             onClick={() => onReviewChapter?.(linkedChapter.id)}
           >
