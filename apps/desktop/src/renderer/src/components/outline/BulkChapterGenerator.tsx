@@ -10,8 +10,19 @@ function getPendingCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
     .sort((a, b) => a.order - b.order);
 }
 
+function getOrderedCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
+  return [...cards].sort((a, b) => a.order - b.order || a.createdAt.localeCompare(b.createdAt));
+}
+
 function getWrittenCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
   return cards.filter((card) => !!card.chapterId);
+}
+
+function getPreviousWrittenChapterId(cards: OutlineCardRecord[], card: OutlineCardRecord): string | undefined {
+  const writtenBefore = cards
+    .filter((c) => c.chapterId && c.order < card.order)
+    .sort((a, b) => b.order - a.order);
+  return writtenBefore[0]?.chapterId ?? undefined;
 }
 
 /**
@@ -20,9 +31,11 @@ function getWrittenCards(cards: OutlineCardRecord[]): OutlineCardRecord[] {
  * 设计：
  * - 不引入新 IPC / 不改 main 进程；纯前端串行编排现有
  *   `chapterGen.fromOutline` + `chapterGen.commitDraft`。
- * - 每轮循环重新 list 大纲卡，**只挑选 chapterId === null 的卡**逐张生成。
- *   于是"断点续写"是天然的：哪怕用户中途关闭应用，下次再点"继续"，仍会
+ * - "补完未写"每轮重新 list 大纲卡，只挑选 chapterId === null 的卡逐张生成。
+ *   于是断点续写是天然的：哪怕用户中途关闭应用，下次再点"继续"，仍会
  *   从首张未写卡片接着跑。
+ * - "重写全部"按章节卡顺序重新生成每张卡对应正文。已有章节由主进程先保存
+ *   pre-rewrite 版本备份，再覆盖正文。
  * - 上一张已写卡的 chapterId 会作为 prevChapterId 传给 fromOutline，
  *   保证跨章节衔接。
  * - 暂停/停止：通过 ref 标记，循环每步检查；正在进行的那一次 LLM 调用
@@ -43,6 +56,7 @@ interface Props {
 }
 
 type Status = "idle" | "running" | "paused" | "stopped" | "error" | "done";
+type RunMode = "fill" | "rewrite";
 
 interface ProgressLine {
   cardId: string;
@@ -60,6 +74,7 @@ export function BulkChapterGenerator({
   const queryClient = useQueryClient();
 
   const [status, setStatus] = useState<Status>("idle");
+  const [activeMode, setActiveMode] = useState<RunMode>("fill");
   const [progress, setProgress] = useState<ProgressLine[]>([]);
   const [maxBatch, setMaxBatch] = useState<number>(0); // 0 = 不限
   const [error, setError] = useState<string | null>(null);
@@ -79,16 +94,26 @@ export function BulkChapterGenerator({
     onBusyChange?.(status === "running");
   }, [status, onBusyChange]);
 
-  const start = async () => {
+  const start = async (mode: RunMode) => {
     if (runningRef.current) return;
+    if (mode === "rewrite") {
+      const ok = window.confirm(
+        `重新生成全部 ${cards.length} 张章节卡对应的正文？\n\n已有章节会先保存为“重写前”版本备份，然后被新正文覆盖。`,
+      );
+      if (!ok) return;
+    }
     runningRef.current = true;
     cancelRef.current = false;
     pauseRef.current = false;
+    setActiveMode(mode);
     setStatus("running");
     setError(null);
+    setProgress([]);
 
     let processed = 0;
-    const limit = maxBatch > 0 ? maxBatch : Infinity;
+    let lastChapterId: string | undefined;
+    const processedIds = new Set<string>();
+    const limit = mode === "rewrite" ? Infinity : maxBatch > 0 ? maxBatch : Infinity;
 
     try {
       while (processed < limit) {
@@ -110,18 +135,18 @@ export function BulkChapterGenerator({
         // 每一轮重新 list 一次，避免本地 cards 缓存过期：
         // 用户可能并行手写了一章，或前面循环刚落盘但 props 还没刷新。
         const fresh = await outlineApi.list({ projectId });
-        const ordered = getPendingCards(fresh);
+        const ordered = (mode === "rewrite" ? getOrderedCards(fresh) : getPendingCards(fresh))
+          .filter((card) => !processedIds.has(card.id));
         if (ordered.length === 0) {
           setStatus("done");
           break;
         }
 
         const card = ordered[0];
-        // prevChapterId：当前卡之前 order 最大的、已写过的卡
-        const writtenBefore = fresh
-          .filter((c) => c.chapterId && c.order < card.order)
-          .sort((a, b) => b.order - a.order);
-        const prevChapterId = writtenBefore[0]?.chapterId ?? undefined;
+        const prevChapterId =
+          mode === "rewrite"
+            ? lastChapterId ?? getPreviousWrittenChapterId(fresh, card)
+            : getPreviousWrittenChapterId(fresh, card);
 
         appendProgress(card, "running");
 
@@ -137,13 +162,22 @@ export function BulkChapterGenerator({
           if (!candidate || !candidate.text.trim()) {
             throw new Error("模型没有返回正文");
           }
-          await chapterGenApi.commitDraft({
+          const committed = await chapterGenApi.commitDraft({
             projectId,
             text: candidate.text,
             title: res.outlineTitle,
             outlineCardId: card.id,
+            chapterId: mode === "rewrite" ? card.chapterId ?? undefined : undefined,
           });
-          markProgress(card.id, "done", `${candidate.text.length} 字 · ${candidate.durationMs}ms`);
+          processedIds.add(card.id);
+          lastChapterId = committed.chapterId;
+          markProgress(
+            card.id,
+            "done",
+            mode === "rewrite"
+              ? `${candidate.text.length} 字 · 已覆盖`
+              : `${candidate.text.length} 字 · ${candidate.durationMs}ms`,
+          );
           processed += 1;
           // 让卡片列表与章节列表都刷新一次，UI 实时显示进度
           queryClient.invalidateQueries({ queryKey: ["outline-cards"] });
@@ -173,7 +207,7 @@ export function BulkChapterGenerator({
     pauseRef.current = false;
     if (!runningRef.current) {
       // 已经 idle / stopped → 重新启动整轮（断点续写）
-      void start();
+      void start(activeMode);
     }
   };
   const stop = () => {
@@ -210,12 +244,13 @@ export function BulkChapterGenerator({
 
   const hasPending = pending.length > 0;
   const showResumeHint = status === "idle" && hasPending && written.length > 0;
+  const isBusy = status === "running" || status === "paused";
 
   return (
     <section className="rounded-md border border-accent-500/30 bg-accent-500/5 p-3">
       <header className="mb-2 flex flex-wrap items-center gap-3">
         <span className="rounded-md bg-accent-500/20 px-2 py-0.5 text-xs font-semibold text-accent-100">
-          📚 批量生成
+          📚 批量写作
         </span>
         <span className="text-xs text-ink-300">
           已写 <strong className="text-emerald-300">{written.length}</strong> / 总{" "}
@@ -228,10 +263,10 @@ export function BulkChapterGenerator({
           )}
         </span>
         <label className="ml-auto flex items-center gap-1 text-xs text-ink-300">
-          本次最多
+          补写最多
           <input
             type="number"
-            aria-label="本次最多生成章节数"
+            aria-label="本次最多补写章节数"
             min={0}
             max={50}
             step={1}
@@ -253,14 +288,24 @@ export function BulkChapterGenerator({
 
       <div className="flex flex-wrap items-center gap-2">
         {status !== "running" && status !== "paused" && (
-          <button
-            type="button"
-            disabled={!hasPending}
-            onClick={() => void start()}
-            className="rounded-md bg-accent-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-accent-400 disabled:opacity-40"
-          >
-            {written.length > 0 ? `▶ 继续批量（从第 ${pending[0]?.order ?? 1} 章）` : "🚀 启动批量生成"}
-          </button>
+          <>
+            <button
+              type="button"
+              disabled={!hasPending}
+              onClick={() => void start("fill")}
+              className="rounded-md bg-accent-500 px-3 py-1 text-xs font-semibold text-ink-900 hover:bg-accent-400 disabled:opacity-40"
+            >
+              {written.length > 0 ? `▶ 继续批量（从第 ${pending[0]?.order ?? 1} 章）` : "🚀 启动批量生成"}
+            </button>
+            <button
+              type="button"
+              disabled={totalCards === 0}
+              onClick={() => void start("rewrite")}
+              className="rounded-md border border-amber-500/50 bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-100 hover:bg-amber-500/25 disabled:opacity-40"
+            >
+              ↻ 重写全部正文
+            </button>
+          </>
         )}
         {status === "running" && (
           <button
@@ -301,13 +346,19 @@ export function BulkChapterGenerator({
           }`}
         >
           {status === "idle" && "待启动"}
-          {status === "running" && "正在批量生成…"}
+          {status === "running" && (activeMode === "rewrite" ? "正在重写全部正文…" : "正在批量生成…")}
           {status === "paused" && "已暂停"}
           {status === "stopped" && "已手动停止"}
           {status === "error" && "出错（可继续）"}
-          {status === "done" && "✓ 全部完成"}
+          {status === "done" && (activeMode === "rewrite" ? "✓ 重写完成" : "✓ 本次完成")}
         </span>
       </div>
+
+      {!isBusy && totalCards > 0 ? (
+        <p className="mt-2 text-[11px] leading-5 text-ink-500">
+          重写全部会按当前章纲顺序覆盖已有正文；覆盖前会自动保存“重写前”版本备份。
+        </p>
+      ) : null}
 
       {error && (
         <div className="mt-2 rounded bg-rose-500/15 px-2 py-1 text-[11px] text-rose-200">

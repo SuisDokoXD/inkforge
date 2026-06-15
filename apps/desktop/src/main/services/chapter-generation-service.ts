@@ -31,6 +31,7 @@ import {
 import { buildRagBlock, buildSampleReferenceBlock } from "./rag-service";
 import { triggerChapterSummary } from "./chapter-summary-service";
 import { buildVoiceContext } from "./prompt-context/voice-profile-context";
+import { createSnapshot } from "./snapshot-service";
 
 const DEFAULT_CHAPTER_MAX_TOKENS = 6000;
 const CONTINUATION_MAX_TOKENS = 1800;
@@ -366,6 +367,12 @@ export function commitChapterDraft(input: ChapterCommitDraftInput): ChapterCommi
     const existing = getChapter(ctx.db, chapterId);
     if (!existing) throw new Error("chapter_not_found");
     if (existing.projectId !== project.id) throw new Error("cross_project_chapter");
+    createSnapshot({
+      chapterId: existing.id,
+      projectId: project.id,
+      kind: "pre-rewrite",
+      label: `模型重写前：${existing.title}`,
+    });
     filePath = existing.filePath;
     writeChapterFile(project.path, filePath, md);
     updateChapter(ctx.db, { id: chapterId, title, wordCount });
