@@ -349,6 +349,16 @@ export interface OutlineListInput {
   chapterId?: string;
 }
 
+export interface OutlinePrepareChapterInput {
+  projectId: string;
+  outlineCardId: string;
+}
+
+export interface OutlinePrepareChapterResponse {
+  chapter: ChapterRecord;
+  outlineCard: OutlineCardRecord;
+}
+
 export interface DailyProgressInput {
   projectId: string;
   date?: string;
@@ -1157,6 +1167,10 @@ declare module "./maps" {
     [ipcChannels.outlineUpdate]: { req: OutlineUpdateInput; res: OutlineCardRecord };
     [ipcChannels.outlineDelete]: { req: OutlineDeleteInput; res: { id: string } };
     [ipcChannels.outlineList]: { req: OutlineListInput; res: OutlineCardRecord[] };
+    [ipcChannels.outlinePrepareChapter]: {
+      req: OutlinePrepareChapterInput;
+      res: OutlinePrepareChapterResponse;
+    };
     [ipcChannels.dailyProgress]: { req: DailyProgressInput; res: DailyProgressRecord };
     [ipcChannels.settingsGet]: { req: SettingsGetInput; res: AppSettings };
     [ipcChannels.settingsSet]: { req: SettingsSetInput; res: AppSettings };

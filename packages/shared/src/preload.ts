@@ -51,6 +51,8 @@ import type {
   OutlineCreateInput,
   OutlineDeleteInput,
   OutlineListInput,
+  OutlinePrepareChapterInput,
+  OutlinePrepareChapterResponse,
   OutlineUpdateInput,
   ProjectCreateInput,
   ProjectDeleteInput,
@@ -217,6 +219,7 @@ export interface InkforgeApi {
     update(input: OutlineUpdateInput): Promise<OutlineCardRecord>;
     delete(input: OutlineDeleteInput): Promise<{ id: string }>;
     list(input: OutlineListInput): Promise<OutlineCardRecord[]>;
+    prepareChapter(input: OutlinePrepareChapterInput): Promise<OutlinePrepareChapterResponse>;
   };
   daily: {
     progress(input: DailyProgressInput): Promise<DailyProgressRecord>;

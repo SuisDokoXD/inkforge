@@ -69,6 +69,7 @@ const api: InkforgeApi = {
     update: (input) => ipcRenderer.invoke(ipcChannels.outlineUpdate, input),
     delete: (input) => ipcRenderer.invoke(ipcChannels.outlineDelete, input),
     list: (input) => ipcRenderer.invoke(ipcChannels.outlineList, input),
+    prepareChapter: (input) => ipcRenderer.invoke(ipcChannels.outlinePrepareChapter, input),
   },
   daily: {
     progress: (input) => ipcRenderer.invoke(ipcChannels.dailyProgress, input),

@@ -108,6 +108,13 @@ export function deleteOutline(db: DB, id: string): void {
   db.prepare(`DELETE FROM outline_cards WHERE id = ?`).run(id);
 }
 
+export function getOutline(db: DB, id: string): OutlineCardRecord | null {
+  const row = db.prepare(`SELECT * FROM outline_cards WHERE id = ?`).get(id) as
+    | OutlineRow
+    | undefined;
+  return row ? rowToRecord(row) : null;
+}
+
 export function listOutlines(db: DB, projectId: string, chapterId?: string): OutlineCardRecord[] {
   let rows: OutlineRow[];
   if (chapterId) {

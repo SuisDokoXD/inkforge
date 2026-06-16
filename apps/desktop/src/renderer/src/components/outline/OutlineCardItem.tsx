@@ -7,19 +7,17 @@ import {
   Loader2,
   PenLine,
   RotateCcw,
-  Sparkles,
 } from "lucide-react";
 import { getCardQuality, parseOutlineSections } from "./outline-metrics";
 
 interface OutlineCardItemProps {
   card: OutlineCardRecord;
   busy: string | null;
-  candidateCount: 1 | 2 | 3;
   linkedChapter?: ChapterRecord | null;
   highlighted?: boolean;
   refineIntent: string;
   canUndo: boolean;
-  onGenerate(card: OutlineCardRecord): void;
+  onAutoWriteOutlineCard(card: OutlineCardRecord): void;
   onRefine(card: OutlineCardRecord): void;
   onUndo(card: OutlineCardRecord): void;
   onRefineIntentChange(cardId: string, value: string): void;
@@ -31,12 +29,11 @@ interface OutlineCardItemProps {
 export const OutlineCardItem = memo(function OutlineCardItem({
   card,
   busy,
-  candidateCount,
   linkedChapter,
   highlighted = false,
   refineIntent,
   canUndo,
-  onGenerate,
+  onAutoWriteOutlineCard,
   onRefine,
   onUndo,
   onRefineIntentChange,
@@ -45,10 +42,11 @@ export const OutlineCardItem = memo(function OutlineCardItem({
   onAutoWriteChapter,
 }: OutlineCardItemProps): JSX.Element {
   const quality = getCardQuality(card);
-  const isGenerating = busy === `gen-chapter-${card.id}`;
+  const isPreparing = busy === `prepare-chapter-${card.id}`;
   const isRefining = busy === `refine-card-${card.id}`;
   const disabled = busy !== null;
   const hasLinkedChapter = !!linkedChapter;
+  const hasWrittenText = (linkedChapter?.wordCount ?? 0) > 0;
 
   return (
     <div
@@ -66,27 +64,27 @@ export const OutlineCardItem = memo(function OutlineCardItem({
         {card.chapterId ? (
           <span
             className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ring-1 ${
-              hasLinkedChapter
+              hasWrittenText
                 ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/25"
                 : "bg-amber-500/15 text-amber-300 ring-amber-500/25"
             }`}
           >
             <CheckCircle2 className="h-3 w-3" />
-            {hasLinkedChapter ? "已写" : "章节缺失"}
+            {hasWrittenText ? "已写" : hasLinkedChapter ? "待写" : "章节缺失"}
           </span>
         ) : null}
         {!hasLinkedChapter ? (
           <button
             className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent-500 px-2.5 py-1 text-[11px] font-medium text-ink-900 transition-colors hover:bg-accent-400 disabled:opacity-50"
             disabled={disabled}
-            onClick={() => onGenerate(card)}
+            onClick={() => onAutoWriteOutlineCard(card)}
           >
-            {isGenerating ? (
+            {isPreparing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5" />
+              <PenLine className="h-3.5 w-3.5" />
             )}
-            {isGenerating ? "生成中" : `写本章 ×${candidateCount}`}
+            {isPreparing ? "准备中" : "去 AI 写作"}
           </button>
         ) : null}
       </div>
@@ -101,7 +99,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
             </span>
           </>
         ) : (
-          <span>{card.chapterId ? "关联章节不可用，可重新生成正文。" : "尚未生成正文"}</span>
+          <span>{card.chapterId ? "关联章节不可用，请检查章节列表。" : "尚未写正文"}</span>
         )}
       </div>
 
@@ -118,15 +116,10 @@ export const OutlineCardItem = memo(function OutlineCardItem({
           <button
             type="button"
             className="inline-flex h-8 items-center gap-1.5 rounded-md border border-accent-500/45 px-2.5 text-[11px] text-accent-200 transition-colors hover:bg-accent-500/10 disabled:opacity-50"
-            disabled={disabled}
-            onClick={() => onGenerate(card)}
+            onClick={() => onAutoWriteChapter?.(linkedChapter.id)}
           >
-            {isGenerating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="h-3.5 w-3.5" />
-            )}
-            {isGenerating ? "生成中" : `重写正文 ×${candidateCount}`}
+            <PenLine className="h-3.5 w-3.5" />
+            进入 AI 写作
           </button>
           <button
             type="button"
@@ -135,14 +128,6 @@ export const OutlineCardItem = memo(function OutlineCardItem({
           >
             <FileSearch className="h-3.5 w-3.5" />
             审查本章
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-[11px] text-ink-200 transition-colors hover:bg-ink-700"
-            onClick={() => onAutoWriteChapter?.(linkedChapter.id)}
-          >
-            <PenLine className="h-3.5 w-3.5" />
-            继续自动写作
           </button>
         </div>
       ) : null}

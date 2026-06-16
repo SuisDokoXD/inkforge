@@ -73,7 +73,7 @@ export function AutoWriterPage(): JSX.Element {
         <header className="border-b border-ink-700 px-4 py-3">
           <div className="flex items-center gap-2">
             <PenLine className="h-4 w-4 text-accent-300" />
-            <h2 className="text-sm font-semibold">自动写作</h2>
+            <h2 className="text-sm font-semibold">AI 写作</h2>
           </div>
         </header>
 
@@ -102,7 +102,7 @@ export function AutoWriterPage(): JSX.Element {
           </div>
           {chapters.length === 0 ? (
             <div className="space-y-3 px-4 py-8 text-sm text-ink-500">
-              <p>这本书还没有章节。可以先去大纲生成章节，或回到正文页新建一章。</p>
+              <p>这本书还没有可写作的章节。先去大纲页选择章节卡，或回到正文页新建一章。</p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -163,7 +163,7 @@ export function AutoWriterPage(): JSX.Element {
                 选择一个章节
               </div>
               <p className="text-sm leading-6 text-ink-500">
-                自动写作会在选中章节中续写。先选择书籍和章节，再写下本章方向、叙事重点和需要避免的偏差。
+                从大纲页选择章节卡后会进入这里写正文；也可以选择已有章节继续补场景、精修和逐段修正。
               </p>
             </div>
           </div>
@@ -174,6 +174,7 @@ export function AutoWriterPage(): JSX.Element {
             chapterId={activeChapter.id}
             projectId={activeProject.id}
             chapterTitle={activeChapter.title}
+            chapterWordCount={activeChapter.wordCount}
             onClose={() => setActiveChapterId(null)}
           />
         )}
@@ -188,17 +189,17 @@ export function AutoWriterPage(): JSX.Element {
           <li>
             <span className="text-ink-200">1. 选章节</span>
             <br />
-            自动写作会写入左侧选中的章节。
+            从大纲页进入时会自动选中对应章节，也可以在左侧手动选择。
           </li>
           <li>
-            <span className="text-ink-200">2. 写简报</span>
+            <span className="text-ink-200">2. 写本次要求</span>
             <br />
-            说明场景、人物状态、情绪走向和本章要推进的内容。
+            说明本章要完成的场景、人物状态、情绪走向和需要避免的偏差。
           </li>
           <li>
-            <span className="text-ink-200">3. 设长度</span>
+            <span className="text-ink-200">3. 设写作规模</span>
             <br />
-            段落长度决定节奏；段数决定本次写作规模。
+            每段字数决定节奏；段数决定本次写作规模。
           </li>
           <li>
             <span className="text-ink-200">4. 运行后校对</span>

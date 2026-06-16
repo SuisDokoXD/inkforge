@@ -34,6 +34,8 @@ import type {
   OutlineCreateInput,
   OutlineDeleteInput,
   OutlineListInput,
+  OutlinePrepareChapterInput,
+  OutlinePrepareChapterResponse,
   OutlineUpdateInput,
   ProjectCreateInput,
   ProjectDeleteInput,
@@ -178,6 +180,8 @@ export const outlineApi = {
   update: (input: OutlineUpdateInput): Promise<OutlineCardRecord> => api().outline.update(input),
   delete: (input: OutlineDeleteInput): Promise<{ id: string }> => api().outline.delete(input),
   list: (input: OutlineListInput): Promise<OutlineCardRecord[]> => api().outline.list(input),
+  prepareChapter: (input: OutlinePrepareChapterInput): Promise<OutlinePrepareChapterResponse> =>
+    api().outline.prepareChapter(input),
 };
 
 export const dailyApi = {

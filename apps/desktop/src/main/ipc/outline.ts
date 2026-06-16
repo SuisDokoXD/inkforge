@@ -8,13 +8,16 @@ import {
 } from "@inkforge/storage";
 import type {
   OutlineCardRecord,
+  OutlinePrepareChapterResponse,
   ipcChannels,
 } from "@inkforge/shared";
 import { getAppContext } from "../services/app-state";
+import { prepareChapterFromOutlineCard } from "../services/outline-service";
 import {
   parseOutlineCreateInput,
   parseOutlineDeleteInput,
   parseOutlineListInput,
+  parseOutlinePrepareChapterInput,
   parseOutlineUpdateInput,
 } from "./validation";
 
@@ -22,6 +25,8 @@ const OUTLINE_CREATE: typeof ipcChannels.outlineCreate = "outline:create";
 const OUTLINE_UPDATE: typeof ipcChannels.outlineUpdate = "outline:update";
 const OUTLINE_DELETE: typeof ipcChannels.outlineDelete = "outline:delete";
 const OUTLINE_LIST: typeof ipcChannels.outlineList = "outline:list";
+const OUTLINE_PREPARE_CHAPTER: typeof ipcChannels.outlinePrepareChapter =
+  "outline:prepare-chapter";
 
 export function registerOutlineHandlers(): void {
   ipcMain.handle(OUTLINE_CREATE, async (_event, input: unknown): Promise<OutlineCardRecord> => {
@@ -43,4 +48,10 @@ export function registerOutlineHandlers(): void {
     const ctx = getAppContext();
     return listOutlines(ctx.db, parsed.projectId, parsed.chapterId);
   });
+  ipcMain.handle(
+    OUTLINE_PREPARE_CHAPTER,
+    async (_event, input: unknown): Promise<OutlinePrepareChapterResponse> => {
+      return prepareChapterFromOutlineCard(parseOutlinePrepareChapterInput(input));
+    },
+  );
 }

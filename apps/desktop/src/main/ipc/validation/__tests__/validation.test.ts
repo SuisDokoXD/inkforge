@@ -10,6 +10,7 @@ import {
   parseChapterImportTxtInput,
   parseProjectExportInput,
 } from "../project-export";
+import { parseOutlinePrepareChapterInput } from "../outline";
 import {
   parseFsSaveFileInput,
   parseTerminalInputPayload,
@@ -112,6 +113,18 @@ describe("external URL validation", () => {
     expectInvalid(
       () => parseExternalOpenUrlInput({ url: "file:///C:/Windows/System32/calc.exe" }),
       "external:open-url.url must be an http/https URL",
+    );
+  });
+});
+
+describe("outline validation", () => {
+  it("requires project and outline card when preparing a chapter", () => {
+    expect(parseOutlinePrepareChapterInput({ projectId: "p1", outlineCardId: "card-1" }))
+      .toEqual({ projectId: "p1", outlineCardId: "card-1" });
+
+    expectInvalid(
+      () => parseOutlinePrepareChapterInput({ projectId: "p1", outlineCardId: "" }),
+      "outlineCardId must be a non-empty string",
     );
   });
 });

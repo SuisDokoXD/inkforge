@@ -1,10 +1,12 @@
 import { useCallback } from "react";
 import { useAppStore } from "../stores/app-store";
+import { outlineApi } from "./api";
 
 export interface WritingFlowActions {
   openChapter: (chapterId: string) => void;
   reviewChapter: (chapterId: string) => void;
   autoWriteChapter: (chapterId: string) => void;
+  autoWriteOutlineCard: (projectId: string, outlineCardId: string) => Promise<void>;
   researchChapter: (chapterId: string, query?: string | null) => void;
   openOutline: (cardId?: string | null) => void;
 }
@@ -39,6 +41,15 @@ export function useWritingFlowActions(): WritingFlowActions {
     [setChapter, setMainView],
   );
 
+  const autoWriteOutlineCard = useCallback(
+    async (projectId: string, outlineCardId: string) => {
+      const { chapter } = await outlineApi.prepareChapter({ projectId, outlineCardId });
+      setChapter(chapter.id);
+      setMainView("auto-writer");
+    },
+    [setChapter, setMainView],
+  );
+
   const researchChapter = useCallback(
     (chapterId: string, query?: string | null) => {
       setChapter(chapterId);
@@ -61,6 +72,7 @@ export function useWritingFlowActions(): WritingFlowActions {
     openChapter,
     reviewChapter,
     autoWriteChapter,
+    autoWriteOutlineCard,
     researchChapter,
     openOutline,
   };

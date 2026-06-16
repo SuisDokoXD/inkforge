@@ -2,6 +2,7 @@ import type {
   OutlineCreateInput,
   OutlineDeleteInput,
   OutlineListInput,
+  OutlinePrepareChapterInput,
   OutlineUpdateInput,
 } from "@inkforge/shared";
 import {
@@ -53,5 +54,14 @@ export function parseOutlineListInput(value: unknown): OutlineListInput {
   return {
     projectId: requiredNonEmptyString(obj, "projectId", channel),
     chapterId: optionalString(obj, "chapterId", channel),
+  };
+}
+
+export function parseOutlinePrepareChapterInput(value: unknown): OutlinePrepareChapterInput {
+  const channel = "outline:prepare-chapter";
+  const obj = asObject(value, channel);
+  return {
+    projectId: requiredNonEmptyString(obj, "projectId", channel),
+    outlineCardId: requiredNonEmptyString(obj, "outlineCardId", channel),
   };
 }

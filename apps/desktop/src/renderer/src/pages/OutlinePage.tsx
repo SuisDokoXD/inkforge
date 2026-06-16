@@ -4,27 +4,18 @@ import type {
   ChapterRecord,
   OutlineCardRecord,
   ProjectRecord,
-  SampleLibRecord,
 } from "@inkforge/shared";
 import {
   chapterApi,
-  chapterGenApi,
   outlineApi,
   outlineGenApi,
   projectApi,
-  sampleLibApi,
 } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import { BulkChapterGenerator } from "../components/outline/BulkChapterGenerator";
-import {
-  ChapterDraftDialog,
-  type ChapterDraftState,
-} from "../components/outline/ChapterDraftDialog";
 import { OutlineCardItem } from "../components/outline/OutlineCardItem";
 import { OutlineStatusTile } from "../components/outline/OutlineStatusTile";
-import { SampleReferencePicker } from "../components/SampleReferencePicker";
 import {
   ProjectMetaDialog,
   type ProjectMetaDraft,
@@ -79,12 +70,6 @@ export function OutlinePage(): JSX.Element {
     enabled: !!projectId,
   });
 
-  const sampleLibsQuery = useQuery<SampleLibRecord[]>({
-    queryKey: ["sample-libs", projectId],
-    queryFn: () => projectId ? sampleLibApi.list({ projectId }) : Promise.resolve([]),
-    enabled: !!projectId,
-  });
-
   const outlineCards = useMemo(
     () => [...(cardsQuery.data ?? [])].sort((a, b) => a.order - b.order),
     [cardsQuery.data],
@@ -93,8 +78,6 @@ export function OutlinePage(): JSX.Element {
     () => new Map((chaptersQuery.data ?? []).map((chapter) => [chapter.id, chapter])),
     [chaptersQuery.data],
   );
-  const sampleLibs = sampleLibsQuery.data ?? [];
-
   const [metaOpen, setMetaOpen] = useState(false);
   const [metaDraft, setMetaDraft] = useState<ProjectMetaDraft>({
     synopsis: "", genre: "", subGenre: "", tags: "", globalWorldview: "",
@@ -105,15 +88,13 @@ export function OutlinePage(): JSX.Element {
   const [cardRefineIntents, setCardRefineIntents] = useState<Record<string, string>>({});
   const [cardUndoSnapshots, setCardUndoSnapshots] = useState<Record<string, string>>({});
   const [genTargetCount, setGenTargetCount] = useState(12);
-  const [chapterDraft, setChapterDraft] = useState<ChapterDraftState | null>(null);
-  const [candidateCount, setCandidateCount] = useState<1 | 2 | 3>(1);
   const [cardFilter, setCardFilter] = useState<"all" | "unwritten" | "written">("all");
   const [cardSearch, setCardSearch] = useState("");
-  const [selectedSampleLibIds, setSelectedSampleLibIds] = useState<string[]>([]);
-  const [adoptingChapterDraft, setAdoptingChapterDraft] = useState(false);
 
   const outlineStats = useMemo(() => {
-    const written = outlineCards.filter((c) => c.chapterId).length;
+    const written = outlineCards.filter(
+      (card) => card.chapterId && (chaptersById.get(card.chapterId)?.wordCount ?? 0) > 0,
+    ).length;
     const qualitySum = outlineCards.reduce((sum, card) => sum + getCardQuality(card).score, 0);
     return {
       total: outlineCards.length,
@@ -121,21 +102,22 @@ export function OutlinePage(): JSX.Element {
       unwritten: outlineCards.length - written,
       averageQuality: outlineCards.length ? Math.round(qualitySum / outlineCards.length) : 0,
     };
-  }, [outlineCards]);
+  }, [chaptersById, outlineCards]);
   const metaCompleteness = useMemo(() => getMetaCompleteness(project), [project]);
 
   const visibleCards = useMemo(() => {
     const keyword = cardSearch.trim().toLowerCase();
     return outlineCards.filter((card) => {
-      if (cardFilter === "written" && !card.chapterId) return false;
-      if (cardFilter === "unwritten" && card.chapterId) return false;
+      const written = !!card.chapterId && (chaptersById.get(card.chapterId)?.wordCount ?? 0) > 0;
+      if (cardFilter === "written" && !written) return false;
+      if (cardFilter === "unwritten" && written) return false;
       if (!keyword) return true;
       return (
         card.title.toLowerCase().includes(keyword) ||
         card.content.toLowerCase().includes(keyword)
       );
     });
-  }, [cardFilter, cardSearch, outlineCards]);
+  }, [cardFilter, cardSearch, chaptersById, outlineCards]);
 
   // Sync meta draft when project changes
   useEffect(() => {
@@ -176,7 +158,6 @@ export function OutlinePage(): JSX.Element {
 
   const handleOpenMeta = useCallback(() => setMetaOpen(true), []);
   const handleCloseMeta = useCallback(() => setMetaOpen(false), []);
-  const handleCloseChapterDraft = useCallback(() => setChapterDraft(null), []);
   const handleClearError = useCallback(() => setError(null), []);
   const handleMetaDraftChange = useCallback((patch: Partial<ProjectMetaDraft>) => {
     setMetaDraft((draft) => ({ ...draft, ...patch }));
@@ -322,66 +303,20 @@ export function OutlinePage(): JSX.Element {
     queryClient.invalidateQueries({ queryKey: ["outline-cards"] });
   }, [cardUndoSnapshots, queryClient]);
 
-  const handleGenerateChapter = useCallback(async (card: OutlineCardRecord) => {
+  const handleAutoWriteOutlineCard = useCallback(async (card: OutlineCardRecord) => {
     if (!projectId) return;
-    setBusy(`gen-chapter-${card.id}`);
+    setBusy(`prepare-chapter-${card.id}`);
     setError(null);
     try {
-      let prevChapterId: string | undefined;
-      for (let index = outlineCards.length - 1; index >= 0; index -= 1) {
-        const item = outlineCards[index];
-        if (!item) continue;
-        if (item.chapterId && item.order < card.order) {
-          prevChapterId = item.chapterId;
-          break;
-        }
-      }
-      const res = await chapterGenApi.fromOutline({
-        projectId,
-        outlineCardId: card.id,
-        candidates: candidateCount,
-        prevChapterId,
-        sampleLibIds: selectedSampleLibIds.length > 0 ? selectedSampleLibIds : undefined,
-      });
-      setChapterDraft({
-        cardId: card.id,
-        cardTitle: res.outlineTitle,
-        candidates: res.candidates,
-      });
+      await flowActions.autoWriteOutlineCard(projectId, card.id);
+      queryClient.invalidateQueries({ queryKey: ["chapters", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["outline-cards", projectId] });
     } catch (e) {
-      setError(friendlyErrorMessage(e, "生成章节失败，请稍后重试。"));
+      setError(friendlyErrorMessage(e, "进入 AI 写作失败，请稍后重试。"));
     } finally {
       setBusy(null);
     }
-  }, [candidateCount, projectId, outlineCards, selectedSampleLibIds]);
-
-  const handleAdoptCandidate = useCallback(async (text: string) => {
-    if (!projectId || !chapterDraft || adoptingChapterDraft) return;
-    setAdoptingChapterDraft(true);
-    try {
-      const result = await chapterGenApi.commitDraft({
-        projectId,
-        text,
-        title: chapterDraft.cardTitle,
-        outlineCardId: chapterDraft.cardId,
-      });
-      queryClient.invalidateQueries({ queryKey: ["chapters"] });
-      queryClient.invalidateQueries({ queryKey: ["outline-cards"] });
-      setChapterDraft((draft) =>
-        draft
-          ? {
-              ...draft,
-              committedChapterId: result.chapterId,
-              committedWordCount: result.wordCount,
-            }
-          : draft,
-      );
-    } catch (e) {
-      setError(friendlyErrorMessage(e, "采用草稿失败，请稍后重试。"));
-    } finally {
-      setAdoptingChapterDraft(false);
-    }
-  }, [adoptingChapterDraft, chapterDraft, projectId, queryClient]);
+  }, [flowActions, projectId, queryClient]);
 
   if (!projectId) {
     return (
@@ -576,18 +511,6 @@ export function OutlinePage(): JSX.Element {
               {busy === "chapters" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
               {busy === "chapters" ? "拆分中" : "拆分章节"}
             </button>
-            <label className="ml-2 flex items-center gap-1 text-xs text-ink-400" title="生成正文时并发候选数">
-              候选
-              <select
-                className="rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-xs text-ink-100"
-                value={candidateCount}
-                onChange={(e) => setCandidateCount(Number(e.target.value) as 1 | 2 | 3)}
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-              </select>
-            </label>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 border-b border-ink-700/70 bg-ink-900/70 px-3 py-2">
@@ -614,25 +537,7 @@ export function OutlinePage(): JSX.Element {
             </select>
           </div>
 
-          {sampleLibs.length > 0 ? (
-            <div className="shrink-0 border-b border-ink-700/70 bg-ink-900/55 px-3 py-2">
-              <SampleReferencePicker
-                libs={sampleLibs}
-                selectedIds={selectedSampleLibIds}
-                onChange={setSelectedSampleLibIds}
-                disabled={busy !== null}
-              />
-            </div>
-          ) : null}
-
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {outlineCards.length > 0 && (
-              <BulkChapterGenerator
-                projectId={projectId}
-                cards={outlineCards}
-                sampleLibIds={selectedSampleLibIds}
-              />
-            )}
             {outlineCards.length === 0 ? (
               <div className="rounded-md border border-dashed border-ink-700 bg-ink-800/20 p-5 text-xs leading-6 text-ink-500">
                 <div className="mb-1 flex items-center gap-2 font-medium text-ink-200">
@@ -656,12 +561,11 @@ export function OutlinePage(): JSX.Element {
                   <OutlineCardItem
                     card={card}
                     busy={busy}
-                    candidateCount={candidateCount}
                     linkedChapter={card.chapterId ? chaptersById.get(card.chapterId) ?? null : null}
                     highlighted={outlineFocusCardId === card.id}
                     refineIntent={cardRefineIntents[card.id] ?? ""}
                     canUndo={!!cardUndoSnapshots[card.id]}
-                    onGenerate={handleGenerateChapter}
+                    onAutoWriteOutlineCard={handleAutoWriteOutlineCard}
                     onRefine={handleRefineCard}
                     onUndo={handleUndoCard}
                     onRefineIntentChange={handleCardRefineIntentChange}
@@ -687,17 +591,6 @@ export function OutlinePage(): JSX.Element {
         />
       ) : null}
 
-      {chapterDraft ? (
-        <ChapterDraftDialog
-          draft={chapterDraft}
-          adopting={adoptingChapterDraft}
-          onClose={handleCloseChapterDraft}
-          onAdopt={handleAdoptCandidate}
-          onOpenChapter={flowActions.openChapter}
-          onReviewChapter={flowActions.reviewChapter}
-          onAutoWriteChapter={flowActions.autoWriteChapter}
-        />
-      ) : null}
     </div>
   );
 }

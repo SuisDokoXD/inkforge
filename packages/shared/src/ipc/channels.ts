@@ -30,6 +30,7 @@
   outlineUpdate: "outline:update",
   outlineDelete: "outline:delete",
   outlineList: "outline:list",
+  outlinePrepareChapter: "outline:prepare-chapter",
   dailyProgress: "daily:progress",
   settingsGet: "settings:get",
   settingsSet: "settings:set",

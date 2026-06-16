@@ -812,10 +812,10 @@ export function EditorPane({
           <button
             className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
             onClick={() => setOutlineDialogOpen(true)}
-            title="基于章节大纲卡生成本章正文"
+            title="选择大纲卡并进入 AI 写作"
           >
             <Sparkles className="h-3.5 w-3.5" />
-            大纲生成
+            从大纲写作
           </button>
           <div ref={skillMenuRef} className="relative">
             <button

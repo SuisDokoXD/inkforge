@@ -59,6 +59,7 @@ interface AutoWriterPanelProps {
   chapterId: string;
   projectId: string;
   chapterTitle?: string;
+  chapterWordCount?: number;
   onClose: () => void;
   variant?: "drawer" | "embedded";
 }
@@ -67,6 +68,7 @@ export function AutoWriterPanel({
   chapterId,
   projectId,
   chapterTitle,
+  chapterWordCount,
   onClose,
   variant = "drawer",
 }: AutoWriterPanelProps): JSX.Element {
@@ -74,6 +76,7 @@ export function AutoWriterPanel({
   const remembered = useAppStore((s) => s.autoWriterConfig);
   const setRemembered = useAppStore((s) => s.setAutoWriterConfig);
   const flowActions = useWritingFlowActions();
+  const isStartingDraft = (chapterWordCount ?? 0) <= 0;
 
   const [userIdeas, setUserIdeas] = useState("");
   const [advanced, setAdvanced] = useState(remembered?.advanced ?? false);
@@ -284,7 +287,7 @@ export function AutoWriterPanel({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <PenLine className="h-4 w-4 text-accent-300" />
-            <h3 className="text-sm font-semibold">自动写作</h3>
+            <h3 className="text-sm font-semibold">AI 写作</h3>
           </div>
           {chapterTitle ? (
             <div className="mt-1 truncate text-xs text-ink-500">{chapterTitle}</div>
@@ -295,7 +298,7 @@ export function AutoWriterPanel({
           onClick={onClose}
           className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
           title="关闭"
-          aria-label="关闭自动写作"
+          aria-label="关闭 AI 写作"
         >
           <X className="h-4 w-4" />
         </button>
@@ -305,12 +308,16 @@ export function AutoWriterPanel({
         <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
           <div className="mb-2 flex items-center gap-2">
             <BookText className="h-4 w-4 text-ink-400" />
-            <label className="text-sm font-medium text-ink-200">写作简报</label>
+            <label className="text-sm font-medium text-ink-200">本次写作要求</label>
           </div>
           <textarea
             value={userIdeas}
             onChange={(event) => setUserIdeas(event.target.value)}
-            placeholder="写下这一段要完成什么：场景、人物状态、情绪变化、需要保留的细节、不要越界的地方。"
+            placeholder={
+              isStartingDraft
+                ? "写下这一章要完成什么：场景、人物状态、情绪变化、需要保留的细节、不要越界的地方。"
+                : "写下本次要继续或修正什么：场景、人物状态、情绪变化、需要保留的细节、不要越界的地方。"
+            }
             disabled={isRunning}
             className="h-36 w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6 text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none disabled:opacity-60"
           />
@@ -345,7 +352,7 @@ export function AutoWriterPanel({
 
           <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-2">
             <select
-              aria-label="选择自动写作使用的模型服务"
+              aria-label="选择 AI 写作使用的模型服务"
               value={primaryProviderId}
               onChange={(event) => {
                 const id = event.target.value;
@@ -364,7 +371,7 @@ export function AutoWriterPanel({
               ))}
             </select>
             <input
-              aria-label="自动写作使用的模型名称"
+              aria-label="AI 写作使用的模型名称"
               type="text"
               value={primaryModel}
               onChange={(event) => setPrimaryModel(event.target.value)}
@@ -519,7 +526,7 @@ export function AutoWriterPanel({
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
             >
               {startMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
-              开始写作
+              {isStartingDraft ? "开始写作" : "继续写作"}
             </button>
           ) : (
             <button
@@ -533,7 +540,7 @@ export function AutoWriterPanel({
           )}
           {startMut.isError ? (
             <div className="mt-2 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-              启动失败：{friendlyErrorMessage(startMut.error, "自动写作启动失败，请检查本章内容和模型服务后重试。")}
+              启动失败：{friendlyErrorMessage(startMut.error, "写作启动失败，请检查本章内容和模型服务后重试。")}
             </div>
           ) : null}
         </section>
@@ -626,7 +633,7 @@ export function AutoWriterPanel({
               </div>
               {doneEvent.error ? (
                 <div className="mt-1 text-xs">
-                  失败原因：{friendlyErrorMessage(doneEvent.error, "自动写作中断，请稍后重试。")}
+                  失败原因：{friendlyErrorMessage(doneEvent.error, "写作中断，请稍后重试。")}
                 </div>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">

@@ -7,7 +7,7 @@ import { ChapterLogDrawer } from "../log/ChapterLogDrawer";
 import { SnapshotMenu } from "../snapshot/SnapshotMenu";
 
 const ORIGIN_BADGE: Record<ChapterOrigin, { label: string; cls: string }> = {
-  "ai-auto": { label: "🤖 自动", cls: "bg-violet-500/20 text-violet-200" },
+  "ai-auto": { label: "🤖 初稿", cls: "bg-violet-500/20 text-violet-200" },
   "ai-assisted": { label: "✍🤖 陪写", cls: "bg-sky-500/20 text-sky-200" },
   manual: { label: "✍ 手写", cls: "bg-emerald-500/20 text-emerald-200" },
 };
@@ -127,7 +127,7 @@ export function ChapterListItem({
             className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-[10px] text-ink-300"
             title="设置章节来源"
           >
-            <option value="ai-auto">🤖 模型全自动</option>
+            <option value="ai-auto">🤖 模型初稿</option>
             <option value="ai-assisted">✍🤖 模型陪写</option>
             <option value="manual">✍ 我手写</option>
           </select>
@@ -135,9 +135,9 @@ export function ChapterListItem({
             type="button"
             onClick={() => setAutoWriterOpen(true)}
             className="rounded bg-accent-500/20 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-500/30"
-            title="打开自动写作"
+            title="打开续写精修"
           >
-            🤖 自动写
+            续写
           </button>
           <button
             type="button"
@@ -209,6 +209,7 @@ export function ChapterListItem({
           chapterId={chapter.id}
           projectId={projectId}
           chapterTitle={chapter.title}
+          chapterWordCount={chapter.wordCount}
           onClose={() => setAutoWriterOpen(false)}
         />
       )}
