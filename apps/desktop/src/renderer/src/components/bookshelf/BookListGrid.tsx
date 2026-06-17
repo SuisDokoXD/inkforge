@@ -286,7 +286,7 @@ export function BookListGrid({
               <h3 className="text-sm font-semibold text-ink-100">这里可以做什么</h3>
               <div className="mt-3 grid gap-2 text-xs leading-6 text-ink-400 md:grid-cols-2">
                 <p className="rounded-md bg-ink-950/45 p-3">打开一本书，管理它的章节、来源标签、版本备份和章节日志。</p>
-                <p className="rounded-md bg-ink-950/45 p-3">给书籍补充设定和世界观，后续自动写作会读取这些资料。</p>
+                <p className="rounded-md bg-ink-950/45 p-3">给书籍补充设定和世界观，后续模型写作会读取这些资料。</p>
                 <p className="rounded-md bg-ink-950/45 p-3">把不同作品同时打开成标签页，在多本书之间快速切换。</p>
                 <p className="rounded-md bg-ink-950/45 p-3">从这里新建书籍，再去写作页继续正文创作。</p>
               </div>

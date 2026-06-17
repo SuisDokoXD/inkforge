@@ -2,7 +2,7 @@ import type { ChapterOrigin } from "@inkforge/shared";
 
 const ITEMS: { key: ChapterOrigin | "all"; label: string; color: string }[] = [
   { key: "all", label: "全部", color: "text-ink-100" },
-  { key: "ai-auto", label: "🤖 模型全自动", color: "text-violet-300" },
+  { key: "ai-auto", label: "🤖 模型初稿", color: "text-violet-300" },
   { key: "ai-assisted", label: "✍🤖 模型陪写", color: "text-sky-300" },
   { key: "manual", label: "✍ 我手写", color: "text-emerald-300" },
 ];

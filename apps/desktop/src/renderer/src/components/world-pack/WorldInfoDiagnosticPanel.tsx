@@ -33,7 +33,7 @@ const LOGIC_LABELS: Record<string, string> = {
 function sceneLabel(scene: string): string {
   const labels: Record<string, string> = {
     skill: "技能执行",
-    "auto-writer": "自动写作",
+    "auto-writer": "续写精修",
     chat: "写作问答",
     review: "正文审查",
     quick: "快捷改写",

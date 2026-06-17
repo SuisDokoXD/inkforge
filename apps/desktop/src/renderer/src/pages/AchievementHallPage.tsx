@@ -107,7 +107,7 @@ export function AchievementHallPage(): JSX.Element {
                 value={`${stats.stats.longestStreak} 天`}
               />
               <Stat
-                label="自动写作"
+                label="续写精修"
                 value={`${stats.stats.autoWriterRuns} 次`}
               />
               <Stat

@@ -701,7 +701,7 @@ export interface ProviderHealthSnapshot {
 // 该段类型完全独立，不修改任何现有表对应的 Record 形状。
 // =====================================================================
 
-/** 章节来源：AI 全自动 / AI 陪写 / 纯手写。旧章节没标记时按 'manual' 渲染。 */
+/** 章节来源：模型初稿 / 模型陪写 / 纯手写。旧章节没标记时按 'manual' 渲染。 */
 export type ChapterOrigin = "ai-auto" | "ai-assisted" | "manual";
 
 /** 章节日志条目类型。 */

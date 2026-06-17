@@ -288,7 +288,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     icon: "🤖",
     description: "第一次让模型帮你推进章节",
     rarity: "common",
-    hint: "完成第一次自动写作运行",
+    hint: "完成第一次续写精修运行",
     category: "ai",
   },
   {
@@ -297,7 +297,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     icon: "🤖✨",
     description: "和模型协作完成三次写作",
     rarity: "rare",
-    hint: "完成 3 次自动写作运行",
+    hint: "完成 3 次续写精修运行",
     category: "ai",
   },
   {
@@ -351,7 +351,7 @@ export const ACHIEVEMENT_CATALOG: AchievementDefinition[] = [
     icon: "🛠️",
     description: "一段文字被反复锤炼仍完成",
     rarity: "epic",
-    hint: "自动写作中同一段触发 ≥3 次重写后仍完成",
+    hint: "续写精修中同一段触发 ≥3 次重写后仍完成",
     category: "craft",
   },
 ];

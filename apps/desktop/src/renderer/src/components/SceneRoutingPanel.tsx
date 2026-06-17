@@ -23,7 +23,7 @@ const SCENE_LABEL_ADVANCED: Record<string, string> = {
   chat: "写作聊天",
   skill: "写作技能",
   tavern: "角色讨论",
-  "auto-writer": "自动写作",
+  "auto-writer": "续写精修",
   review: "全文审查",
   "daily-summary": "每日总结",
   letter: "角色来信",

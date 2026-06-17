@@ -114,7 +114,7 @@ export function SampleLibPanel(): JSX.Element {
         >
           + 选择 EPUB 文件
         </button>
-        <span className="ml-auto text-ink-500">自动写作会按片段匹配；也可在写作前手动指定用哪几本文集</span>
+        <span className="ml-auto text-ink-500">续写精修会按片段匹配；也可在写作前手动指定用哪几本文集</span>
       </div>
 
       {showImport === "text" ? (
@@ -222,7 +222,7 @@ export function SampleLibPanel(): JSX.Element {
       ) : null}
 
       {libs.length === 0 ? (
-        <p className="text-xs text-ink-500">尚无参考文集。导入小说后，自动写作会按当前章节内容匹配相近片段；也可以在自动写作面板里指定只参考某几本。</p>
+        <p className="text-xs text-ink-500">尚无参考文集。导入小说后，续写精修会按当前章节内容匹配相近片段；也可以在续写精修面板里指定只参考某几本。</p>
       ) : (
         <ul className="divide-y divide-ink-700 rounded-md border border-ink-700 text-xs">
           {libs.map((lib) => (

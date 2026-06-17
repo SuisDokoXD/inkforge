@@ -80,7 +80,7 @@ export const ChapterDraftDialog = memo(function ChapterDraftDialog({
               onClick={() => onAutoWriteChapter?.(committedChapterId)}
             >
               <PenLine className="h-3.5 w-3.5" />
-              继续自动写作
+              续写精修
             </button>
             <button
               type="button"

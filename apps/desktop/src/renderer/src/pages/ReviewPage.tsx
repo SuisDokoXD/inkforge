@@ -343,7 +343,7 @@ export function ReviewPage(): JSX.Element {
                 onClick={() => flowActions.autoWriteChapter(actionChapter.id)}
               >
                 <PenLine className="h-3.5 w-3.5" />
-                继续自动写作
+                续写精修
               </button>
               <button
                 type="button"

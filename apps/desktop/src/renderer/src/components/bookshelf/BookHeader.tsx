@@ -60,7 +60,7 @@ export function BookHeader({
           <Stat label="总字数" value={fmtNum(totalWords)} />
           <Stat label="今日新增" value={fmtNum(todayWords)} accent={todayWords > 0} />
           <Stat label="章节" value={String(chapterCount)} />
-          <Stat label="🤖 自动" value={String(originCounts["ai-auto"])} />
+          <Stat label="🤖 初稿" value={String(originCounts["ai-auto"])} />
           <Stat label="✍🤖 陪写" value={String(originCounts["ai-assisted"])} />
           <Stat label="✍ 手写" value={String(originCounts.manual)} />
         </div>
@@ -71,7 +71,7 @@ export function BookHeader({
         )}
         {project.globalWorldview && project.globalWorldview.trim().length > 0 && (
           <div className="text-[11px] text-accent-300/80">
-            🌍 已设定全局世界观（{project.globalWorldview.length} 字，自动写作会参考）
+            🌍 已设定全局世界观（{project.globalWorldview.length} 字，模型写作会参考）
           </div>
         )}
       </div>

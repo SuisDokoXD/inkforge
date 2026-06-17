@@ -433,7 +433,7 @@ export const i18nResources: Resources = {
   "nav.bookshelf":   { zh: "书房", en: "Bookshelf", ja: "本棚" },
   "nav.letters":     { zh: "来信", en: "Letters", ja: "手紙" },
   "nav.achievement": { zh: "成就", en: "Achievements", ja: "アチーブメント" },
-  "nav.autoWriter":  { zh: "全自动", en: "AutoWriter", ja: "全自動" },
+  "nav.autoWriter":  { zh: "续写精修", en: "Continue & Polish", ja: "続きを整える" },
   "nav.materials":   { zh: "素材库", en: "Materials", ja: "素材ライブラリ" },
   "app.loading":     { zh: "正在打开 InkForge…", en: "Opening InkForge…", ja: "InkForge を起動中…" },
   "shortcut.settings":        { zh: "设置", en: "Settings", ja: "設定" },

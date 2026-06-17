@@ -39,7 +39,7 @@ const VIEW_LABEL: Record<string, { icon: string; label: string }> = {
   outline: { icon: "📋", label: "大纲" },
   letters: { icon: "📬", label: "来信" },
   achievement: { icon: "🏆", label: "成就" },
-  "auto-writer": { icon: "🤖", label: "全自动" },
+  "auto-writer": { icon: "🤖", label: "续写精修" },
   materials: { icon: "🗂", label: "素材库" },
 };
 

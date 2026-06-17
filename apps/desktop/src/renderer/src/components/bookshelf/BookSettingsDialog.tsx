@@ -15,7 +15,7 @@ interface BookSettingsDialogProps {
  * 复用 outlineGen.updateProjectMeta IPC（v20 已扩 globalWorldview 字段）。
  *
  * - 简介 / 类型 / 子类型 / 标签 → 已写章节生成大纲时使用
- * - **全局世界观（重点）** → AutoWriter Writer/Critic prompt 自动注入
+ * - **全局世界观（重点）** → 续写精修时自动注入
  */
 export function BookSettingsDialog({
   project,
@@ -126,7 +126,7 @@ export function BookSettingsDialog({
               🌍 全局世界观
             </span>
             <span>
-              自动写作每段开始前都会参考这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
+              续写精修每段开始前都会参考这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
             </span>
           </span>
           <textarea
