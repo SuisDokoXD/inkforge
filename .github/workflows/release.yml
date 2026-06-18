@@ -293,6 +293,13 @@ jobs:
             TAG="${{ github.ref_name }}"
             DRAFT="false"
           fi
+          TAG="${TAG#Release tag: }"
+          TAG="${TAG#refs/tags/}"
+          TAG="$(printf '%s' "$TAG" | xargs)"
+          if [ -z "$TAG" ]; then
+            echo "Resolved tag is empty."
+            exit 1
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "draft=$DRAFT" >> "$GITHUB_OUTPUT"
 
