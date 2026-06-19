@@ -14,6 +14,7 @@ import {
   tapPress,
 } from "../lib/motion-tokens";
 import { AnimatedDialog } from "./AnimatedDialog";
+import { Button } from "./ui";
 
 interface ChapterFromOutlineDialogProps {
   chapter: ChapterRecord;
@@ -103,14 +104,15 @@ export function ChapterFromOutlineDialog({
       <div className="mb-3 flex items-center gap-3">
         <h2 className="text-base font-semibold">从大纲进入 AI 写作</h2>
         <span className="text-xs text-ink-400">写入「{chapter.title}」</span>
-        <motion.button
-          className="ml-auto rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700 disabled:opacity-50"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto"
           onClick={onClose}
           disabled={busy}
-          {...buttonMotion}
         >
           关闭
-        </motion.button>
+        </Button>
       </div>
 
       <AnimatePresence initial={false}>
@@ -197,22 +199,23 @@ export function ChapterFromOutlineDialog({
           </AnimatePresence>
 
           <div className="mt-3 flex items-center gap-2">
-            <motion.button
-              className="ml-auto rounded-md border border-ink-600 px-3 py-1.5 text-xs text-ink-200 hover:bg-ink-700 disabled:opacity-50"
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
               disabled={busy}
               onClick={onClose}
-              {...buttonMotion}
             >
               取消
-            </motion.button>
-            <motion.button
-              className="rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy || !selectedCardId}
               onClick={handleContinue}
-              {...buttonMotion}
             >
               {busy ? "准备中..." : "进入 AI 写作"}
-            </motion.button>
+            </Button>
           </div>
         </div>
       </div>

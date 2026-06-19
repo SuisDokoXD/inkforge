@@ -6,13 +6,7 @@ import { chapterApi, fsApi, llmApi, projectApi, providerApi, settingsApi } from 
 import { useAppStore } from "../stores/app-store";
 import { useChapterShortcuts } from "../lib/use-app-shortcuts";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import {
-  fadeOnly,
-  fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
-} from "../lib/motion-tokens";
+import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
 import { AITimeline } from "../components/AITimeline";
@@ -22,6 +16,7 @@ import { StatusBar } from "../components/StatusBar";
 import { ProviderSwitcher } from "../components/ProviderSwitcher";
 import { ProviderSettingsPanel } from "../components/ProviderSettingsPanel";
 import { ExportDialog } from "../components/ExportDialog";
+import { Button, Tabs } from "../components/ui";
 
 interface ChapterHeadingItem {
   id: string;
@@ -85,13 +80,6 @@ export function WorkspacePage(): JSX.Element {
   const headingJumpNonceRef = useRef(0);
   const reduceMotion = useReducedMotion() === true;
   const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectApi.list() });
   const providersQuery = useQuery({ queryKey: ["providers"], queryFn: () => providerApi.list() });
 
@@ -301,16 +289,16 @@ export function WorkspacePage(): JSX.Element {
   const resolvedProject = projectsQuery.data?.find((p) => p.id === resolvedProjectId) ?? null;
 
   return (
-    <div className="flex h-full w-full flex-col bg-ink-900 text-ink-100">
-      <header className="flex items-center justify-between border-b border-ink-700 bg-ink-800/70 px-4 py-2">
-        <div className="flex items-center gap-3">
+    <div className="flex h-full w-full min-w-0 flex-col bg-ink-900 text-ink-100">
+      <header className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-accent-300">墨炉</span>
           <label htmlFor="workspace-project-select" className="sr-only">
             选择书籍
           </label>
           <select
             id="workspace-project-select"
-            className="max-w-xs rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-sm text-ink-200 focus:border-accent-500 focus:outline-none"
+            className="min-w-0 max-w-[15rem] flex-1 rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-200 focus:border-accent-500 focus:outline-none"
             value={resolvedProjectId ?? ""}
             onChange={(e) => switchProject.mutate(e.target.value)}
           >
@@ -321,46 +309,41 @@ export function WorkspacePage(): JSX.Element {
             ))}
           </select>
           {resolvedProject && (
-            <span className="text-xs text-ink-400">目标 {resolvedProject.dailyGoal} 字/日</span>
+            <span className="hidden whitespace-nowrap text-xs text-ink-400 md:inline">
+              目标 {resolvedProject.dailyGoal} 字/日
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <ProviderSwitcher providers={providersQuery.data ?? []} />
           {terminalEnabled && (
-            <motion.button
-              type="button"
-              className={`rounded-md border px-2 py-1 text-xs transition-colors ${
-                terminalOpen
-                  ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
-                  : "border-ink-600 text-ink-300 hover:bg-ink-700"
-              }`}
+            <Button
+              variant={terminalOpen ? "accentSoft" : "secondary"}
+              size="md"
               onClick={() => toggleTerminal()}
               aria-pressed={terminalOpen}
               title="切换终端 (Ctrl+J)"
-              {...buttonMotion}
             >
               终端
-            </motion.button>
+            </Button>
           )}
-          <motion.button
-            type="button"
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => setExportOpen(true)}
             disabled={!currentProjectId}
             title="导入 / 导出"
-            {...(currentProjectId ? buttonMotion : {})}
           >
             导出
-          </motion.button>
-          <motion.button
-            type="button"
-            className="rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => openSettings(true)}
             title="设置 (Ctrl+,)"
-            {...buttonMotion}
           >
             设置
-          </motion.button>
+          </Button>
         </div>
       </header>
 
@@ -376,21 +359,21 @@ export function WorkspacePage(): JSX.Element {
             exit="exit"
           >
             <span>{chapterActionError}</span>
-            <motion.button
-              type="button"
-              className="shrink-0 rounded-md border border-red-300/20 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
+            <Button
+              variant="secondary"
+              size="sm"
+              className="shrink-0 border-red-300/20 text-red-100 hover:bg-red-500/20 hover:text-red-100"
               onClick={() => setChapterActionError(null)}
-              {...buttonMotion}
             >
               知道了
-            </motion.button>
+            </Button>
           </motion.div>
         ) : null}
       </AnimatePresence>
 
       <main className="flex min-h-0 flex-1">
         {!focusMode && (
-        <aside className="flex w-64 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
+        <aside className="flex w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40 2xl:w-64">
           <ChapterTree
             chapters={chapters}
             chapterHeadings={chapterHeadings}
@@ -427,35 +410,17 @@ export function WorkspacePage(): JSX.Element {
         </section>
 
         {!focusMode && (
-        <aside className="flex w-96 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40">
-          <div className="flex shrink-0 border-b border-ink-700 text-xs">
-            <motion.button
-              type="button"
-              className={`flex-1 py-2 transition-colors ${
-                rightPanel === "timeline"
-                  ? "border-b-2 border-accent-500 text-accent-300"
-                  : "text-ink-400 hover:text-ink-200"
-              }`}
-              onClick={() => setRightPanel("timeline")}
-              aria-pressed={rightPanel === "timeline"}
-              {...buttonMotion}
-            >
-              写作建议
-            </motion.button>
-            <motion.button
-              type="button"
-              className={`flex-1 py-2 transition-colors ${
-                rightPanel === "chat"
-                  ? "border-b-2 border-accent-500 text-accent-300"
-                  : "text-ink-400 hover:text-ink-200"
-              }`}
-              onClick={() => setRightPanel("chat")}
-              aria-pressed={rightPanel === "chat"}
-              {...buttonMotion}
-            >
-              聊天助手
-            </motion.button>
-          </div>
+        <aside className="hidden w-72 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40 xl:flex 2xl:w-80">
+          <Tabs
+            className="shrink-0"
+            variant="underline"
+            value={rightPanel}
+            onChange={(k) => setRightPanel(k as "timeline" | "chat")}
+            items={[
+              { key: "timeline", label: "写作建议" },
+              { key: "chat", label: "聊天助手" },
+            ]}
+          />
           <div className="min-h-0 flex-1">
             {rightPanel === "timeline" ? <AITimeline /> : <ChatPanel />}
           </div>

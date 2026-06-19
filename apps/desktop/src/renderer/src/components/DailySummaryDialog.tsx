@@ -5,16 +5,9 @@ import { FileText, X } from "lucide-react";
 import { dailySummaryApi } from "../lib/api";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import {
-  DUR,
-  EASE_IN_OUT,
-  fadeOnly,
-  fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
-} from "../lib/motion-tokens";
+import { DUR, EASE_IN_OUT, fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Button, IconButton } from "./ui";
 
 interface DailySummaryDialogProps {
   open: boolean;
@@ -43,13 +36,6 @@ export function DailySummaryDialog({
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion() === true;
   const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
   const [date, setDate] = useState<string>(todayKey());
   const [streaming, setStreaming] = useState<string | null>(null);
   const { status, showStatus } = useTimedStatus<SummaryStatus>();
@@ -175,16 +161,16 @@ export function DailySummaryDialog({
                 </motion.span>
               )}
             </AnimatePresence>
-            <motion.button
-              type="button"
+            <IconButton
+              size="sm"
+              variant="ghost"
+              className="text-ink-400 hover:bg-ink-700 hover:text-ink-200"
               onClick={onClose}
-              className="rounded px-2 py-1 text-sm text-ink-400 hover:bg-ink-700"
               aria-label="关闭每日写作总结"
               title="关闭"
-              {...buttonMotion}
             >
               <X className="h-4 w-4" aria-hidden />
-            </motion.button>
+            </IconButton>
           </div>
         </div>
         <div className="flex-1 overflow-auto scrollbar-thin px-5 py-4">
@@ -275,29 +261,28 @@ export function DailySummaryDialog({
             基于今日字数和最近章节片段生成，只作写作回顾。
           </span>
           <div className="flex items-center gap-2">
-            <motion.button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="disabled:hover:bg-transparent"
               onClick={() => setDate(todayKey())}
               disabled={isGenerating}
               title={isGenerating ? "生成中暂时锁定日期" : undefined}
-              className="rounded px-3 py-1 text-ink-300 hover:bg-ink-700 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
-              {...(isGenerating ? {} : buttonMotion)}
             >
               回到今天
-            </motion.button>
-            <motion.button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => generateMut.mutate()}
               disabled={isGenerating}
-              className="rounded bg-accent-500 px-3 py-1 font-medium text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-50"
-              {...(isGenerating ? {} : buttonMotion)}
             >
               {streaming !== null
                 ? "生成中…"
                 : summary?.summary
                   ? "重新生成"
                   : "生成总结"}
-            </motion.button>
+            </Button>
           </div>
         </div>
     </AnimatedDialog>

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
+import { Button, IconButton } from "../ui";
 import {
   fadeOnly,
   fadeSlideUp,
@@ -161,16 +162,15 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
               />
             </div>
           </div>
-          <motion.button
-            type="button"
-            className="rounded-md p-1 text-ink-400 transition-colors hover:bg-ink-700 hover:text-ink-100"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="text-ink-400 hover:bg-ink-700 hover:text-ink-100"
             onClick={onClose}
             aria-label="关闭项目设定"
-            whileHover={hoverLift}
-            whileTap={tapPress}
           >
             <X className="h-4 w-4" />
-          </motion.button>
+          </IconButton>
         </header>
 
         <div className="grid flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -328,25 +328,23 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
           <div className="hidden min-w-0 flex-1 text-xs text-ink-500 sm:block">
             可先保存一小段线索，生成后再回来补细节。
           </div>
-          <motion.button
-            type="button"
-            className="rounded-md border border-ink-600 px-4 py-2 text-sm transition-colors hover:bg-ink-700"
+          <Button
+            variant="secondary"
+            size="lg"
+            className="py-2 hover:bg-ink-700"
             onClick={onClose}
-            whileHover={hoverLift}
-            whileTap={tapPress}
           >
             取消
-          </motion.button>
-          <motion.button
-            type="button"
-            className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink-900 transition-colors hover:bg-accent-400 disabled:opacity-50"
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            className="py-2"
             disabled={busy !== null}
             onClick={onSave}
-            whileHover={busy !== null ? undefined : hoverLift}
-            whileTap={busy !== null ? undefined : tapPress}
           >
             {busy === "master" ? "保存中…" : "保存"}
-          </motion.button>
+          </Button>
         </footer>
       </motion.div>
     </AnimatedDialog>

@@ -4,6 +4,7 @@ import type { ResearchCredentialStatus, ResearchProvider } from "@inkforge/share
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
+import { Button, IconButton } from "../ui";
 import { researchApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -125,17 +126,16 @@ export function ResearchCredentialsDialog({
           <h2 id="research-credentials-title" className="text-sm font-semibold text-accent-300">
             搜索服务设置
           </h2>
-          <motion.button
+          <IconButton
             onClick={onClose}
-            type="button"
+            size="xs"
+            variant="ghost"
+            className="h-7 w-7 text-ink-400 hover:bg-ink-700 hover:text-ink-200"
             aria-label="关闭搜索服务设置"
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-400 hover:bg-ink-700"
             title="关闭"
-            whileHover={hoverLift}
-            whileTap={tapPress}
           >
             <X className="h-4 w-4" />
-          </motion.button>
+          </IconButton>
         </div>
         <p className="mb-3 text-[11px] text-ink-400">
           这里填写联网搜索服务的密钥。密钥只保存在本机安全存储中，不上传到任何服务器。
@@ -190,8 +190,9 @@ export function ResearchCredentialsDialog({
                     placeholder={configured ? "重写后覆盖旧值" : "粘贴服务密钥"}
                     className="flex-1 rounded border border-ink-700 bg-ink-900 px-2 py-1 font-mono text-[12px] text-ink-100"
                   />
-                  <motion.button
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     disabled={saveDisabled}
                     onClick={() =>
                       upsertMut.mutate({
@@ -199,12 +200,9 @@ export function ResearchCredentialsDialog({
                         apiKey: draft.trim(),
                       })
                     }
-                    className="rounded bg-accent-500 px-3 py-1 text-[12px] font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
-                    whileHover={saveDisabled ? undefined : hoverLift}
-                    whileTap={saveDisabled ? undefined : tapPress}
                   >
                     保存
-                  </motion.button>
+                  </Button>
                   <AnimatePresence initial={false}>
                     {configured && (
                       <motion.button

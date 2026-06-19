@@ -11,10 +11,10 @@ html.theme-dark {
   --ink-300: 148 163 184;
   --ink-400: 100 116 139;
   --ink-500: 71 85 105;
-  --ink-600: 51 65 85;
-  --ink-700: 30 41 59;
-  --ink-800: 15 23 42;
-  --ink-900: 11 18 32;
+  --ink-600: 55 70 90;
+  --ink-700: 35 48 68;
+  --ink-800: 20 28 48;
+  --ink-900: 16 23 38;
   /* 强调色：深色主题下用更亮的苹果系统蓝 (#0A84FF)，在暗底上对比更舒服。 */
   --accent-50: 235 244 255;
   --accent-100: 209 230 255;
@@ -54,10 +54,10 @@ html.theme-light {
   --ink-300: 84 88 98;      /* 次要文字（白底约 6.3:1） */
   --ink-400: 108 112 124;   /* 弱化文字（白底约 4.8:1，过 AA） */
   --ink-500: 134 138 150;   /* 更弱文字 / 占位符（白底约 3.9:1） */
-  --ink-600: 200 206 218;   /* 边框（带极淡冷色） */
-  --ink-700: 224 229 238;   /* 分隔线 / hover 底 */
-  --ink-800: 240 244 250;   /* 面板 / 卡片背景（淡天蓝白） */
-  --ink-900: 247 250 254;   /* 主背景（白 + 极淡天蓝） */
+  --ink-600: 208 214 228;   /* 边框（带极淡冷色，更柔和） */
+  --ink-700: 232 237 245;   /* 分隔线 / hover 底（更柔和） */
+  --ink-800: 245 248 252;   /* 面板 / 卡片背景（更柔和的米白） */
+  --ink-900: 250 252 255;   /* 主背景（近白，极淡天蓝） */
   /* 强调色：浅色主题用经典苹果系统蓝 #007AFF。
    * 注意：色阶「反转」——浅编号(50-300)是深蓝（给文字用，在白底上可读），
    * 深编号(700-900)是浅蓝（给背景/描边用）。500 保持纯 #007AFF 不变。
@@ -100,16 +100,16 @@ html.theme-paper {
   --ink-300: 98 79 63;
   --ink-400: 124 104 84;
   --ink-500: 151 130 109;
-  --ink-600: 211 197 177;
-  --ink-700: 228 217 199;
-  --ink-800: 244 237 224;
-  --ink-900: 250 246 237;
+  --ink-600: 218 206 190;
+  --ink-700: 235 227 210;
+  --ink-800: 248 243 234;
+  --ink-900: 252 249 242;
   --accent-50: 111 45 16;
   --accent-100: 135 56 18;
   --accent-200: 163 73 24;
   --accent-300: 191 91 31;
   --accent-400: 213 111 42;
-  --accent-500: 224 125 48;
+  --accent-500: 230 135 55;
   --accent-600: 235 151 82;
   --accent-700: 244 185 127;
   --accent-800: 250 216 178;
@@ -168,7 +168,7 @@ textarea::placeholder {
 /* 选中文本的高亮兜底（苹果系统蓝） */
 input::selection,
 textarea::selection {
-  background-color: rgba(0, 122, 255, 0.28);
+  background-color: rgb(var(--accent-500) / 0.28);
   color: rgb(var(--ink-50));
 }
 
@@ -181,7 +181,7 @@ html.theme-paper body {
 
 html.theme-paper input::selection,
 html.theme-paper textarea::selection {
-  background-color: rgba(224, 125, 48, 0.24);
+  background-color: rgb(var(--accent-500) / 0.24);
   color: rgb(var(--ink-50));
 }
 
@@ -215,11 +215,11 @@ html.theme-paper textarea::selection {
 }
 
 .ProseMirror ::selection {
-  background-color: rgba(0, 122, 255, 0.22);
+  background-color: rgb(var(--accent-500) / 0.22);
 }
 
 html.theme-paper .ProseMirror ::selection {
-  background-color: rgba(224, 125, 48, 0.24);
+  background-color: rgb(var(--accent-500) / 0.24);
   color: rgb(var(--ink-50));
 }
 
@@ -239,7 +239,7 @@ html.theme-paper .ProseMirror {
   width: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 3px;
 }
 
@@ -310,14 +310,17 @@ html.theme-paper .skeleton-shimmer {
 }
 
 /*
- * 性能：窗口缩放进行时临时停用毛玻璃（backdrop-filter）。
- * 该效果在连续 resize 重绘时开销极大，是拖拽放大/缩小卡顿的主因。
- * 由 use-window-resize-perf.ts 在缩放期间挂/撤 `win-resizing` 类，
- * 缩放停止后恢复，故空闲时观感不变。
+ * 性能：窗口缩放进行时临时停用毛玻璃 + 过渡/CSS 动画。
+ * backdrop-filter 在连续 resize 重绘时开销极大（拖拽缩放卡顿的主因）；同时缩放期间元素的
+ * transition / CSS keyframes 会被 resize 触发的布局变化反复重算，徒增主线程与绘制开销。
+ * 由 use-window-resize-perf.ts 在缩放期间挂/撤 `win-resizing` 类，停止缩放约 160ms 后恢复，
+ * 故空闲时观感完全不变。（motion 库的 JS 动画不受 CSS 影响，缩放期它们本就极少运行。）
  */
 html.win-resizing *,
 html.win-resizing *::before,
 html.win-resizing *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  transition: none !important;
+  animation-play-state: paused !important;
 }

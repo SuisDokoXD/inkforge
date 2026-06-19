@@ -5,6 +5,7 @@ import { ChevronDown, Play, SlidersHorizontal, Sparkles, X } from "lucide-react"
 import type { ProviderRecord, TavernMode } from "@inkforge/shared";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button, IconButton } from "../ui";
 import { providerApi, tavernSessionApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -143,16 +144,15 @@ export function NewSessionDialog({
               先写下想讨论的问题。创建后在舞台底部选择发言角色，再推进对话。
             </p>
           </div>
-          <motion.button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="shrink-0 hover:bg-ink-800 hover:text-ink-100"
             onClick={() => onOpenChange(false)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-400 transition hover:bg-ink-800 hover:text-ink-100"
             aria-label="关闭"
-            whileHover={reduceMotion ? undefined : hoverLift}
-            whileTap={reduceMotion ? undefined : tapPress}
           >
             <X size={16} />
-          </motion.button>
+          </IconButton>
         </div>
 
         <motion.div
@@ -405,20 +405,19 @@ export function NewSessionDialog({
 
         <div className="flex items-center justify-between gap-3 border-t border-ink-700 bg-ink-950/60 px-6 py-4">
           <p className="text-xs text-ink-500">角色、轮数和导演指令可以在会话里随时调整。</p>
-          <motion.button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            className="h-9 gap-2 font-semibold disabled:opacity-40"
             onClick={() => {
               setCreateError(null);
               createMut.mutate();
             }}
             disabled={!canSubmit}
-            className="flex h-9 items-center gap-2 rounded-md bg-accent-500 px-4 text-sm font-semibold text-ink-950 transition hover:bg-accent-400 disabled:opacity-40"
-            whileHover={reduceMotion || !canSubmit ? undefined : hoverLift}
-            whileTap={reduceMotion || !canSubmit ? undefined : tapPress}
           >
             {createMut.isPending ? <MotionSpinner className="h-4 w-4" /> : <Play size={15} />}
             {createMut.isPending ? "创建中" : "进入舞台"}
-          </motion.button>
+          </Button>
         </div>
     </AnimatedDialog>
   );

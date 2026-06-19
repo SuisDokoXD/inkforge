@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Settings } from "lucide-react";
 import type { ProviderRecord } from "@inkforge/shared";
 import { settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import { fadeOnly, hoverLift, SPRING_SNAPPY, tapPress } from "../lib/motion-tokens";
+import { fadeOnly } from "../lib/motion-tokens";
 import { MotionSpinner } from "./MotionSpinner";
+import { Button, IconButton, Select } from "./ui";
 
 interface ProviderSwitcherProps {
   providers: ProviderRecord[];
@@ -18,14 +19,6 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
   const setSettings = useAppStore((s) => s.setSettings);
   const openProviderPanel = useAppStore((s) => s.openProviderPanel);
   const [error, setError] = useState<string | null>(null);
-  const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   const active = useMemo(() => {
     if (activeId) {
@@ -48,22 +41,17 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
 
   if (providers.length === 0) {
     return (
-      <motion.button
-        type="button"
-        className="rounded-full bg-accent-500 px-3 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
-        onClick={() => openProviderPanel(true)}
-        {...buttonMotion}
-      >
+      <Button variant="primary" size="md" className="px-3" onClick={() => openProviderPanel(true)}>
         配置模型服务
-      </motion.button>
+      </Button>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <select
+    <div className="flex min-w-0 items-center gap-2 text-xs">
+      <Select
         aria-label="选择模型服务"
-        className="rounded-full border border-ink-600 bg-ink-800 px-2 py-1 text-ink-200 focus:border-accent-500 focus:outline-none disabled:cursor-default disabled:opacity-60"
+        className="w-auto max-w-[13rem]"
         value={active?.id ?? ""}
         onChange={(e) => setActive.mutate(e.target.value)}
         disabled={setActive.isPending}
@@ -73,7 +61,7 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
             {p.label} · {p.defaultModel}
           </option>
         ))}
-      </select>
+      </Select>
       <AnimatePresence initial={false}>
         {setActive.isPending ? (
           <motion.span
@@ -90,16 +78,16 @@ export function ProviderSwitcher({ providers }: ProviderSwitcherProps): JSX.Elem
           </motion.span>
         ) : null}
       </AnimatePresence>
-      <motion.button
-        type="button"
-        className="inline-flex items-center rounded-md border border-ink-600 px-2 py-1 text-ink-300 hover:bg-ink-700"
+      <IconButton
+        size="sm"
+        variant="secondary"
+        className="shrink-0"
         onClick={() => openProviderPanel(true)}
         title="管理模型服务"
         aria-label="管理模型服务"
-        {...buttonMotion}
       >
         <Settings className="h-3.5 w-3.5" aria-hidden />
-      </motion.button>
+      </IconButton>
       <AnimatePresence initial={false}>
         {error ? (
           <motion.span

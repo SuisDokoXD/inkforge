@@ -10,6 +10,7 @@ import { X } from "lucide-react";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { MotionSpinner } from "./MotionSpinner";
+import { IconButton } from "./ui";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 
@@ -179,16 +180,17 @@ export function ExportDialog({ projectId, open, onClose, onImported }: ExportDia
     >
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-semibold">导入 / 导出</h2>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
+        <IconButton
+          size="sm"
+          variant="ghost"
+          className="text-ink-300 hover:bg-ink-700 hover:text-ink-100"
           onClick={onClose}
           disabled={busy}
           aria-label="关闭导入导出"
           title="关闭"
         >
           <X className="h-4 w-4" />
-        </button>
+        </IconButton>
       </div>
 
       <section className="space-y-3">

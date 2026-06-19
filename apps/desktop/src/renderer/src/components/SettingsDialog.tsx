@@ -20,6 +20,7 @@ import { SceneRoutingPanel } from "./SceneRoutingPanel";
 import { SampleLibPanel } from "./SampleLibPanel";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Button, IconButton, Select, TextField } from "./ui";
 
 type CopyDiagStatus = {
   kind: "success" | "error";
@@ -143,7 +144,7 @@ export function SettingsDialog(): JSX.Element | null {
       onClose={() => setOpen(false)}
       ariaLabel={t("settings.title")}
       overlayClassName="flex items-center justify-center p-8"
-      panelClassName="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl"
+      panelClassName="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-xl border border-ink-700 bg-ink-900 p-6 text-ink-100 shadow-2xl"
       zClassName="z-40"
     >
         <div className="mb-4 flex items-center justify-between">
@@ -164,20 +165,20 @@ export function SettingsDialog(): JSX.Element | null {
               </motion.p>
             </AnimatePresence>
           </div>
-          <motion.button
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
             onClick={() => setOpen(false)}
             title={t("common.close")}
             aria-label={t("common.close")}
-            {...buttonMotion}
           >
             <X className="h-4 w-4" />
-          </motion.button>
+          </IconButton>
         </div>
 
         <motion.div
-          className="space-y-6 overflow-y-auto pr-1 text-sm"
+          className="space-y-6 overflow-y-auto pr-1 text-sm scrollbar-thin"
           variants={reduceMotion ? fadeOnly : staggerContainer}
           initial="initial"
           animate="animate"
@@ -201,13 +202,13 @@ export function SettingsDialog(): JSX.Element | null {
                 <label className="text-ink-300" htmlFor="settings-analysis-threshold">
                   {t("settings.analysisThreshold")}
                 </label>
-                <input
+                <TextField
                   id="settings-analysis-threshold"
                   type="number"
                   min={50}
                   step={50}
                   aria-describedby="settings-analysis-threshold-hint"
-                  className="w-24 rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
+                  className="w-24 bg-ink-900"
                   value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value) || settings.analysisThreshold)}
                   onBlur={() => {
@@ -224,16 +225,16 @@ export function SettingsDialog(): JSX.Element | null {
                 <label className="text-ink-300" htmlFor="settings-ui-language">
                   {t("settings.uiLanguage")}
                 </label>
-                <select
+                <Select
                   id="settings-ui-language"
-                  className="rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
+                  className="w-auto bg-ink-900"
                   value={settings.uiLanguage}
                   onChange={(e) => handleLanguageChange(e.target.value as Lang)}
                 >
                   <option value="zh">中文</option>
                   <option value="en">English</option>
                   <option value="ja">日本語</option>
-                </select>
+                </Select>
               </div>
             </div>
           </motion.section>
@@ -244,7 +245,7 @@ export function SettingsDialog(): JSX.Element | null {
             </h3>
             <div className="flex items-center gap-3">
               <span className="text-ink-300">{t("settings.theme")}</span>
-              <div className="flex overflow-hidden rounded-md border border-ink-600" role="group" aria-label={t("settings.theme")}>
+              <div className="flex overflow-hidden rounded-lg border border-ink-600 bg-ink-900 p-0.5" role="group" aria-label={t("settings.theme")}>
                 {([
                   ["light", t("settings.theme.light")],
                   ["paper", t("settings.theme.paper")],
@@ -253,8 +254,8 @@ export function SettingsDialog(): JSX.Element | null {
                   <motion.button
                     key={theme}
                     type="button"
-                    className={`px-3 py-1 text-xs ${
-                      settings.theme === theme ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
+                    className={`rounded-md px-3 py-1 text-xs ${
+                      settings.theme === theme ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700/60"
                     }`}
                     onClick={() => settingsMutation.mutate({ theme })}
                     aria-pressed={settings.theme === theme}
@@ -346,12 +347,12 @@ export function SettingsDialog(): JSX.Element | null {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink-300">编辑区宽度</span>
-                <div className="flex overflow-hidden rounded-md border border-ink-600" role="group" aria-label="编辑区宽度">
+                <div className="flex overflow-hidden rounded-lg border border-ink-600 bg-ink-900 p-0.5" role="group" aria-label="编辑区宽度">
                   {(["narrow", "medium", "wide"] as const).map((w) => (
                     <motion.button
                       key={w}
                       type="button"
-                      className={`px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+                      className={`rounded-md px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700/60"}`}
                       onClick={() => settingsMutation.mutate({ editorWidth: w })}
                       aria-pressed={settings.editorWidth === w}
                       {...buttonMotion}
@@ -424,12 +425,12 @@ export function SettingsDialog(): JSX.Element | null {
                 </div>
               </label>
               {/* M9 Phase 6: 诊断面板 */}
-              <div className="rounded-md border border-ink-700 bg-ink-900/40 p-3">
+              <div className="rounded-lg border border-ink-700 bg-ink-900/40 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-300">{t("settings.diag.title")}</span>
                   <motion.button
                     type="button"
-                    className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-50"
+                    className="rounded-md px-2 py-1 text-[11px] text-ink-400 hover:bg-ink-700/60 hover:text-ink-200 disabled:opacity-50"
                     onClick={handleShowDiag}
                     disabled={diagLoading}
                     aria-busy={diagLoading}
@@ -442,7 +443,7 @@ export function SettingsDialog(): JSX.Element | null {
                   {diagText ? (
                     <motion.pre
                       key="diag-text"
-                      className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900 p-2 text-[11px] leading-relaxed text-ink-300"
+                      className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-ink-900 p-2 text-[11px] leading-relaxed text-ink-300 scrollbar-thin"
                       variants={reduceMotion ? fadeOnly : staggerItem}
                       initial="initial"
                       animate="animate"
@@ -464,24 +465,24 @@ export function SettingsDialog(): JSX.Element | null {
                   )}
                 </AnimatePresence>
               </div>
-              <div className="pt-2 flex flex-wrap gap-2">
-                <motion.button
-                  type="button"
-                  className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-1.5 text-xs text-accent-200 hover:bg-accent-500/20"
+              <div className="flex flex-wrap gap-2 pt-2">
+                <Button
+                  variant="accentSoft"
+                  size="sm"
+                  className="border-accent-500/40 bg-accent-500/10 px-3 hover:bg-accent-500/20"
                   onClick={handleReplayOnboarding}
                   title={t("settings.replayOnboarding.hint")}
-                  {...buttonMotion}
                 >
                   {t("settings.replayOnboarding")}
-                </motion.button>
-                <motion.button
-                  type="button"
-                  className="rounded-md border border-ink-600 bg-ink-900 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="bg-ink-900 px-3"
                   onClick={handleCopyDiag}
-                  {...buttonMotion}
                 >
                   {t("error.boundary.copyDiag")}
-                </motion.button>
+                </Button>
                 <AnimatePresence initial={false}>
                   {copyDiagStatus ? (
                     <motion.span
@@ -491,7 +492,7 @@ export function SettingsDialog(): JSX.Element | null {
                       initial="initial"
                       animate="animate"
                       exit="exit"
-                      className={`rounded-md border px-2 py-1 text-[11px] ${
+                      className={`rounded-lg border px-2 py-1 text-[11px] ${
                         copyDiagStatus.kind === "error"
                           ? "border-red-500/40 bg-red-500/10 text-red-300"
                           : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"

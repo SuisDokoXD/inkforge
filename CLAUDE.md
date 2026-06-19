@@ -57,6 +57,7 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 - **Service layer**: thin wrapper, throws on invalid input, returns serializable JSON. Long-running ops use `streamText` async iterator + `BrowserWindow.webContents.send` for chunks.
 - **Renderer state**: zustand `useAppStore` (`apps/desktop/src/renderer/src/stores/app-store.ts`). React-Query for server state.
 - **i18n**: `packages/shared/src/i18n.ts` (zh / en / ja).
+- **UI primitives**: reusable presentational atoms live in `apps/desktop/src/renderer/src/components/ui/` (`Button`/`IconButton`/`Badge`/`TextField`/`Textarea`/`Select`/`Card`/`Tabs`/`Divider`/`Tooltip`), built with `cva` + `cn()` (`lib/cn.ts` = clsx + tailwind-merge). They bake in the design tokens, `motion-tokens` hover/tap + `useReducedMotion` gating, and `focus-visible` rings. **Prefer these over hand-written button/input className strings.** The pre-existing wrappers `AnimatedDialog`/`EmptyState`/`MotionSpinner`/`AnimatedPage`/`PageSkeleton` stay canonical for their domains. Migration to primitives is incremental — the workspace line (`WorkspacePage`/`ChapterTree`/`EditorPane`/`StatusBar`/`ActivityBar`/`ProviderSwitcher`/`SettingsDialog`) and most dialogs' standard actions (Export/DailySummary/SkillMarket/NewSession/VoiceProfile/etc.) are done; remaining feature pages/panels still carry inline classes.
 
 ## Module Map (where stuff lives)
 

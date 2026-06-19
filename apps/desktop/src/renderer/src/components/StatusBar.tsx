@@ -6,17 +6,10 @@ import { dailyApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import {
-  DUR,
-  EASE_STANDARD,
-  fadeOnly,
-  fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
-} from "../lib/motion-tokens";
+import { DUR, EASE_STANDARD, fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { DailySummaryDialog } from "./DailySummaryDialog";
 import { UpdateIndicator } from "./UpdateIndicator";
+import { Button } from "./ui";
 
 function formatNumber(n: number): string {
   return n >= 1000 ? n.toLocaleString() : String(n);
@@ -49,13 +42,6 @@ export function StatusBar(): JSX.Element {
     ? Math.min(100, Math.round((progress.wordsAdded / progress.goal) * 100))
     : 0;
   const progressVariants = reduceMotion ? fadeOnly : fadeSlideUp;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
   const analysisText =
     analysisStatus === "streaming"
       ? t("common.loading")
@@ -66,8 +52,8 @@ export function StatusBar(): JSX.Element {
   const analysisKey = analysisStatus === "failed" ? `failed-${analysisError ?? ""}` : (analysisStatus ?? "ready");
 
   return (
-    <footer className="flex items-center justify-between border-t border-ink-700 bg-ink-800/60 px-4 py-1 text-xs text-ink-400">
-      <div className="flex items-center gap-3">
+    <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-ink-700 bg-ink-800/60 px-4 py-1.5 text-xs text-ink-400">
+      <div className="flex min-w-0 items-center gap-3">
         <span>InkForge · 墨炉</span>
         {progress && (
           <motion.div
@@ -78,7 +64,7 @@ export function StatusBar(): JSX.Element {
             exit="exit"
           >
             <div
-              className="h-1.5 w-40 overflow-hidden rounded-full bg-ink-700"
+              className="h-1.5 w-32 overflow-hidden rounded-full bg-ink-700 sm:w-40"
               role="progressbar"
               aria-label="今日写作目标进度"
               aria-valuemin={0}
@@ -87,14 +73,14 @@ export function StatusBar(): JSX.Element {
             >
               <motion.div
                 className={`h-full rounded-full transition-[width,background-color] duration-300 ${
-                  progress.goalHit ? "bg-green-400" : "bg-accent-400"
+                  progress.goalHit ? "bg-emerald-500/80" : "bg-accent-500/70"
                 }`}
                 initial={false}
                 animate={{ width: `${percent}%` }}
                 transition={{ duration: reduceMotion ? 0 : DUR.slow, ease: EASE_STANDARD }}
               />
             </div>
-            <span className={progress.goalHit ? "text-green-300" : "text-ink-300"}>
+            <span className={progress.goalHit ? "text-emerald-300" : "text-ink-300"}>
               {t("status.dailyGoal")} {progress.wordsAdded}/{progress.goal}
               {progress.goalHit && ` · ${t("common.finish")}`}
             </span>
@@ -102,7 +88,7 @@ export function StatusBar(): JSX.Element {
         )}
         {chapterStats && (
           <span
-            className="rounded border border-ink-700/70 bg-ink-900/60 px-2 py-0.5 font-mono text-[11px] text-ink-300"
+            className="rounded-lg border border-ink-600 bg-ink-900 px-2.5 py-1 text-xs font-mono text-ink-300"
             title={t("status.words")}
           >
             中文 {formatNumber(chapterStats.cjk)} · 英文 {formatNumber(chapterStats.en)} · 约
@@ -110,19 +96,19 @@ export function StatusBar(): JSX.Element {
           </span>
         )}
         {projectId && (
-          <motion.button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
+            className="gap-1 bg-ink-800/60 py-1"
             onClick={() => setSummaryOpen(true)}
-            className="inline-flex items-center gap-1 rounded border border-ink-700 bg-ink-800/60 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
             title="基于当天字数与最近章节生成今日总结"
-            {...buttonMotion}
           >
             <FileText aria-hidden className="h-3.5 w-3.5" />
             今日总结
-          </motion.button>
+          </Button>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-3">
         <AnimatePresence initial={false} mode="wait">
           <motion.span
             key={analysisKey}

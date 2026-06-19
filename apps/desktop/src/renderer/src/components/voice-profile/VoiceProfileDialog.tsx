@@ -17,6 +17,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, Settings, X } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button, IconButton } from "../ui";
 import { voiceProfileApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -222,17 +223,16 @@ export function VoiceProfileDialog({ open, projectId, onClose }: Props): JSX.Ele
               填完后，模型生成会按你的风格输出 · {completion.filled}/{completion.total} 已填写
             </p>
           </div>
-          <motion.button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="hover:bg-ink-800 hover:text-ink-100"
             onClick={onClose}
-            className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
             aria-label="关闭写作声音档案"
             title="关闭"
-            whileHover={hoverLift}
-            whileTap={tapPress}
           >
             <X className="h-4 w-4" />
-          </motion.button>
+          </IconButton>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5">
@@ -349,28 +349,26 @@ export function VoiceProfileDialog({ open, projectId, onClose }: Props): JSX.Ele
             </AnimatePresence>
           </div>
           <div className="flex items-center gap-2">
-            <motion.button
-              type="button"
+            <Button
+              variant="ghost"
+              size="md"
+              className="px-3 text-ink-300 hover:bg-ink-800 hover:text-ink-300"
               onClick={onClose}
-              className="rounded-md px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800"
-              whileHover={hoverLift}
-              whileTap={tapPress}
             >
               取消
-            </motion.button>
-            <motion.button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="md"
+              className="px-3 disabled:opacity-60"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
-              whileHover={saveMutation.isPending ? undefined : hoverLift}
-              whileTap={saveMutation.isPending ? undefined : tapPress}
             >
               {saveMutation.isPending && (
                 <MotionSpinner className="h-3.5 w-3.5" />
               )}
               保存
-            </motion.button>
+            </Button>
           </div>
         </footer>
       </motion.div>

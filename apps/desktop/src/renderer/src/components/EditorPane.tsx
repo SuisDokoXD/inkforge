@@ -18,6 +18,7 @@ import {
   Download,
   Focus,
   PenLine,
+  Puzzle,
   RefreshCw,
   RotateCcw,
   RotateCw,
@@ -32,6 +33,7 @@ import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { useDebouncedValue } from "../lib/use-debounced-value";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
@@ -41,6 +43,7 @@ import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
 import { EditorFindBar } from "./editor/EditorFindBar";
 import { FocusDraftBoard } from "./editor/FocusDraftBoard";
 import { RecoveryPromptBanner } from "./editor/RecoveryPromptBanner";
+import { IconButton, Divider } from "./ui";
 
 interface EditorPaneProps {
   chapter: ChapterRecord | null;
@@ -304,7 +307,12 @@ export function EditorPane({
 
   useEffect(() => { contentRef.current = content; }, [content]);
 
-  const stats = useMemo(() => computeWordCount(content), [content]);
+  // 字数统计仅用于显示（编辑器工具栏 / 状态栏 / 工作流栏阈值），不参与保存时的真实字数
+  // 计算（保存路径在落盘时另算 computeWordCount）。computeWordCount + computeWordStats 会
+  // 对全文做多趟 Intl.Segmenter / 正则扫描，长章节里每次按键都重算会拖慢输入手感；这里把
+  // 统计去抖到停顿 250ms 之后再算，让按键热路径保持轻量，显示值停顿后刷新。
+  const statsText = useDebouncedValue(content, 250);
+  const stats = useMemo(() => computeWordCount(statsText), [statsText]);
   const setCurrentChapterStats = useAppStore((s) => s.setCurrentChapterStats);
 
   useEffect(() => {
@@ -312,14 +320,14 @@ export function EditorPane({
       setCurrentChapterStats(null);
       return;
     }
-    const ws = computeWordStats(content);
+    const ws = computeWordStats(statsText);
     setCurrentChapterStats({
       cjk: ws.cjk,
       en: ws.en,
       tokens: ws.tokens,
       graphemes: stats.graphemes,
     });
-  }, [content, chapter, stats.graphemes, setCurrentChapterStats]);
+  }, [statsText, chapter, stats.graphemes, setCurrentChapterStats]);
 
   useEffect(() => () => setCurrentChapterStats(null), [setCurrentChapterStats]);
 
@@ -584,6 +592,18 @@ export function EditorPane({
     }, 5000);
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, writeAutosaveSidecar]);
+
+  // 卸载兜底落盘：切换主视图（writing → world 等）会卸载本组件，此时 1.2s 防抖 DB 保存与
+  // 5s 磁盘自动保存的计时器都会随 effect 清理被取消，而 beforeunload/visibilitychange 在
+  // 应用内视图切换时并不触发。若用户刚打字就切走，这不到 1.2s 的新内容会随 React 状态丢失。
+  // 这里用 latest-ref 在「真正卸载」时（空依赖，切章不会触发——切章另有 flush）兜底刷一次：
+  // DB 落盘 + 磁盘 sidecar，确保切视图也不丢字（只新增保存，永不清空，最坏只是一次冗余保存）。
+  const flushOnExitRef = useRef<() => void>(() => {});
+  flushOnExitRef.current = () => {
+    void flushCurrentContent().catch(() => {});
+    writeAutosaveSidecar();
+  };
+  useEffect(() => () => flushOnExitRef.current(), []);
 
   const resolvedProviderId = useMemo(() => {
     if (activeProviderId && providers.some((p) => p.id === activeProviderId)) return activeProviderId;
@@ -857,16 +877,20 @@ export function EditorPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex min-h-11 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/50 px-4 py-2 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
+      <div className={`flex min-h-12 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-          <span className="min-w-0 truncate font-medium" title={chapter.title}>{chapter.title}</span>
+          <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-ink-300">
-          <span className="hidden text-ink-400 xl:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
-          {/* v20: 显式撤回/重做按钮（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
-          <div className="flex items-center gap-1">
-            <button
-              className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
+          <span className="hidden text-ink-400 lg:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
+          {/* 工具栏改纯图标 + 原生悬浮提示(title)，按功能分组用竖线分隔：整体更轻、窄窗也放得下。 */}
+          {/* v20: 显式撤回/重做（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
+          <div className="flex items-center gap-0.5">
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label="撤回（Ctrl+Z）— 包括手输、黏贴、模型润色"
+              title="撤回 · Ctrl+Z"
               onClick={() => {
                 const e = editorInstance as unknown as {
                   commands?: { undo?: () => boolean };
@@ -874,13 +898,14 @@ export function EditorPane({
                 e?.commands?.undo?.();
               }}
               disabled={!editorInstance}
-              title="撤回（Ctrl+Z）— 包括手输、黏贴、模型润色"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              撤回
-            </button>
-            <button
-              className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-40"
+              <RotateCcw className="h-4 w-4" />
+            </IconButton>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              aria-label="重做（Ctrl+Shift+Z）"
+              title="重做 · Ctrl+Shift+Z"
               onClick={() => {
                 const e = editorInstance as unknown as {
                   commands?: { redo?: () => boolean };
@@ -888,41 +913,41 @@ export function EditorPane({
                 e?.commands?.redo?.();
               }}
               disabled={!editorInstance}
-              title="重做（Ctrl+Shift+Z）"
             >
-              <RotateCw className="h-3.5 w-3.5" />
-              重做
-            </button>
+              <RotateCw className="h-4 w-4" />
+            </IconButton>
           </div>
-          <button
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${
-              findOpen ? "border-accent-500 text-accent-300" : "border-ink-600"
-            }`}
+          <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
+          <IconButton
+            size="sm"
+            variant={findOpen ? "accentSoft" : "ghost"}
+            aria-label="查找正文（Ctrl+F）"
+            title="查找正文 · Ctrl+F"
+            aria-pressed={findOpen}
             onClick={() => setFindOpen((v) => !v)}
-            title="查找正文（Ctrl+F）"
           >
-            <Search className="h-3.5 w-3.5" />
-            查找
-          </button>
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            <Search className="h-4 w-4" />
+          </IconButton>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label="保存（Ctrl+S）"
+            title="保存 · Ctrl+S"
             onClick={handleManualSave}
-            title="保存（Ctrl+S）"
           >
-            <Save className="h-3.5 w-3.5" />
-            保存
-          </button>
+            <Save className="h-4 w-4" />
+          </IconButton>
           <div ref={snapshotMenuRef} className="relative">
-            <button
-              className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${
-                snapshotMenuOpen ? "border-accent-500 text-accent-300" : "border-ink-600"
-              }`}
+            <IconButton
+              size="sm"
+              variant={snapshotMenuOpen ? "accentSoft" : "ghost"}
+              aria-label="章节版本备份：手动备份 / 还原历史版本"
+              title="版本备份 / 还原"
+              aria-pressed={snapshotMenuOpen}
               onClick={() => setSnapshotMenuOpen((v) => !v)}
-              title="章节版本备份：手动备份 / 还原历史版本"
             >
-              <Archive className="h-3.5 w-3.5" />
-              备份
-            </button>
+              <Archive className="h-4 w-4" />
+            </IconButton>
             <AnimatePresence initial={false}>
               {snapshotMenuOpen && (
                 <motion.div
@@ -940,48 +965,54 @@ export function EditorPane({
               )}
             </AnimatePresence>
           </div>
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label="导出为 Markdown 文件"
+            title="导出为 Markdown"
             onClick={handleExport}
-            title="导出为 Markdown 文件"
           >
-            <Download className="h-3.5 w-3.5" />
-            导出
-          </button>
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            <Download className="h-4 w-4" />
+          </IconButton>
+          <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label="分析本章"
+            title="分析本章"
             onClick={handleManualAnalyze}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            分析
-          </button>
-          <button
-            className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
+            <RefreshCw className="h-4 w-4" />
+          </IconButton>
+          <IconButton
+            size="sm"
+            variant="ghost"
+            aria-label="选择大纲卡并进入 AI 写作"
+            title="从大纲进入 AI 写作"
             onClick={() => setOutlineDialogOpen(true)}
-            title="选择大纲卡并进入 AI 写作"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            从大纲写作
-          </button>
+            <Sparkles className="h-4 w-4" />
+          </IconButton>
           <div ref={skillMenuRef} className="relative">
-            <button
-              className="flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-50"
-              onClick={() => setSkillMenuOpen((v) => !v)}
-              disabled={manualSkills.length === 0}
-              title={
+            <IconButton
+              size="sm"
+              variant={skillMenuOpen ? "accentSoft" : "ghost"}
+              aria-label={
                 manualSkills.length === 0
-                ? "暂无可手动运行的技能（可在技能页创建或启用「手动触发」）"
+                  ? "暂无可手动运行的技能（可在技能页创建或启用「手动触发」）"
                   : "运行一个技能"
               }
+              title={manualSkills.length === 0 ? "暂无可手动运行的技能" : "运行技能"}
+              aria-pressed={skillMenuOpen}
+              onClick={() => setSkillMenuOpen((v) => !v)}
+              disabled={manualSkills.length === 0}
             >
-              <Sparkles className="h-3.5 w-3.5" />
-              技能
-              <span className="text-[10px] opacity-70">▾</span>
-            </button>
+              <Puzzle className="h-4 w-4" />
+            </IconButton>
             <AnimatePresence initial={false}>
               {skillMenuOpen && manualSkills.length > 0 && (
                 <motion.div
-                  className="absolute right-0 top-full z-30 mt-1 w-60 rounded-md border border-ink-600 bg-ink-800/95 py-1 text-xs shadow-xl backdrop-blur"
+                  className="absolute right-0 top-full z-30 mt-2 w-60 overflow-hidden rounded-lg border border-ink-700 bg-ink-900 py-1 text-xs shadow-xl backdrop-blur"
                   {...slimDropIn}
                 >
                   <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-ink-500">
@@ -990,7 +1021,7 @@ export function EditorPane({
                   {manualSkills.map((skill) => (
                     <button
                       key={skill.id}
-                      className="block w-full truncate px-3 py-1.5 text-left hover:bg-ink-700"
+                      className="block w-full truncate px-3 py-1.5 text-left hover:bg-ink-700/60"
                       onClick={() => void runManualSkill(skill)}
                       title={skill.prompt.slice(0, 120)}
                     >
@@ -1009,14 +1040,17 @@ export function EditorPane({
             tone={displayedStatusTone}
             reduceMotion={shouldReduceMotion}
           />
-          <button
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-accent-500 text-accent-400" : "border-ink-600"}`}
+          <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
+          <IconButton
+            size="sm"
+            variant={focusMode ? "accentSoft" : "ghost"}
+            aria-label={focusMode ? "退出专注模式（F11）" : "进入专注模式（F11）"}
+            title="专注模式 · F11"
+            aria-pressed={focusMode}
             onClick={() => patchSettings({ focusMode: !focusMode })}
-            title="专注模式（F11）"
           >
-            <Focus className="h-3.5 w-3.5" />
-            {focusMode ? "退出专注" : "专注"}
-          </button>
+            <Focus className="h-4 w-4" />
+          </IconButton>
         </div>
       </div>
       <ChapterWorkflowBar

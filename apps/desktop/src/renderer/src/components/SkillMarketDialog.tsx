@@ -6,6 +6,7 @@ import type { MarketSkillMetaDTO } from "@inkforge/shared";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../lib/motion-tokens";
+import { Button, IconButton } from "./ui";
 
 interface SkillMarketDialogProps {
   open: boolean;
@@ -62,15 +63,15 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
     >
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
           <h2 className="text-base font-semibold">技能市场</h2>
-          <motion.button
-            className="inline-flex rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
-            type="button"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            className="text-ink-300 hover:bg-ink-700 hover:text-ink-100"
             aria-label="关闭技能市场"
             onClick={onClose}
-            {...buttonMotion}
           >
             <X className="h-4 w-4" aria-hidden />
-          </motion.button>
+          </IconButton>
         </div>
         <div className="flex flex-1 overflow-hidden">
           {/* Left: list */}
@@ -198,20 +199,19 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
                   ))}
                 </div>
                 <div className="mt-2 flex gap-2">
-                  <motion.button
-                    className="rounded bg-accent-600 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-500 disabled:opacity-50"
-                    type="button"
+                  <Button
+                    variant="primary"
+                    size="sm"
                     disabled={installMutation.isPending}
                     onClick={() => installMutation.mutate(selected)}
-                    {...buttonMotion}
                   >
-                    <Download className="mr-1 inline h-3.5 w-3.5" aria-hidden />
+                    <Download className="h-3.5 w-3.5" aria-hidden />
                     {installMutation.isPending
                       ? "安装中…"
                       : installMutation.isSuccess && installMutation.variables?.id === selected.id
                         ? "已安装"
                         : "安装"}
-                  </motion.button>
+                  </Button>
                   {selected.homepage && (
                     <a
                       href={selected.homepage}

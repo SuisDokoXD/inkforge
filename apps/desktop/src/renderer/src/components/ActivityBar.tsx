@@ -22,6 +22,7 @@ import { useT } from "../lib/i18n";
 import { NAV_SHORTCUTS, type NavShortcut } from "../lib/shortcuts";
 import { useAppStore } from "../stores/app-store";
 import { SPRING_GENTLE, SPRING_SNAPPY } from "../lib/motion-tokens";
+import { Divider } from "./ui";
 
 interface ActivityBarProps {
   onOpenPalette: () => void;
@@ -59,14 +60,14 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
 
   return (
     <nav
-      className="flex w-12 shrink-0 flex-col items-center gap-1 border-r border-ink-700 bg-ink-900/90 py-2"
+      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-ink-700 bg-ink-900 py-3"
       role="tablist"
       aria-label={t("nav.aria.label")}
     >
       <LayoutGroup id="activity-main-nav">
         {groupedItems.map((items, idx) => (
           <div key={idx} className="flex flex-col items-center gap-1">
-            {idx > 0 && <hr aria-hidden className="my-1 h-px w-6 border-0 bg-ink-700/70" />}
+            {idx > 0 && <Divider short />}
             {items.map((item) => {
               const active = mainView === item.view;
               const label = t(item.labelKey);
@@ -82,10 +83,10 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
                   whileHover={reduce ? undefined : { scale: 1.04 }}
                   whileTap={reduce ? undefined : { scale: 0.92 }}
                   transition={SPRING_SNAPPY}
-                  className={`group relative flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+                  className={`group relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
                     active
                       ? "text-accent-200"
-                      : "text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
+                      : "text-ink-300 hover:bg-ink-700 hover:text-ink-50"
                   }`}
                   onClick={() => setMainView(item.view)}
                   title={`${label} (${item.combo})`}
@@ -95,19 +96,19 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
                       <motion.span
                         aria-hidden
                         layoutId={reduce ? undefined : "activity-active-bg"}
-                        className="absolute inset-0 rounded-md bg-accent-500/20 ring-1 ring-accent-500/40"
+                        className="absolute inset-0 rounded-lg bg-accent-500/15 ring-1 ring-accent-500/30"
                         transition={SPRING_GENTLE}
                       />
                       <motion.span
                         aria-hidden
                         layoutId={reduce ? undefined : "activity-active-rail"}
-                        className="absolute left-0.5 top-2 h-6 w-0.5 rounded-full bg-accent-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]"
+                        className="absolute left-0.5 top-2 h-6 w-0.5 rounded-full bg-accent-300 shadow-[0_0_8px_rgb(var(--accent-300)_/_0.55)]"
                         transition={SPRING_GENTLE}
                       />
                     </>
                   ) : null}
                   <Icon className="relative z-10 h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-                  <span className="pointer-events-none absolute left-12 z-20 whitespace-nowrap rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
+                  <span className="pointer-events-none absolute left-14 z-20 whitespace-nowrap rounded-lg border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
                     {label}
                     <span className="ml-2 text-ink-400">{item.combo}</span>
                   </span>
@@ -119,7 +120,7 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
       </LayoutGroup>
 
       <div className="mt-auto flex flex-col items-center gap-1 pt-2">
-        <hr aria-hidden className="my-1 h-px w-6 border-0 bg-ink-700/70" />
+                <Divider short className="my-1" />
         <UtilityButton
           Icon={Command}
           label={t("palette.aria.label")}
@@ -157,11 +158,11 @@ function UtilityButton({
       whileHover={reduce ? undefined : { scale: 1.04 }}
       whileTap={reduce ? undefined : { scale: 0.9 }}
       transition={SPRING_SNAPPY}
-      className="group relative flex h-10 w-10 items-center justify-center rounded-md text-ink-300 transition-colors hover:bg-ink-700/60 hover:text-ink-100"
+      className="group relative flex h-10 w-10 items-center justify-center rounded-lg text-ink-300 transition-colors hover:bg-ink-700 hover:text-ink-50"
       title={`${label} (${combo})`}
     >
       <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-      <span className="pointer-events-none absolute left-12 z-20 whitespace-nowrap rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
+      <span className="pointer-events-none absolute left-14 z-20 whitespace-nowrap rounded-lg border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
         {label}
         <span className="ml-2 text-ink-400">{combo}</span>
       </span>

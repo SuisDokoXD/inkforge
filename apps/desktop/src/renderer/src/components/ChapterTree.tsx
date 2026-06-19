@@ -10,6 +10,7 @@ import {
   SPRING_SNAPPY,
   tapPress,
 } from "../lib/motion-tokens";
+import { Button } from "./ui";
 
 export interface ChapterHeadingItem {
   id: string;
@@ -203,39 +204,39 @@ export function ChapterTree({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-ink-200">章节</span>
           <div className="flex items-center gap-1">
-            <motion.button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-200 hover:bg-ink-700/70 disabled:opacity-60"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-ink-100 hover:bg-ink-700/60 hover:text-ink-100 disabled:opacity-60"
               onClick={onImportMd}
               disabled={importing}
               title="从 Markdown 导入"
               aria-label={importing ? "正在导入 Markdown" : "从 Markdown 导入章节"}
-              {...buttonMotion}
             >
               <Upload className="h-3.5 w-3.5" />
               {importing ? "…" : "导入"}
-            </motion.button>
-            <motion.button
-              type="button"
-              className="inline-flex items-center gap-1 rounded-md bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-60"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 bg-accent-600/20 text-accent-100 hover:bg-accent-600/30 hover:text-accent-100 disabled:opacity-60"
               onClick={onCreate}
               disabled={creating}
               aria-label={creating ? "正在创建新章节" : "新建章节"}
-              {...buttonMotion}
             >
               <Plus className="h-3.5 w-3.5" />
               {creating ? "创建中…" : "新章"}
-            </motion.button>
+            </Button>
           </div>
         </div>
         <div className="relative mt-2">
           <label htmlFor="chapter-tree-search" className="sr-only">
             搜索章节
           </label>
-          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-500" />
           <input
             id="chapter-tree-search"
-            className="h-8 w-full rounded-md border border-ink-700 bg-ink-900/60 pl-7 pr-2 text-xs text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500"
+            className="h-8 w-full rounded-lg border border-ink-600 bg-ink-900 pl-8 pr-3 text-xs text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="搜索章节"
@@ -309,11 +310,11 @@ export function ChapterTree({
                   className={`group flex items-center px-3 transition-colors ${
                     isHeading
                       ? headingActive
-                        ? "mx-2 rounded-md bg-accent-500/12 py-1 text-xs font-medium text-accent-200 ring-1 ring-accent-500/20 hover:bg-accent-500/16"
-                        : "mx-2 rounded-md py-1 text-xs text-ink-300 hover:bg-ink-700/35 hover:text-ink-100 dark:text-ink-500 dark:hover:bg-ink-700/30 dark:hover:text-ink-200"
+                        ? "mx-1 rounded-md bg-accent-500/12 py-1 text-xs font-medium text-accent-200 ring-1 ring-accent-500/15 hover:bg-accent-500/16"
+                        : "mx-1 rounded-md py-1 text-xs text-ink-300 hover:bg-ink-700/35 hover:text-ink-100 dark:text-ink-500 dark:hover:bg-ink-700/20"
                       : chapterActive
-                        ? "bg-accent-500/14 py-2 text-sm text-accent-200"
-                        : "py-2 text-sm text-ink-100 hover:bg-ink-700/35 dark:text-ink-200 dark:hover:bg-ink-700/45"
+                        ? "bg-accent-500/10 py-2 text-sm text-accent-200"
+                        : "py-2 text-sm text-ink-100 hover:bg-ink-700/35 dark:text-ink-200 dark:hover:bg-ink-700/30"
                   }`}
                   style={{ paddingLeft: `${isHeading ? 14 + depth * 14 : 12 + depth * 14}px` }}
                   onContextMenu={(e) => {
@@ -326,7 +327,7 @@ export function ChapterTree({
                   {isRenaming ? (
                     <input
                       ref={renameInputRef}
-                      className="flex-1 rounded border border-accent-400 bg-ink-900 px-2 py-0.5 text-sm text-ink-100 outline-none"
+                      className="flex-1 rounded-md bg-ink-800 px-2 py-1 text-sm text-ink-100 outline-none focus:ring-1 focus:ring-accent-500"
                       value={renameValue}
                       aria-label="章节名称"
                       onChange={(e) => setRenameValue(e.target.value)}
@@ -376,7 +377,7 @@ export function ChapterTree({
                     <div className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         type="button"
-                        className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
+                        className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700/60 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, -1)}
                         disabled={!!normalizedQuery || fullIndex <= 0}
                         title={normalizedQuery ? "搜索时不可调整顺序" : "上移"}
@@ -386,7 +387,7 @@ export function ChapterTree({
                       </button>
                       <button
                         type="button"
-                        className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
+                        className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700/60 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, 1)}
                         disabled={!!normalizedQuery || fullIndex >= orderedIds.length - 1}
                         title={normalizedQuery ? "搜索时不可调整顺序" : "下移"}
@@ -407,7 +408,7 @@ export function ChapterTree({
         {menu && (
           <motion.div
             ref={menuRef}
-            className="fixed z-50 min-w-36 overflow-hidden rounded-md border border-ink-600 bg-ink-800 py-1 text-sm shadow-xl"
+            className="fixed z-50 min-w-36 overflow-hidden rounded-lg border border-ink-700 bg-ink-900 py-1 text-sm shadow-xl"
             style={{ left: menu.x, top: menu.y }}
             role="menu"
             aria-label="章节操作"
@@ -419,7 +420,7 @@ export function ChapterTree({
             <motion.button
               type="button"
               role="menuitem"
-              className="block w-full px-3 py-1.5 text-left text-ink-200 hover:bg-ink-700"
+              className="block w-full px-3 py-1.5 text-left text-ink-200 hover:bg-ink-700/60"
               onClick={() => {
                 if (menuChapter) {
                   setRenamingId(menuChapter.id);
@@ -441,7 +442,7 @@ export function ChapterTree({
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  className="border-t border-ink-700 px-2 py-1.5"
+                  className="border-t border-ink-600 px-2 py-1.5"
                 >
                   <div className="mb-1 truncate px-1 text-[11px] text-red-300">
                     确认删除「{menuChapter?.title ?? "章节"}」？
@@ -450,7 +451,7 @@ export function ChapterTree({
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex-1 rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+                      className="flex-1 rounded-md px-2 py-1 text-xs text-ink-300 hover:bg-ink-700/60"
                       onClick={() => setDeleteConfirmId(null)}
                     >
                       取消
@@ -458,7 +459,7 @@ export function ChapterTree({
                     <button
                       type="button"
                       role="menuitem"
-                      className="flex-1 rounded bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/20"
+                      className="flex-1 rounded-md bg-red-500/15 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/25"
                       onClick={() => {
                         if (menuChapter) onDelete(menuChapter.id);
                         setMenu(null);

@@ -11,6 +11,7 @@ import type {
 } from "@inkforge/shared";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button, IconButton } from "../ui";
 import { chapterApi, novelCharacterApi } from "../../lib/api";
 
 interface ChapterCharacterImportDialogProps {
@@ -254,14 +255,15 @@ export function ChapterCharacterImportDialog({
             选择一篇章节，识别结果会先作为候选项展示，确认后才写入人物库。
           </p>
         </div>
-        <button
-          type="button"
+        <IconButton
+          size="sm"
+          variant="ghost"
+          className="shrink-0 hover:bg-ink-800 hover:text-ink-100"
           onClick={onClose}
           aria-label="关闭"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
         >
           <X className="h-4 w-4" />
-        </button>
+        </IconButton>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -302,11 +304,12 @@ export function ChapterCharacterImportDialog({
               ))}
             </select>
           </label>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="md"
+            className="mt-auto h-9 gap-2 px-3 disabled:opacity-60"
             onClick={() => extractMut.mutate()}
             disabled={!canExtract || chapters.length === 0}
-            className="mt-auto inline-flex h-9 items-center justify-center gap-2 rounded-md bg-accent-500 px-3 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-60"
           >
             {extractMut.isPending ? (
               <MotionSpinner className="h-4 w-4" />
@@ -314,7 +317,7 @@ export function ChapterCharacterImportDialog({
               <Wand2 className="h-4 w-4" />
             )}
             识别人物
-          </button>
+          </Button>
         </div>
 
         {chapters.length === 0 && !chaptersQuery.isLoading ? (
@@ -535,18 +538,20 @@ export function ChapterCharacterImportDialog({
             : "选择候选后再创建"}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="md"
+            className="border-ink-700 px-3 hover:bg-ink-800"
             onClick={onClose}
-            className="rounded-md border border-ink-700 px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800"
           >
             取消
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            className="h-8 gap-2 px-3 disabled:opacity-60"
             onClick={() => importMut.mutate()}
             disabled={!canImport}
-            className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-accent-500 px-3 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-60"
           >
             {importMut.isPending ? (
               <MotionSpinner className="h-4 w-4" />
@@ -554,7 +559,7 @@ export function ChapterCharacterImportDialog({
               <Check className="h-4 w-4" />
             )}
             写入人物和关系
-          </button>
+          </Button>
         </div>
       </footer>
     </AnimatedDialog>
