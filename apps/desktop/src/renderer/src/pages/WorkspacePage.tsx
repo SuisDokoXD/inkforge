@@ -17,7 +17,6 @@ import { ProviderSwitcher } from "../components/ProviderSwitcher";
 import { ProviderSettingsPanel } from "../components/ProviderSettingsPanel";
 import { ExportDialog } from "../components/ExportDialog";
 import { Button, Tabs } from "../components/ui";
-import { cn } from "../lib/cn";
 
 interface ChapterHeadingItem {
   id: string;
@@ -411,10 +410,7 @@ export function WorkspacePage(): JSX.Element {
         </section>
 
         {!focusMode && (
-        <aside className={cn(
-          "hidden w-72 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40 xl:flex 2xl:w-80",
-          settings.glassEnabled && "glass-panel border-l-0",
-        )}>
+        <aside className="hidden w-72 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40 xl:flex 2xl:w-80">
           <Tabs
             className="shrink-0"
             variant="underline"
