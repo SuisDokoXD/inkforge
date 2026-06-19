@@ -411,6 +411,19 @@ export function SettingsDialog(): JSX.Element | null {
               {t("settings.section.advanced")}
             </h3>
             <div className="space-y-3">
+              <label className="flex items-center gap-3" htmlFor="settings-glass-enabled">
+                <input
+                  id="settings-glass-enabled"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={settings.glassEnabled !== false}
+                  onChange={(e) => settingsMutation.mutate({ glassEnabled: e.target.checked })}
+                />
+                <div>
+                  <div className="font-medium">液态玻璃质感</div>
+                  <div className="text-xs text-ink-400">弹窗和标题栏使用毛玻璃 + 活力色 + 边缘高光；弱机或省电可关</div>
+                </div>
+              </label>
               <label className="flex items-center gap-3" htmlFor="settings-dev-mode">
                 <input
                   id="settings-dev-mode"

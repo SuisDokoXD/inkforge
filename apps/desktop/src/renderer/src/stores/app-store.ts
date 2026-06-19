@@ -158,6 +158,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   autoIndent: true,
   spellcheck: true,
   focusMode: false,
+  glassEnabled: true,
 };
 
 export const useAppStore = create<AppState>()(

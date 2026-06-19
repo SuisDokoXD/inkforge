@@ -44,6 +44,7 @@ export function CommandPalette({
       overlayClassName="flex items-start justify-center p-4 pt-[12vh]"
       zClassName="z-[60]"
       panelClassName="w-full max-w-xl overflow-hidden rounded-xl border border-ink-600 bg-ink-800 shadow-2xl"
+      glass
     >
       <Cmdk label={t("palette.aria.label")} className="flex flex-col">
         <div className="border-b border-ink-700 px-4 py-3">
