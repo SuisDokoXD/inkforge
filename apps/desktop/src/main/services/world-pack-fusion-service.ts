@@ -30,7 +30,7 @@ import {
   buildFusionPrompt,
   type FusionSource,
 } from "./fusion/build-fusion-prompt";
-import { parseFusionOutput } from "./fusion/parse-fusion-output";
+import { parseFusionOutput, type FusionSuggestion } from "./fusion/parse-fusion-output";
 
 export async function fuseWorldPacks(
   input: WorldPackFuseInput,
@@ -57,6 +57,23 @@ export async function fuseWorldPacks(
     throw new Error(`source pack(s) not found: ${missing.join(", ")}`);
   }
 
+  const suggestion =
+    input.persist && input.suggestion
+      ? input.suggestion
+      : await generateFusionSuggestion(input, sources);
+
+  // ---- 3. 可选落库 ----
+  const packRecord = input.persist
+    ? persistFusionSuggestion(suggestion, input.sourcePackIds)
+    : undefined;
+
+  return { suggestion, pack: packRecord };
+}
+
+async function generateFusionSuggestion(
+  input: WorldPackFuseInput,
+  sources: FusionSource[],
+): Promise<FusionSuggestion> {
   // ---- 3. 解 provider/model（走 'skill' scene binding） ----
   const resolved = resolveSceneBinding("skill", {
     explicitProviderId: input.providerId,
@@ -90,11 +107,16 @@ export async function fuseWorldPacks(
   }
 
   // ---- 5. 解析输出 ----
-  const suggestion = parseFusionOutput(accumulated);
+  return parseFusionOutput(accumulated);
+}
 
-  // ---- 6. 可选落库 ----
+function persistFusionSuggestion(
+  suggestion: FusionSuggestion,
+  sourcePackIds: string[],
+): WorldPackFuseResponse["pack"] {
+  const ctx = getAppContext();
   let packRecord: WorldPackFuseResponse["pack"];
-  if (input.persist) {
+  const tx = ctx.db.transaction(() => {
     const packId = randomUUID();
     packRecord = insertWorldPack(ctx.db, {
       id: packId,
@@ -103,25 +125,21 @@ export async function fuseWorldPacks(
       description: suggestion.description,
       tags: suggestion.tags,
       origin: "fused",
-      parentPackIds: input.sourcePackIds,
+      parentPackIds: sourcePackIds,
     });
-    // 批量插 entries（一笔事务）
-    const tx = ctx.db.transaction(() => {
-      suggestion.entries.forEach((e, idx) => {
-        insertWorldPackEntry(ctx.db, {
-          id: randomUUID(),
-          packId,
-          category: e.category,
-          title: e.title,
-          content: e.content,
-          aliases: e.aliases,
-          keys: e.keys,
-          order: idx,
-        });
+    suggestion.entries.forEach((e, idx) => {
+      insertWorldPackEntry(ctx.db, {
+        id: randomUUID(),
+        packId,
+        category: e.category,
+        title: e.title,
+        content: e.content,
+        aliases: e.aliases,
+        keys: e.keys,
+        order: idx,
       });
     });
-    tx();
-  }
-
-  return { suggestion, pack: packRecord };
+  });
+  tx();
+  return packRecord;
 }

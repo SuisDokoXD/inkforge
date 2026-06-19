@@ -195,6 +195,19 @@ export interface WorldPackCoverReadResponse {
   // base64 data URL，渲染端 <img src={url}/> 直接用
   dataUrl: string | null;
 }
+export interface WorldPackFuseSuggestion {
+  name: string;
+  tagline: string;
+  description: string;
+  tags: string[];
+  entries: Array<{
+    category: string;
+    title: string;
+    content: string;
+    aliases: string[];
+    keys: string[];
+  }>;
+}
 export interface WorldPackFuseInput {
   sourcePackIds: string[];
   brief: string;              // 用户的融合 brief（"重点保留 X，融合 Y 风格"）
@@ -202,22 +215,12 @@ export interface WorldPackFuseInput {
   model?: string;
   // 是否立即写库存为新卡：true=直接落库返回 WorldPackRecord；false=只返回融合预览（dryRun）
   persist?: boolean;
+  // 保存已审核过的预览时传入，避免保存动作再次调用模型生成另一版内容。
+  suggestion?: WorldPackFuseSuggestion;
 }
 export interface WorldPackFuseResponse {
   // 融合产物：建议的卡牌主信息 + entries 列表
-  suggestion: {
-    name: string;
-    tagline: string;
-    description: string;
-    tags: string[];
-    entries: Array<{
-      category: string;
-      title: string;
-      content: string;
-      aliases: string[];
-      keys: string[];
-    }>;
-  };
+  suggestion: WorldPackFuseSuggestion;
   // 若 persist=true 同时返回落库后的 pack record
   pack?: WorldPackRecord;
 }

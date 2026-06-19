@@ -342,11 +342,59 @@ describe("world pack and character validation", () => {
       providerId: undefined,
       model: undefined,
       persist: undefined,
+      suggestion: undefined,
     });
 
     expectInvalid(
       () => parseWorldPackFuseInput({ sourcePackIds: ["a", 1], brief: "" }),
       "sourcePackIds[1] must be a non-empty string",
+    );
+  });
+
+  it("validates a reviewed fusion suggestion before saving it", () => {
+    expect(
+      parseWorldPackFuseInput({
+        sourcePackIds: ["a", "b"],
+        brief: "保留 A 的秩序感",
+        persist: true,
+        suggestion: {
+          name: "新卡",
+          tagline: "一句话",
+          description: "说明",
+          tags: ["融合"],
+          entries: [
+            {
+              category: "地理",
+              title: "浮空城",
+              content: "城市悬浮在云层之上。",
+              aliases: ["云城"],
+              keys: ["浮空城"],
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      persist: true,
+      suggestion: {
+        name: "新卡",
+        entries: [{ title: "浮空城", keys: ["浮空城"] }],
+      },
+    });
+
+    expectInvalid(
+      () =>
+        parseWorldPackFuseInput({
+          sourcePackIds: ["a", "b"],
+          brief: "",
+          suggestion: {
+            name: "坏卡",
+            tagline: "",
+            description: "",
+            tags: [],
+            entries: [{ title: "缺字段" }],
+          },
+        }),
+      "suggestion.entries[0]",
     );
   });
 

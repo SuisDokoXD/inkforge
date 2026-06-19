@@ -115,10 +115,6 @@ export function WorldPackLibrary(): JSX.Element {
 
   function handleCardDelete(pack: WorldPackRecord): void {
     if (deleteMutation.isPending) return;
-    const slottedHint = slottedIds.has(pack.id)
-      ? "此卡当前已加入本书，删除后会同时从本书使用列表中移除。"
-      : "此操作不可撤销。";
-    if (!confirm(`删除卡牌「${pack.name}」？\n\n${slottedHint}`)) return;
     deleteMutation.mutate(pack.id);
   }
 
@@ -157,7 +153,7 @@ export function WorldPackLibrary(): JSX.Element {
               <button
                 onClick={() => setShowSlotPanel((v) => !v)}
                 aria-label="管理本书正在使用的世界观卡牌"
-                className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
+                className={`relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ${
                   showSlotPanel
                     ? "bg-accent-500 text-ink-900 shadow-lg shadow-accent-500/20"
                     : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-accent-500/40 hover:bg-ink-800"
@@ -185,7 +181,7 @@ export function WorldPackLibrary(): JSX.Element {
                 setFusionSourceIds([]);
               }}
               aria-label={fusionMode ? "取消卡牌融合" : "融合多张世界观卡牌"}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ${
                 fusionMode
                   ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/30"
                   : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-fuchsia-400/40 hover:bg-ink-800"
@@ -198,7 +194,7 @@ export function WorldPackLibrary(): JSX.Element {
               <button
                 onClick={() => setShowFusionDialog(true)}
                 aria-label={`融合已选择的 ${fusionSourceIds.length} 张世界观卡牌`}
-                className="animate-pulse rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-fuchsia-500/40 hover:bg-fuchsia-400"
+                className="rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-fuchsia-500/40 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-fuchsia-400 hover:shadow-fuchsia-500/55 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-300/70"
               >
                 融合 {fusionSourceIds.length} 张 →
               </button>
@@ -222,7 +218,7 @@ export function WorldPackLibrary(): JSX.Element {
               <button
                 key={f.key}
                 onClick={() => setOriginFilter(f.key)}
-                className={`rounded-full px-3 py-0.5 text-xs ring-1 transition-all ${
+                className={`rounded-full px-3 py-0.5 text-xs ring-1 transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ${
                   active
                     ? `bg-ink-800 text-ink-100 ${f.cls} shadow-inner`
                     : "border border-ink-700/60 bg-transparent text-ink-400 hover:text-ink-200"
@@ -272,6 +268,11 @@ export function WorldPackLibrary(): JSX.Element {
                     onClick={handleCardClick}
                     onDoubleClick={handleCardDoubleClick}
                     onDelete={handleCardDelete}
+                    deleteHint={
+                      slottedIds.has(pack.id)
+                        ? "此卡已加入本书，删除后会同时从本书使用列表中移除。"
+                        : "此操作不可撤销。"
+                    }
                   />
                 );
               })}
@@ -295,18 +296,17 @@ export function WorldPackLibrary(): JSX.Element {
           onClose={() => setEditingPackId(null)}
         />
       )}
-      {showFusionDialog && (
-        <FusionDialog
-          sourcePackIds={fusionSourceIds}
-          onClose={() => setShowFusionDialog(false)}
-          onFused={() => {
-            setShowFusionDialog(false);
-            setFusionMode(false);
-            setFusionSourceIds([]);
-            queryClient.invalidateQueries({ queryKey: ["world-packs"] });
-          }}
-        />
-      )}
+      <FusionDialog
+        open={showFusionDialog}
+        sourcePackIds={fusionSourceIds}
+        onClose={() => setShowFusionDialog(false)}
+        onFused={() => {
+          setShowFusionDialog(false);
+          setFusionMode(false);
+          setFusionSourceIds([]);
+          queryClient.invalidateQueries({ queryKey: ["world-packs"] });
+        }}
+      />
     </div>
   );
 }

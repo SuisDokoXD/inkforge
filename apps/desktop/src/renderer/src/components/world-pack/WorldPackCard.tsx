@@ -10,11 +10,13 @@
 //   - 不引入 framer-motion / 任何动画库；全部用 CSS transform + transition
 // =============================================================================
 
-import { useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { CheckCircle2, Trash2 } from "lucide-react";
 import { usePackCover } from "../../hooks/usePackCover";
 import { fallbackGradient } from "./visual-hash";
 import type { WorldPackRecord } from "@inkforge/shared";
+import { fadeOnly } from "../../lib/motion-tokens";
 
 interface WorldPackCardProps {
   pack: WorldPackRecord;
@@ -23,6 +25,7 @@ interface WorldPackCardProps {
   onClick?(pack: WorldPackRecord): void;
   onDoubleClick?(pack: WorldPackRecord): void;
   onDelete?(pack: WorldPackRecord): void;
+  deleteHint?: string;
 }
 
 // origin → 卡边色调：user=琥珀；fused=洋红；imported=天青
@@ -52,10 +55,16 @@ export function WorldPackCard({
   onClick,
   onDoubleClick,
   onDelete,
+  deleteHint,
 }: WorldPackCardProps): JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const [hovering, setHovering] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
   const { dataUrl: coverUrl } = usePackCover(pack);
+
+  useEffect(() => {
+    setDeleteConfirming(false);
+  }, [pack.id]);
 
   // 鼠标位置 → 3D tilt + 径向高光定位
   function handleMove(e: React.MouseEvent<HTMLDivElement>): void {
@@ -84,17 +93,6 @@ export function WorldPackCard({
   return (
     <div
       ref={ref}
-      role="button"
-      aria-label={`打开世界观卡牌：${pack.name}`}
-      tabIndex={0}
-      onClick={() => onClick?.(pack)}
-      onDoubleClick={() => onDoubleClick?.(pack)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.(pack);
-        }
-      }}
       onMouseEnter={() => setHovering(true)}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
@@ -113,19 +111,62 @@ export function WorldPackCard({
       }}
       title={pack.tagline || pack.name}
     >
+      <button
+        type="button"
+        aria-label={`打开世界观卡牌：${pack.name}`}
+        className="absolute inset-0 z-0 rounded-xl bg-transparent focus:outline-none focus:ring-2 focus:ring-accent-400/70 focus:ring-offset-2 focus:ring-offset-ink-950"
+        onClick={() => onClick?.(pack)}
+        onDoubleClick={() => onDoubleClick?.(pack)}
+      />
+
       {onDelete && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(pack);
-          }}
-          className="absolute left-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-ink-900/70 text-ink-200 opacity-0 shadow-lg ring-1 ring-ink-50/15 backdrop-blur-sm transition hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
-          title={`删除卡牌「${pack.name}」`}
-          aria-label={`删除卡牌「${pack.name}」`}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <AnimatePresence initial={false} mode="wait">
+          {deleteConfirming ? (
+            <motion.div
+              key="delete-confirm"
+              variants={fadeOnly}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="absolute left-2 top-2 z-20 max-w-[calc(100%-1rem)] rounded-lg border border-red-500/35 bg-ink-950/90 p-2 text-[11px] text-ink-100 shadow-xl backdrop-blur"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <p className="mb-1 line-clamp-2 text-red-200">
+                {deleteHint ?? "此操作不可撤销。"}
+              </p>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirming(false)}
+                  className="rounded px-1.5 py-0.5 text-ink-300 hover:bg-ink-800"
+                >
+                  取消
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(pack)}
+                  className="rounded bg-red-500/20 px-1.5 py-0.5 font-medium text-red-100 hover:bg-red-500/30"
+                >
+                  确认删除
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="delete-start"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteConfirming(true);
+              }}
+              className="absolute left-2 top-2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-ink-900/70 text-ink-200 opacity-0 shadow-lg ring-1 ring-ink-50/15 backdrop-blur-sm transition hover:bg-red-500 hover:text-white group-hover:opacity-100 focus:opacity-100"
+              title={`删除卡牌「${pack.name}」`}
+              aria-label={`删除卡牌「${pack.name}」`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </motion.button>
+          )}
+        </AnimatePresence>
       )}
 
       {/* 鼠标跟随径向高光 */}
@@ -159,7 +200,7 @@ export function WorldPackCard({
       )}
 
       {/* 右上角徽章组 */}
-      <span className="absolute right-2 top-2 z-10 flex items-center gap-1.5">
+      <span className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1.5">
         {selectionIndex !== undefined && (
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-400 text-sm font-bold text-ink-900 shadow-lg ring-2 ring-ink-900">
             {selectionIndex + 1}
@@ -174,13 +215,14 @@ export function WorldPackCard({
 
       {/* 左上角：已插槽指示 */}
       {selected && selectionIndex === undefined && (
-        <span className="absolute left-2 top-10 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
-          ✓ 本书使用
+        <span className="pointer-events-none absolute left-2 top-10 z-10 flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-semibold text-ink-900 shadow-lg">
+          <CheckCircle2 aria-hidden className="h-3 w-3" />
+          本书使用
         </span>
       )}
 
       {/* 卡牌底部信息 */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 p-3.5">
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 p-3.5">
         <h3
           className="line-clamp-2 text-base font-semibold leading-tight text-ink-50"
           style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
@@ -222,14 +264,14 @@ export function WorldPackCardSkeleton(): JSX.Element {
   return (
     <div
       aria-hidden
-      className="aspect-[3/4] w-full animate-pulse rounded-xl border border-ink-700/60 bg-gradient-to-br from-ink-800 to-ink-900 ring-1 ring-ink-700/40"
+      className="skeleton-shimmer aspect-[3/4] w-full rounded-xl border border-ink-700/60 bg-gradient-to-br from-ink-800 to-ink-900 ring-1 ring-ink-700/40"
     >
       <div className="flex h-full flex-col justify-end p-3.5">
-        <div className="h-4 w-2/3 rounded bg-ink-700/60" />
-        <div className="mt-2 h-3 w-1/2 rounded bg-ink-700/40" />
+        <div className="skeleton-shimmer h-4 w-2/3 rounded bg-ink-700/60" />
+        <div className="skeleton-shimmer mt-2 h-3 w-1/2 rounded bg-ink-700/40" />
         <div className="mt-2.5 flex gap-1">
-          <div className="h-4 w-10 rounded-full bg-ink-700/40" />
-          <div className="h-4 w-8 rounded-full bg-ink-700/40" />
+          <div className="skeleton-shimmer h-4 w-10 rounded-full bg-ink-700/40" />
+          <div className="skeleton-shimmer h-4 w-8 rounded-full bg-ink-700/40" />
         </div>
       </div>
     </div>

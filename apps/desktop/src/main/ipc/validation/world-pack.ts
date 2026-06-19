@@ -108,6 +108,94 @@ function parseEntryEditableFields(obj: UnknownRecord, channel: string) {
   };
 }
 
+function requiredNestedString(
+  obj: UnknownRecord,
+  key: string,
+  channel: string,
+  fieldPath: string,
+): string {
+  const value = obj[key];
+  if (typeof value !== "string") {
+    fail(channel, fieldPath, "a string");
+  }
+  return value;
+}
+
+function requiredNestedStringArray(
+  obj: UnknownRecord,
+  key: string,
+  channel: string,
+  fieldPath: string,
+): string[] {
+  const value = obj[key];
+  if (!Array.isArray(value)) {
+    fail(channel, fieldPath, "an array of strings");
+  }
+  return value.map((item, index) => {
+    if (typeof item !== "string" || item.length === 0) {
+      fail(channel, `${fieldPath}[${index}]`, "a non-empty string");
+    }
+    return item;
+  });
+}
+
+function optionalWorldPackFuseSuggestion(
+  obj: UnknownRecord,
+  key: string,
+  channel: string,
+): WorldPackFuseInput["suggestion"] | undefined {
+  const value = obj[key];
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    fail(channel, key, "an object");
+  }
+  const suggestion = value as UnknownRecord;
+  const entriesValue = suggestion.entries;
+  if (!Array.isArray(entriesValue)) {
+    fail(channel, `${key}.entries`, "an array");
+  }
+  return {
+    name: requiredNestedString(suggestion, "name", channel, `${key}.name`),
+    tagline: requiredNestedString(suggestion, "tagline", channel, `${key}.tagline`),
+    description: requiredNestedString(
+      suggestion,
+      "description",
+      channel,
+      `${key}.description`,
+    ),
+    tags: requiredNestedStringArray(suggestion, "tags", channel, `${key}.tags`),
+    entries: entriesValue.map((entryValue, index) => {
+      if (!entryValue || typeof entryValue !== "object" || Array.isArray(entryValue)) {
+        fail(channel, `${key}.entries[${index}]`, "an object");
+      }
+      const entry = entryValue as UnknownRecord;
+      const entryPath = `${key}.entries[${index}]`;
+      return {
+        category: requiredNestedString(
+          entry,
+          "category",
+          channel,
+          `${entryPath}.category`,
+        ),
+        title: requiredNestedString(entry, "title", channel, `${entryPath}.title`),
+        content: requiredNestedString(
+          entry,
+          "content",
+          channel,
+          `${entryPath}.content`,
+        ),
+        aliases: requiredNestedStringArray(
+          entry,
+          "aliases",
+          channel,
+          `${entryPath}.aliases`,
+        ),
+        keys: requiredNestedStringArray(entry, "keys", channel, `${entryPath}.keys`),
+      };
+    }),
+  };
+}
+
 export function parseWorldPackListInput(value: unknown): WorldPackListInput {
   const channel = "world-pack:list";
   const obj = asObject(value, channel);
@@ -283,5 +371,6 @@ export function parseWorldPackFuseInput(value: unknown): WorldPackFuseInput {
     providerId: optionalString(obj, "providerId", channel),
     model: optionalString(obj, "model", channel),
     persist: optionalBoolean(obj, "persist", channel),
+    suggestion: optionalWorldPackFuseSuggestion(obj, "suggestion", channel),
   };
 }
