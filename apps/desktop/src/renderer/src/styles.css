@@ -38,11 +38,14 @@ html.theme-dark {
   --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
   --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
   --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
-  /* 液态玻璃 —— 深色主题：深蓝黑底更低透明度 + 更强模糊 + 更亮高光，让透出的背景内容形成可见的"玻璃厚度"。 */
-  --glass-tint-bg: rgba(10, 14, 26, 0.48);
-  --glass-bar-bg: rgba(10, 14, 26, 0.68);
-  --glass-border: rgba(148, 163, 184, 0.16);
-  --glass-highlight: rgba(255, 255, 255, 0.07);
+  /* 液态玻璃（深色）：深底半透 + 强模糊 + 亮玻璃边。深色下背后内容对比足，玻璃感最明显。 */
+  --glass-tint-bg: rgba(10, 14, 26, 0.46);
+  --glass-bar-bg: rgba(10, 14, 26, 0.66);
+  --glass-filter: blur(28px) saturate(200%);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-inner-rim: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -90,11 +93,15 @@ html.theme-light {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃 —— 浅色主题：更透的白底 + 更亮高光 */
-  --glass-tint-bg: rgba(255, 255, 255, 0.5);
-  --glass-bar-bg: rgba(250, 252, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-highlight: rgba(255, 255, 255, 0.55);
+  /* 液态玻璃（浅色）：偏纯白底（比页面更亮 → 读作一块独立的磨砂玻璃）+ brightness 微提 +
+   * 明亮玻璃边 + 适配浅色的"柔和暖阴影"（绝不用深黑阴影，否则在亮底上发脏）。 */
+  --glass-tint-bg: rgba(255, 255, 255, 0.6);
+  --glass-bar-bg: rgba(255, 255, 255, 0.72);
+  --glass-filter: blur(22px) saturate(180%) brightness(1.04);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+  --glass-inner-rim: rgba(255, 255, 255, 0.5);
+  --glass-shadow: 0 18px 44px -12px rgba(60, 50, 40, 0.24), 0 2px 8px -2px rgba(60, 50, 40, 0.12);
 }
 
 /*
@@ -135,11 +142,14 @@ html.theme-paper {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃 —— 纸感主题：更透的暖米白底 + 更亮高光 */
-  --glass-tint-bg: rgba(250, 249, 244, 0.5);
-  --glass-bar-bg: rgba(250, 248, 241, 0.7);
-  --glass-border: rgba(139, 119, 84, 0.13);
-  --glass-highlight: rgba(255, 255, 255, 0.45);
+  /* 液态玻璃（纸感）：偏暖白底 + brightness 微提 + 亮玻璃边 + 暖调柔和阴影。 */
+  --glass-tint-bg: rgba(253, 251, 246, 0.62);
+  --glass-bar-bg: rgba(252, 250, 244, 0.72);
+  --glass-filter: blur(22px) saturate(185%) brightness(1.03);
+  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-inner-rim: rgba(255, 255, 255, 0.45);
+  --glass-shadow: 0 18px 44px -12px rgba(80, 60, 35, 0.24), 0 2px 8px -2px rgba(80, 60, 35, 0.12);
 }
 
 html,
@@ -334,21 +344,23 @@ html.theme-paper .skeleton-shimmer {
  * 缩放期间 backdrop-filter 已由下方 win-resizing 规则停用。
  */
 
-/* 面板/弹窗玻璃 */
+/* 面板/弹窗玻璃 — 配方全部走主题变量（见各 theme 块的 --glass-*）：
+ * 浅色/纸感 = 亮白磨砂 + 暖柔阴影；深色 = 深底磨砂 + 深阴影。
+ * 注意：玻璃只用在"浮在内容之上的临时层"（弹窗/命令面板），常驻面板不用——否则背后无内容可透，只会发灰。 */
 .glass-panel {
   background: var(--glass-tint-bg);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  border-color: var(--glass-border) !important;
-  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.55),
-              inset 0 1.5px 0 var(--glass-highlight),
-              inset 0 0 0 1px var(--glass-highlight);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow),
+              inset 0 1px 0 var(--glass-highlight),
+              inset 0 0 0 1px var(--glass-inner-rim);
 }
-/* 标题栏/工具栏玻璃 — 更不透明、模糊更小。 */
+/* 标题栏玻璃 — 更不透明、模糊更小（细条不需要透太多）。 */
 .glass-bar {
   background: var(--glass-bar-bg);
-  backdrop-filter: blur(16px) saturate(200%);
-  -webkit-backdrop-filter: blur(16px) saturate(200%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-bottom-color: var(--glass-border) !important;
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }
