@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { Award, RefreshCw } from "lucide-react";
 import {
   ACHIEVEMENT_CATALOG,
   rarityColor,
@@ -8,6 +10,18 @@ import {
 } from "@inkforge/shared";
 import { achievementApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
+import { friendlyErrorMessage } from "../lib/friendly-error";
+import {
+  DUR,
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 /**
  * 作家档案 + 成就大厅。
@@ -16,6 +30,18 @@ import { useAppStore } from "../stores/app-store";
 export function AchievementHallPage(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
   const queryClient = useQueryClient();
+  const { status, showStatus } = useTimedStatus();
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const listMotion = reduceMotion ? fadeOnly : staggerContainer;
+  const itemMotion = reduceMotion ? fadeOnly : staggerItem;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   const statsQuery = useQuery({
     queryKey: ["achievement-stats", projectId],
@@ -30,9 +56,16 @@ export function AchievementHallPage(): JSX.Element {
   const checkMut = useMutation({
     mutationFn: () =>
       achievementApi.check({ projectId: projectId ?? "", trigger: "manual" }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["achievement-stats", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["achievement-list", projectId] });
+    onMutate: () => {
+      showStatus(null);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["achievement-stats", projectId] });
+      await queryClient.invalidateQueries({ queryKey: ["achievement-list", projectId] });
+      showStatus("成就扫描完成，新的解锁会出现在下方。", 2500);
+    },
+    onError: (err) => {
+      showStatus(friendlyErrorMessage(err, "成就扫描失败，请稍后重试。"));
     },
   });
 
@@ -50,24 +83,21 @@ export function AchievementHallPage(): JSX.Element {
   );
 
   const grouped = groupByCategory(ACHIEVEMENT_CATALOG);
+  const statusIsError = status !== null && /失败|无法|异常/.test(status);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-gradient-to-br from-ink-900 via-ink-800/40 to-ink-900 p-6">
+    <div className="flex h-full flex-col overflow-y-auto bg-ink-950 p-6">
       <div className="mx-auto w-full max-w-4xl">
         {/* 作家档案 */}
-        <div className="relative mb-6 overflow-hidden rounded-2xl border border-accent-500/20 bg-gradient-to-br from-accent-500/10 via-fuchsia-500/5 to-sky-500/10 p-6 shadow-2xl">
-          <div
-            aria-hidden
-            className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-accent-400/10 blur-3xl"
-          />
-          <div
-            aria-hidden
-            className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-fuchsia-400/10 blur-3xl"
-          />
-
-          <div className="relative flex flex-wrap items-center gap-4">
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-400 via-orange-500 to-fuchsia-500 text-4xl shadow-lg">
-              ✒
+        <motion.div
+          className="mb-6 overflow-hidden rounded-lg border border-ink-700 bg-ink-900/60 p-6 shadow-lg"
+          variants={stateMotion}
+          initial="initial"
+          animate="animate"
+        >
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-accent-500/25 bg-accent-500/10 text-accent-200">
+              <Award className="h-8 w-8" aria-hidden />
             </div>
             <div className="flex-1">
               <div className="text-[11px] uppercase tracking-widest text-accent-300/80">
@@ -80,19 +110,56 @@ export function AchievementHallPage(): JSX.Element {
                 解锁 {stats?.totalUnlocked ?? "—"} / {stats?.totalCatalog ?? "—"} 成就
               </div>
             </div>
-            <button
+            <motion.button
               type="button"
               onClick={() => checkMut.mutate()}
               disabled={checkMut.isPending}
-              className="rounded-md bg-accent-500/20 px-3 py-1.5 text-xs text-accent-200 ring-1 ring-accent-400/30 hover:bg-accent-500/30 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md bg-accent-500/20 px-3 py-1.5 text-xs text-accent-200 ring-1 ring-accent-400/30 hover:bg-accent-500/30 disabled:cursor-default disabled:opacity-60"
+              {...buttonMotion}
             >
-              {checkMut.isPending ? "扫描中…" : "🔍 重新扫描"}
-            </button>
+              <motion.span
+                className="inline-flex"
+                animate={checkMut.isPending && !reduceMotion ? { rotate: 360 } : { rotate: 0 }}
+                transition={
+                  checkMut.isPending && !reduceMotion
+                    ? { duration: 0.9, ease: "linear", repeat: Infinity }
+                    : { duration: DUR.fast }
+                }
+              >
+                <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+              </motion.span>
+              {checkMut.isPending ? "扫描中…" : "重新扫描"}
+            </motion.button>
           </div>
+
+          <AnimatePresence initial={false}>
+            {status ? (
+              <motion.div
+                key="achievement-status"
+                className={`mt-4 rounded-md border px-3 py-2 text-xs ${
+                  statusIsError
+                    ? "border-red-500/30 bg-red-500/10 text-red-200"
+                    : "border-ink-700 bg-ink-950/45 text-ink-300"
+                }`}
+                role={statusIsError ? "alert" : "status"}
+                variants={stateMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {status}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
 
           {/* 数据栅格 */}
           {stats && (
-            <div className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <motion.div
+              className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+              variants={listMotion}
+              initial="initial"
+              animate="animate"
+            >
               <Stat label="累计字数" value={fmtNum(stats.stats.totalWords)} />
               <Stat label="章节" value={String(stats.stats.totalChapters)} />
               <Stat label="人物档案" value={String(stats.stats.totalCharacters)} />
@@ -114,26 +181,32 @@ export function AchievementHallPage(): JSX.Element {
                 label="手动备份"
                 value={`${stats.stats.snapshotsManual} 份`}
               />
-            </div>
+            </motion.div>
           )}
 
           {/* 稀有度计数 */}
           {stats && (
-            <div className="relative mt-4 flex flex-wrap gap-2 text-[11px]">
+            <motion.div
+              className="mt-4 flex flex-wrap gap-2 text-[11px]"
+              variants={listMotion}
+              initial="initial"
+              animate="animate"
+            >
               {(Object.keys(stats.byRarity) as AchievementRarity[]).map((r) => {
                 const c = rarityColor(r);
                 return (
-                  <div
+                  <motion.div
                     key={r}
                     className={`rounded-full px-2.5 py-0.5 ring-1 ${c.bg} ${c.text} ${c.ring}`}
+                    variants={itemMotion}
                   >
                     {labelOfRarity(r)} · {stats.byRarity[r]}
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
 
         {/* 徽章网格 */}
         {Object.entries(grouped).map(([cat, defs]) => (
@@ -142,18 +215,24 @@ export function AchievementHallPage(): JSX.Element {
               {labelOfCategory(cat)}
               <span className="text-xs text-ink-500">{defs.length}</span>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+            <motion.div
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+              variants={listMotion}
+              initial="initial"
+              animate="animate"
+            >
               {defs.map((def) => {
                 const unlocked = unlockedMap.has(def.id);
                 const c = rarityColor(def.rarity);
                 return (
-                  <div
+                  <motion.div
                     key={def.id}
-                    className={`flex items-start gap-3 rounded-xl border p-3 transition-all ${
+                    className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
                       unlocked
                         ? `${c.bg} ring-1 ${c.ring}`
-                        : "border-ink-700 bg-ink-900/40 grayscale"
+                        : "border-ink-700 bg-ink-900/40 opacity-70"
                     }`}
+                    variants={itemMotion}
                   >
                     <span
                       className={`text-3xl ${unlocked ? "" : "opacity-40"}`}
@@ -173,14 +252,14 @@ export function AchievementHallPage(): JSX.Element {
                       </div>
                       <div className="mt-1 text-[10px] text-ink-500">
                         {unlocked
-                          ? `🔓 ${new Date(unlockedMap.get(def.id)!.unlockedAt).toLocaleDateString()}`
-                          : `🔒 ${def.hint}`}
+                          ? `已解锁 · ${new Date(unlockedMap.get(def.id)!.unlockedAt).toLocaleDateString()}`
+                          : `未解锁 · ${def.hint}`}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         ))}
       </div>
@@ -198,7 +277,7 @@ function Stat({
   accent?: boolean;
 }): JSX.Element {
   return (
-    <div className="rounded-lg border border-white/5 bg-ink-900/50 p-2.5">
+    <div className="rounded-lg border border-white/5 bg-ink-950/45 p-2.5">
       <div className="text-[10px] text-ink-500">{label}</div>
       <div
         className={`mt-0.5 text-base font-semibold ${
@@ -228,12 +307,12 @@ function groupByCategory(
 
 function labelOfCategory(cat: string): string {
   const map: Record<string, string> = {
-    milestone: "📊 里程碑",
-    rhythm: "🔥 节奏",
-    character: "👥 人物",
-    world: "🌍 世界观",
-    ai: "🤖 模型协作",
-    craft: "🛠 匠艺",
+    milestone: "里程碑",
+    rhythm: "节奏",
+    character: "人物",
+    world: "世界观",
+    ai: "模型协作",
+    craft: "匠艺",
   };
   return map[cat] ?? cat;
 }

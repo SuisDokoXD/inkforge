@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { X } from "lucide-react";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 
@@ -37,10 +38,13 @@ export function SkillPublishDialog({
         <div className="flex items-center justify-between border-b border-ink-700 px-5 py-3">
           <h2 className="text-base font-semibold">发布到技能市场</h2>
           <button
-            className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
             onClick={onClose}
+            aria-label="关闭发布窗口"
+            title="关闭"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
         <div className="flex flex-1 gap-4 overflow-y-auto p-5 text-sm">

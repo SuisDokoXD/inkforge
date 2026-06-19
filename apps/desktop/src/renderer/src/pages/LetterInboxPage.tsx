@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { motion, useReducedMotion } from "motion/react";
 import {
   Archive,
   BookOpenText,
   Inbox,
-  Loader2,
   MailPlus,
   Pin,
   PinOff,
@@ -16,9 +16,18 @@ import type {
   CharacterLetterRecord,
   CharacterLetterTone,
 } from "@inkforge/shared";
+import { AnimatedDialog } from "../components/AnimatedDialog";
+import { MotionSpinner } from "../components/MotionSpinner";
 import { letterApi, novelCharacterApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../lib/motion-tokens";
 
 type LetterFilter = "all" | "unread" | "pinned";
 
@@ -281,24 +290,23 @@ export function LetterInboxPage(): JSX.Element {
         )}
       </main>
 
-      {showGen && (
-        <GenerateLetterDialog
-          projectId={projectId}
-          characters={characters}
-          initialTone={presetTone}
-          onOpenCharacters={() => {
-            setShowGen(false);
-            setMainView("character");
-          }}
-          onClose={() => setShowGen(false)}
-          onGenerated={(letter) => {
-            queryClient.invalidateQueries({ queryKey: ["letters", projectId] });
-            setSelectedId(letter.id);
-            setFilter("all");
-            setShowGen(false);
-          }}
-        />
-      )}
+      <GenerateLetterDialog
+        open={showGen}
+        projectId={projectId}
+        characters={characters}
+        initialTone={presetTone}
+        onOpenCharacters={() => {
+          setShowGen(false);
+          setMainView("character");
+        }}
+        onClose={() => setShowGen(false)}
+        onGenerated={(letter) => {
+          queryClient.invalidateQueries({ queryKey: ["letters", projectId] });
+          setSelectedId(letter.id);
+          setFilter("all");
+          setShowGen(false);
+        }}
+      />
     </div>
   );
 }
@@ -372,8 +380,11 @@ function LetterGuide({
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink-100">常用来信方式</h2>
             {generating && (
-              <span className="inline-flex items-center gap-1 text-xs text-ink-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span
+                className="inline-flex items-center gap-1 text-xs text-ink-400"
+                role="status"
+              >
+                <MotionSpinner />
                 生成中
               </span>
             )}
@@ -445,39 +456,37 @@ function LetterRow({
   const tone = TONE_LABEL[letter.tone];
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={`group mb-1.5 flex cursor-pointer flex-col rounded-md border px-3 py-2.5 transition-colors ${
+      className={`group mb-1.5 flex flex-col rounded-md border px-3 py-2.5 transition-colors ${
         active
           ? "border-accent-400/40 bg-accent-500/10"
           : "border-transparent hover:bg-ink-800/70"
       }`}
     >
-      <div className="flex items-center gap-1.5">
-        {!letter.read && (
-          <span
-            aria-label="未读"
-            className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400"
-          />
-        )}
-        {letter.pinned && <Pin className="h-3 w-3 shrink-0 text-accent-300" />}
-        <span className="truncate text-[12px] font-medium text-ink-100">
-          {letter.subject}
-        </span>
-      </div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-[10.5px] text-ink-400">
-        <span className="truncate">{characterName}</span>
-        <span className="shrink-0">
-          {new Date(letter.generatedAt).toLocaleDateString("zh-CN")}
-        </span>
-      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`打开来信：${letter.subject}`}
+        className="min-w-0 text-left"
+      >
+        <div className="flex items-center gap-1.5">
+          {!letter.read && (
+            <span
+              aria-label="未读"
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400"
+            />
+          )}
+          {letter.pinned && <Pin className="h-3 w-3 shrink-0 text-accent-300" />}
+          <span className="truncate text-[12px] font-medium text-ink-100">
+            {letter.subject}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center justify-between gap-2 text-[10.5px] text-ink-400">
+          <span className="truncate">{characterName}</span>
+          <span className="shrink-0">
+            {new Date(letter.generatedAt).toLocaleDateString("zh-CN")}
+          </span>
+        </div>
+      </button>
       <div className="mt-2 flex items-center justify-between gap-2">
         <span
           className={`rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.color}`}
@@ -563,7 +572,7 @@ function LetterDetail({
             } disabled:cursor-wait disabled:opacity-70 ${deleteConfirming ? "" : "ml-auto"}`}
           >
             {deleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <MotionSpinner />
             ) : (
               <Trash2 className="h-3.5 w-3.5" />
             )}
@@ -669,6 +678,7 @@ function VirtualLetterList({
 }
 
 function GenerateLetterDialog({
+  open,
   projectId,
   characters,
   initialTone,
@@ -676,6 +686,7 @@ function GenerateLetterDialog({
   onClose,
   onGenerated,
 }: {
+  open: boolean;
   projectId: string;
   characters: { id: string; name: string }[];
   initialTone?: CharacterLetterTone;
@@ -683,9 +694,25 @@ function GenerateLetterDialog({
   onClose: () => void;
   onGenerated: (letter: CharacterLetterRecord) => void;
 }): JSX.Element {
+  const reduce = useReducedMotion();
+  const buttonMotion = reduce
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
   const [characterId, setCharacterId] = useState<string>("");
   const [tone, setTone] = useState<CharacterLetterTone | "">(initialTone ?? "");
   const [error, setError] = useState<string | null>(null);
+  const titleId = "generate-letter-title";
+
+  useEffect(() => {
+    if (!open) return;
+    setCharacterId("");
+    setTone(initialTone ?? "");
+    setError(null);
+  }, [open, initialTone]);
 
   const genMut = useMutation({
     mutationFn: () =>
@@ -699,22 +726,26 @@ function GenerateLetterDialog({
   });
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      labelledBy={titleId}
+      overlayClassName="flex items-center justify-center p-4"
+      panelClassName="w-full max-w-lg rounded-lg border border-ink-700 bg-ink-900 p-5 shadow-2xl"
     >
-      <div
-        className="w-full max-w-lg rounded-lg border border-ink-700 bg-ink-900 p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+      <motion.div
+        variants={reduce ? fadeOnly : fadeSlideUp}
+        initial="initial"
+        animate="animate"
       >
         <div className="mb-4 flex items-start gap-3">
           <div className="rounded-md bg-accent-500/15 p-2 text-accent-200">
             <MailPlus className="h-4 w-4" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-ink-100">生成一封角色来信</h2>
+            <h2 id={titleId} className="text-base font-semibold text-ink-100">
+              生成一封角色来信
+            </h2>
             <p className="mt-1 text-xs leading-5 text-ink-400">
               可以指定人物和语气，也可以留空，让系统从已有角色中挑选最适合开口的人。
             </p>
@@ -773,22 +804,29 @@ function GenerateLetterDialog({
             </label>
 
             {error && (
-              <div className="mb-3 rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300">
+              <motion.div
+                role="alert"
+                className="mb-3 rounded-md bg-rose-500/10 p-2 text-[11px] text-rose-300"
+                variants={reduce ? fadeOnly : fadeSlideUp}
+                initial="initial"
+                animate="animate"
+              >
                 {error}
-              </div>
+              </motion.div>
             )}
           </>
         )}
 
         <div className="mt-5 flex justify-end gap-2">
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             className="rounded-md px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
+            {...buttonMotion}
           >
             取消
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             disabled={genMut.isPending || characters.length === 0}
             onClick={() => {
@@ -796,12 +834,13 @@ function GenerateLetterDialog({
               genMut.mutate();
             }}
             className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:bg-ink-200 disabled:text-ink-500 disabled:opacity-100 dark:disabled:bg-ink-800 dark:disabled:text-ink-500"
+            {...(genMut.isPending || characters.length === 0 ? {} : buttonMotion)}
           >
-            {genMut.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {genMut.isPending && <MotionSpinner />}
             {genMut.isPending ? "生成中" : "生成"}
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatedDialog>
   );
 }

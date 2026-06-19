@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AlertTriangle,
   BookOpenText,
@@ -10,7 +11,6 @@ import {
   FileSearch,
   Info,
   ListChecks,
-  Loader2,
   PenLine,
   Play,
   Square,
@@ -27,6 +27,9 @@ import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { getReviewDimensionHelp } from "../lib/review-dimension-copy";
 import { friendlyActionError } from "../lib/friendly-error";
+import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
+import { MotionSpinner } from "../components/MotionSpinner";
 import { ReviewReportPanel } from "../components/review/ReviewReportPanel";
 
 type RangeKind = "book" | "chapter";
@@ -75,7 +78,9 @@ export function ReviewPage(): JSX.Element {
   const rangeTouchedRef = useRef(false);
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
   const [runningReportId, setRunningReportId] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const { status, showStatus } = useTimedStatus();
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   const dimensionsQuery = useQuery({
     queryKey: ["review-dimensions", projectId],
@@ -141,6 +146,9 @@ export function ReviewPage(): JSX.Element {
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["review-dimensions", projectId] }),
+    onError: (err) => {
+      showStatus(friendlyActionError("更新审查维度失败", err));
+    },
   });
 
   const severityMut = useMutation({
@@ -162,6 +170,9 @@ export function ReviewPage(): JSX.Element {
       }),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["review-dimensions", projectId] }),
+    onError: (err) => {
+      showStatus(friendlyActionError("更新报告级别失败", err));
+    },
   });
 
   const runMut = useMutation({
@@ -181,19 +192,22 @@ export function ReviewPage(): JSX.Element {
     onSuccess: (res) => {
       setRunningReportId(res.reportId);
       setActiveReportId(res.reportId);
-      setStatus("审查已启动。报告会在右侧实时刷新。");
+      showStatus("审查已启动。报告会在右侧实时刷新。");
       void queryClient.invalidateQueries({ queryKey: ["review-reports", projectId] });
     },
     onError: (err) => {
-      setStatus(friendlyActionError("启动失败", err));
+      showStatus(friendlyActionError("启动失败", err));
     },
   });
 
   const cancelMut = useMutation({
     mutationFn: (reportId: string) => reviewApi.cancel({ reportId }),
     onSuccess: () => {
-      setStatus("已请求取消当前审查。");
+      showStatus("已请求取消当前审查。");
       setRunningReportId(null);
+    },
+    onError: (err) => {
+      showStatus(friendlyActionError("取消失败", err));
     },
   });
 
@@ -207,11 +221,10 @@ export function ReviewPage(): JSX.Element {
       });
     },
     onSuccess: (res) => {
-      setStatus(res.path ? `已导出到 ${res.path}` : "已取消导出");
-      window.setTimeout(() => setStatus(null), 3000);
+      showStatus(res.path ? `已导出到 ${res.path}` : "已取消导出", 3000);
     },
     onError: (err) => {
-      setStatus(friendlyActionError("导出失败", err));
+      showStatus(friendlyActionError("导出失败", err));
     },
   });
 
@@ -302,6 +315,7 @@ export function ReviewPage(): JSX.Element {
                     }`}
                   >
                     <input
+                      aria-label={`审查章节：${chapter.title || "未命名章节"}`}
                       type="checkbox"
                       checked={selected}
                       onChange={() => toggleChapter(chapter.id)}
@@ -416,7 +430,7 @@ export function ReviewPage(): JSX.Element {
             className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
           >
             {runMut.isPending || runningReportId ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <MotionSpinner className="h-4 w-4" />
             ) : (
               <Play className="h-4 w-4" />
             )}
@@ -433,7 +447,20 @@ export function ReviewPage(): JSX.Element {
               取消当前审查
             </button>
           ) : null}
-          {status ? <p className="text-[11px] leading-5 text-ink-400">{status}</p> : null}
+          <AnimatePresence initial={false}>
+            {status ? (
+              <motion.p
+                className="text-[11px] leading-5 text-ink-400"
+                role="status"
+                variants={statusMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {status}
+              </motion.p>
+            ) : null}
+          </AnimatePresence>
         </footer>
       </aside>
 
@@ -520,7 +547,6 @@ export function ReviewPage(): JSX.Element {
             onDoneRunning={(id) => {
               if (runningReportId === id) setRunningReportId(null);
             }}
-            onExport={(id) => exportMut.mutate(id)}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center px-8 text-center">
@@ -550,7 +576,7 @@ function StatusPill({ status }: { status: ReviewReportRecord["status"] }): JSX.E
   if (status === "running") {
     return (
       <span className="inline-flex items-center gap-1 rounded bg-accent-500/15 px-1.5 py-0.5 text-[11px] text-accent-300">
-        <Loader2 className="h-3 w-3 animate-spin" />
+        <MotionSpinner className="h-3 w-3" />
         运行中
       </span>
     );

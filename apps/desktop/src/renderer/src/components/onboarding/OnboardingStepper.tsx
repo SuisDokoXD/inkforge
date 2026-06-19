@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { Check } from "lucide-react";
 
 interface StepperProps {
   currentStep: number;
@@ -31,7 +32,7 @@ export function OnboardingStepper({ currentStep }: StepperProps): JSX.Element {
                     : "bg-ink-700 text-ink-400"
                 }`}
               >
-                {isCompleted ? "✓" : index + 1}
+                {isCompleted ? <Check aria-hidden className="h-4 w-4" /> : index + 1}
               </div>
               <span
                 className={`mt-2 text-xs font-medium ${

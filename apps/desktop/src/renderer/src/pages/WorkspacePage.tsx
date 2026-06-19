@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ChapterRecord } from "@inkforge/shared";
 import { chapterApi, fsApi, llmApi, projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useChapterShortcuts } from "../lib/use-app-shortcuts";
+import { friendlyErrorMessage } from "../lib/friendly-error";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../lib/motion-tokens";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
 import { AITimeline } from "../components/AITimeline";
@@ -72,7 +81,17 @@ export function WorkspacePage(): JSX.Element {
 
   const [exportOpen, setExportOpen] = useState(false);
   const [headingJumpTarget, setHeadingJumpTarget] = useState<HeadingJumpTarget | null>(null);
+  const [chapterActionError, setChapterActionError] = useState<string | null>(null);
   const headingJumpNonceRef = useRef(0);
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: () => projectApi.list() });
   const providersQuery = useQuery({ queryKey: ["providers"], queryFn: () => providerApi.list() });
 
@@ -177,25 +196,43 @@ export function WorkspacePage(): JSX.Element {
         order: n,
       });
     },
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] });
       setChapter(created.id);
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "新建章节失败，请确认当前书籍可用后重试。"));
     },
   });
 
   const renameChapter = useMutation({
     mutationFn: ({ id, title }: { id: string; title: string }) =>
       chapterApi.update({ id, title }),
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] });
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "重命名章节失败，请稍后重试。"));
     },
   });
 
   const deleteChapter = useMutation({
     mutationFn: (id: string) => chapterApi.delete({ id }),
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async (_data, id) => {
       await queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] });
       if (currentChapterId === id) setChapter(null);
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "删除章节失败，请稍后重试。"));
     },
   });
 
@@ -204,8 +241,14 @@ export function WorkspacePage(): JSX.Element {
       if (!resolvedProjectId) throw new Error("no project");
       return chapterApi.reorder({ projectId: resolvedProjectId, orderedIds });
     },
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] });
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "调整章节顺序失败，请稍后重试。"));
     },
   });
 
@@ -222,18 +265,30 @@ export function WorkspacePage(): JSX.Element {
         content: picked.content,
       });
     },
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async (record) => {
       await queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] });
       if (record) setChapter(record.id);
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "导入章节失败，请检查文件后重试。"));
     },
   });
 
   const switchProject = useMutation({
     mutationFn: async (id: string) => projectApi.open({ id }),
+    onMutate: () => {
+      setChapterActionError(null);
+    },
     onSuccess: async (project) => {
       setProject(project.id);
       await queryClient.invalidateQueries({ queryKey: ["projects"] });
       await queryClient.invalidateQueries({ queryKey: ["chapters", project.id] });
+    },
+    onError: (err) => {
+      setChapterActionError(friendlyErrorMessage(err, "打开书籍失败，请稍后重试。"));
     },
   });
 
@@ -250,7 +305,11 @@ export function WorkspacePage(): JSX.Element {
       <header className="flex items-center justify-between border-b border-ink-700 bg-ink-800/70 px-4 py-2">
         <div className="flex items-center gap-3">
           <span className="text-accent-300">墨炉</span>
+          <label htmlFor="workspace-project-select" className="sr-only">
+            选择书籍
+          </label>
           <select
+            id="workspace-project-select"
             className="max-w-xs rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-sm text-ink-200 focus:border-accent-500 focus:outline-none"
             value={resolvedProjectId ?? ""}
             onChange={(e) => switchProject.mutate(e.target.value)}
@@ -268,35 +327,66 @@ export function WorkspacePage(): JSX.Element {
         <div className="flex items-center gap-2">
           <ProviderSwitcher providers={providersQuery.data ?? []} />
           {terminalEnabled && (
-            <button
+            <motion.button
+              type="button"
               className={`rounded-md border px-2 py-1 text-xs transition-colors ${
                 terminalOpen
                   ? "border-accent-500/60 bg-accent-500/20 text-accent-200"
                   : "border-ink-600 text-ink-300 hover:bg-ink-700"
               }`}
               onClick={() => toggleTerminal()}
+              aria-pressed={terminalOpen}
               title="切换终端 (Ctrl+J)"
+              {...buttonMotion}
             >
               终端
-            </button>
+            </motion.button>
           )}
-          <button
+          <motion.button
+            type="button"
             className="rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
             onClick={() => setExportOpen(true)}
             disabled={!currentProjectId}
             title="导入 / 导出"
+            {...(currentProjectId ? buttonMotion : {})}
           >
             导出
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            type="button"
             className="rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
             onClick={() => openSettings(true)}
             title="设置 (Ctrl+,)"
+            {...buttonMotion}
           >
             设置
-          </button>
+          </motion.button>
         </div>
       </header>
+
+      <AnimatePresence initial={false}>
+        {chapterActionError ? (
+          <motion.div
+            key="chapter-action-error"
+            className="flex items-center justify-between gap-3 border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-100"
+            role="alert"
+            variants={statusMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <span>{chapterActionError}</span>
+            <motion.button
+              type="button"
+              className="shrink-0 rounded-md border border-red-300/20 px-2 py-1 text-xs text-red-100 hover:bg-red-500/20"
+              onClick={() => setChapterActionError(null)}
+              {...buttonMotion}
+            >
+              知道了
+            </motion.button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <main className="flex min-h-0 flex-1">
         {!focusMode && (
@@ -339,26 +429,32 @@ export function WorkspacePage(): JSX.Element {
         {!focusMode && (
         <aside className="flex w-96 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40">
           <div className="flex shrink-0 border-b border-ink-700 text-xs">
-            <button
+            <motion.button
+              type="button"
               className={`flex-1 py-2 transition-colors ${
                 rightPanel === "timeline"
                   ? "border-b-2 border-accent-500 text-accent-300"
                   : "text-ink-400 hover:text-ink-200"
               }`}
               onClick={() => setRightPanel("timeline")}
+              aria-pressed={rightPanel === "timeline"}
+              {...buttonMotion}
             >
               写作建议
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              type="button"
               className={`flex-1 py-2 transition-colors ${
                 rightPanel === "chat"
                   ? "border-b-2 border-accent-500 text-accent-300"
                   : "text-ink-400 hover:text-ink-200"
               }`}
               onClick={() => setRightPanel("chat")}
+              aria-pressed={rightPanel === "chat"}
+              {...buttonMotion}
             >
               聊天助手
-            </button>
+            </motion.button>
           </div>
           <div className="min-h-0 flex-1">
             {rightPanel === "timeline" ? <AITimeline /> : <ChatPanel />}

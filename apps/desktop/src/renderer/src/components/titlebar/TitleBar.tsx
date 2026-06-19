@@ -1,12 +1,37 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import type { LucideIcon } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  Bot,
+  ClipboardList,
+  FolderOpen,
+  Globe2,
+  Library,
+  Mail,
+  MessageCircle,
+  PenLine,
+  Puzzle,
+  Trophy,
+  Users,
+} from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
+import {
+  EASE_IN_OUT,
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../../lib/motion-tokens";
 import { HelpMenu } from "./HelpMenu";
 
 /**
  * 自定义无边框 titlebar。
  *
  * 设计灵感汲取自十余款现代桌面应用：
- *   - VS Code / Cursor —— 36 px 高度、Windows 风格 46×32 控件、close 按钮 hover 红
+ *   - VS Code / Cursor —— 36 px 高度、Windows 风格 46 by 32 控件、close 按钮 hover 红
  *   - Linear / Vercel —— 渐变 LOGO + 极简强调字
  *   - Figma / Notion —— 顶部细线分隔 + 几乎透明背景
  *   - Arc / Slack —— 暗色玻璃感 + 工作区上下文胶囊
@@ -27,26 +52,28 @@ const PLATFORM = (() => {
   return "win";
 })();
 
-const VIEW_LABEL: Record<string, { icon: string; label: string }> = {
-  writing: { icon: "✍", label: "写作" },
-  skill: { icon: "🧩", label: "写作指令" },
-  character: { icon: "👥", label: "人物" },
-  tavern: { icon: "🎭", label: "酒馆" },
-  world: { icon: "🌍", label: "世界观" },
-  research: { icon: "📚", label: "资料" },
-  review: { icon: "📊", label: "审查" },
-  bookshelf: { icon: "📖", label: "书房" },
-  outline: { icon: "📋", label: "大纲" },
-  letters: { icon: "📬", label: "来信" },
-  achievement: { icon: "🏆", label: "成就" },
-  "auto-writer": { icon: "🤖", label: "续写精修" },
-  materials: { icon: "🗂", label: "素材库" },
+const VIEW_LABEL: Record<string, { Icon: LucideIcon; label: string }> = {
+  writing: { Icon: PenLine, label: "写作" },
+  skill: { Icon: Puzzle, label: "写作指令" },
+  character: { Icon: Users, label: "人物" },
+  tavern: { Icon: MessageCircle, label: "酒馆" },
+  world: { Icon: Globe2, label: "世界观" },
+  research: { Icon: Library, label: "资料" },
+  review: { Icon: BarChart3, label: "审查" },
+  bookshelf: { Icon: BookOpen, label: "书房" },
+  outline: { Icon: ClipboardList, label: "大纲" },
+  letters: { Icon: Mail, label: "来信" },
+  achievement: { Icon: Trophy, label: "成就" },
+  "auto-writer": { Icon: Bot, label: "续写精修" },
+  materials: { Icon: FolderOpen, label: "素材库" },
 };
 
 export function TitleBar(): JSX.Element {
   const mainView = useAppStore((s) => s.mainView);
   const [isMaximized, setIsMaximized] = useState(false);
   const isMac = PLATFORM === "mac";
+  const reduceMotion = useReducedMotion() === true;
+  const viewPillMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   // 初次加载与窗口最大化状态变化时同步图标
   useEffect(() => {
@@ -74,6 +101,7 @@ export function TitleBar(): JSX.Element {
   };
 
   const viewMeta = VIEW_LABEL[mainView] ?? VIEW_LABEL.writing;
+  const ViewIcon = viewMeta.Icon;
 
   return (
     <div
@@ -105,10 +133,19 @@ export function TitleBar(): JSX.Element {
           InkForge
         </span>
         <span className="ml-1 hidden h-3.5 w-px bg-ink-600/40 dark:bg-white/10 sm:inline" />
-        <span className="hidden items-center gap-1 rounded-full bg-ink-700/50 px-2 py-0.5 text-[11px] text-ink-300 ring-1 ring-ink-600/40 dark:bg-white/[0.04] dark:ring-white/5 sm:inline-flex">
-          <span aria-hidden>{viewMeta.icon}</span>
-          <span>{viewMeta.label}</span>
-        </span>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={mainView}
+            className="hidden items-center gap-1 rounded-full bg-ink-700/50 px-2 py-0.5 text-[11px] text-ink-300 ring-1 ring-ink-600/40 dark:bg-white/[0.04] dark:ring-white/5 sm:inline-flex"
+            variants={viewPillMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <ViewIcon aria-hidden className="h-3 w-3" />
+            <span>{viewMeta.label}</span>
+          </motion.span>
+        </AnimatePresence>
       </div>
 
       {/* ===== 中：留白拖拽区（保持极简） ===== */}
@@ -179,23 +216,50 @@ function BrandMark(): JSX.Element {
  */
 function ActiveStatusPill(): JSX.Element {
   const mainView = useAppStore((s) => s.mainView);
-  if (mainView === "writing" || mainView === "bookshelf") {
-    return (
-      <div className="mr-2 hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10.5px] text-emerald-300 sm:inline-flex">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        </span>
-        <span>自动保存中</span>
-      </div>
-    );
-  }
+  const reduceMotion = useReducedMotion() === true;
+  const pillMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+
   return (
-    <div className="mr-2 hidden items-center gap-1 rounded-full border border-ink-600/40 bg-ink-700/40 px-2 py-0.5 text-[10.5px] text-ink-400 dark:border-white/5 dark:bg-white/[0.03] sm:inline-flex">
-      <span>InkForge</span>
-      <span className="text-ink-500">·</span>
-      <span className="text-ink-300">beta</span>
-    </div>
+    <AnimatePresence mode="wait" initial={false}>
+      {mainView === "writing" || mainView === "bookshelf" ? (
+        <motion.div
+          key="autosave"
+          className="mr-2 hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10.5px] text-emerald-300 sm:inline-flex"
+          variants={pillMotion}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <span className="relative flex h-1.5 w-1.5">
+            <motion.span
+              aria-hidden
+              className="absolute inline-flex h-full w-full rounded-full bg-emerald-400"
+              animate={
+                reduceMotion
+                  ? { opacity: 0.6, scale: 1 }
+                  : { opacity: [0.55, 0, 0.55], scale: [1, 1.9, 1] }
+              }
+              transition={{ duration: 1.8, ease: EASE_IN_OUT, repeat: Infinity }}
+            />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          </span>
+          <span>自动保存中</span>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="version"
+          className="mr-2 hidden items-center gap-1 rounded-full border border-ink-600/40 bg-ink-700/40 px-2 py-0.5 text-[10.5px] text-ink-400 dark:border-white/5 dark:bg-white/[0.03] sm:inline-flex"
+          variants={pillMotion}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+        >
+          <span>InkForge</span>
+          <span className="text-ink-500">·</span>
+          <span className="text-ink-300">beta</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -207,7 +271,7 @@ interface WindowButtonProps {
 
 /**
  * Windows 11 风格窗口按钮：
- * - 46 × 36 命中区域
+ * - 46 by 36 命中区域
  * - hover 时灰色覆盖；close 红色
  * - SVG 线条图，颜色随 currentColor
  */
@@ -217,8 +281,17 @@ function WindowButton({
   ariaLabel,
 }: WindowButtonProps): JSX.Element {
   const isClose = kind === "close";
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
+
   return (
-    <button
+    <motion.button
       type="button"
       aria-label={ariaLabel}
       title={ariaLabel}
@@ -228,9 +301,10 @@ function WindowButton({
           ? "hover:bg-[#e81123] hover:text-white"
           : "hover:bg-ink-700/60 hover:text-ink-100 dark:hover:bg-white/10 dark:hover:text-white"
       }`}
+      {...buttonMotion}
     >
       <ButtonIcon kind={kind} />
-    </button>
+    </motion.button>
   );
 }
 

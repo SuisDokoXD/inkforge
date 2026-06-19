@@ -5,8 +5,11 @@
 // 把单行的样式状态机从主对话框抽出来，避免那 60+ 行嵌套破坏阅读。
 // =============================================================================
 
+import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import type { WorldPackEntryRecord } from "@inkforge/shared";
+import { fadeOnly } from "../../../lib/motion-tokens";
 
 interface Props {
   entry: WorldPackEntryRecord;
@@ -29,6 +32,8 @@ export function EntryListItem({
   onMoveDown,
   onDelete,
 }: Props): JSX.Element {
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+
   return (
     <div
       className={`group flex items-center gap-1 border-b border-ink-800/60 px-2 py-2 transition-colors ${
@@ -66,17 +71,53 @@ export function EntryListItem({
           {entry.title}
         </span>
       </button>
-      <button
-        onClick={(ev) => {
-          ev.stopPropagation();
-          if (confirm(`删除条目"${entry.title}"？`)) onDelete();
-        }}
-        className="rounded p-1 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
-        title="删除"
-        aria-label={`删除条目「${entry.title}」`}
-      >
-        <Trash2 className="h-3 w-3" />
-      </button>
+      <AnimatePresence initial={false} mode="wait">
+        {deleteConfirming ? (
+          <motion.div
+            key="delete-confirm"
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="flex items-center gap-1"
+          >
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                setDeleteConfirming(false);
+              }}
+              className="rounded px-1.5 py-0.5 text-[11px] text-ink-300 hover:bg-ink-700"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={(ev) => {
+                ev.stopPropagation();
+                onDelete();
+              }}
+              className="rounded bg-red-500/15 px-1.5 py-0.5 text-[11px] text-red-200 hover:bg-red-500/25"
+            >
+              确认删除
+            </button>
+          </motion.div>
+        ) : (
+          <motion.button
+            key="delete-start"
+            type="button"
+            onClick={(ev) => {
+              ev.stopPropagation();
+              setDeleteConfirming(true);
+            }}
+            className="rounded p-1 opacity-0 transition-opacity hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+            title="删除"
+            aria-label={`删除条目「${entry.title}」`}
+          >
+            <Trash2 className="h-3 w-3" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

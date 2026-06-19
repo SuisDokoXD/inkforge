@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ShieldAlert } from "lucide-react";
 import "@xterm/xterm/css/xterm.css";
 import { terminalApi } from "../lib/api";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../lib/motion-tokens";
 
 const DANGER_PATTERN =
   /\b(rm\s+-rf\b|rm\s+-fr\b|sudo\s+rm\b|del\s+\/(?:s|f|q)\b|rmdir\s+\/s\b|format\s+[a-z]:|shutdown\b|diskpart\b|mkfs\b|dd\s+if=|>\s*\/dev\/sd[a-z])/i;
@@ -20,9 +29,20 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
   const sessionIdRef = useRef<string | null>(null);
   const lineBufferRef = useRef<string>("");
   const dangerPendingRef = useRef<boolean>(false);
+  const cancelDangerButtonRef = useRef<HTMLButtonElement | null>(null);
   const [status, setStatus] = useState<"starting" | "ready" | "exited" | "error">("starting");
   const [errorText, setErrorText] = useState<string | null>(null);
   const [shellLabel, setShellLabel] = useState<string>("");
+  const [dangerConfirmLine, setDangerConfirmLine] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const dangerMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -59,28 +79,19 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
 
     const dims = safeFit();
 
-    const confirmDanger = (line: string): boolean => {
-      const msg = `检测到可能危险的命令，确认执行？\n\n${line}`;
-      return typeof window !== "undefined" ? window.confirm(msg) : true;
-    };
-
     const handleData = (data: string): void => {
       const id = sessionIdRef.current;
       if (!id) return;
+      if (dangerPendingRef.current) return;
       // Track the current line locally to intercept dangerous commands when Enter is pressed.
       for (const ch of data) {
         if (ch === "\r" || ch === "\n") {
           const candidate = lineBufferRef.current;
           if (DANGER_PATTERN.test(candidate) && !dangerPendingRef.current) {
             dangerPendingRef.current = true;
-            const ok = confirmDanger(candidate);
-            dangerPendingRef.current = false;
+            setDangerConfirmLine(candidate);
             lineBufferRef.current = "";
-            if (!ok) {
-              // swallow the Enter and clear the line visually: send Ctrl-U
-              void terminalApi.input({ id, data: "\u0015" });
-              return;
-            }
+            return;
           }
           lineBufferRef.current = "";
         } else if (ch === "\u007f" || ch === "\b") {
@@ -169,6 +180,34 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
     return () => clearTimeout(t);
   }, [height]);
 
+  useEffect(() => {
+    if (!dangerConfirmLine) return;
+    cancelDangerButtonRef.current?.focus();
+  }, [dangerConfirmLine]);
+
+  const restoreTerminalFocus = (): void => {
+    requestAnimationFrame(() => termRef.current?.focus());
+  };
+
+  const cancelDangerCommand = (): void => {
+    const id = sessionIdRef.current;
+    dangerPendingRef.current = false;
+    setDangerConfirmLine(null);
+    if (id) {
+      // Swallow the pending Enter and clear the line visually.
+      void terminalApi.input({ id, data: "\u0015" });
+    }
+    restoreTerminalFocus();
+  };
+
+  const confirmDangerCommand = (): void => {
+    const id = sessionIdRef.current;
+    dangerPendingRef.current = false;
+    setDangerConfirmLine(null);
+    if (id) void terminalApi.input({ id, data: "\r" });
+    restoreTerminalFocus();
+  };
+
   const onDragStart = (event: React.MouseEvent<HTMLDivElement>): void => {
     event.preventDefault();
     const startY = event.clientY;
@@ -183,14 +222,35 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
     window.addEventListener("mouseup", onUp);
   };
 
+  const onResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      onResizeDrag(24);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      onResizeDrag(-24);
+    }
+  };
+
+  const onDangerConfirmKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    cancelDangerCommand();
+  };
+
   return (
     <div
       className="flex shrink-0 flex-col border-t border-ink-700 bg-[#0f141b]"
       style={{ height }}
     >
       <div
-        className="h-1.5 cursor-row-resize bg-ink-700/80 hover:bg-accent-500/60"
+        role="separator"
+        aria-label="调整终端高度"
+        aria-orientation="horizontal"
+        tabIndex={0}
+        className="h-1.5 cursor-row-resize bg-ink-700/80 hover:bg-accent-500/60 focus:bg-accent-500 focus:outline-none"
         onMouseDown={onDragStart}
+        onKeyDown={onResizeKeyDown}
         title="拖动调整高度"
       />
       <div className="flex items-center justify-between border-b border-ink-700 bg-ink-900/70 px-3 py-1 text-[11px] text-ink-400">
@@ -210,6 +270,45 @@ export function TerminalPanel({ height, onClose, onResizeDrag }: TerminalPanelPr
           </button>
         </div>
       </div>
+      <AnimatePresence initial={false}>
+        {dangerConfirmLine ? (
+          <motion.div
+            key="danger-confirm"
+            role="alert"
+            variants={dangerMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            onKeyDown={onDangerConfirmKeyDown}
+            className="flex flex-wrap items-center gap-2 border-b border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100"
+          >
+            <ShieldAlert aria-hidden className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-medium">检测到可能危险的命令</span>
+            <code className="max-w-[42rem] truncate rounded bg-ink-950/70 px-1.5 py-0.5 text-[11px] text-rose-100">
+              {dangerConfirmLine}
+            </code>
+            <div className="ml-auto flex gap-1">
+              <motion.button
+                ref={cancelDangerButtonRef}
+                type="button"
+                onClick={cancelDangerCommand}
+                className="rounded border border-ink-600 px-2 py-1 text-ink-200 hover:bg-ink-800"
+                {...buttonMotion}
+              >
+                取消
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={confirmDangerCommand}
+                className="rounded bg-rose-500/20 px-2 py-1 font-medium text-rose-100 hover:bg-rose-500/30"
+                {...buttonMotion}
+              >
+                确认执行
+              </motion.button>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <div className="min-h-0 flex-1 bg-[#0f141b] px-2 py-1">
         <div ref={containerRef} className="h-full w-full" />
       </div>

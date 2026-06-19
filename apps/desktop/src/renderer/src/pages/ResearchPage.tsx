@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   BookMarked,
   ClipboardCopy,
   ExternalLink,
   FilePlus2,
   KeyRound,
-  Loader2,
   NotebookPen,
   Search,
   Trash2,
@@ -19,8 +19,11 @@ import type {
 import { chapterApi, researchApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { ResearchCredentialsDialog } from "../components/research/ResearchCredentialsDialog";
+import { MotionSpinner } from "../components/MotionSpinner";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyActionError, friendlyErrorMessage } from "../lib/friendly-error";
+import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 const PROVIDER_OPTIONS: Array<{ value: ResearchProvider; label: string; hint: string }> = [
   {
@@ -120,7 +123,9 @@ export function ResearchPage(): JSX.Element {
   const [query, setQuery] = useState("");
   const [searchState, setSearchState] = useState<SearchState | null>(null);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const { status, showStatus } = useTimedStatus();
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   const notesQuery = useQuery({
     queryKey: ["research-notes", projectId],
@@ -160,17 +165,17 @@ export function ResearchPage(): JSX.Element {
       });
       const detail = researchErrorMessage(res.error);
       const queryCount = res.expandedQueries?.length ?? 1;
-      setStatus(
+      showStatus(
         res.fellBackToLlm
           ? `已改用整理查找思路（不查网页）${detail ? `：${detail}` : ""}`
           : res.hits.length === 0
             ? `没有命中结果${detail ? `：${detail}` : ""}`
             : `命中 ${res.hits.length} 条 · 已尝试 ${queryCount} 种查法 · ${providerLabel(res.usedProvider)}`,
+        3000,
       );
-      window.setTimeout(() => setStatus(null), 3000);
     },
     onError: (err) => {
-      setStatus(friendlyErrorMessage(err, "检索失败，请换一个查法后重试。"));
+      showStatus(friendlyErrorMessage(err, "检索失败，请换一个查法后重试。"));
     },
   });
 
@@ -188,11 +193,10 @@ export function ResearchPage(): JSX.Element {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["research-notes", projectId] });
-      setStatus("已保存到资料笔记");
-      window.setTimeout(() => setStatus(null), 2000);
+      showStatus("已保存到资料笔记", 2000);
     },
     onError: (err) => {
-      setStatus(friendlyActionError("保存失败", err));
+      showStatus(friendlyActionError("保存失败", err));
     },
   });
 
@@ -214,18 +218,25 @@ export function ResearchPage(): JSX.Element {
       });
     },
     onSuccess: () => {
-      setStatus("已插入当前章节末尾");
-      window.setTimeout(() => setStatus(null), 2000);
+      showStatus("已插入当前章节末尾", 2000);
     },
     onError: (err) => {
-      setStatus(friendlyActionError("插入章节失败", err));
+      showStatus(friendlyActionError("插入章节失败", err));
     },
   });
 
   const deleteNoteMut = useMutation({
     mutationFn: (id: string) => researchApi.delete({ id }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["research-notes", projectId] }),
+    onMutate: () => {
+      showStatus(null);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["research-notes", projectId] });
+      showStatus("已删除资料", 2000);
+    },
+    onError: (err) => {
+      showStatus(friendlyActionError("删除失败", err));
+    },
   });
 
   const notes = notesQuery.data ?? [];
@@ -321,7 +332,7 @@ export function ResearchPage(): JSX.Element {
               className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
             >
               {searchMut.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <MotionSpinner className="h-4 w-4" />
               ) : (
                 <Search className="h-4 w-4" />
               )}
@@ -347,11 +358,21 @@ export function ResearchPage(): JSX.Element {
           </div>
         </header>
 
-        {status && (
-          <div className="border-b border-ink-700 bg-ink-900/40 px-5 py-2 text-[11px] text-ink-400">
-            {status}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {status ? (
+            <motion.div
+              key="research-status"
+              className="border-b border-ink-700 bg-ink-900/40 px-5 py-2 text-[11px] text-ink-400"
+              role="status"
+              variants={statusMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {status}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
           {!searchState ? (
@@ -374,8 +395,7 @@ export function ResearchPage(): JSX.Element {
               }
               onCopyUrl={(url) => {
                 navigator.clipboard.writeText(url);
-                setStatus("已复制链接");
-                window.setTimeout(() => setStatus(null), 1500);
+                showStatus("已复制链接", 1500);
               }}
             />
           )}
@@ -385,6 +405,7 @@ export function ResearchPage(): JSX.Element {
       <ResearchNotesSidebar
         notes={notes}
         groupedNotes={groupedNotes}
+        deletingNoteId={deleteNoteMut.isPending ? deleteNoteMut.variables : null}
         onDelete={(id) => deleteNoteMut.mutate(id)}
       />
 
@@ -634,12 +655,18 @@ function SearchResults({
 function ResearchNotesSidebar({
   notes,
   groupedNotes,
+  deletingNoteId,
   onDelete,
 }: {
   notes: ResearchNoteRecord[];
   groupedNotes: Array<[string, ResearchNoteRecord[]]>;
+  deletingNoteId?: string | null;
   onDelete: (id: string) => void;
 }): JSX.Element {
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const confirmMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+
   return (
     <aside className="flex w-[340px] shrink-0 flex-col border-l border-ink-700 bg-ink-900/45">
       <div className="border-b border-ink-700 px-4 py-3">
@@ -706,14 +733,52 @@ function ResearchNotesSidebar({
                           原文
                         </a>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onDelete(note.id)}
-                        className="inline-flex items-center gap-1 text-red-300 hover:underline"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        删除
-                      </button>
+                      <AnimatePresence initial={false} mode="wait">
+                        {deleteConfirmId === note.id ? (
+                          <motion.div
+                            key="delete-confirm"
+                            className="flex flex-wrap items-center gap-1.5 rounded-md border border-red-500/20 bg-red-500/10 px-2 py-1 text-red-100"
+                            variants={confirmMotion}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                          >
+                            <span>确认删除？</span>
+                            <button
+                              type="button"
+                              className="rounded px-1.5 py-0.5 text-ink-300 hover:bg-ink-700"
+                              onClick={() => setDeleteConfirmId(null)}
+                            >
+                              取消
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded bg-red-500/15 px-1.5 py-0.5 font-medium text-red-100 hover:bg-red-500/25 disabled:opacity-60"
+                              disabled={deletingNoteId === note.id}
+                              onClick={() => {
+                                onDelete(note.id);
+                                setDeleteConfirmId(null);
+                              }}
+                            >
+                              {deletingNoteId === note.id ? "删除中" : "删除"}
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <motion.button
+                            key="delete-start"
+                            type="button"
+                            onClick={() => setDeleteConfirmId(note.id)}
+                            className="inline-flex items-center gap-1 text-red-300 hover:underline"
+                            variants={fadeOnly}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            删除
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </li>
                 ))}

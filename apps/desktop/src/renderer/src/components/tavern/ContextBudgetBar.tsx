@@ -1,4 +1,5 @@
 import { useAppStore } from "../../stores/app-store";
+import { MotionPulse } from "../MotionSpinner";
 
 interface ContextBudgetBarProps {
   sessionId: string;
@@ -22,11 +23,11 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
 
   let color = "bg-emerald-500";
   let textColor = "text-emerald-300";
-  let ring = "";
+  let shouldPulse = false;
   if (remainPct <= 10) {
     color = "bg-red-500";
     textColor = "text-red-300";
-    ring = "animate-pulse";
+    shouldPulse = true;
   } else if (remainPct <= 30) {
     color = "bg-accent-400";
     textColor = "text-accent-300";
@@ -39,8 +40,9 @@ export function ContextBudgetBar({ sessionId }: ContextBudgetBarProps): JSX.Elem
           讨论记忆 {usedTokens} / {budgetTokens}
         </span>
         <div className="flex-1 h-2 rounded-full bg-ink-900 overflow-hidden">
-          <div
-            className={`h-full transition-all duration-300 ${color} ${ring}`}
+          <MotionPulse
+            active={shouldPulse}
+            className={`block h-full transition-[width,opacity] duration-300 ${color}`}
             style={{ width: `${percent.toFixed(1)}%` }}
           />
         </div>

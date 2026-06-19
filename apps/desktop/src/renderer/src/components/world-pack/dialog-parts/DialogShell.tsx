@@ -5,12 +5,22 @@
 // 内部内容由调用方塞 children，与具体的编辑表单解耦。
 // =============================================================================
 
-import { Check, Loader2, X } from "lucide-react";
+import type { ReactNode } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { Check, X } from "lucide-react";
+import { AnimatedDialog } from "../../AnimatedDialog";
+import { MotionSpinner } from "../../MotionSpinner";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  tapPress,
+} from "../../../lib/motion-tokens";
 
 export type DialogSaveState = "idle" | "saving" | "saved";
 
 interface DialogShellProps {
-  children: React.ReactNode;
+  children: ReactNode;
   onClose(): void;
   title?: string;
   subtitle?: string;
@@ -24,28 +34,48 @@ export function DialogShell({
   subtitle,
   saveState,
 }: DialogShellProps): JSX.Element {
+  const reduce = useReducedMotion();
+  const titleId = title ? "world-pack-dialog-title" : undefined;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="relative h-[88vh] w-[1080px] max-w-[96vw] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl ring-1 ring-accent-500/20">
+    <AnimatedDialog
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      ariaLabel={title ? undefined : "卡牌编辑"}
+      overlayClassName="flex items-center justify-center p-4 backdrop-blur-sm"
+      panelClassName="relative h-[88vh] w-[1080px] max-w-[96vw] overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl ring-1 ring-accent-500/20"
+    >
+      <motion.div
+        className="h-full"
+        variants={reduce ? fadeOnly : fadeSlideUp}
+        initial="initial"
+        animate="animate"
+      >
         {title && (
           <div className="absolute inset-x-0 top-0 z-20 flex items-center gap-3 border-b border-ink-700/80 bg-ink-900/85 px-4 py-2.5 backdrop-blur-md">
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-ink-100">{title}</div>
+              <div id={titleId} className="truncate text-sm font-semibold text-ink-100">
+                {title}
+              </div>
               {subtitle && (
                 <div className="truncate text-[11px] text-ink-400">{subtitle}</div>
               )}
             </div>
             {saveState && saveState !== "idle" && (
-              <span
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-all ${
+              <motion.span
+                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-[color,background-color,box-shadow,opacity] duration-200 ${
                   saveState === "saving"
                     ? "bg-ink-800 text-ink-300"
                     : "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40"
                 }`}
+                variants={reduce ? fadeOnly : fadeSlideUp}
+                initial="initial"
+                animate="animate"
               >
                 {saveState === "saving" ? (
                   <>
-                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <MotionSpinner className="h-3 w-3" />
                     保存中
                   </>
                 ) : (
@@ -54,26 +84,28 @@ export function DialogShell({
                     已保存
                   </>
                 )}
-              </span>
+              </motion.span>
             )}
-            <button
+            <motion.button
               onClick={onClose}
               className="rounded-md p-1.5 text-ink-300 hover:bg-ink-800 hover:text-ink-100"
               title="关闭 (Esc)"
               aria-label="关闭卡牌编辑"
+              whileHover={hoverLift}
+              whileTap={tapPress}
             >
               <X className="h-4 w-4" />
-            </button>
+            </motion.button>
           </div>
         )}
         <div className={title ? "h-full pt-[52px]" : "h-full"}>{children}</div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatedDialog>
   );
 }
 
 // 表单字段标签：统一的小号大写字间距样式
-export function FieldLabel({ children }: { children: React.ReactNode }): JSX.Element {
+export function FieldLabel({ children }: { children: ReactNode }): JSX.Element {
   return (
     <label className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
       {children}

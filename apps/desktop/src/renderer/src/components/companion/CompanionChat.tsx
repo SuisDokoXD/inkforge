@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { X } from "lucide-react";
 import type { LLMChatMessage } from "@inkforge/shared";
 import { llmApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { MotionPulse } from "../MotionSpinner";
+import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../../lib/motion-tokens";
 import {
   applyPersona,
   PET_DEFAULT_NAME,
@@ -44,6 +48,7 @@ export function CompanionChat({
   anchorY,
   onClose,
 }: CompanionChatProps): JSX.Element | null {
+  const reduce = useReducedMotion() === true;
   const [messages, setMessages] = useState<ChatMsg[]>(() => [
     {
       id: "greeting",
@@ -102,11 +107,9 @@ export function CompanionChat({
     }
   }, [open]);
 
-  if (!open) return null;
-
   // 自适应位置：默认精灵左侧；左侧不够则右侧；上下居中且贴近视窗
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+  const vw = typeof window === "undefined" ? 1024 : window.innerWidth;
+  const vh = typeof window === "undefined" ? 768 : window.innerHeight;
   const margin = 16;
   let left = anchorX - GAP - CHAT_PANEL_W;
   if (left < margin) left = anchorX + GAP + 32; // 32 ≈ 精灵半径
@@ -124,78 +127,92 @@ export function CompanionChat({
   };
 
   return createPortal(
-    <div
-      className="pointer-events-auto fixed z-[9998] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-md animate-[companion-bubble-in_220ms_cubic-bezier(0.22,1,0.36,1)_both]"
-      style={{
-        left: `${left}px`,
-        top: `${top}px`,
-        width: `${CHAT_PANEL_W}px`,
-        height: `${CHAT_PANEL_H}px`,
-      }}
-    >
-      {/* 顶栏 */}
-      <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-b from-ink-800/80 to-ink-900/80 px-3 py-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🐾</span>
-          <div>
-            <div className="text-[12.5px] font-semibold text-ink-100">
-              {petName || PET_DEFAULT_NAME}
-            </div>
-            <div className="text-[10px] text-emerald-300/80">● 在线</div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded p-1 text-ink-400 hover:bg-ink-700/60 hover:text-ink-100"
-          aria-label="关闭聊天"
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          className="pointer-events-auto fixed z-[9998] flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-md"
+          variants={reduce ? fadeOnly : fadeSlideUp}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          style={{
+            left: `${left}px`,
+            top: `${top}px`,
+            width: `${CHAT_PANEL_W}px`,
+            height: `${CHAT_PANEL_H}px`,
+          }}
         >
-          ✕
-        </button>
-      </div>
+          {/* 顶栏 */}
+          <div className="flex items-center justify-between border-b border-white/5 bg-gradient-to-b from-ink-800/80 to-ink-900/80 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base" aria-hidden>
+                🐾
+              </span>
+              <div>
+                <div className="text-[12.5px] font-semibold text-ink-100">
+                  {petName || PET_DEFAULT_NAME}
+                </div>
+                <div className="text-[10px] text-emerald-300/80">在线</div>
+              </div>
+            </div>
+            <motion.button
+              type="button"
+              onClick={onClose}
+              className="rounded p-1 text-ink-400 hover:bg-ink-700/60 hover:text-ink-100"
+              aria-label="关闭聊天"
+              whileHover={reduce ? undefined : hoverLift}
+              whileTap={reduce ? undefined : tapPress}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </motion.button>
+          </div>
 
-      {/* 消息列表 */}
-      <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
-        {messages.map((m) => (
-          <MessageBubble key={m.id} role={m.role} text={display(m.content)} />
-        ))}
-        {sendMut.isPending && (
-          <MessageBubble
-            role="assistant"
-            text={display("{self}想想…")}
-            typing
-          />
-        )}
-      </div>
+          {/* 消息列表 */}
+          <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto p-3 scrollbar-thin">
+            {messages.map((m) => (
+              <MessageBubble key={m.id} role={m.role} text={display(m.content)} />
+            ))}
+            {sendMut.isPending && (
+              <MessageBubble
+                role="assistant"
+                text={display("{self}想想…")}
+                typing
+              />
+            )}
+          </div>
 
-      {/* 输入区 */}
-      <div className="border-t border-white/5 bg-ink-900/80 p-2">
-        <div className="flex gap-1.5">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            placeholder={`和 ${petName || PET_DEFAULT_NAME} 说点什么…（Enter 发送）`}
-            rows={2}
-            className="flex-1 resize-none rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[12px] text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
-          />
-          <button
-            type="button"
-            disabled={!input.trim() || sendMut.isPending}
-            onClick={handleSend}
-            className="self-end rounded-md bg-accent-500 px-3 py-1.5 text-[11px] font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
-          >
-            发送
-          </button>
-        </div>
-      </div>
-    </div>,
+          {/* 输入区 */}
+          <div className="border-t border-white/5 bg-ink-900/80 p-2">
+            <div className="flex gap-1.5">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder={`和 ${petName || PET_DEFAULT_NAME} 说点什么…（Enter 发送）`}
+                rows={2}
+                className="flex-1 resize-none rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[12px] text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
+              />
+              <motion.button
+                type="button"
+                disabled={!input.trim() || sendMut.isPending}
+                onClick={handleSend}
+                className="self-end rounded-md bg-accent-500 px-3 py-1.5 text-[11px] font-medium text-ink-900 hover:bg-accent-400 disabled:cursor-default disabled:opacity-50"
+                whileHover={!input.trim() || sendMut.isPending || reduce ? undefined : hoverLift}
+                whileTap={!input.trim() || sendMut.isPending || reduce ? undefined : tapPress}
+              >
+                发送
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
     document.body,
   );
 }
@@ -209,9 +226,15 @@ function MessageBubble({
   text: string;
   typing?: boolean;
 }): JSX.Element {
+  const reduce = useReducedMotion() === true;
   const isAssistant = role === "assistant";
   return (
-    <div className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+    <motion.div
+      className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
+      variants={reduce ? fadeOnly : fadeSlideUp}
+      initial="initial"
+      animate="animate"
+    >
       <div
         className={`max-w-[85%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-[12px] leading-relaxed ${
           isAssistant
@@ -221,12 +244,12 @@ function MessageBubble({
       >
         {text}
         {typing && <span className="ml-1 inline-flex">
-          <span className="animate-pulse">●</span>
-          <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
-          <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
+          <MotionPulse>●</MotionPulse>
+          <MotionPulse delay={0.16}>●</MotionPulse>
+          <MotionPulse delay={0.32}>●</MotionPulse>
         </span>}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

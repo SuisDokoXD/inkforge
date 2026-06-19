@@ -1,8 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Image, ImagePlus, Trash2 } from "lucide-react";
 import type { ProjectRecord } from "@inkforge/shared";
 import { coverApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../../lib/motion-tokens";
+import { useTimedStatus } from "../../lib/use-timed-status";
+import { MotionSpinner } from "../MotionSpinner";
 
 interface CoverUploaderProps {
   projectId: string;
@@ -16,6 +27,11 @@ interface CoverUploaderProps {
 const ACCEPT = "image/png,image/jpeg,image/webp,image/gif";
 const MAX_BYTES = 2 * 1024 * 1024;
 
+type CoverStatus = {
+  kind: "info" | "success" | "error";
+  text: string;
+};
+
 export function CoverUploader({
   projectId,
   size = "lg",
@@ -23,10 +39,21 @@ export function CoverUploader({
   fallbackName,
 }: CoverUploaderProps): JSX.Element {
   const queryClient = useQueryClient();
+  const inputId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isEditable = editable ?? size === "lg";
-  const [error, setError] = useState<string | null>(null);
+  const { status, showStatus } = useTimedStatus<CoverStatus>();
   const [dragOver, setDragOver] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   const coverQuery = useQuery({
     queryKey: ["bookCover", projectId],
@@ -44,28 +71,40 @@ export function CoverUploader({
           mime: file.type,
         }),
       ),
+    onMutate: () => {
+      showStatus(null);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bookCover", projectId] });
       queryClient.invalidateQueries({ queryKey: ["bookshelf-books"] });
-      setError(null);
+      showStatus({ kind: "success", text: "已更新" }, 2000);
     },
-    onError: (err) => setError(friendlyErrorMessage(err, "上传封面失败，请换一张图片后重试。")),
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "上传封面失败，请换一张图片后重试。"),
+      });
+    },
   });
 
   const deleteMut = useMutation({
     mutationFn: () => coverApi.delete({ projectId }),
+    onMutate: () => {
+      showStatus(null);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bookCover", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["bookshelf-books"] });
+      void queryClient.invalidateQueries({ queryKey: ["bookCover", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["bookshelf-books"] });
+      setConfirmDelete(false);
+      showStatus({ kind: "success", text: "已移除" }, 2000);
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "移除封面失败，请稍后重试。"),
+      });
     },
   });
-
-  useEffect(() => {
-    if (uploadMut.isSuccess) {
-      const t = setTimeout(() => uploadMut.reset(), 2000);
-      return () => clearTimeout(t);
-    }
-  }, [uploadMut.isSuccess, uploadMut]);
 
   const cover = coverQuery.data?.cover;
   const base64 = coverQuery.data?.base64;
@@ -73,29 +112,51 @@ export function CoverUploader({
 
   const dimensions = size === "lg" ? "h-44 w-32" : "h-12 w-9";
   const radius = size === "lg" ? "rounded-lg" : "rounded";
+  const isBusy = uploadMut.isPending || deleteMut.isPending;
+  const coverMotion = isEditable && !isBusy ? buttonMotion : {};
 
   const tryUpload = (file: File | undefined): void => {
-    if (!file) return;
+    if (!file || isBusy) return;
     if (!ACCEPT.split(",").includes(file.type)) {
-      setError(`不支持的格式：${file.type || "未知"}`);
+      showStatus({ kind: "error", text: `不支持的格式：${file.type || "未知"}` });
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError(`文件过大（${Math.round(file.size / 1024)}KB），上限 2 MB`);
+      showStatus({
+        kind: "error",
+        text: `文件过大（${Math.round(file.size / 1024)}KB），上限 2 MB`,
+      });
       return;
     }
-    setError(null);
+    showStatus(null);
     uploadMut.mutate(file);
   };
 
+  const visibleStatus: CoverStatus | null =
+    uploadMut.isPending
+      ? { kind: "info", text: "上传中…" }
+      : deleteMut.isPending
+        ? { kind: "info", text: "移除中…" }
+        : status;
+
+  const statusClassName =
+    visibleStatus?.kind === "error"
+      ? "text-rose-400"
+      : visibleStatus?.kind === "success"
+        ? "text-emerald-300"
+        : "text-accent-300";
+
   return (
     <div className="flex flex-col items-center gap-1">
-      <div
+      <motion.label
+        htmlFor={isEditable && !isBusy ? inputId : undefined}
         role={isEditable ? "button" : undefined}
+        aria-label={isEditable ? (dataUrl ? "更换封面" : "上传封面") : undefined}
+        aria-disabled={isEditable ? isBusy : undefined}
+        aria-busy={isEditable ? isBusy : undefined}
         tabIndex={isEditable ? 0 : undefined}
-        onClick={isEditable ? () => fileInputRef.current?.click() : undefined}
         onKeyDown={
-          isEditable
+          isEditable && !isBusy
             ? (e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -105,16 +166,16 @@ export function CoverUploader({
             : undefined
         }
         onDragOver={
-          isEditable
+          isEditable && !isBusy
             ? (e) => {
                 e.preventDefault();
                 setDragOver(true);
               }
             : undefined
         }
-        onDragLeave={isEditable ? () => setDragOver(false) : undefined}
+        onDragLeave={isEditable && !isBusy ? () => setDragOver(false) : undefined}
         onDrop={
-          isEditable
+          isEditable && !isBusy
             ? (e) => {
                 e.preventDefault();
                 setDragOver(false);
@@ -122,19 +183,22 @@ export function CoverUploader({
               }
             : undefined
         }
-        className={`group relative overflow-hidden border bg-ink-800 transition-all ${dimensions} ${radius} ${
-          isEditable
+        className={`group relative overflow-hidden border bg-ink-800 transition-[border-color,box-shadow,opacity,filter] duration-200 ${dimensions} ${radius} ${
+          isEditable && !isBusy
             ? "cursor-pointer border-dashed hover:border-accent-400/60 hover:shadow-lg hover:shadow-accent-500/10"
+            : isEditable
+              ? "cursor-wait border-accent-400/30 opacity-85"
             : "border-ink-700"
         } ${dragOver ? "border-accent-400 ring-2 ring-accent-400/40" : "border-ink-700"}`}
+        {...coverMotion}
       >
         {dataUrl ? (
           <>
             <img src={dataUrl} alt="封面" className="h-full w-full object-cover" />
             {isEditable && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs font-medium text-white/0 transition-all group-hover:bg-black/55 group-hover:text-white">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/0 text-xs font-medium text-white/0 transition-[background-color,color] duration-200 group-hover:bg-black/55 group-hover:text-white">
                 <div className="flex flex-col items-center gap-1">
-                  <span aria-hidden className="text-base">🖼</span>
+                  <Image className="h-4 w-4" aria-hidden />
                   <span>点击更换</span>
                 </div>
               </div>
@@ -151,7 +215,7 @@ export function CoverUploader({
           >
             {size === "lg" ? (
               <>
-                <span aria-hidden className="text-2xl">📷</span>
+                <ImagePlus className="h-7 w-7" aria-hidden />
                 {isEditable ? (
                   <>
                     <span className="text-xs font-medium">上传封面</span>
@@ -167,29 +231,72 @@ export function CoverUploader({
                 )}
               </>
             ) : (
-              <span className="text-[10px]">📕</span>
+              <Image className="h-4 w-4" aria-hidden />
             )}
           </div>
         )}
-      </div>
+      </motion.label>
 
       {isEditable && dataUrl && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteMut.mutate();
-          }}
-          className="text-[10px] text-ink-500 hover:text-rose-400"
-        >
-          移除封面
-        </button>
+        <AnimatePresence initial={false} mode="wait">
+          {confirmDelete ? (
+            <motion.div
+              key="delete-confirm"
+              className="flex items-center gap-1 text-[10px]"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleteMut.isPending}
+                className="rounded px-1.5 py-0.5 text-ink-500 hover:bg-ink-800 hover:text-ink-300 disabled:cursor-default disabled:opacity-60"
+              >
+                取消
+              </button>
+              <motion.button
+                type="button"
+                onClick={() => deleteMut.mutate()}
+                disabled={deleteMut.isPending}
+                className="inline-flex min-w-[52px] items-center justify-center gap-1 rounded px-1.5 py-0.5 text-rose-300 hover:bg-rose-500/10 disabled:cursor-default disabled:opacity-60"
+                {...(deleteMut.isPending ? {} : buttonMotion)}
+              >
+                {deleteMut.isPending ? <MotionSpinner className="h-3 w-3" /> : null}
+                {deleteMut.isPending ? "移除中" : "确认移除"}
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="delete-start"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete(true);
+              }}
+              className="inline-flex items-center gap-1 text-[10px] text-ink-500 hover:text-rose-400"
+              variants={fadeOnly}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              aria-label="移除封面"
+              {...buttonMotion}
+            >
+              <Trash2 className="h-3 w-3" aria-hidden />
+              移除封面
+            </motion.button>
+          )}
+        </AnimatePresence>
       )}
       {isEditable && (
         <input
+          id={inputId}
           ref={fileInputRef}
           type="file"
+          aria-label={dataUrl ? "选择新的封面图片" : "选择封面图片"}
           accept={ACCEPT}
+          disabled={isBusy}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -198,17 +305,21 @@ export function CoverUploader({
           }}
         />
       )}
-      {error && (
-        <div className="max-w-[140px] text-center text-[10px] text-rose-400">
-          {error}
-        </div>
-      )}
-      {uploadMut.isPending && (
-        <div className="text-[10px] text-accent-300">上传中…</div>
-      )}
-      {uploadMut.isSuccess && (
-        <div className="text-[10px] text-emerald-300">已更新 ✓</div>
-      )}
+      <AnimatePresence initial={false}>
+        {visibleStatus ? (
+          <motion.div
+            className={`inline-flex max-w-[140px] items-center justify-center gap-1 text-center text-[10px] ${statusClassName}`}
+            role={visibleStatus.kind === "error" ? "alert" : "status"}
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {visibleStatus.kind === "info" ? <MotionSpinner className="h-3 w-3" /> : null}
+            {visibleStatus.text}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

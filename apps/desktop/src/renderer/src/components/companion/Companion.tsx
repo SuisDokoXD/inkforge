@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { X } from "lucide-react";
 import { useCompanionStore } from "../../stores/companion-store";
 import { CompanionBubble } from "./CompanionBubble";
 import { CompanionChat } from "./CompanionChat";
@@ -6,6 +8,13 @@ import { CompanionFestiveOverlay } from "./CompanionFestiveOverlay";
 import { CompanionParticles } from "./CompanionParticles";
 import { CompanionPomodoroRing } from "./CompanionPomodoroRing";
 import { CompanionLottie } from "./CompanionLottie";
+import { AnimatedDialog } from "../AnimatedDialog";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  tapPress,
+} from "../../lib/motion-tokens";
 import {
   pickFestivalLine,
   pickLine,
@@ -105,8 +114,57 @@ export function Companion({
   const clickTimestampsRef = useRef<number[]>([]);
   const lastClickTimeRef = useRef(0);
   const dblTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cheerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transientStateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const festival = detectFestival(new Date(), userBirthday);
+
+  const clearCheerTimer = (): void => {
+    if (cheerTimerRef.current) {
+      clearTimeout(cheerTimerRef.current);
+      cheerTimerRef.current = null;
+    }
+  };
+
+  const clearTransientStateTimer = (): void => {
+    if (transientStateTimerRef.current) {
+      clearTimeout(transientStateTimerRef.current);
+      transientStateTimerRef.current = null;
+    }
+  };
+
+  const scheduleTransientIdle = (delayMs: number): void => {
+    clearTransientStateTimer();
+    transientStateTimerRef.current = setTimeout(() => {
+      transientStateTimerRef.current = null;
+      setState("idle");
+    }, delayMs);
+  };
+
+  useEffect(
+    () => () => {
+      clearCheerTimer();
+      clearTransientStateTimer();
+      if (dblTimerRef.current) clearTimeout(dblTimerRef.current);
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (enabled) return;
+    clearCheerTimer();
+    clearTransientStateTimer();
+    if (dblTimerRef.current) {
+      clearTimeout(dblTimerRef.current);
+      dblTimerRef.current = null;
+    }
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setBubble(null);
+  }, [enabled]);
 
   // ----- 全局打字监听 -----
   useEffect(() => {
@@ -147,7 +205,11 @@ export function Companion({
 
       if (dailyAchieved && cheeredForDate !== todayKey) {
         setState("cheering");
-        setTimeout(() => markCheered(todayKey), 30_000);
+        clearCheerTimer();
+        cheerTimerRef.current = setTimeout(() => {
+          cheerTimerRef.current = null;
+          markCheered(todayKey);
+        }, 30_000);
         return;
       }
       if (state === "cheering") return;
@@ -256,7 +318,7 @@ export function Companion({
     if (recent.length >= QUICK_CLICK_THRESHOLD) {
       setState("dizzy");
       clickTimestampsRef.current = [];
-      setTimeout(() => setState("idle"), DIZZY_RESET_MS);
+      scheduleTransientIdle(DIZZY_RESET_MS);
     }
   };
 
@@ -268,9 +330,10 @@ export function Companion({
       now.getMinutes() === 11
     ) {
       setState("wishing");
-      setTimeout(() => setState("idle"), WISHING_RESET_MS);
+      scheduleTransientIdle(WISHING_RESET_MS);
       return;
     }
+    clearTransientStateTimer();
     if (pomodoro.mode === "idle") {
       startPomodoro();
     } else {
@@ -377,7 +440,7 @@ export function Companion({
       window.removeEventListener("mouseup", onUp);
       // 抚摸结束后过一会儿恢复
       if (wasPetting) {
-        setTimeout(() => setState("idle"), PETTING_END_DELAY_MS);
+        scheduleTransientIdle(PETTING_END_DELAY_MS);
         return;
       }
       // 否则视为单击 → 走点击意图（仅在没有拖动时）
@@ -444,38 +507,40 @@ export function Companion({
         </div>
 
         {/* 偏好菜单 */}
-        {menuOpen && (
-          <PrefMenu
-            opacity={opacity}
-            mood={mood}
-            petCount={petCount}
-            days={days}
-            festival={festival}
-            particlesEnabled={particlesEnabled}
-            pomodoroMode={pomodoro.mode}
-            pomodoroDoneCount={pomodoro.doneCount}
-            rainbowUnlocked={rainbowUnlocked}
-            onSetOpacity={setOpacity}
-            onSetParticles={setParticlesEnabled}
-            onRename={() => {
-              setMenuOpen(false);
-              setRenameDialogOpen(true);
-            }}
-            onTogglePomodoro={() => {
-              if (pomodoro.mode === "idle") startPomodoro();
-              else stopPomodoro();
-            }}
-            onChat={() => {
-              setMenuOpen(false);
-              setChatOpen(true);
-            }}
-            onClose={() => setMenuOpen(false)}
-            onHide={() => {
-              setEnabled(false);
-              setMenuOpen(false);
-            }}
-          />
-        )}
+        <AnimatePresence initial={false}>
+          {menuOpen && (
+            <PrefMenu
+              opacity={opacity}
+              mood={mood}
+              petCount={petCount}
+              days={days}
+              festival={festival}
+              particlesEnabled={particlesEnabled}
+              pomodoroMode={pomodoro.mode}
+              pomodoroDoneCount={pomodoro.doneCount}
+              rainbowUnlocked={rainbowUnlocked}
+              onSetOpacity={setOpacity}
+              onSetParticles={setParticlesEnabled}
+              onRename={() => {
+                setMenuOpen(false);
+                setRenameDialogOpen(true);
+              }}
+              onTogglePomodoro={() => {
+                if (pomodoro.mode === "idle") startPomodoro();
+                else stopPomodoro();
+              }}
+              onChat={() => {
+                setMenuOpen(false);
+                setChatOpen(true);
+              }}
+              onClose={() => setMenuOpen(false)}
+              onHide={() => {
+                setEnabled(false);
+                setMenuOpen(false);
+              }}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       {/* 气泡 */}
@@ -499,19 +564,18 @@ export function Companion({
       />
 
       {/* 起名对话框 */}
-      {renameDialogOpen && (
-        <RenameDialog
-          currentName={name}
-          defaultName={PET_DEFAULT_NAME}
-          currentBirthday={userBirthday}
-          onSave={(newName, newBirthday) => {
-            setName(newName);
-            setUserBirthday(newBirthday);
-            setRenameDialogOpen(false);
-          }}
-          onCancel={() => setRenameDialogOpen(false)}
-        />
-      )}
+      <RenameDialog
+        open={renameDialogOpen}
+        currentName={name}
+        defaultName={PET_DEFAULT_NAME}
+        currentBirthday={userBirthday}
+        onSave={(newName, newBirthday) => {
+          setName(newName);
+          setUserBirthday(newBirthday);
+          setRenameDialogOpen(false);
+        }}
+        onCancel={() => setRenameDialogOpen(false)}
+      />
     </>
   );
 }
@@ -555,6 +619,7 @@ function PrefMenu({
   onClose: () => void;
   onHide: () => void;
 }): JSX.Element {
+  const reduce = useReducedMotion();
   const moodLabel = (() => {
     if (mood >= 80) return "💞 心花怒放";
     if (mood >= 60) return "🌞 状态不错";
@@ -563,17 +628,27 @@ function PrefMenu({
     return "🥺 求摸摸";
   })();
   return (
-    <div className="pointer-events-auto absolute right-full top-0 z-[60] mr-2 w-64 rounded-xl border border-ink-700 bg-ink-900/95 p-3 text-xs text-ink-200 shadow-2xl backdrop-blur-md">
+    <motion.div
+      className="pointer-events-auto absolute right-full top-0 z-[60] mr-2 w-64 rounded-xl border border-ink-700 bg-ink-900/95 p-3 text-xs text-ink-200 shadow-2xl backdrop-blur-md"
+      variants={reduce ? fadeOnly : fadeSlideUp}
+      initial="initial"
+      animate="animate"
+      exit="exit"
+    >
       {/* 状态条 */}
       <div className="mb-2 flex items-center justify-between text-[11px]">
         <span className="font-semibold text-ink-100">{moodLabel}</span>
-        <button
+        <motion.button
           type="button"
           onClick={onClose}
-          className="text-ink-400 hover:text-ink-100"
+          className="inline-flex h-6 w-6 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          aria-label="关闭桌宠设置"
+          title="关闭"
+          whileHover={hoverLift}
+          whileTap={tapPress}
         >
-          ✕
-        </button>
+          <X className="h-3.5 w-3.5" />
+        </motion.button>
       </div>
       <div className="mb-2 grid grid-cols-3 gap-1.5 text-center text-[10px]">
         <div className="rounded bg-ink-800/60 p-1.5">
@@ -602,7 +677,7 @@ function PrefMenu({
           <span className="text-ink-400">🍅 番茄钟</span>
           <span className="text-ink-500">已完成 {pomodoroDoneCount}</span>
         </div>
-        <button
+        <motion.button
           type="button"
           onClick={onTogglePomodoro}
           className={`w-full rounded-md py-1.5 text-[11px] font-medium ring-1 ${
@@ -610,30 +685,35 @@ function PrefMenu({
               ? "bg-accent-500/20 text-accent-200 ring-accent-400/30 hover:bg-accent-500/30"
               : "bg-rose-500/20 text-rose-200 ring-rose-400/30 hover:bg-rose-500/30"
           }`}
+          whileHover={hoverLift}
+          whileTap={tapPress}
         >
           {pomodoroMode === "idle"
             ? "▶ 开始 25/5"
             : pomodoroMode === "work"
               ? "■ 停止专注"
               : "■ 停止休息"}
-        </button>
+        </motion.button>
       </div>
 
       {/* 聊天入口 */}
-      <button
+      <motion.button
         type="button"
         onClick={onChat}
         className="mb-2 w-full rounded-md bg-sky-500/15 py-1.5 text-[11px] text-sky-200 ring-1 ring-sky-400/30 hover:bg-sky-500/25"
+        whileHover={hoverLift}
+        whileTap={tapPress}
       >
         💬 找伙伴聊天
-      </button>
+      </motion.button>
 
       <div className="mb-2">
-        <div className="mb-1 flex justify-between text-ink-400">
+        <label className="mb-1 flex justify-between text-ink-400" htmlFor="companion-opacity">
           <span>透明度</span>
           <span>{Math.round(opacity * 100)}%</span>
-        </div>
+        </label>
         <input
+          id="companion-opacity"
           type="range"
           min={40}
           max={100}
@@ -644,8 +724,9 @@ function PrefMenu({
         />
       </div>
 
-      <label className="mb-2 flex items-center gap-2 cursor-pointer">
+      <label className="mb-2 flex cursor-pointer items-center gap-2" htmlFor="companion-particles-enabled">
         <input
+          id="companion-particles-enabled"
           type="checkbox"
           checked={particlesEnabled}
           onChange={(e) => onSetParticles(e.target.checked)}
@@ -654,13 +735,15 @@ function PrefMenu({
         <span className="text-ink-300">✨ 环境粒子</span>
       </label>
 
-      <button
+      <motion.button
         type="button"
         onClick={onRename}
         className="mb-2 w-full rounded-md bg-ink-700/60 py-1.5 text-[11px] text-ink-200 hover:bg-ink-700"
+        whileHover={hoverLift}
+        whileTap={tapPress}
       >
         📛 起名 / 设生日
-      </button>
+      </motion.button>
 
       {rainbowUnlocked && (
         <div className="mb-2 rounded bg-gradient-to-r from-rose-500/10 via-accent-500/10 to-violet-500/10 p-1.5 text-center text-[10px] text-accent-200 ring-1 ring-accent-400/30">
@@ -668,14 +751,16 @@ function PrefMenu({
         </div>
       )}
 
-      <button
+      <motion.button
         type="button"
         onClick={onHide}
         className="w-full rounded-md bg-rose-500/20 py-1.5 text-[11px] text-rose-200 hover:bg-rose-500/30"
+        whileHover={hoverLift}
+        whileTap={tapPress}
       >
         隐藏桌宠
-      </button>
-    </div>
+      </motion.button>
+    </motion.div>
   );
 }
 
@@ -684,39 +769,57 @@ function PrefMenu({
  * ============================================================ */
 
 function RenameDialog({
+  open,
   currentName,
   defaultName,
   currentBirthday,
   onSave,
   onCancel,
 }: {
+  open: boolean;
   currentName: string;
   defaultName: string;
   currentBirthday: string | null;
   onSave: (name: string, birthday: string | null) => void;
   onCancel: () => void;
 }): JSX.Element {
+  const reduce = useReducedMotion();
   const [name, setLocalName] = useState(currentName);
   const [birthday, setLocalBirthday] = useState(currentBirthday ?? "");
+  const titleId = "companion-rename-title";
+  const birthdayInvalid =
+    birthday.length > 0 && (birthday.length !== 5 || !/^\d{2}-\d{2}$/.test(birthday));
+
+  useEffect(() => {
+    if (!open) return;
+    setLocalName(currentName);
+    setLocalBirthday(currentBirthday ?? "");
+  }, [open, currentName, currentBirthday]);
+
   return (
-    <div
-      role="dialog"
-      className="pointer-events-auto fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
-      onClick={onCancel}
+    <AnimatedDialog
+      open={open}
+      onClose={onCancel}
+      labelledBy={titleId}
+      zClassName="z-[10000]"
+      overlayClassName="pointer-events-auto flex items-center justify-center p-4"
+      panelClassName="relative z-10 w-full max-w-sm rounded-xl border border-ink-700 bg-ink-900 p-5 shadow-2xl"
     >
-      <div
-        className="w-full max-w-sm rounded-xl border border-ink-700 bg-ink-900 p-5 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+      <motion.div
+        variants={reduce ? fadeOnly : fadeSlideUp}
+        initial="initial"
+        animate="animate"
       >
-        <h2 className="mb-1 text-base font-semibold text-ink-100">
+        <h2 id={titleId} className="mb-1 text-base font-semibold text-ink-100">
           📛 给伙伴起个名字
         </h2>
         <p className="mb-4 text-xs text-ink-400">
           名字会出现在对话框和聊天里。最多 12 字。
         </p>
-        <label className="mb-3 block">
+        <label className="mb-3 block" htmlFor="companion-name">
           <div className="mb-1 text-[11px] text-ink-400">名字</div>
           <input
+            id="companion-name"
             type="text"
             value={name}
             onChange={(e) => setLocalName(e.target.value)}
@@ -725,45 +828,67 @@ function RenameDialog({
             className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
           />
         </label>
-        <label className="mb-4 block">
+        <label className="mb-4 block" htmlFor="companion-birthday">
           <div className="mb-1 text-[11px] text-ink-400">
             🎂 你的生日（MM-DD，可留空）
           </div>
           <input
+            id="companion-birthday"
             type="text"
             value={birthday}
             onChange={(e) => setLocalBirthday(e.target.value)}
             placeholder="例如 09-12"
             maxLength={5}
-            className="w-full rounded-md border border-ink-700 bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:border-accent-400/40 focus:outline-none"
+            aria-invalid={birthdayInvalid}
+            className={`w-full rounded-md border bg-ink-800 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:outline-none ${
+              birthdayInvalid
+                ? "border-rose-500/60 focus:border-rose-400/70"
+                : "border-ink-700 focus:border-accent-400/40"
+            }`}
           />
           <div className="mt-1 text-[10px] text-ink-500">
             生日当天桌宠会戴尖帽 + 蛋糕
           </div>
+          {birthdayInvalid && (
+            <motion.div
+              role="alert"
+              className="mt-1 text-[10px] text-rose-300"
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+            >
+              请按 MM-DD 格式填写，或留空。
+            </motion.div>
+          )}
         </label>
         <div className="flex justify-end gap-2">
-          <button
+          <motion.button
             type="button"
             onClick={onCancel}
             className="rounded-md px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
+            whileHover={hoverLift}
+            whileTap={tapPress}
           >
             取消
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            disabled={birthdayInvalid}
             onClick={() => {
               const validBirthday =
                 birthday.length === 5 && /^\d{2}-\d{2}$/.test(birthday)
                   ? birthday
                   : null;
-              onSave(name.trim(), validBirthday);
+              onSave(name.trim() || defaultName, validBirthday);
             }}
-            className="rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400"
+            className="rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:bg-ink-700 disabled:text-ink-400"
+            whileHover={birthdayInvalid ? undefined : hoverLift}
+            whileTap={birthdayInvalid ? undefined : tapPress}
           >
             保存
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatedDialog>
   );
 }

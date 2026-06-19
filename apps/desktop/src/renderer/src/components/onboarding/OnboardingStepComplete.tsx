@@ -1,8 +1,10 @@
+import { PenLine } from "lucide-react";
+
 export function OnboardingStepComplete(): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center text-center space-y-6">
       <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-500/20 text-accent-500 text-4xl">
-        ✍
+        <PenLine aria-hidden className="h-9 w-9" />
       </div>
       <div>
         <h2 className="text-2xl font-bold text-ink-100">一切准备就绪</h2>

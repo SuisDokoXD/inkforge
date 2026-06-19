@@ -1,5 +1,7 @@
 import { findCatalogEntry, PROVIDER_CATALOG, type ProviderVendor } from "@inkforge/shared";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useT } from "../../lib/i18n";
+import { fadeOnly, fadeSlideUp } from "../../lib/motion-tokens";
 import type { OnboardingDraft } from "../../pages/OnboardingPage";
 
 interface Props {
@@ -31,6 +33,8 @@ const VENDOR_DEFAULT_BASE_URL: Record<ProviderVendor, string> = {
 
 export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Props): JSX.Element {
   const t = useT();
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
   const selectedCatalog = draft.catalogId ? findCatalogEntry(draft.catalogId) : undefined;
   const knownModels = selectedCatalog?.knownModels ?? [];
 
@@ -67,10 +71,11 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-ink-300">
+          <label className="block text-sm font-medium text-ink-300" htmlFor="onboarding-provider-preset">
             {t("onboarding.provider.preset")}
           </label>
           <select
+            id="onboarding-provider-preset"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             value={draft.catalogId}
             onChange={(e) => applyCatalog(e.target.value)}
@@ -82,26 +87,35 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
               </option>
             ))}
           </select>
-          {selectedCatalog && (
-            <p className="text-xs text-ink-400">
-              {resolveCatalogDescription(selectedCatalog.id, selectedCatalog.description)}{" "}
-              {selectedCatalog.signupUrl && (
-                <a
-                  className="text-accent-300 underline hover:text-accent-200"
-                  href={selectedCatalog.signupUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {t("provider.action.getApiKey")}
-                </a>
-              )}
-            </p>
-          )}
+          <AnimatePresence initial={false}>
+            {selectedCatalog && (
+              <motion.p
+                className="text-xs text-ink-400"
+                variants={stateMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {resolveCatalogDescription(selectedCatalog.id, selectedCatalog.description)}{" "}
+                {selectedCatalog.signupUrl && (
+                  <a
+                    className="text-accent-300 underline hover:text-accent-200"
+                    href={selectedCatalog.signupUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t("provider.action.getApiKey")}
+                  </a>
+                )}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </div>
 
-        <label className="block space-y-2">
+        <label className="block space-y-2" htmlFor="onboarding-provider-name">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.name")}</span>
           <input
+            id="onboarding-provider-name"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             value={draft.providerLabel}
             onChange={(e) => updateDraft({ providerLabel: e.target.value })}
@@ -109,9 +123,10 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
         </label>
 
         <div className="grid grid-cols-2 gap-4">
-          <label className="space-y-2">
+          <label className="space-y-2" htmlFor="onboarding-provider-vendor">
             <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.vendor")}</span>
             <select
+              id="onboarding-provider-vendor"
               className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
               value={draft.vendor}
               onChange={(e) => {
@@ -132,11 +147,12 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
             </select>
           </label>
 
-          <label className="space-y-2">
+          <label className="space-y-2" htmlFor="onboarding-provider-default-model">
             <span className="text-sm font-medium text-ink-300">
               {t("onboarding.provider.defaultModel")}
             </span>
             <input
+              id="onboarding-provider-default-model"
               list="onboarding-provider-models"
               className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
               value={draft.defaultModel}
@@ -152,9 +168,10 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
           </label>
         </div>
 
-        <label className="block space-y-2">
+        <label className="block space-y-2" htmlFor="onboarding-provider-api-key">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.apiKey")}</span>
           <input
+            id="onboarding-provider-api-key"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             type="password"
             placeholder={
@@ -167,9 +184,10 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
           />
         </label>
 
-        <label className="block space-y-2">
+        <label className="block space-y-2" htmlFor="onboarding-provider-base-url">
           <span className="text-sm font-medium text-ink-300">{t("onboarding.provider.baseUrl")}</span>
           <input
+            id="onboarding-provider-base-url"
             className="w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-ink-100 focus:border-accent-500 focus:outline-none"
             placeholder={
               draft.vendor === "openai-compat"
@@ -181,11 +199,20 @@ export function OnboardingStepProvider({ draft, updateDraft, errorMessage }: Pro
           />
         </label>
 
-        {errorMessage && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300">
-            {errorMessage}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {errorMessage && (
+            <motion.div
+              className="rounded-md border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300"
+              role="alert"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {errorMessage}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

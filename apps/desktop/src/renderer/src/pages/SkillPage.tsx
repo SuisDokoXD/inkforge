@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import {
   BookOpenText,
   Check,
@@ -19,6 +20,8 @@ import { friendlyErrorMessage } from "../lib/friendly-error";
 import { SkillMarketDialog } from "../components/SkillMarketDialog";
 import { SkillPublishDialog } from "../components/SkillPublishDialog";
 import { SkillLibrarySidebar } from "../components/skill/SkillLibrarySidebar";
+import { fadeOnly } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 import {
   ADVANCED_MACROS,
   ALL_TRIGGERS,
@@ -37,13 +40,19 @@ import {
   type EditorState,
 } from "../components/skill/skill-page-model";
 
+type SkillPageStatus = {
+  kind: "info" | "success" | "error";
+  text: string;
+};
+
 export function SkillPage(): JSX.Element {
   const queryClient = useQueryClient();
   const activeSkillId = useAppStore((s) => s.activeSkillId);
   const setActiveSkillId = useAppStore((s) => s.setActiveSkillId);
   const [filterScope, setFilterScope] = useState<SkillScope | "all">("all");
   const [editor, setEditor] = useState<EditorState>(emptyEditorState());
-  const [statusText, setStatusText] = useState<string | null>(null);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const { status, showStatus } = useTimedStatus<SkillPageStatus>();
   const [testOutput, setTestOutput] = useState<string>("");
   const [testRunning, setTestRunning] = useState(false);
   const [testSample, setTestSample] = useState("");
@@ -63,13 +72,13 @@ export function SkillPage(): JSX.Element {
   );
 
   useEffect(() => {
+    setDeleteConfirming(false);
     if (currentSkill) {
       setEditor(skillToEditor(currentSkill));
     } else {
       setEditor(emptyEditorState());
     }
     setTestOutput("");
-    setStatusText(null);
   }, [currentSkill]);
 
   useEffect(() => {
@@ -79,20 +88,21 @@ export function SkillPage(): JSX.Element {
     const offDone = skillApi.onDone((payload) => {
       setTestRunning(false);
       if (payload.status === "failed") {
-        setStatusText(
-          `运行失败：${friendlyErrorMessage(payload.error, "指令运行失败，请检查内容后重试。")}`,
-        );
+        showStatus({
+          kind: "error",
+          text: `运行失败：${friendlyErrorMessage(payload.error, "指令运行失败，请检查内容后重试。")}`,
+        });
       } else if (payload.status === "cancelled") {
-        setStatusText("已取消");
+        showStatus({ kind: "info", text: "已取消" }, 1800);
       } else {
-        setStatusText("运行完成");
+        showStatus({ kind: "success", text: "运行完成" }, 2200);
       }
     });
     return () => {
       offChunk();
       offDone();
     };
-  }, []);
+  }, [showStatus]);
 
   const createSkillMut = useMutation({
     mutationFn: () =>
@@ -112,7 +122,13 @@ export function SkillPage(): JSX.Element {
     onSuccess: async (skill) => {
       await queryClient.invalidateQueries({ queryKey: ["skills"] });
       setActiveSkillId(skill.id);
-      setStatusText("已创建");
+      showStatus({ kind: "success", text: "已创建" }, 2200);
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: `创建失败：${friendlyErrorMessage(err, "写作指令创建失败，请检查内容后重试。")}`,
+      });
     },
   });
 
@@ -136,7 +152,13 @@ export function SkillPage(): JSX.Element {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["skills"] });
-      setStatusText("已保存");
+      showStatus({ kind: "success", text: "已保存" }, 2200);
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: `保存失败：${friendlyErrorMessage(err, "写作指令保存失败，请稍后重试。")}`,
+      });
     },
   });
 
@@ -145,7 +167,14 @@ export function SkillPage(): JSX.Element {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["skills"] });
       setActiveSkillId(null);
-      setStatusText("已删除");
+      setDeleteConfirming(false);
+      showStatus({ kind: "success", text: "已删除" }, 2200);
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: `删除失败：${friendlyErrorMessage(err, "写作指令删除失败，请稍后重试。")}`,
+      });
     },
   });
 
@@ -160,8 +189,14 @@ export function SkillPage(): JSX.Element {
       return saved;
     },
     onSuccess: (saved) => {
-      if (saved.path) setStatusText(`已导出到 ${saved.path}`);
-      else setStatusText("已取消导出");
+      if (saved.path) showStatus({ kind: "success", text: `已导出到 ${saved.path}` }, 5000);
+      else showStatus({ kind: "info", text: "已取消导出" }, 1800);
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: `导出失败：${friendlyErrorMessage(err, "写作指令导出失败，请稍后重试。")}`,
+      });
     },
   });
 
@@ -177,21 +212,34 @@ export function SkillPage(): JSX.Element {
       });
     },
     onSuccess: async (report) => {
-      if (!report) return;
+      if (!report) {
+        showStatus({ kind: "info", text: "已取消导入" }, 1800);
+        return;
+      }
       await queryClient.invalidateQueries({ queryKey: ["skills"] });
-      setStatusText(
-        `导入：共 ${report.total} · 新增 ${report.imported} · 替换 ${report.replaced} · 跳过 ${report.skipped} · 失败 ${report.errors.length}`,
+      showStatus(
+        {
+          kind: report.errors.length > 0 ? "error" : "success",
+          text: `导入完成：共 ${report.total} · 新增 ${report.imported} · 替换 ${report.replaced} · 跳过 ${report.skipped} · 失败 ${report.errors.length}`,
+        },
+        report.errors.length > 0 ? undefined : 4000,
       );
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: `导入失败：${friendlyErrorMessage(err, "写作指令导入失败，请检查文件后重试。")}`,
+      });
     },
   });
 
   const runTest = async () => {
     if (!editor.id) {
-      setStatusText("测试运行前需先保存指令");
+      showStatus({ kind: "error", text: "测试运行前需先保存指令" }, 2800);
       return;
     }
     setTestOutput("");
-    setStatusText("运行中…");
+    showStatus({ kind: "info", text: "运行中…" });
     setTestRunning(true);
     try {
       await skillApi.run({
@@ -206,9 +254,10 @@ export function SkillPage(): JSX.Element {
       });
     } catch (err) {
       setTestRunning(false);
-      setStatusText(
-        `运行失败：${friendlyErrorMessage(err, "指令运行失败，请检查内容后重试。")}`,
-      );
+      showStatus({
+        kind: "error",
+        text: `运行失败：${friendlyErrorMessage(err, "指令运行失败，请检查内容后重试。")}`,
+      });
     }
   };
 
@@ -224,6 +273,13 @@ export function SkillPage(): JSX.Element {
       JSON.stringify(editor.variables) !== JSON.stringify(currentSkill.variables ?? []) ||
       editor.temperature !== (currentSkill.binding.temperature?.toString() ?? "") ||
       editor.maxTokens !== (currentSkill.binding.maxTokens?.toString() ?? ""));
+  const statusIsError = status?.kind === "error";
+  const statusClassName =
+    status?.kind === "error"
+      ? "text-red-300"
+      : status?.kind === "success"
+        ? "text-emerald-300"
+        : "text-ink-500";
 
   // 本地渲染预览：不打 API，直接用模板引擎把 {{...}} 占位替换出来，方便调试宏 / 变量。
   const runPreview = () => {
@@ -276,12 +332,16 @@ export function SkillPage(): JSX.Element {
         filterScope={filterScope}
         importPending={importMut.isPending}
         onCreateNew={() => {
+          showStatus(null);
           setActiveSkillId(null);
           setEditor(emptyEditorState());
         }}
         onImport={() => importMut.mutate()}
         onOpenMarket={() => setMarketOpen(true)}
-        onSelectSkill={setActiveSkillId}
+        onSelectSkill={(skillId) => {
+          showStatus(null);
+          setActiveSkillId(skillId);
+        }}
         onFilterScopeChange={setFilterScope}
       />
 
@@ -324,7 +384,21 @@ export function SkillPage(): JSX.Element {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs">
-            {statusText && <span className="max-w-56 truncate text-ink-500">{statusText}</span>}
+            <AnimatePresence initial={false}>
+              {status && (
+                <motion.span
+                  className={`max-w-56 truncate ${statusClassName}`}
+                  title={status.text}
+                  role={statusIsError ? "alert" : "status"}
+                  variants={fadeOnly}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {status.text}
+                </motion.span>
+              )}
+            </AnimatePresence>
             <button
               className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 hover:bg-ink-700"
               onClick={() => exportMut.mutate()}
@@ -343,17 +417,51 @@ export function SkillPage(): JSX.Element {
               发布
             </button>
             {!isNew && (
-              <button
-                className="flex h-8 items-center gap-1 rounded-md border border-red-600/60 px-2 text-red-300 hover:bg-red-900/30"
-                onClick={() => {
-                  if (editor.id && confirm(`删除「${editor.name}」？`)) {
-                    deleteSkillMut.mutate(editor.id);
-                  }
-                }}
-              >
-                <Trash2 size={13} />
-                删除
-              </button>
+              <AnimatePresence initial={false} mode="wait">
+                {deleteConfirming ? (
+                  <motion.div
+                    key="delete-confirm"
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="flex h-8 items-center gap-1"
+                  >
+                    <button
+                      type="button"
+                      className="h-8 rounded-md border border-ink-600 px-2 text-ink-300 hover:bg-ink-700 disabled:opacity-50"
+                      onClick={() => setDeleteConfirming(false)}
+                      disabled={deleteSkillMut.isPending}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      className="h-8 rounded-md border border-red-600/60 px-2 text-red-300 hover:bg-red-900/30 disabled:opacity-50"
+                      onClick={() => {
+                        if (editor.id) deleteSkillMut.mutate(editor.id);
+                      }}
+                      disabled={deleteSkillMut.isPending}
+                    >
+                      {deleteSkillMut.isPending ? "删除中" : "确认删除"}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="delete-start"
+                    type="button"
+                    className="flex h-8 items-center gap-1 rounded-md border border-red-600/60 px-2 text-red-300 hover:bg-red-900/30"
+                    onClick={() => setDeleteConfirming(true)}
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                  >
+                    <Trash2 size={13} />
+                    删除
+                  </motion.button>
+                )}
+              </AnimatePresence>
             )}
             <button
               className="flex h-8 items-center gap-1 rounded-md bg-accent-500 px-3 font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"

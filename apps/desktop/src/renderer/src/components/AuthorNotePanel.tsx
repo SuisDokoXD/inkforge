@@ -1,17 +1,10 @@
-// =============================================================================
-// 作者批注面板（UI 优化版）
-// =============================================================================
-// 优化点：
-//   - 字符计数 + 警戒色（超过 800 字以红色提示）
-//   - 5 个预设模板下拉，一键追加（不覆盖现有文本）
-//   - 整体配色 / spacing 提升，文本区给更大编辑空间
-//   - position 选项加更明显的视觉差异（before=琥珀 / after=红，象征强约束）
-// =============================================================================
-
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Pin, PinOff, Sparkles, ChevronDown } from "lucide-react";
 import { authorNoteApi } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
+import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import type { AuthorNotePosition } from "@inkforge/shared";
 
 interface Props {
@@ -64,6 +57,9 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
   const [position, setPosition] = useState<AuthorNotePosition>("before");
   const [enabled, setEnabled] = useState(true);
   const [presetOpen, setPresetOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   useEffect(() => {
     const n = noteQuery.data;
@@ -84,8 +80,15 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
       position?: AuthorNotePosition;
       enabled?: boolean;
     }) => authorNoteApi.upsert({ projectId, ...input }),
+    onMutate: () => {
+      setSaveError(null);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["author-note", projectId] });
+      void queryClient.invalidateQueries({ queryKey: ["author-note", projectId] });
+    },
+    onError: (err) => {
+      setSaveError(friendlyErrorMessage(err, "作者批注保存失败，请稍后重试。"));
+      void queryClient.invalidateQueries({ queryKey: ["author-note", projectId] });
     },
   });
 
@@ -121,12 +124,15 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => {
               const next = !enabled;
               setEnabled(next);
               upsertMutation.mutate({ enabled: next });
             }}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-all ${
+            aria-pressed={enabled}
+            aria-label={enabled ? "禁用作者批注" : "启用作者批注"}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ${
               enabled
                 ? "bg-accent-500 text-ink-900 shadow-md shadow-accent-500/20"
                 : "border border-ink-700 bg-ink-800/60 text-ink-400 hover:text-ink-200"
@@ -141,29 +147,42 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         {/* 工具栏：预设下拉 */}
         <div className="relative">
           <button
+            type="button"
             onClick={() => setPresetOpen((v) => !v)}
+            aria-expanded={presetOpen}
+            aria-controls="author-note-presets"
             className="flex items-center gap-1.5 rounded-lg border border-ink-700 bg-ink-800/60 px-3 py-1.5 text-sm text-ink-200 hover:border-accent-500/40 hover:bg-ink-800"
           >
             <Sparkles className="h-4 w-4 text-accent-400" />
             插入预设模板
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${presetOpen ? "rotate-180" : ""}`} />
           </button>
-          {presetOpen && (
-            <div className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-ink-700 bg-ink-800 shadow-xl ring-1 ring-accent-500/20">
-              {PRESET_TEMPLATES.map((p) => (
-                <button
-                  key={p.name}
-                  onClick={() => insertPreset(p)}
-                  className="block w-full border-b border-ink-700/60 px-3 py-2 text-left last:border-b-0 hover:bg-accent-500/10"
-                >
-                  <div className="text-sm font-medium text-ink-100">{p.name}</div>
-                  <div className="mt-0.5 line-clamp-2 text-[11px] text-ink-400">
-                    {p.text.split("\n")[0]}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          <AnimatePresence initial={false}>
+            {presetOpen ? (
+              <motion.div
+                id="author-note-presets"
+                className="absolute left-0 top-full z-10 mt-1 w-72 overflow-hidden rounded-lg border border-ink-700 bg-ink-800 shadow-xl ring-1 ring-accent-500/20"
+                variants={stateMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {PRESET_TEMPLATES.map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => insertPreset(p)}
+                    className="block w-full border-b border-ink-700/60 px-3 py-2 text-left last:border-b-0 hover:bg-accent-500/10"
+                  >
+                    <div className="text-sm font-medium text-ink-100">{p.name}</div>
+                    <div className="mt-0.5 line-clamp-2 text-[11px] text-ink-400">
+                      {p.text.split("\n")[0]}
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
 
         {/* 主编辑区 */}
@@ -172,6 +191,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={saveText}
+            aria-label="作者批注内容"
             placeholder={`例：
 - 行文克制内敛，避免堆砌华丽辞藻
 - 人物对话不超过两句一段
@@ -194,9 +214,31 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         </div>
 
         {/* 保存指示器 */}
-        {upsertMutation.isPending && (
-          <div className="text-xs text-ink-500">保存中…</div>
-        )}
+        <AnimatePresence initial={false}>
+          {saveError ? (
+            <motion.div
+              className="rounded-md border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+              role="alert"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {saveError}
+            </motion.div>
+          ) : upsertMutation.isPending ? (
+            <motion.div
+              className="text-xs text-ink-500"
+              role="status"
+              variants={fadeOnly}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              保存中…
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       {/* ===== 右：参考时机 + 说明 ===== */}
@@ -232,7 +274,7 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
         </div>
 
         <div className="mt-8 rounded-lg border border-ink-700 bg-ink-800/40 p-3 text-xs text-ink-400">
-          <div className="font-medium text-ink-300">💡 使用建议</div>
+          <div className="font-medium text-ink-300">使用建议</div>
           <ul className="mt-2 space-y-1 list-disc pl-4">
             <li>风格类约束放写作前，让模型先吸收整体口吻</li>
             <li>禁忌词、硬性规则放写作后，贴近输出更难被忽略</li>
@@ -263,15 +305,19 @@ function PositionRadio({
   const active = current === value;
   const accentRing = accent === "rose" ? "ring-rose-400/60" : "ring-accent-400/60";
   const accentBg = accent === "rose" ? "bg-rose-500/15" : "bg-accent-500/15";
+  const inputId = `author-note-position-${value}`;
+
   return (
     <label
-      className={`flex cursor-pointer gap-2 rounded-lg border p-3 transition-all ${
+      htmlFor={inputId}
+      className={`flex cursor-pointer gap-2 rounded-lg border p-3 transition-[border-color,background-color,box-shadow,opacity] duration-200 ${
         active
           ? `border-transparent ${accentBg} ring-1 ${accentRing}`
           : "border-ink-700 bg-ink-800/40 hover:border-ink-600"
       }`}
     >
       <input
+        id={inputId}
         type="radio"
         checked={active}
         onChange={() => onChange(value)}

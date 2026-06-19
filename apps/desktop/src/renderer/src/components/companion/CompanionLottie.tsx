@@ -1,30 +1,60 @@
-import { useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, type Transition } from "motion/react";
 import type { CompanionState } from "../../stores/companion-store";
+import { EASE_IN_OUT, EASE_STANDARD } from "../../lib/motion-tokens";
 
 interface CompanionLottieProps {
   state: CompanionState;
   hovered?: boolean;
 }
 
-function animationClass(state: CompanionState): string {
+type SpriteMotion = {
+  animate: {
+    x?: number | number[];
+    y?: number | number[];
+    scale?: number | number[];
+    rotate?: number | number[];
+  };
+  transition: Transition;
+};
+
+function spriteMotion(state: CompanionState): SpriteMotion {
   switch (state) {
     case "typing":
-      return "animate-[companion-bob_0.45s_ease-in-out_infinite]";
+      return {
+        animate: { y: [0, -2, 0] },
+        transition: { duration: 0.45, ease: EASE_IN_OUT, repeat: Infinity },
+      };
     case "cheering":
-      return "animate-[companion-jump_0.7s_cubic-bezier(0.22,1,0.36,1)_infinite]";
+      return {
+        animate: { y: [0, -8, -3, 0], scale: [1, 1.04, 0.98, 1] },
+        transition: { duration: 0.7, ease: EASE_STANDARD, repeat: Infinity },
+      };
     case "sleepy":
-      return "animate-[companion-breathe_3.5s_ease-in-out_infinite]";
+      return breatheMotion(3.5);
     case "dizzy":
-      return "animate-[companion-dizzy_1.2s_linear_infinite]";
+      return {
+        animate: { rotate: [0, 8, 0, -8, 0], y: [0, -1, 0, 1, 0] },
+        transition: { duration: 1.2, ease: "linear", repeat: Infinity },
+      };
     case "petted":
-      return "animate-[companion-breathe_1.2s_ease-in-out_infinite]";
+      return breatheMotion(1.2);
     case "pomodoro-break":
-      return "animate-[companion-breathe_2s_ease-in-out_infinite]";
+      return breatheMotion(2);
     case "wishing":
-      return "animate-[companion-breathe_2.2s_ease-in-out_infinite]";
+      return breatheMotion(2.2);
     default:
-      return "";
+      return {
+        animate: { x: 0, y: 0, scale: 1, rotate: 0 },
+        transition: { duration: 0.2, ease: EASE_STANDARD },
+      };
   }
+}
+
+function breatheMotion(duration: number): SpriteMotion {
+  return {
+    animate: { scale: [1, 1.025, 1] },
+    transition: { duration, ease: EASE_IN_OUT, repeat: Infinity },
+  };
 }
 
 function palette(state: CompanionState): { body: string; belly: string; accent: string } {
@@ -53,19 +83,26 @@ function palette(state: CompanionState): { body: string; belly: string; accent: 
 }
 
 export function CompanionLottie({ state, hovered }: CompanionLottieProps): JSX.Element | null {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotion() === true;
   if (state === "hidden") return null;
 
   const colors = palette(state);
-  const animated = reduce ? "" : animationClass(state);
+  const motionState = reduce
+    ? {
+        animate: { x: 0, y: 0, scale: 1, rotate: 0 },
+        transition: { duration: 0 },
+      }
+    : spriteMotion(state);
   const isSleepy = state === "sleepy" || state === "midnight";
   const isDizzy = state === "dizzy";
   const isHappy = hovered || state === "cheering" || state === "petted" || state === "wishing";
 
   return (
-    <div
-      className={`relative h-16 w-16 ${animated}`}
+    <motion.div
+      className="relative h-16 w-16"
       style={{ filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.35))" }}
+      animate={motionState.animate}
+      transition={motionState.transition}
       aria-hidden="true"
     >
       <svg className="h-16 w-16" viewBox="0 0 64 64" role="img">
@@ -141,6 +178,6 @@ export function CompanionLottie({ state, hovered }: CompanionLottieProps): JSX.E
           />
         )}
       </svg>
-    </div>
+    </motion.div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
+import { Plus, X } from "lucide-react";
 import {
   findCatalogEntry,
   PROVIDER_CATALOG,
@@ -11,6 +13,8 @@ import { providerApi, settingsApi } from "../lib/api";
 import { useT } from "../lib/i18n";
 import { useAppStore } from "../stores/app-store";
 import { ProviderKeyManager } from "./ProviderKeyManager";
+import { fadeOnly } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 interface FormState {
   id?: string;
@@ -22,6 +26,11 @@ interface FormState {
   defaultModel: string;
   tags: string;
 }
+
+type StatusMessage = {
+  kind: "info" | "success" | "error";
+  text: string;
+};
 
 const DEFAULT_VENDOR_MODEL: Record<ProviderVendor, string> = {
   anthropic: "claude-sonnet-4-6",
@@ -131,15 +140,16 @@ export function ProviderSettingsPanel(): JSX.Element | null {
   });
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [testStatus, setTestStatus] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const { status, showStatus } = useTimedStatus<StatusMessage>();
   const [remoteModels, setRemoteModels] = useState<string[]>([]);
-  const [remoteFetchStatus, setRemoteFetchStatus] = useState<string | null>(null);
+  const { status: remoteFetchStatus, showStatus: showRemoteFetchStatus } =
+    useTimedStatus<StatusMessage>();
   const [fetchingModels, setFetchingModels] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
   const handleFetchRemoteModels = async () => {
     setFetchingModels(true);
-    setRemoteFetchStatus(null);
+    showRemoteFetchStatus(null);
     try {
       const trimmedKey = form.apiKey.trim();
       const trimmedBase = form.baseUrl.trim();
@@ -154,9 +164,18 @@ export function ProviderSettingsPanel(): JSX.Element | null {
           })
         : await providerApi.listRemoteModels({ providerId: form.id });
       setRemoteModels(res.models.map((m) => m.id));
-      setRemoteFetchStatus(`✓ 已读取 ${res.count} 个模型 · 用时 ${res.durationMs} 毫秒`);
+      showRemoteFetchStatus(
+        {
+          kind: "success",
+          text: `已读取 ${res.count} 个模型 · 用时 ${res.durationMs} 毫秒`,
+        },
+        3200,
+      );
     } catch (err) {
-      setRemoteFetchStatus(`✗ 读取失败：${friendlyModelServiceError(err)}`);
+      showRemoteFetchStatus({
+        kind: "error",
+        text: `读取失败：${friendlyModelServiceError(err)}`,
+      });
     } finally {
       setFetchingModels(false);
     }
@@ -186,10 +205,15 @@ export function ProviderSettingsPanel(): JSX.Element | null {
   useEffect(() => {
     if (!open) {
       setForm(EMPTY_FORM);
-      setTestStatus(null);
-      setSaveStatus(null);
+      showStatus(null);
+      showRemoteFetchStatus(null);
+      setDeleteConfirming(false);
     }
-  }, [open]);
+  }, [open, showRemoteFetchStatus, showStatus]);
+
+  useEffect(() => {
+    setDeleteConfirming(false);
+  }, [form.id]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -212,13 +236,12 @@ export function ProviderSettingsPanel(): JSX.Element | null {
       });
     },
     onSuccess: async (saved) => {
-      setSaveStatus(t("provider.panel.saved"));
+      showStatus({ kind: "success", text: t("provider.panel.saved") }, 2000);
       await queryClient.invalidateQueries({ queryKey: ["providers"] });
       setForm(toForm(saved));
-      setTimeout(() => setSaveStatus(null), 2000);
     },
     onError: (err) => {
-      setSaveStatus(friendlyModelServiceError(err));
+      showStatus({ kind: "error", text: friendlyModelServiceError(err) });
     },
   });
 
@@ -231,31 +254,63 @@ export function ProviderSettingsPanel(): JSX.Element | null {
         setSettings(next);
       }
       if (form.id === id) setForm(EMPTY_FORM);
+      setDeleteConfirming(false);
+      showStatus({ kind: "success", text: "已删除模型服务" }, 2000);
     },
+    onError: (err) =>
+      showStatus({ kind: "error", text: `删除失败：${friendlyModelServiceError(err)}` }),
   });
 
   const testMutation = useMutation({
     mutationFn: async (id: string) => providerApi.test({ id }),
     onSuccess: (result) => {
       if (result.ok) {
-        setTestStatus(t("provider.panel.status.connected", { ms: result.durationMs }));
+        showStatus(
+          {
+            kind: "success",
+            text: t("provider.panel.status.connected", { ms: result.durationMs }),
+          },
+          2400,
+        );
       } else {
-        setTestStatus(
-          t("provider.panel.status.failed", {
+        showStatus({
+          kind: "error",
+          text: t("provider.panel.status.failed", {
             error: result.error
               ? friendlyModelServiceError(new Error(result.error))
               : t("provider.panel.unknownError"),
           }),
-        );
+        });
       }
     },
-    onError: (err) => setTestStatus(friendlyModelServiceError(err)),
+    onError: (err) => showStatus({ kind: "error", text: friendlyModelServiceError(err) }),
   });
 
   const setActiveMutation = useMutation({
     mutationFn: async (id: string) => settingsApi.set({ updates: { activeProviderId: id } }),
-    onSuccess: (next) => setSettings(next),
+    onSuccess: (next) => {
+      setSettings(next);
+      showStatus({ kind: "success", text: "已设为当前模型服务" }, 2000);
+    },
+    onError: (err) =>
+      showStatus({
+        kind: "error",
+        text: `设置失败：${friendlyModelServiceError(err)}`,
+      }),
   });
+
+  const statusClassName =
+    status?.kind === "error"
+      ? "text-red-300"
+      : status?.kind === "success"
+        ? "text-emerald-300"
+        : "text-ink-300";
+  const remoteFetchStatusClassName =
+    remoteFetchStatus?.kind === "error"
+      ? "text-red-400"
+      : remoteFetchStatus?.kind === "success"
+        ? "text-emerald-400"
+        : "text-ink-400";
 
   return (
     <AnimatedDialog
@@ -269,10 +324,12 @@ export function ProviderSettingsPanel(): JSX.Element | null {
           <div className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
             <span className="text-sm font-semibold">{t("provider.panel.listTitle")}</span>
             <button
-              className="rounded bg-accent-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
+              type="button"
+              className="inline-flex items-center gap-1 rounded-md bg-accent-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
               onClick={() => setForm(EMPTY_FORM)}
             >
-              + {t("common.new")}
+              <Plus className="h-3.5 w-3.5" />
+              {t("common.new")}
             </button>
           </div>
           <ul className="min-h-0 flex-1 overflow-auto scrollbar-thin py-1">
@@ -315,12 +372,13 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <p className="text-xs text-ink-400">{t("provider.panel.subtitle")}</p>
             </div>
             <button
-              className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
+              type="button"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
               onClick={() => setOpen(false)}
               aria-label={t("common.close")}
               title={t("common.close")}
             >
-              ×
+              <X className="h-4 w-4" />
             </button>
           </header>
 
@@ -424,15 +482,20 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       </datalist>
                     ) : null;
                   })()}
-                  {remoteFetchStatus ? (
-                    <p
-                      className={`mt-1 text-xs ${
-                        remoteFetchStatus.startsWith("✓") ? "text-emerald-400" : "text-red-400"
-                      }`}
-                    >
-                      {remoteFetchStatus}
-                    </p>
-                  ) : null}
+                  <AnimatePresence initial={false}>
+                    {remoteFetchStatus ? (
+                      <motion.p
+                        className={`mt-1 text-xs ${remoteFetchStatusClassName}`}
+                        role={remoteFetchStatus.kind === "error" ? "alert" : "status"}
+                        variants={fadeOnly}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                      >
+                        {remoteFetchStatus.text}
+                      </motion.p>
+                    ) : null}
+                  </AnimatePresence>
                   {remoteModels.length > 0 ? (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {remoteModels.slice(0, 8).map((m) => (
@@ -504,7 +567,21 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               </div>
             )}
 
-            {(saveStatus || testStatus) && <p className="mt-4 text-xs text-ink-300">{saveStatus ?? testStatus}</p>}
+            <AnimatePresence mode="wait">
+              {status ? (
+                <motion.p
+                  key={status.text}
+                  role={status.kind === "error" ? "alert" : "status"}
+                  className={`mt-4 text-xs ${statusClassName}`}
+                  variants={fadeOnly}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {status.text}
+                </motion.p>
+              ) : null}
+            </AnimatePresence>
           </div>
 
           <footer className="flex items-center justify-between border-t border-ink-700 px-5 py-3">
@@ -525,17 +602,54 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                   >
                     {resolvedActiveId === form.id ? t("provider.panel.active") : t("provider.panel.setActive")}
                   </button>
-                  <button
-                    className="rounded-md border border-red-500/50 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/20 disabled:opacity-50"
-                    onClick={() => {
-                      if (form.id && window.confirm(t("provider.panel.confirmDelete", { label: form.label }))) {
-                        deleteMutation.mutate(form.id);
-                      }
-                    }}
-                    disabled={deleteMutation.isPending}
-                  >
-                    {t("common.delete")}
-                  </button>
+                  <AnimatePresence initial={false} mode="wait">
+                    {deleteConfirming ? (
+                      <motion.div
+                        key="delete-confirm"
+                        variants={fadeOnly}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                        className="flex items-center gap-2"
+                      >
+                        <span className="max-w-52 truncate text-xs text-red-300">
+                          {t("provider.panel.confirmDelete", { label: form.label })}
+                        </span>
+                        <button
+                          type="button"
+                          className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-50"
+                          onClick={() => setDeleteConfirming(false)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {t("common.cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md border border-red-500/50 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                          onClick={() => {
+                            if (form.id) deleteMutation.mutate(form.id);
+                          }}
+                          disabled={deleteMutation.isPending}
+                        >
+                          {deleteMutation.isPending ? "删除中" : t("common.confirm")}
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        key="delete-start"
+                        type="button"
+                        className="rounded-md border border-red-500/50 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                        onClick={() => setDeleteConfirming(true)}
+                        disabled={deleteMutation.isPending}
+                        variants={fadeOnly}
+                        initial="initial"
+                        animate="animate"
+                        exit="exit"
+                      >
+                        {t("common.delete")}
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </>
               )}
             </div>

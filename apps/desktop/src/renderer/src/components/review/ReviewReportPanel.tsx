@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AlertTriangle,
   Check,
   CheckCircle2,
   ExternalLink,
   Info,
-  Loader2,
   RotateCcw,
   Sparkles,
   X,
@@ -19,9 +19,21 @@ import type {
   ReviewProgressEvent,
   ReviewSeverity,
 } from "@inkforge/shared";
+import { AnimatedDialog } from "../AnimatedDialog";
+import { MotionSpinner } from "../MotionSpinner";
 import { reviewApi } from "../../lib/api";
 import { getReviewDimensionHelp } from "../../lib/review-dimension-copy";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import {
+  DUR,
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 interface ReviewReportPanelProps {
   reportId: string;
@@ -29,7 +41,6 @@ interface ReviewReportPanelProps {
   chapters: ChapterRecord[];
   onJumpChapter: (chapterId: string) => void;
   onDoneRunning: (reportId: string) => void;
-  onExport: (reportId: string) => void;
 }
 
 function severityMeta(severity: ReviewSeverity): {
@@ -66,7 +77,18 @@ export function ReviewReportPanel({
   onDoneRunning,
 }: ReviewReportPanelProps): JSX.Element {
   const queryClient = useQueryClient();
+  const reduce = useReducedMotion();
+  const stateMotion = reduce ? fadeOnly : fadeSlideUp;
+  const interactiveMotion = reduce
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
   const progressRef = useRef<ReviewProgressEvent | null>(null);
+  const fixPreviewCloseTimerRef = useRef<number | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const reportQuery = useQuery({
     queryKey: ["review-report", reportId],
@@ -96,29 +118,68 @@ export function ReviewReportPanel({
   const dismissMut = useMutation({
     mutationFn: (input: { findingId: string; dismissed: boolean }) =>
       reviewApi.dismissFinding(input),
+    onMutate: () => {
+      setActionError(null);
+    },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["review-report", reportId] }),
+    onError: (err) => {
+      setActionError(friendlyErrorMessage(err, "问题状态更新失败，请稍后重试。"));
+    },
   });
 
   const [fixPreview, setFixPreview] = useState<{
     findingId: string;
     response: ReviewApplyFixResponse;
   } | null>(null);
+  const [fixPreviewOpen, setFixPreviewOpen] = useState(false);
+
+  const clearFixPreviewCloseTimer = (): void => {
+    if (fixPreviewCloseTimerRef.current !== null) {
+      window.clearTimeout(fixPreviewCloseTimerRef.current);
+      fixPreviewCloseTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => clearFixPreviewCloseTimer, []);
+
+  function closeFixPreview(): void {
+    clearFixPreviewCloseTimer();
+    setFixPreviewOpen(false);
+    fixPreviewCloseTimerRef.current = window.setTimeout(() => {
+      fixPreviewCloseTimerRef.current = null;
+      setFixPreview(null);
+    }, DUR.fast * 1000);
+  }
 
   const previewMut = useMutation({
     mutationFn: (findingId: string) =>
       reviewApi.applyFix({ findingId, mode: "preview" }),
+    onMutate: () => {
+      setActionError(null);
+    },
     onSuccess: (res, findingId) => {
+      clearFixPreviewCloseTimer();
       setFixPreview({ findingId, response: res });
+      setFixPreviewOpen(true);
+    },
+    onError: (err) => {
+      setActionError(friendlyErrorMessage(err, "修复预览生成失败，请稍后重试。"));
     },
   });
 
   const applyMut = useMutation({
     mutationFn: (findingId: string) =>
       reviewApi.applyFix({ findingId, mode: "apply" }),
+    onMutate: () => {
+      setActionError(null);
+    },
     onSuccess: () => {
-      setFixPreview(null);
+      closeFixPreview();
       queryClient.invalidateQueries({ queryKey: ["review-report", reportId] });
+    },
+    onError: (err) => {
+      setActionError(friendlyErrorMessage(err, "修复写入失败，请稍后重试。"));
     },
   });
 
@@ -151,7 +212,7 @@ export function ReviewReportPanel({
   if (reportQuery.isLoading || !report) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 text-sm text-ink-400">
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <MotionSpinner className="h-4 w-4" />
         加载报告
       </div>
     );
@@ -168,17 +229,23 @@ export function ReviewReportPanel({
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-ink-950">
       <div className="border-b border-ink-700 bg-ink-900/35 px-4 py-3">
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <motion.div
+          className="grid grid-cols-3 gap-2 text-xs"
+          variants={reduce ? undefined : staggerContainer}
+          initial="initial"
+          animate="animate"
+        >
           <SummaryTile label="严重" value={totals.error} tone="rose" />
           <SummaryTile label="警告" value={totals.warn} tone="amber" />
           <SummaryTile label="提示" value={totals.info} tone="sky" />
-        </div>
+        </motion.div>
         {isRunning ? (
           <div className="mt-3 flex items-center gap-2 text-[11px] text-ink-400">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-800">
-              <div
-                className="h-full rounded-full bg-accent-400 transition-all"
-                style={{ width: `${percent}%` }}
+              <motion.div
+                className="h-full rounded-full bg-accent-400 transition-[width] duration-300"
+                initial={false}
+                animate={{ width: `${percent}%` }}
               />
             </div>
             <span>
@@ -191,6 +258,27 @@ export function ReviewReportPanel({
             审查失败：{friendlyErrorMessage(report.error, "审查服务暂时不可用，请稍后重试。")}
           </div>
         ) : null}
+        <AnimatePresence initial={false}>
+          {actionError ? (
+            <motion.div
+              className="mt-3 flex items-center justify-between gap-3 rounded-md border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-100"
+              role="alert"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <span>{actionError}</span>
+              <button
+                type="button"
+                className="shrink-0 rounded px-2 py-0.5 hover:bg-red-500/20"
+                onClick={() => setActionError(null)}
+              >
+                知道了
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
@@ -198,7 +286,7 @@ export function ReviewReportPanel({
           <div className="flex h-full items-center justify-center px-8 text-center">
             <div>
               {isRunning ? (
-                <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-accent-300" />
+                <MotionSpinner className="mx-auto mb-3 h-8 w-8 text-accent-300" />
               ) : (
                 <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-emerald-400" />
               )}
@@ -217,13 +305,19 @@ export function ReviewReportPanel({
             <div className="mb-3 text-xs text-ink-500">
               显示 {visibleFindings.length} 条未忽略问题，已忽略的条目会变淡保留。
             </div>
-            <div className="space-y-3">
+            <motion.div
+              className="space-y-3"
+              variants={reduce ? undefined : staggerContainer}
+              initial="initial"
+              animate="animate"
+            >
               {groupedByDimension.map(([dimensionId, list]) => {
                 const dim = dimensionById.get(dimensionId);
                 return (
-                  <section
+                  <motion.section
                     key={dimensionId}
                     className="rounded-md border border-ink-700 bg-ink-900/35"
+                    variants={reduce ? fadeOnly : staggerItem}
                   >
                     <header className="flex items-center gap-2 border-b border-ink-700 px-3 py-2">
                       <div className="min-w-0 flex-1">
@@ -238,7 +332,12 @@ export function ReviewReportPanel({
                         {list.length}
                       </span>
                     </header>
-                    <ul className="divide-y divide-ink-700/70">
+                    <motion.ul
+                      className="divide-y divide-ink-700/70"
+                      variants={reduce ? undefined : staggerContainer}
+                      initial="initial"
+                      animate="animate"
+                    >
                       {list.map((finding) => (
                         <FindingRow
                           key={finding.id}
@@ -256,38 +355,46 @@ export function ReviewReportPanel({
                           disabled={dismissMut.isPending || previewMut.isPending || applyMut.isPending}
                         />
                       ))}
-                    </ul>
-                  </section>
+                    </motion.ul>
+                  </motion.section>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         )}
       </div>
 
       {fixPreview ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
-          onMouseDown={() => setFixPreview(null)}
+        <AnimatedDialog
+          open={fixPreviewOpen}
+          onClose={closeFixPreview}
+          labelledBy="review-fix-preview-title"
+          overlayClassName="flex items-center justify-center p-4"
+          panelClassName="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-ink-700 bg-ink-900 shadow-2xl"
         >
-          <div
-            className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-ink-700 bg-ink-900 shadow-2xl"
-            onMouseDown={(event) => event.stopPropagation()}
+          <motion.div
+            className="flex min-h-0 flex-1 flex-col"
+            variants={stateMotion}
+            initial="initial"
+            animate="animate"
           >
             <header className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
               <div>
-                <h2 className="text-sm font-semibold text-ink-100">修复预览</h2>
+                <h2 id="review-fix-preview-title" className="text-sm font-semibold text-ink-100">
+                  修复预览
+                </h2>
                 <p className="text-xs text-ink-500">确认后才会写回原章节。</p>
               </div>
-              <button
+              <motion.button
                 type="button"
-                onClick={() => setFixPreview(null)}
+                onClick={closeFixPreview}
                 className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
                 aria-label="关闭修复预览"
                 title="关闭"
+                {...interactiveMotion}
               >
-                <X className="h-4 w-4" />
-              </button>
+                <X aria-hidden className="h-4 w-4" />
+              </motion.button>
             </header>
             <div className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-auto p-4">
               <PreviewBlock title="原文片段" text={fixPreview.response.originalExcerpt} />
@@ -300,35 +407,38 @@ export function ReviewReportPanel({
                   : "未定位到可写回范围"}
               </span>
               <div className="flex gap-2">
-                <button
+                <motion.button
                   type="button"
-                  onClick={() => setFixPreview(null)}
+                  onClick={closeFixPreview}
                   className="h-8 rounded-md px-3 text-ink-300 hover:bg-ink-800"
+                  {...interactiveMotion}
                 >
                   取消
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
                   onClick={() => previewMut.mutate(fixPreview.findingId)}
                   disabled={previewMut.isPending}
-                  className="flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-3 text-ink-200 hover:bg-ink-800 disabled:opacity-50"
+                  className="flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-3 text-ink-200 hover:bg-ink-800 disabled:cursor-default disabled:opacity-50"
+                  {...(previewMut.isPending ? {} : interactiveMotion)}
                 >
-                  <RotateCcw className="h-3.5 w-3.5" />
+                  <RotateCcw aria-hidden className="h-3.5 w-3.5" />
                   重新生成
-                </button>
-                <button
+                </motion.button>
+                <motion.button
                   type="button"
                   onClick={() => applyMut.mutate(fixPreview.findingId)}
                   disabled={applyMut.isPending || !fixPreview.response.range}
-                  className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 font-medium text-ink-950 hover:bg-emerald-400 disabled:opacity-50"
+                  className="flex h-8 items-center gap-1.5 rounded-md bg-emerald-500 px-3 font-medium text-ink-950 hover:bg-emerald-400 disabled:cursor-default disabled:opacity-50"
+                  {...(applyMut.isPending || !fixPreview.response.range ? {} : interactiveMotion)}
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check aria-hidden className="h-3.5 w-3.5" />
                   {applyMut.isPending ? "写入中" : "应用到原文"}
-                </button>
+                </motion.button>
               </div>
             </footer>
-          </div>
-        </div>
+          </motion.div>
+        </AnimatedDialog>
       ) : null}
     </div>
   );
@@ -374,6 +484,15 @@ function FindingRow({
   fixing: boolean;
   disabled: boolean;
 }): JSX.Element {
+  const reduce = useReducedMotion() === true;
+  const rowMotion = reduce ? fadeOnly : staggerItem;
+  const buttonMotion = reduce
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
   const meta = severityMeta(finding.severity);
   const Icon = meta.icon;
   const canFix =
@@ -383,21 +502,28 @@ function FindingRow({
     finding.excerptEnd != null;
 
   return (
-    <li className={`p-3 ${finding.dismissed ? "opacity-45" : ""}`}>
+    <motion.li
+      layout
+      variants={rowMotion}
+      className={`p-3 ${finding.dismissed ? "opacity-45" : ""}`}
+    >
       <div className="mb-2 flex items-center gap-2 text-xs">
         <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${meta.className}`}>
-          <Icon className="h-3 w-3" />
+          <Icon aria-hidden className="h-3 w-3" />
           {meta.label}
         </span>
         {chapter ? (
-          <button
+          <motion.button
             type="button"
             onClick={() => onJumpChapter(chapter.id)}
             className="inline-flex min-w-0 items-center gap-1 text-ink-300 hover:text-accent-200"
+            aria-label={`跳转到章节：${chapter.title}`}
+            title={`跳转到章节：${chapter.title}`}
+            {...buttonMotion}
           >
             <span className="truncate">{chapter.title}</span>
-            <ExternalLink className="h-3 w-3 shrink-0" />
-          </button>
+            <ExternalLink aria-hidden className="h-3 w-3 shrink-0" />
+          </motion.button>
         ) : (
           <span className="text-ink-500">全书范围</span>
         )}
@@ -414,27 +540,33 @@ function FindingRow({
         <p className="text-xs leading-5 text-ink-200">{finding.suggestion}</p>
       ) : null}
       <div className="mt-3 flex items-center gap-2">
-        <button
+        <motion.button
           type="button"
           onClick={onToggleDismiss}
           disabled={disabled}
-          className="h-7 rounded-md border border-ink-700 px-2 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+          className="h-7 rounded-md border border-ink-700 px-2 text-xs text-ink-300 hover:bg-ink-800 disabled:cursor-default disabled:opacity-50"
+          {...(disabled ? {} : buttonMotion)}
         >
           {finding.dismissed ? "恢复" : "忽略"}
-        </button>
+        </motion.button>
         {canFix ? (
-          <button
+          <motion.button
             type="button"
             onClick={onPreviewFix}
             disabled={disabled || finding.dismissed}
-            className="flex h-7 items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+            className="flex h-7 items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:cursor-default disabled:opacity-50"
+            {...(disabled || finding.dismissed ? {} : buttonMotion)}
           >
-            {fixing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {fixing ? (
+              <MotionSpinner className="h-3.5 w-3.5" />
+            ) : (
+              <Sparkles aria-hidden className="h-3.5 w-3.5" />
+            )}
             修复
-          </button>
+          </motion.button>
         ) : null}
       </div>
-    </li>
+    </motion.li>
   );
 }
 

@@ -1,5 +1,5 @@
 // M9 Phase 1.1+1.2+3.2: ActivityBar with grouped nav + bottom utilities (settings / help / palette).
-import { motion, useReducedMotion } from "motion/react";
+import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import {
   Feather,
   ListTree,
@@ -21,7 +21,7 @@ import {
 import { useT } from "../lib/i18n";
 import { NAV_SHORTCUTS, type NavShortcut } from "../lib/shortcuts";
 import { useAppStore } from "../stores/app-store";
-import { SPRING_SNAPPY } from "../lib/motion-tokens";
+import { SPRING_GENTLE, SPRING_SNAPPY } from "../lib/motion-tokens";
 
 interface ActivityBarProps {
   onOpenPalette: () => void;
@@ -63,39 +63,60 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
       role="tablist"
       aria-label={t("nav.aria.label")}
     >
-      {groupedItems.map((items, idx) => (
-        <div key={idx} className="flex flex-col items-center gap-1">
-          {idx > 0 && <hr aria-hidden className="my-1 h-px w-6 border-0 bg-ink-700/70" />}
-          {items.map((item) => {
-            const active = mainView === item.view;
-            const label = t(item.labelKey);
-            const Icon = VIEW_ICONS[item.view];
-            return (
-              <motion.button
-                key={item.view}
-                role="tab"
-                aria-current={active ? "page" : undefined}
-                aria-selected={active}
-                whileTap={reduce ? undefined : { scale: 0.9 }}
-                transition={SPRING_SNAPPY}
-                className={`group relative flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
-                  active
-                    ? "bg-accent-500/20 text-accent-300 ring-1 ring-accent-500/40"
-                    : "text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
-                }`}
-                onClick={() => setMainView(item.view)}
-                title={`${label} (${item.combo})`}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-                <span className="pointer-events-none absolute left-12 z-20 whitespace-nowrap rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
-                  {label}
-                  <span className="ml-2 text-ink-400">{item.combo}</span>
-                </span>
-              </motion.button>
-            );
-          })}
-        </div>
-      ))}
+      <LayoutGroup id="activity-main-nav">
+        {groupedItems.map((items, idx) => (
+          <div key={idx} className="flex flex-col items-center gap-1">
+            {idx > 0 && <hr aria-hidden className="my-1 h-px w-6 border-0 bg-ink-700/70" />}
+            {items.map((item) => {
+              const active = mainView === item.view;
+              const label = t(item.labelKey);
+              const Icon = VIEW_ICONS[item.view];
+              return (
+                <motion.button
+                  key={item.view}
+                  type="button"
+                  role="tab"
+                  aria-current={active ? "page" : undefined}
+                  aria-selected={active}
+                  aria-label={`${label} (${item.combo})`}
+                  whileHover={reduce ? undefined : { scale: 1.04 }}
+                  whileTap={reduce ? undefined : { scale: 0.92 }}
+                  transition={SPRING_SNAPPY}
+                  className={`group relative flex h-10 w-10 items-center justify-center rounded-md transition-colors ${
+                    active
+                      ? "text-accent-200"
+                      : "text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
+                  }`}
+                  onClick={() => setMainView(item.view)}
+                  title={`${label} (${item.combo})`}
+                >
+                  {active ? (
+                    <>
+                      <motion.span
+                        aria-hidden
+                        layoutId={reduce ? undefined : "activity-active-bg"}
+                        className="absolute inset-0 rounded-md bg-accent-500/20 ring-1 ring-accent-500/40"
+                        transition={SPRING_GENTLE}
+                      />
+                      <motion.span
+                        aria-hidden
+                        layoutId={reduce ? undefined : "activity-active-rail"}
+                        className="absolute left-0.5 top-2 h-6 w-0.5 rounded-full bg-accent-300 shadow-[0_0_10px_rgba(56,189,248,0.55)]"
+                        transition={SPRING_GENTLE}
+                      />
+                    </>
+                  ) : null}
+                  <Icon className="relative z-10 h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+                  <span className="pointer-events-none absolute left-12 z-20 whitespace-nowrap rounded-md border border-ink-600 bg-ink-800 px-2 py-1 text-xs text-ink-100 opacity-0 shadow transition-opacity group-hover:opacity-100">
+                    {label}
+                    <span className="ml-2 text-ink-400">{item.combo}</span>
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        ))}
+      </LayoutGroup>
 
       <div className="mt-auto flex flex-col items-center gap-1 pt-2">
         <hr aria-hidden className="my-1 h-px w-6 border-0 bg-ink-700/70" />
@@ -132,6 +153,8 @@ function UtilityButton({
     <motion.button
       type="button"
       onClick={onClick}
+      aria-label={`${label} (${combo})`}
+      whileHover={reduce ? undefined : { scale: 1.04 }}
       whileTap={reduce ? undefined : { scale: 0.9 }}
       transition={SPRING_SNAPPY}
       className="group relative flex h-10 w-10 items-center justify-center rounded-md text-ink-300 transition-colors hover:bg-ink-700/60 hover:text-ink-100"

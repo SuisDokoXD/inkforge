@@ -7,13 +7,15 @@
 // 全部走 defaultValue + onBlur 提交（避免每个 keystroke 都触发 mutation）。
 // =============================================================================
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type {
   WorldEntryPosition,
   WorldEntrySelectiveLogic,
   WorldPackEntryRecord,
 } from "@inkforge/shared";
+import { fadeOnly, fadeSlideUp, tapPress } from "../../../lib/motion-tokens";
 import { FieldLabel } from "./DialogShell";
 
 interface Props {
@@ -31,6 +33,8 @@ const LOGIC_OPTIONS: Array<{ value: WorldEntrySelectiveLogic; label: string; hin
 
 export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.Element {
   const dataListId = `category-options-${entry.id}`;
+  const advancedPanelId = `entry-advanced-panel-${entry.id}`;
+  const reduceMotion = useReducedMotion() === true;
   // 高级面板默认折叠；如果当前 entry 已经用了高级字段（说明用户在意），自动展开
   const hasAdvancedConfig =
     entry.secondaryKeys.length > 0 ||
@@ -38,6 +42,21 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
     entry.caseSensitive ||
     entry.constant;
   const [advancedOpen, setAdvancedOpen] = useState<boolean>(hasAdvancedConfig);
+  const [positionDraft, setPositionDraft] = useState<WorldEntryPosition>(entry.position);
+  const [constantDraft, setConstantDraft] = useState(entry.constant);
+  const [caseSensitiveDraft, setCaseSensitiveDraft] = useState(entry.caseSensitive);
+  const [selectiveLogicDraft, setSelectiveLogicDraft] =
+    useState<WorldEntrySelectiveLogic>(entry.selectiveLogic);
+
+  useEffect(() => {
+    setPositionDraft(entry.position);
+    setConstantDraft(entry.constant);
+    setCaseSensitiveDraft(entry.caseSensitive);
+    setSelectiveLogicDraft(entry.selectiveLogic);
+  }, [entry.id, entry.position, entry.constant, entry.caseSensitive, entry.selectiveLogic]);
+
+  const selectedLogicHint =
+    LOGIC_OPTIONS.find((option) => option.value === selectiveLogicDraft)?.hint ?? "";
 
   return (
     <div className="flex flex-col gap-3 p-5">
@@ -123,10 +142,15 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
           <FieldLabel>参考位置</FieldLabel>
           <select
             aria-label="参考位置"
-            defaultValue={entry.position}
-            onChange={(e) =>
-              onUpdate({ position: e.target.value as WorldEntryPosition })
-            }
+            value={positionDraft}
+            onChange={(e) => {
+              const next = e.target.value as WorldEntryPosition;
+              const previous = positionDraft;
+              setPositionDraft(next);
+              if (next !== previous || next !== entry.position) {
+                onUpdate({ position: next });
+              }
+            }}
             className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100"
           >
             <option value="before">写作要求前</option>
@@ -151,10 +175,13 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
         </div>
       </div>
 
-      <button
+      <motion.button
         type="button"
+        aria-expanded={advancedOpen}
+        aria-controls={advancedPanelId}
         onClick={() => setAdvancedOpen((v) => !v)}
         className="mt-2 flex items-center gap-1 self-start rounded-md px-2 py-1 text-xs text-ink-300 hover:bg-ink-800/50 hover:text-ink-100"
+        whileTap={tapPress}
       >
         {advancedOpen ? (
           <ChevronDown className="h-3.5 w-3.5" />
@@ -162,89 +189,113 @@ export function EntryEditor({ entry, categoryOptions, onUpdate }: Props): JSX.El
           <ChevronRight className="h-3.5 w-3.5" />
         )}
         高级触发规则
-      </button>
+      </motion.button>
 
-      {advancedOpen && (
-        <div className="flex flex-col gap-3 rounded-md border border-ink-700 bg-ink-900/40 p-3">
-          {/* constant 与 caseSensitive：单行两 toggle */}
-          <div className="flex flex-wrap gap-4">
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-200">
-              <input
-                aria-label="总是参考"
-                type="checkbox"
-                checked={entry.constant}
-                onChange={(e) => onUpdate({ constant: e.target.checked })}
-                className="h-3.5 w-3.5 accent-accent-500"
-              />
-              <span>
-                <strong className="text-ink-100">总是参考</strong>
-                <span className="ml-1 text-ink-400">
-                  — 不判断关键词，每次写作都参考。适合“必读设定”
+      <AnimatePresence initial={false}>
+        {advancedOpen && (
+          <motion.div
+            id={advancedPanelId}
+            className="flex flex-col gap-3 rounded-md border border-ink-700 bg-ink-900/40 p-3"
+            variants={reduceMotion ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {/* constant 与 caseSensitive：单行两 toggle */}
+            <div className="flex flex-wrap gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-200">
+                <input
+                  aria-label="总是参考"
+                  type="checkbox"
+                  checked={constantDraft}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    const previous = constantDraft;
+                    setConstantDraft(next);
+                    if (next !== previous || next !== entry.constant) {
+                      onUpdate({ constant: next });
+                    }
+                  }}
+                  className="h-3.5 w-3.5 accent-accent-500"
+                />
+                <span>
+                  <strong className="text-ink-100">总是参考</strong>
+                  <span className="ml-1 text-ink-400">
+                    — 不判断关键词，每次写作都参考。适合“必读设定”
+                  </span>
                 </span>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-200">
-              <input
-                aria-label="大小写敏感"
-                type="checkbox"
-                checked={entry.caseSensitive}
-                onChange={(e) => onUpdate({ caseSensitive: e.target.checked })}
-                className="h-3.5 w-3.5 accent-accent-500"
-              />
-              <span>
-                <strong className="text-ink-100">大小写敏感</strong>
-                <span className="ml-1 text-ink-400">
-                  — 英文场景才有意义；中文无差异
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-200">
+                <input
+                  aria-label="大小写敏感"
+                  type="checkbox"
+                  checked={caseSensitiveDraft}
+                  onChange={(e) => {
+                    const next = e.target.checked;
+                    const previous = caseSensitiveDraft;
+                    setCaseSensitiveDraft(next);
+                    if (next !== previous || next !== entry.caseSensitive) {
+                      onUpdate({ caseSensitive: next });
+                    }
+                  }}
+                  className="h-3.5 w-3.5 accent-accent-500"
+                />
+                <span>
+                  <strong className="text-ink-100">大小写敏感</strong>
+                  <span className="ml-1 text-ink-400">
+                    — 英文场景才有意义；中文无差异
+                  </span>
                 </span>
-              </span>
-            </label>
-          </div>
+              </label>
+            </div>
 
-          <div>
-            <FieldLabel>辅助关键词（逗号分隔）</FieldLabel>
-            <input
-              aria-label="辅助关键词"
-              defaultValue={entry.secondaryKeys.join(", ")}
-              onBlur={(e) => {
-                const next = e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean);
-                if (next.join(",") !== entry.secondaryKeys.join(","))
-                  onUpdate({ secondaryKeys: next });
-              }}
-              className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
-              placeholder="需要与主关键词组合判断的词，如：战斗, 紧张"
-            />
-            <p className="mt-1 text-[11px] text-ink-400">
-              留空时只判断主关键词；填写后会配合下面的组合方式一起判断。
-            </p>
-          </div>
+            <div>
+              <FieldLabel>辅助关键词（逗号分隔）</FieldLabel>
+              <input
+                aria-label="辅助关键词"
+                defaultValue={entry.secondaryKeys.join(", ")}
+                onBlur={(e) => {
+                  const next = e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                  if (next.join(",") !== entry.secondaryKeys.join(","))
+                    onUpdate({ secondaryKeys: next });
+                }}
+                className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100 focus:border-accent-500/60 focus:outline-none"
+                placeholder="需要与主关键词组合判断的词，如：战斗, 紧张"
+              />
+              <p className="mt-1 text-[11px] text-ink-400">
+                留空时只判断主关键词；填写后会配合下面的组合方式一起判断。
+              </p>
+            </div>
 
-          <div>
-            <FieldLabel>多关键词组合方式</FieldLabel>
-            <select
-              aria-label="多关键词组合方式"
-              defaultValue={entry.selectiveLogic}
-              onChange={(e) =>
-                onUpdate({
-                  selectiveLogic: e.target.value as WorldEntrySelectiveLogic,
-                })
-              }
-              className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100"
-            >
-              {LOGIC_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-[11px] text-ink-400">
-              {LOGIC_OPTIONS.find((o) => o.value === entry.selectiveLogic)?.hint}
-            </p>
-          </div>
-        </div>
-      )}
+            <div>
+              <FieldLabel>多关键词组合方式</FieldLabel>
+              <select
+                aria-label="多关键词组合方式"
+                value={selectiveLogicDraft}
+                onChange={(e) => {
+                  const next = e.target.value as WorldEntrySelectiveLogic;
+                  const previous = selectiveLogicDraft;
+                  setSelectiveLogicDraft(next);
+                  if (next !== previous || next !== entry.selectiveLogic) {
+                    onUpdate({ selectiveLogic: next });
+                  }
+                }}
+                className="mt-1 w-full rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-100"
+              >
+                {LOGIC_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[11px] text-ink-400">{selectedLogicHint}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

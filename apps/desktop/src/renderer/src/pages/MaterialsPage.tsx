@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   BookOpen,
   Edit3,
@@ -26,8 +27,18 @@ import type {
   ProjectRecord,
 } from "@inkforge/shared";
 import { materialApi, outlineGenApi, projectApi } from "../lib/api";
+import { friendlyErrorMessage } from "../lib/friendly-error";
 import { useAppStore } from "../stores/app-store";
+import { MotionSpinner } from "../components/MotionSpinner";
 import { SampleLibPanel } from "../components/SampleLibPanel";
+import {
+  fadeSlideUp,
+  fadeOnly,
+  hoverLift,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../lib/motion-tokens";
 
 type Tab = "materials" | "worldview" | "samples";
 type KindFilter = MaterialKind | "all";
@@ -140,6 +151,7 @@ export function MaterialsPage(): JSX.Element {
           素材库
         </h2>
         <select
+          aria-label="选择书籍"
           value={projectId ?? ""}
           onChange={(e) => setProject(e.target.value || null)}
           className="rounded-md border border-ink-700 bg-ink-900 px-2 py-1 text-xs text-ink-100"
@@ -194,8 +206,16 @@ function TabBtn({
   active: boolean;
   onClick: () => void;
 }): JSX.Element {
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+      };
+
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
       className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 ${
@@ -203,15 +223,23 @@ function TabBtn({
           ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
           : "border-ink-700 text-ink-300 hover:bg-ink-800"
       }`}
+      {...buttonMotion}
     >
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-3.5 w-3.5" aria-hidden />
       <span>{label}</span>
-    </button>
+    </motion.button>
   );
 }
 
 function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
   const queryClient = useQueryClient();
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+      };
   const [filterKind, setFilterKind] = useState<KindFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -219,12 +247,19 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
   const [draftTitle, setDraftTitle] = useState("");
   const [draftTags, setDraftTags] = useState("");
   const [draftContent, setDraftContent] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["materials", projectId],
     queryFn: () => materialApi.list({ projectId }),
   });
   const items = listQuery.data ?? [];
+
+  useEffect(() => {
+    setDeletingId(null);
+    setDeleteError(null);
+  }, [projectId]);
 
   const counts = useMemo(() => {
     const next = Object.fromEntries(
@@ -282,7 +317,21 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => materialApi.delete({ id }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["materials", projectId] }),
+    onMutate: (id) => {
+      setDeletingId(id);
+      setDeleteError(null);
+    },
+    onSuccess: (_result, id) => {
+      setDeleteError((current) => (current?.id === id ? null : current));
+      queryClient.invalidateQueries({ queryKey: ["materials", projectId] });
+    },
+    onError: (err, id) => {
+      setDeleteError({
+        id,
+        message: friendlyErrorMessage(err, "删除素材失败，请稍后重试。"),
+      });
+    },
+    onSettled: () => setDeletingId(null),
   });
 
   return (
@@ -291,6 +340,7 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
         <div className="mb-3 flex items-center gap-2 rounded-md border border-ink-700 bg-ink-900 px-2 py-1.5">
           <Search className="h-3.5 w-3.5 text-ink-500" />
           <input
+            aria-label="搜索素材"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="搜索标题、正文、标签"
@@ -383,6 +433,7 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
         <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/45 p-3">
           <div className="mb-2 grid grid-cols-[160px_minmax(0,1fr)_220px_auto] gap-2 text-xs">
             <select
+              aria-label="素材类型"
               value={draftKind}
               onChange={(e) => setDraftKind(e.target.value as MaterialKind)}
               className="h-8 rounded-md border border-ink-700 bg-ink-950 px-2 text-ink-100"
@@ -394,6 +445,7 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
               ))}
             </select>
             <input
+              aria-label="素材标题"
               type="text"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
@@ -403,6 +455,7 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
             <div className="flex h-8 items-center gap-1 rounded-md border border-ink-700 bg-ink-950 px-2">
               <Tags className="h-3.5 w-3.5 text-ink-500" />
               <input
+                aria-label="素材标签"
                 type="text"
                 value={draftTags}
                 onChange={(e) => setDraftTags(e.target.value)}
@@ -410,17 +463,23 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
                 className="min-w-0 flex-1 bg-transparent text-ink-100 outline-none placeholder:text-ink-500"
               />
             </div>
-            <button
+            <motion.button
               type="button"
               disabled={!draftTitle.trim() || createMut.isPending}
               onClick={() => createMut.mutate()}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
+              className="inline-flex h-8 min-w-16 items-center justify-center gap-1.5 rounded-md bg-accent-500 px-3 font-medium text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
+              {...(!draftTitle.trim() || createMut.isPending ? {} : buttonMotion)}
             >
-              <Plus className="h-3.5 w-3.5" />
+              {createMut.isPending ? (
+                <MotionSpinner className="h-3.5 w-3.5" />
+              ) : (
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+              )}
               {createMut.isPending ? "保存中" : "新增"}
-            </button>
+            </motion.button>
           </div>
           <textarea
+            aria-label={`${activeKindMeta.label}内容`}
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
             rows={4}
@@ -447,20 +506,38 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
         </div>
 
         {visibleItems.length === 0 ? (
-          <div className="rounded-md border border-dashed border-ink-700 py-12 text-center text-xs text-ink-500">
+          <motion.div
+            className="flex items-center justify-center gap-2 rounded-md border border-dashed border-ink-700 py-12 text-center text-xs text-ink-500"
+            role={listQuery.isLoading ? "status" : undefined}
+            variants={reduceMotion ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+          >
+            {listQuery.isLoading ? <MotionSpinner className="h-3.5 w-3.5" /> : null}
             {listQuery.isLoading ? "加载中" : "暂无匹配素材"}
-          </div>
+          </motion.div>
         ) : (
-          <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+          <motion.ul
+            className="grid grid-cols-1 gap-2 xl:grid-cols-2"
+            variants={reduceMotion ? fadeOnly : staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
             {visibleItems.map((m) => (
-              <MaterialRow
-                key={m.id}
-                item={m}
-                onDelete={() => deleteMut.mutate(m.id)}
-                projectId={projectId}
-              />
+              <motion.li key={m.id} variants={reduceMotion ? fadeOnly : staggerItem}>
+                <MaterialRow
+                  item={m}
+                  onDelete={() => deleteMut.mutate(m.id)}
+                  deleting={deletingId === m.id}
+                  deleteError={deleteError?.id === m.id ? deleteError.message : null}
+                  onClearDeleteError={() => {
+                    setDeleteError((current) => (current?.id === m.id ? null : current));
+                  }}
+                  projectId={projectId}
+                />
+              </motion.li>
             ))}
-          </ul>
+          </motion.ul>
         )}
       </main>
     </div>
@@ -520,14 +597,28 @@ function Metric({
 function MaterialRow({
   item,
   onDelete,
+  deleting = false,
+  deleteError = null,
+  onClearDeleteError,
   projectId,
 }: {
   item: MaterialRecord;
   onDelete: () => void;
+  deleting?: boolean;
+  deleteError?: string | null;
+  onClearDeleteError: () => void;
   projectId: string;
 }): JSX.Element {
   const queryClient = useQueryClient();
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+      };
   const [editing, setEditing] = useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [kind, setKind] = useState<MaterialKind>(item.kind);
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content);
@@ -540,6 +631,16 @@ function MaterialRow({
     setContent(item.content);
     setTags(item.tags.join(" "));
   }, [editing, item.content, item.kind, item.tags, item.title]);
+
+  useEffect(() => {
+    setDeleteConfirming(false);
+  }, [item.id, item.title]);
+
+  useEffect(() => {
+    if (editing) {
+      setDeleteConfirming(false);
+    }
+  }, [editing]);
 
   const saveMut = useMutation({
     mutationFn: () =>
@@ -560,10 +661,11 @@ function MaterialRow({
   const Icon = meta.icon;
 
   return (
-    <li className="rounded-md border border-ink-700 bg-ink-900/45 p-3">
+    <div className="rounded-md border border-ink-700 bg-ink-900/45 p-3">
       <div className="mb-2 flex min-w-0 items-center gap-2 text-xs">
         {editing ? (
           <select
+            aria-label="素材类型"
             value={kind}
             onChange={(e) => setKind(e.target.value as MaterialKind)}
             className="h-7 rounded-md border border-ink-700 bg-ink-950 px-2 text-ink-100"
@@ -583,6 +685,7 @@ function MaterialRow({
 
         {editing ? (
           <input
+            aria-label="素材标题"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -597,51 +700,124 @@ function MaterialRow({
         </span>
         {editing ? (
           <>
-            <button
+            <motion.button
               type="button"
               disabled={!title.trim() || saveMut.isPending}
               onClick={() => saveMut.mutate()}
-              className="flex h-7 items-center gap-1 rounded-md bg-accent-500 px-2 text-[11px] font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
+              className="inline-flex h-7 min-w-14 items-center justify-center gap-1 rounded-md bg-accent-500 px-2 text-[11px] font-medium text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
+              {...(!title.trim() || saveMut.isPending ? {} : buttonMotion)}
             >
-              <Save className="h-3.5 w-3.5" />
-              保存
-            </button>
-            <button
+              {saveMut.isPending ? (
+                <MotionSpinner className="h-3.5 w-3.5" />
+              ) : (
+                <Save className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {saveMut.isPending ? "保存中" : "保存"}
+            </motion.button>
+            <motion.button
               type="button"
               onClick={() => setEditing(false)}
               className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-300 hover:bg-ink-800"
               title="取消"
+              aria-label={`取消编辑素材：${item.title}`}
+              {...buttonMotion}
             >
-              <X className="h-3.5 w-3.5" />
-            </button>
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </motion.button>
           </>
         ) : (
-          <button
+          <motion.button
             type="button"
-            onClick={() => setEditing(true)}
+            onClick={() => {
+              onClearDeleteError();
+              setEditing(true);
+            }}
             className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-300 hover:bg-ink-800"
             title="编辑"
+            aria-label={`编辑素材：${item.title}`}
+            {...buttonMotion}
           >
-            <Edit3 className="h-3.5 w-3.5" />
-          </button>
+            <Edit3 className="h-3.5 w-3.5" aria-hidden />
+          </motion.button>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm(`删除素材《${item.title}》？`)) onDelete();
-          }}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-400 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200"
-          title="删除"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <AnimatePresence initial={false} mode="wait">
+          {deleteConfirming ? (
+            <motion.div
+              key="delete-confirm"
+              variants={reduceMotion ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="flex h-7 items-center gap-1"
+            >
+              <motion.button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleteConfirming(false);
+                  onClearDeleteError();
+                }}
+                className="h-7 rounded-md border border-ink-700 px-2 text-[11px] text-ink-300 hover:bg-ink-800 disabled:cursor-default disabled:opacity-40"
+                {...(deleting ? {} : buttonMotion)}
+              >
+                取消
+              </motion.button>
+              <motion.button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  onClearDeleteError();
+                  onDelete();
+                }}
+                className="inline-flex h-7 items-center gap-1 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 text-[11px] font-medium text-rose-100 hover:bg-rose-500/20 disabled:cursor-default disabled:opacity-40"
+                {...(deleting ? {} : buttonMotion)}
+              >
+                {deleting ? <MotionSpinner className="h-3 w-3" /> : null}
+                {deleting ? "删除中" : "确认删除"}
+              </motion.button>
+            </motion.div>
+          ) : (
+            <motion.button
+              key="delete-start"
+              type="button"
+              disabled={deleting}
+              onClick={() => {
+                onClearDeleteError();
+                setDeleteConfirming(true);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-400 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200 disabled:opacity-40"
+              title="删除"
+              aria-label={`删除素材：${item.title}`}
+              {...(deleting ? {} : buttonMotion)}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
+
+      <AnimatePresence initial={false}>
+        {deleteError ? (
+          <motion.p
+            key="delete-error"
+            role="alert"
+            variants={reduceMotion ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="mb-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] text-rose-100"
+          >
+            {deleteError}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
 
       {editing ? (
         <div className="space-y-2">
           <div className="flex h-8 items-center gap-1 rounded-md border border-ink-700 bg-ink-950 px-2 text-xs">
             <Tags className="h-3.5 w-3.5 text-ink-500" />
             <input
+              aria-label="素材标签"
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
@@ -650,6 +826,7 @@ function MaterialRow({
             />
           </div>
           <textarea
+            aria-label="素材内容"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={7}
@@ -679,12 +856,19 @@ function MaterialRow({
           )}
         </>
       )}
-    </li>
+    </div>
   );
 }
 
 function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Element {
   const queryClient = useQueryClient();
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+      };
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -712,6 +896,7 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
   return (
     <div className="p-4">
       <textarea
+        aria-label="世界观草稿"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={22}
@@ -720,15 +905,20 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
       />
       <div className="mt-2 flex items-center justify-between text-[11px] text-ink-500">
         <span>{draft.length} 字</span>
-        <button
+        <motion.button
           type="button"
           disabled={!dirty || saveMut.isPending}
           onClick={() => saveMut.mutate()}
-          className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-40"
+          className="inline-flex h-8 min-w-20 items-center justify-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
+          {...(!dirty || saveMut.isPending ? {} : buttonMotion)}
         >
-          <Save className="h-3.5 w-3.5" />
+          {saveMut.isPending ? (
+            <MotionSpinner className="h-3.5 w-3.5" />
+          ) : (
+            <Save className="h-3.5 w-3.5" aria-hidden />
+          )}
           {saveMut.isPending ? "保存中" : dirty ? "保存" : "已保存"}
-        </button>
+        </motion.button>
       </div>
     </div>
   );

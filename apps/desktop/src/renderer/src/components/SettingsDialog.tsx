@@ -1,14 +1,30 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { AppSettings, Lang } from "@inkforge/shared";
 import { getAnalysisThreshold } from "@inkforge/shared";
+import { X } from "lucide-react";
 import { settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import {
+  fadeOnly,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../lib/motion-tokens";
 import { SceneRoutingPanel } from "./SceneRoutingPanel";
 import { SampleLibPanel } from "./SampleLibPanel";
 import { AnimatedDialog } from "./AnimatedDialog";
+import { useTimedStatus } from "../lib/use-timed-status";
+
+type CopyDiagStatus = {
+  kind: "success" | "error";
+  message: string;
+};
 
 export function SettingsDialog(): JSX.Element | null {
   const open = useAppStore((s) => s.settingsPanelOpen);
@@ -16,12 +32,27 @@ export function SettingsDialog(): JSX.Element | null {
   const settings = useAppStore((s) => s.settings);
   const setSettings = useAppStore((s) => s.setSettings);
   const t = useT();
+  const reduceMotion = useReducedMotion() === true;
 
   const [threshold, setThreshold] = useState<number>(settings.analysisThreshold);
+  const [editorFontSizeDraft, setEditorFontSizeDraft] = useState<number>(
+    settings.editorFontSize,
+  );
+  const [editorLineHeightDraft, setEditorLineHeightDraft] = useState<number>(
+    settings.editorLineHeight,
+  );
 
   useEffect(() => {
     setThreshold(settings.analysisThreshold);
   }, [settings.analysisThreshold]);
+
+  useEffect(() => {
+    setEditorFontSizeDraft(settings.editorFontSize);
+  }, [settings.editorFontSize]);
+
+  useEffect(() => {
+    setEditorLineHeightDraft(settings.editorLineHeight);
+  }, [settings.editorLineHeight]);
 
   // M9 Phase 5: Esc 关闭 + 遮罩点击关闭统一由 AnimatedDialog 处理。
 
@@ -29,6 +60,22 @@ export function SettingsDialog(): JSX.Element | null {
     mutationFn: (updates: Partial<AppSettings>) => settingsApi.set({ updates }),
     onSuccess: (next) => setSettings(next),
   });
+  const sectionMotion = reduceMotion ? fadeOnly : staggerItem;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
+  const settingsStatus = settingsMutation.isPending
+    ? "正在保存设置…"
+    : settingsMutation.isError
+      ? friendlyErrorMessage(settingsMutation.error, "设置暂时无法保存，请稍后重试。")
+      : "设置会自动保存";
+  const settingsStatusTone = settingsMutation.isError ? "text-red-300" : "text-ink-500";
+  const { status: copyDiagStatus, showStatus: showCopyDiagStatus } =
+    useTimedStatus<CopyDiagStatus>();
 
   const handleLanguageChange = (lang: Lang) => {
     // Auto-retune threshold to the language default unless the user has
@@ -43,13 +90,29 @@ export function SettingsDialog(): JSX.Element | null {
     settingsMutation.mutate(updates);
   };
 
+  const commitEditorFontSize = (value = editorFontSizeDraft) => {
+    if (value !== settings.editorFontSize) {
+      settingsMutation.mutate({ editorFontSize: value });
+    }
+  };
+
+  const commitEditorLineHeight = (value = editorLineHeightDraft) => {
+    if (value !== settings.editorLineHeight) {
+      settingsMutation.mutate({ editorLineHeight: value });
+    }
+  };
+
   const handleCopyDiag = async () => {
+    showCopyDiagStatus(null);
     try {
       const res = await window.inkforge.diag.snapshot({});
       await navigator.clipboard.writeText(res.text);
-      alert(t("common.copy") + " ✓");
+      showCopyDiagStatus({ kind: "success", message: "排查信息已复制" }, 2200);
     } catch (err) {
-      alert(friendlyErrorMessage(err, "复制排查信息失败，请稍后重试。"));
+      showCopyDiagStatus({
+        kind: "error",
+        message: friendlyErrorMessage(err, "复制排查信息失败，请稍后重试。"),
+      });
     }
   };
 
@@ -80,28 +143,53 @@ export function SettingsDialog(): JSX.Element | null {
       onClose={() => setOpen(false)}
       ariaLabel={t("settings.title")}
       overlayClassName="flex items-center justify-center p-8"
+      panelClassName="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl"
       zClassName="z-40"
     >
-      <div className="flex max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-ink-600 bg-ink-800 p-6 text-ink-100 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{t("settings.title")}</h2>
-          <button
-            className="rounded px-2 py-1 text-sm text-ink-300 hover:bg-ink-700"
+          <div>
+            <h2 className="text-base font-semibold">{t("settings.title")}</h2>
+            <AnimatePresence initial={false} mode="wait">
+              <motion.p
+                key={settingsStatus}
+                className={`mt-1 text-[11px] ${settingsStatusTone}`}
+                aria-live="polite"
+                role={settingsMutation.isError ? "alert" : "status"}
+                variants={reduceMotion ? fadeOnly : staggerItem}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {settingsStatus}
+              </motion.p>
+            </AnimatePresence>
+          </div>
+          <motion.button
+            type="button"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
             onClick={() => setOpen(false)}
             title={t("common.close")}
+            aria-label={t("common.close")}
+            {...buttonMotion}
           >
-            ✕
-          </button>
+            <X className="h-4 w-4" />
+          </motion.button>
         </div>
 
-        <div className="space-y-6 overflow-y-auto pr-1 text-sm">
-          <section>
+        <motion.div
+          className="space-y-6 overflow-y-auto pr-1 text-sm"
+          variants={reduceMotion ? fadeOnly : staggerContainer}
+          initial="initial"
+          animate="animate"
+        >
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               {t("settings.section.writing")}
             </h3>
             <div className="space-y-3">
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3" htmlFor="settings-analysis-enabled">
                 <input
+                  id="settings-analysis-enabled"
                   type="checkbox"
                   className="h-4 w-4"
                   checked={settings.analysisEnabled}
@@ -109,12 +197,16 @@ export function SettingsDialog(): JSX.Element | null {
                 />
                 <span>{t("settings.analysisEnabled")}</span>
               </label>
-              <label className="flex items-center gap-3">
-                <span className="text-ink-300">{t("settings.analysisThreshold")}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="text-ink-300" htmlFor="settings-analysis-threshold">
+                  {t("settings.analysisThreshold")}
+                </label>
                 <input
+                  id="settings-analysis-threshold"
                   type="number"
                   min={50}
                   step={50}
+                  aria-describedby="settings-analysis-threshold-hint"
                   className="w-24 rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
                   value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value) || settings.analysisThreshold)}
@@ -124,13 +216,16 @@ export function SettingsDialog(): JSX.Element | null {
                     }
                   }}
                 />
-                <span className="text-xs text-ink-500">
+                <span id="settings-analysis-threshold-hint" className="text-xs text-ink-500">
                   {t("settings.analysisThresholdHint", { n: threshold })}
                 </span>
-              </label>
-              <label className="flex items-center gap-3">
-                <span className="text-ink-300">{t("settings.uiLanguage")}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-ink-300" htmlFor="settings-ui-language">
+                  {t("settings.uiLanguage")}
+                </label>
                 <select
+                  id="settings-ui-language"
                   className="rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-sm focus:border-accent-500 focus:outline-none"
                   value={settings.uiLanguage}
                   onChange={(e) => handleLanguageChange(e.target.value as Lang)}
@@ -139,103 +234,154 @@ export function SettingsDialog(): JSX.Element | null {
                   <option value="en">English</option>
                   <option value="ja">日本語</option>
                 </select>
-              </label>
+              </div>
             </div>
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               {t("settings.section.appearance")}
             </h3>
             <div className="flex items-center gap-3">
               <span className="text-ink-300">{t("settings.theme")}</span>
-              <div className="flex overflow-hidden rounded-md border border-ink-600">
+              <div className="flex overflow-hidden rounded-md border border-ink-600" role="group" aria-label={t("settings.theme")}>
                 {([
                   ["light", t("settings.theme.light")],
                   ["paper", t("settings.theme.paper")],
                   ["dark", t("settings.theme.dark")],
                 ] as const).map(([theme, label]) => (
-                  <button
+                  <motion.button
                     key={theme}
+                    type="button"
                     className={`px-3 py-1 text-xs ${
                       settings.theme === theme ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"
                     }`}
                     onClick={() => settingsMutation.mutate({ theme })}
+                    aria-pressed={settings.theme === theme}
+                    {...buttonMotion}
                   >
                     {label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               编辑器
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-ink-300">字体大小</span>
+                <label className="text-ink-300" htmlFor="settings-editor-font-size">
+                  字体大小
+                </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id="settings-editor-font-size"
                     type="range"
                     min={14}
                     max={24}
                     step={1}
-                    value={settings.editorFontSize}
-                    onChange={(e) => settingsMutation.mutate({ editorFontSize: Number(e.target.value) })}
+                    value={editorFontSizeDraft}
+                    onChange={(e) => setEditorFontSizeDraft(Number(e.target.value))}
+                    onBlur={(e) => commitEditorFontSize(Number(e.currentTarget.value))}
+                    onPointerUp={(e) => commitEditorFontSize(Number(e.currentTarget.value))}
+                    onKeyUp={(e) => {
+                      if (
+                        e.key === "ArrowLeft" ||
+                        e.key === "ArrowRight" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "ArrowDown" ||
+                        e.key === "Home" ||
+                        e.key === "End" ||
+                        e.key === "PageUp" ||
+                        e.key === "PageDown"
+                      ) {
+                        commitEditorFontSize(Number(e.currentTarget.value));
+                      }
+                    }}
                     className="w-24"
                   />
-                  <span className="w-8 text-xs text-ink-400">{settings.editorFontSize}</span>
+                  <output className="w-8 text-xs text-ink-400" htmlFor="settings-editor-font-size">
+                    {editorFontSizeDraft}
+                  </output>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-ink-300">行高</span>
+                <label className="text-ink-300" htmlFor="settings-editor-line-height">
+                  行高
+                </label>
                 <div className="flex items-center gap-2">
                   <input
+                    id="settings-editor-line-height"
                     type="range"
                     min={1.5}
                     max={3.0}
                     step={0.1}
-                    value={settings.editorLineHeight}
-                    onChange={(e) => settingsMutation.mutate({ editorLineHeight: Number(e.target.value) })}
+                    value={editorLineHeightDraft}
+                    onChange={(e) => setEditorLineHeightDraft(Number(e.target.value))}
+                    onBlur={(e) => commitEditorLineHeight(Number(e.currentTarget.value))}
+                    onPointerUp={(e) => commitEditorLineHeight(Number(e.currentTarget.value))}
+                    onKeyUp={(e) => {
+                      if (
+                        e.key === "ArrowLeft" ||
+                        e.key === "ArrowRight" ||
+                        e.key === "ArrowUp" ||
+                        e.key === "ArrowDown" ||
+                        e.key === "Home" ||
+                        e.key === "End" ||
+                        e.key === "PageUp" ||
+                        e.key === "PageDown"
+                      ) {
+                        commitEditorLineHeight(Number(e.currentTarget.value));
+                      }
+                    }}
                     className="w-24"
                   />
-                  <span className="w-8 text-xs text-ink-400">{settings.editorLineHeight.toFixed(1)}</span>
+                  <output className="w-8 text-xs text-ink-400" htmlFor="settings-editor-line-height">
+                    {editorLineHeightDraft.toFixed(1)}
+                  </output>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink-300">编辑区宽度</span>
-                <div className="flex overflow-hidden rounded-md border border-ink-600">
+                <div className="flex overflow-hidden rounded-md border border-ink-600" role="group" aria-label="编辑区宽度">
                   {(["narrow", "medium", "wide"] as const).map((w) => (
-                    <button
+                    <motion.button
                       key={w}
+                      type="button"
                       className={`px-3 py-1 text-xs ${settings.editorWidth === w ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
                       onClick={() => settingsMutation.mutate({ editorWidth: w })}
+                      aria-pressed={settings.editorWidth === w}
+                      {...buttonMotion}
                     >
                       {w === "narrow" ? "窄" : w === "medium" ? "中" : "宽"}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3" htmlFor="settings-auto-indent">
                 <input
+                  id="settings-auto-indent"
                   type="checkbox"
                   checked={settings.autoIndent}
                   onChange={(e) => settingsMutation.mutate({ autoIndent: e.target.checked })}
                 />
                 <span className="text-ink-300">回车自动缩进两格</span>
               </label>
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3" htmlFor="settings-spellcheck">
                 <input
+                  id="settings-spellcheck"
                   type="checkbox"
                   checked={settings.spellcheck}
                   onChange={(e) => settingsMutation.mutate({ spellcheck: e.target.checked })}
                 />
                 <span className="text-ink-300">启用系统拼写检查</span>
               </label>
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3" htmlFor="settings-typewriter-mode">
                 <input
+                  id="settings-typewriter-mode"
                   type="checkbox"
                   checked={settings.typewriterMode}
                   onChange={(e) => settingsMutation.mutate({ typewriterMode: e.target.checked })}
@@ -243,29 +389,30 @@ export function SettingsDialog(): JSX.Element | null {
                 <span className="text-ink-300">打字机模式（光标行居中）</span>
               </label>
             </div>
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               模型分配
             </h3>
             <SceneRoutingPanel />
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               参考小说库
             </h3>
             <SampleLibPanel />
-          </section>
+          </motion.section>
 
-          <section>
+          <motion.section variants={sectionMotion}>
             <h3 className="mb-3 text-xs font-semibold uppercase text-ink-400">
               {t("settings.section.advanced")}
             </h3>
             <div className="space-y-3">
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3" htmlFor="settings-dev-mode">
                 <input
+                  id="settings-dev-mode"
                   type="checkbox"
                   className="h-4 w-4"
                   checked={settings.devModeEnabled}
@@ -280,43 +427,85 @@ export function SettingsDialog(): JSX.Element | null {
               <div className="rounded-md border border-ink-700 bg-ink-900/40 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-300">{t("settings.diag.title")}</span>
-                  <button
+                  <motion.button
                     type="button"
                     className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-50"
                     onClick={handleShowDiag}
                     disabled={diagLoading}
+                    aria-busy={diagLoading}
+                    {...buttonMotion}
                   >
                     {diagLoading ? t("common.loading") : (diagText ? t("settings.diag.refresh") : t("settings.diag.show"))}
-                  </button>
+                  </motion.button>
                 </div>
-                {diagText ? (
-                  <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900 p-2 text-[11px] leading-relaxed text-ink-300">
-                    {diagText}
-                  </pre>
-                ) : (
-                  <p className="text-[11px] text-ink-500">{t("settings.diag.hint")}</p>
-                )}
+                <AnimatePresence initial={false} mode="wait">
+                  {diagText ? (
+                    <motion.pre
+                      key="diag-text"
+                      className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-ink-900 p-2 text-[11px] leading-relaxed text-ink-300"
+                      variants={reduceMotion ? fadeOnly : staggerItem}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                    >
+                      {diagText}
+                    </motion.pre>
+                  ) : (
+                    <motion.p
+                      key="diag-hint"
+                      className="text-[11px] text-ink-500"
+                      variants={reduceMotion ? fadeOnly : staggerItem}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                    >
+                      {t("settings.diag.hint")}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
               <div className="pt-2 flex flex-wrap gap-2">
-                <button
+                <motion.button
+                  type="button"
                   className="rounded-md border border-accent-500/40 bg-accent-500/10 px-3 py-1.5 text-xs text-accent-200 hover:bg-accent-500/20"
                   onClick={handleReplayOnboarding}
                   title={t("settings.replayOnboarding.hint")}
+                  {...buttonMotion}
                 >
                   {t("settings.replayOnboarding")}
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  type="button"
                   className="rounded-md border border-ink-600 bg-ink-900 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700 hover:text-ink-100"
                   onClick={handleCopyDiag}
+                  {...buttonMotion}
                 >
                   {t("error.boundary.copyDiag")}
-                </button>
+                </motion.button>
+                <AnimatePresence initial={false}>
+                  {copyDiagStatus ? (
+                    <motion.span
+                      key="copy-diag-status"
+                      role={copyDiagStatus.kind === "error" ? "alert" : "status"}
+                      variants={reduceMotion ? fadeOnly : staggerItem}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      className={`rounded-md border px-2 py-1 text-[11px] ${
+                        copyDiagStatus.kind === "error"
+                          ? "border-red-500/40 bg-red-500/10 text-red-300"
+                          : "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                      }`}
+                    >
+                      {copyDiagStatus.message}
+                    </motion.span>
+                  ) : null}
+                </AnimatePresence>
               </div>
             </div>
-          </section>
+          </motion.section>
 
-        </div>
-      </div>
+        </motion.div>
     </AnimatedDialog>
   );
 }

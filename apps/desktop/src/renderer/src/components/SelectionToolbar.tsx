@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
 import type {
@@ -11,9 +11,10 @@ import type {
 } from "@inkforge/shared";
 import { llmApi, skillApi } from "../lib/api";
 import { AnimatedDialog } from "./AnimatedDialog";
-import { SPRING_SNAPPY } from "../lib/motion-tokens";
+import { fadeOnly, SPRING_SNAPPY } from "../lib/motion-tokens";
 import { applySkillOutputToEditor, type SkillApplyRange } from "../lib/skill-output";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 const CONTEXT_WINDOW = 400;
 
@@ -65,7 +66,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
   const [selectionText, setSelectionText] = useState<string>("");
   const [result, setResult] = useState<QuickResult | null>(null);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
-  const [skillStatus, setSkillStatus] = useState<string | null>(null);
+  const { status: skillStatus, showStatus: showSkillStatus } = useTimedStatus();
   const [candidateCount, setCandidateCount] = useState<1 | 2 | 3>(1);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
   const activeSkillRunRef = useRef<{
@@ -122,15 +123,18 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
   useEffect(() => {
     if (!editor) return;
     const handleUpdate = () => updatePosition();
-    editor.on("selectionUpdate", handleUpdate);
-    editor.on("blur", () => {
-      // Delay so clicking toolbar doesn't kill it
-      window.setTimeout(() => {
+    let blurTimer = 0;
+    const handleBlur = () => {
+      window.clearTimeout(blurTimer);
+      // Delay so clicking toolbar doesn't kill it.
+      blurTimer = window.setTimeout(() => {
         if (!editor.isFocused && !document.activeElement?.closest("[data-selection-toolbar]")) {
           setRect(null);
         }
       }, 150);
-    });
+    };
+    editor.on("selectionUpdate", handleUpdate);
+    editor.on("blur", handleBlur);
     // scroll/resize 用 rAF 合并，避免连续事件里同步重算工具条位置造成抖动。
     let raf = 0;
     const scheduleUpdate = (): void => {
@@ -146,8 +150,10 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
     window.addEventListener("resize", onResize);
     return () => {
       editor.off("selectionUpdate", handleUpdate);
+      editor.off("blur", handleBlur);
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
+      window.clearTimeout(blurTimer);
       if (raf) window.cancelAnimationFrame(raf);
     };
   }, [editor, updatePosition]);
@@ -287,29 +293,28 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           active.output !== "ai-feedback" &&
           applySkillOutputToEditor(editor, active.output, payload.text ?? "", active.range);
         if (applied) {
-          setSkillStatus(`「${active.skillName}」已写入正文`);
+          showSkillStatus(`「${active.skillName}」已写入正文`, 3500);
           onAfterApply?.();
         } else {
-          setSkillStatus(`「${active.skillName}」已写入时间线`);
+          showSkillStatus(`「${active.skillName}」已写入时间线`, 3500);
           onPushFeedback?.("", "skill");
         }
       } else if (payload.status === "failed") {
-        setSkillStatus(
+        showSkillStatus(
           `「${active.skillName}」失败：${friendlyErrorMessage(payload.error, "技能运行失败，请稍后重试。")}`,
         );
       } else if (payload.status === "cancelled") {
-        setSkillStatus(`「${active.skillName}」已取消`);
+        showSkillStatus(`「${active.skillName}」已取消`, 3500);
       }
       activeSkillRunRef.current = null;
-      window.setTimeout(() => setSkillStatus(null), 3500);
     });
     return () => offDone();
-  }, [onPushFeedback, onAfterApply, editor]);
+  }, [onPushFeedback, onAfterApply, editor, showSkillStatus]);
 
   const runSelectionSkill = async (skill: SkillDefinition) => {
     if (!editor || !projectId || !chapterId) return;
     setSkillMenuOpen(false);
-    setSkillStatus(`「${skill.name}」运行中…`);
+    showSkillStatus(`「${skill.name}」运行中…`);
     const chapterText = editor.state.doc.textBetween(
       0,
       editor.state.doc.content.size,
@@ -343,10 +348,9 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         range: { from, to },
       };
     } catch (err) {
-      setSkillStatus(
+      showSkillStatus(
         `「${skill.name}」启动失败：${friendlyErrorMessage(err, "技能启动失败，请稍后重试。")}`,
       );
-      window.setTimeout(() => setSkillStatus(null), 3500);
     }
   };
 
@@ -430,14 +434,22 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           </label>
         </motion.div>
       )}
-      {skillStatus && !rect && (
-        <div
-          data-selection-toolbar
-          className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-ink-600 bg-ink-800/95 px-3 py-1.5 text-xs text-ink-200 shadow-xl backdrop-blur"
-        >
-          {skillStatus}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {skillStatus && !rect ? (
+          <motion.div
+            key={skillStatus}
+            data-selection-toolbar
+            role={skillStatus.includes("失败") ? "alert" : "status"}
+            className="fixed bottom-20 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-ink-600 bg-ink-800/95 px-3 py-1.5 text-xs text-ink-200 shadow-xl backdrop-blur"
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {skillStatus}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       {result && (
         <ResultPopover result={result} onApply={apply} onClose={() => setResult(null)} />
       )}

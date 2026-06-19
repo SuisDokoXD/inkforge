@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ClipboardList,
   FileSearch,
-  Loader2,
   PenLine,
   RotateCcw,
   Send,
@@ -35,6 +34,7 @@ import { autoWriterApi, outlineApi, providerApi, sampleLibApi } from "../../lib/
 import { useAppStore } from "../../stores/app-store";
 import { useWritingFlowActions } from "../../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { MotionSpinner } from "../MotionSpinner";
 import { SampleReferencePicker } from "../SampleReferencePicker";
 import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
 
@@ -525,7 +525,7 @@ export function AutoWriterPanel({
               onClick={() => startMut.mutate()}
               className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
             >
-              {startMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <PenLine className="h-4 w-4" />}
+              {startMut.isPending ? <MotionSpinner className="h-4 w-4" /> : <PenLine className="h-4 w-4" />}
               {isStartingDraft ? "开始写作" : "继续写作"}
             </button>
           ) : (

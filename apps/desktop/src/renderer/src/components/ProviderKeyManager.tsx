@@ -1,15 +1,23 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import type {
   ProviderHealthSnapshot,
   ProviderKeyRecord,
   ProviderKeyStrategy,
 } from "@inkforge/shared";
 import { providerKeyApi } from "../lib/api";
+import { fadeOnly } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 interface ProviderKeyManagerProps {
   providerId: string;
 }
+
+type StatusMessage = {
+  kind: "success" | "error";
+  text: string;
+};
 
 const STRATEGIES: Array<{ value: ProviderKeyStrategy; label: string; hint: string }> = [
   { value: "single", label: "只用第一条", hint: "始终优先使用第一条可用密钥" },
@@ -66,7 +74,8 @@ export function ProviderKeyManager({
   const [newLabel, setNewLabel] = useState("");
   const [newApiKey, setNewApiKey] = useState("");
   const [newWeight, setNewWeight] = useState(1);
-  const [status, setStatus] = useState<string | null>(null);
+  const { status, showStatus } = useTimedStatus<StatusMessage>();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const keysQuery = useQuery({
     queryKey: ["provider-keys", providerId],
@@ -102,19 +111,28 @@ export function ProviderKeyManager({
       setNewLabel("");
       setNewApiKey("");
       setNewWeight(1);
-      setStatus("已添加");
+      showStatus({ kind: "success", text: "备用密钥已添加" }, 2200);
       await invalidateAll();
-      window.setTimeout(() => setStatus(null), 2000);
     },
     onError: (err) => {
-      setStatus(friendlyProviderKeyError(err));
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
     },
   });
 
   const toggleMut = useMutation({
     mutationFn: (input: { id: string; disabled: boolean }) =>
       providerKeyApi.setDisabled(input),
-    onSuccess: () => invalidateAll(),
+    onMutate: () => showStatus(null),
+    onSuccess: (_data, input) => {
+      showStatus(
+        { kind: "success", text: input.disabled ? "备用密钥已停用" : "备用密钥已启用" },
+        2200,
+      );
+      return invalidateAll();
+    },
+    onError: (err) => {
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
+    },
   });
 
   const weightMut = useMutation({
@@ -125,12 +143,27 @@ export function ProviderKeyManager({
         label: keys.find((k) => k.id === input.id)?.label ?? "密钥",
         weight: input.weight,
       }),
-    onSuccess: () => invalidateAll(),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "优先级已更新" }, 2200);
+      return invalidateAll();
+    },
+    onError: (err) => {
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
+    },
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => providerKeyApi.delete({ id }),
-    onSuccess: () => invalidateAll(),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      setDeleteConfirmId(null);
+      showStatus({ kind: "success", text: "备用密钥已删除" }, 2200);
+      return invalidateAll();
+    },
+    onError: (err) => {
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
+    },
   });
 
   const strategyMut = useMutation({
@@ -141,7 +174,14 @@ export function ProviderKeyManager({
         id: keys[0]?.id,
         strategy: next,
       }),
-    onSuccess: () => invalidateAll(),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "使用方式已更新" }, 2200);
+      return invalidateAll();
+    },
+    onError: (err) => {
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
+    },
   });
 
   const cooldownMut = useMutation({
@@ -152,7 +192,14 @@ export function ProviderKeyManager({
         id: keys[0]?.id,
         cooldownMs: ms,
       }),
-    onSuccess: () => invalidateAll(),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "等待时间已更新" }, 2200);
+      return invalidateAll();
+    },
+    onError: (err) => {
+      showStatus({ kind: "error", text: friendlyProviderKeyError(err) });
+    },
   });
 
   const canAdd = useMemo(() => {
@@ -247,18 +294,49 @@ export function ProviderKeyManager({
               >
                 {key.disabled ? "启用" : "停用"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`删除密钥「${key.label}」？`)) {
-                    deleteMut.mutate(key.id);
-                  }
-                }}
-                disabled={deleteMut.isPending}
-                className="rounded border border-red-500/40 px-1.5 py-0.5 text-[11px] text-red-300 hover:bg-red-500/20"
-              >
-                删除
-              </button>
+              <AnimatePresence initial={false} mode="wait">
+                {deleteConfirmId === key.id ? (
+                  <motion.div
+                    key="delete-confirm"
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="flex items-center gap-1"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmId(null)}
+                      disabled={deleteMut.isPending}
+                      className="rounded border border-ink-700 px-1.5 py-0.5 text-[11px] text-ink-300 hover:bg-ink-700 disabled:opacity-50"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteMut.mutate(key.id)}
+                      disabled={deleteMut.isPending}
+                      className="rounded border border-red-500/40 px-1.5 py-0.5 text-[11px] text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                    >
+                      {deleteMut.isPending ? "删除中" : "确认删除"}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="delete-start"
+                    type="button"
+                    onClick={() => setDeleteConfirmId(key.id)}
+                    disabled={deleteMut.isPending}
+                    className="rounded border border-red-500/40 px-1.5 py-0.5 text-[11px] text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                  >
+                    删除
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </li>
           );
         })}
@@ -300,7 +378,24 @@ export function ProviderKeyManager({
           添加
         </button>
       </div>
-      {status && <p className="mt-2 text-[11px] text-ink-300">{status}</p>}
+      <AnimatePresence initial={false}>
+        {status ? (
+          <motion.p
+            role={status.kind === "error" ? "alert" : "status"}
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className={`mt-2 rounded-md border px-2 py-1 text-[11px] ${
+              status.kind === "error"
+                ? "border-red-500/30 bg-red-500/10 text-red-200"
+                : "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {status.text}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

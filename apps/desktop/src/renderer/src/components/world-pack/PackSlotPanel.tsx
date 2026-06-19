@@ -9,11 +9,15 @@
 // =============================================================================
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Eye, EyeOff, X, ChevronUp, ChevronDown, Layers } from "lucide-react";
 import { worldPackApi } from "../../lib/api";
 import { usePackCover } from "../../hooks/usePackCover";
 import { fallbackGradientCompact } from "./visual-hash";
 import type { WorldPackRecord } from "@inkforge/shared";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { fadeOnly, fadeSlideUp } from "../../lib/motion-tokens";
+import { useTimedStatus } from "../../lib/use-timed-status";
 
 interface Props {
   projectId: string;
@@ -21,8 +25,16 @@ interface Props {
   onClose(): void;
 }
 
+type StatusMessage = {
+  kind: "success" | "error";
+  text: string;
+};
+
 export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Element {
   const queryClient = useQueryClient();
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const { status, showStatus } = useTimedStatus<StatusMessage>();
   const slotsQuery = useQuery({
     queryKey: ["world-pack-slots", projectId],
     queryFn: () => worldPackApi.slotList({ projectId }),
@@ -34,17 +46,47 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
 
   const removeMutation = useMutation({
     mutationFn: (packId: string) => worldPackApi.slotRemove({ projectId, packId }),
-    onSuccess: invalidateSlots,
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "已从本书移除" }, 2000);
+      return invalidateSlots();
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "移除卡牌失败，请稍后重试。"),
+      });
+    },
   });
   const toggleMutation = useMutation({
     mutationFn: ({ packId, enabled }: { packId: string; enabled: boolean }) =>
       worldPackApi.slotToggle({ projectId, packId, enabled }),
-    onSuccess: invalidateSlots,
+    onMutate: () => showStatus(null),
+    onSuccess: (_data, input) => {
+      showStatus({ kind: "success", text: input.enabled ? "已恢复参考" : "已暂停参考" }, 2000);
+      return invalidateSlots();
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "切换参考状态失败，请稍后重试。"),
+      });
+    },
   });
   const reorderMutation = useMutation({
     mutationFn: (orderedPackIds: string[]) =>
       worldPackApi.slotReorder({ projectId, orderedPackIds }),
-    onSuccess: invalidateSlots,
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "参考顺序已更新" }, 2000);
+      return invalidateSlots();
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "调整参考顺序失败，请稍后重试。"),
+      });
+    },
   });
 
   const slots = (slotsQuery.data ?? [])
@@ -83,6 +125,24 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
       <div className="border-b border-ink-700/40 bg-ink-900/30 px-3 py-1.5 text-[11px] text-ink-500">
         靠前的卡牌会优先参考；关闭的卡保留在列表中，但暂不参与写作参考
       </div>
+      <AnimatePresence initial={false}>
+        {status ? (
+          <motion.div
+            role={status.kind === "error" ? "alert" : "status"}
+            variants={statusMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className={`border-b px-3 py-2 text-[11px] ${
+              status.kind === "error"
+                ? "border-red-500/30 bg-red-500/10 text-red-200"
+                : "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {status.text}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* 列表 */}
       <div className="flex-1 overflow-y-auto">
@@ -115,6 +175,11 @@ export function PackSlotPanel({ projectId, allPacks, onClose }: Props): JSX.Elem
                     })
                   }
                   onRemove={() => removeMutation.mutate(slot.packId)}
+                  busy={
+                    removeMutation.isPending ||
+                    toggleMutation.isPending ||
+                    reorderMutation.isPending
+                  }
                 />
               );
             })}
@@ -135,6 +200,7 @@ interface SlotRowProps {
   onMoveDown(): void;
   onToggle(): void;
   onRemove(): void;
+  busy?: boolean;
 }
 
 // 单个插槽行：缩略图 + 卡信息 + 控件
@@ -148,12 +214,13 @@ function SlotRow({
   onMoveDown,
   onToggle,
   onRemove,
+  busy,
 }: SlotRowProps): JSX.Element {
   const { dataUrl: cover } = usePackCover(pack);
 
   return (
     <div
-      className={`mb-2 flex items-center gap-2 rounded-lg border border-ink-700/60 bg-ink-800/40 p-2 transition-all ${
+      className={`mb-2 flex items-center gap-2 rounded-lg border border-ink-700/60 bg-ink-800/40 p-2 transition-[border-color,opacity,filter] duration-200 ${
         enabled
           ? "hover:border-accent-500/30"
           : "opacity-50 grayscale hover:opacity-70"
@@ -162,8 +229,9 @@ function SlotRow({
       {/* 上下移列 */}
       <div className="flex shrink-0 flex-col gap-0.5">
         <button
+          type="button"
           onClick={onMoveUp}
-          disabled={isFirst}
+          disabled={isFirst || busy}
           className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
           title="上移（提高参考优先级）"
           aria-label="上移此卡牌"
@@ -171,8 +239,9 @@ function SlotRow({
           <ChevronUp className="h-3 w-3" />
         </button>
         <button
+          type="button"
           onClick={onMoveDown}
-          disabled={isLast}
+          disabled={isLast || busy}
           className="rounded p-0.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:opacity-20 disabled:hover:bg-transparent"
           title="下移（降低参考优先级）"
           aria-label="下移此卡牌"
@@ -209,16 +278,20 @@ function SlotRow({
 
       {/* 控件 */}
       <button
+        type="button"
         onClick={onToggle}
-        className="rounded p-1 text-ink-400 hover:bg-ink-700 hover:text-accent-300"
+        disabled={busy}
+        className="rounded p-1 text-ink-400 transition-colors hover:bg-ink-700 hover:text-accent-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-400"
         title={enabled ? "暂时不参考这张卡" : "重新参考这张卡"}
         aria-label={enabled ? "暂时不参考这张卡" : "重新参考这张卡"}
       >
         {enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
       </button>
       <button
+        type="button"
         onClick={onRemove}
-        className="rounded p-1 text-ink-400 hover:bg-red-500/20 hover:text-red-300"
+        disabled={busy}
+        className="rounded p-1 text-ink-400 transition-colors hover:bg-red-500/20 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink-400"
         title="从本书移除"
         aria-label="从本书移除此卡牌"
       >

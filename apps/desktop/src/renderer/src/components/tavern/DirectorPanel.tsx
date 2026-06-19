@@ -1,9 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Archive, Loader2, MessageSquareText, Pause, Play, Send, Users } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Archive, MessageSquareText, Pause, Play, Send, Users } from "lucide-react";
 import type { TavernCardRecord, TavernMode, TavernSessionRecord } from "@inkforge/shared";
 import { tavernEventsApi, tavernRoundApi, tavernSessionApi, tavernSummaryApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { AnimatedDialog } from "../AnimatedDialog";
+import { MotionSpinner } from "../MotionSpinner";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 interface DirectorPanelProps {
   session: TavernSessionRecord;
@@ -35,6 +46,7 @@ const QUICK_DIRECTOR_PROMPTS = [
 
 export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Element {
   const queryClient = useQueryClient();
+  const reduce = useReducedMotion();
   const autoPickedSessionRef = useRef<string | null>(null);
   const [activeRoundId, setActiveRoundId] = useState<string | null>(null);
 
@@ -44,6 +56,8 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
   const [directorMessage, setDirectorMessage] = useState("");
   const [compactKeepLastK, setCompactKeepLastK] = useState(session.lastK);
   const [compactOpen, setCompactOpen] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const compactTitleId = "tavern-compact-title";
 
   useEffect(() => {
     setMode(session.mode);
@@ -52,6 +66,7 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
     setCompactKeepLastK(session.lastK);
     setParticipants([]);
     setActiveRoundId(null);
+    setRunError(null);
     autoPickedSessionRef.current = null;
   }, [session.id, session.lastK, session.mode]);
 
@@ -88,12 +103,14 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
         autoRounds: mode === "auto" ? autoRounds : undefined,
         directorMessage: mode === "director" && directorMessage.trim() ? directorMessage.trim() : undefined,
       }),
+    onMutate: () => setRunError(null),
     onSuccess: (res) => {
       setActiveRoundId(res.roundId);
       setDirectorMessage("");
+      setRunError(null);
     },
     onError: (err) => {
-      alert(`推进失败：${friendlyErrorMessage(err, "角色讨论暂时无法推进，请稍后重试。")}`);
+      setRunError(`推进失败：${friendlyErrorMessage(err, "角色讨论暂时无法推进，请稍后重试。")}`);
     },
   });
 
@@ -117,9 +134,6 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tavernMessages", session.id] });
       setCompactOpen(false);
-    },
-    onError: (err) => {
-      alert(`整理失败：${friendlyErrorMessage(err, "讨论记录整理失败，请稍后重试。")}`);
     },
   });
 
@@ -155,16 +169,24 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
         </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <motion.div
+        className="mb-3 flex flex-wrap gap-1.5"
+        variants={reduce ? fadeOnly : staggerContainer}
+        initial="initial"
+        animate="animate"
+      >
         {cards.length === 0 ? (
-          <div className="rounded-md border border-dashed border-ink-700 px-3 py-2 text-xs text-ink-500">
+          <motion.div
+            className="rounded-md border border-dashed border-ink-700 px-3 py-2 text-xs text-ink-500"
+            variants={reduce ? fadeOnly : staggerItem}
+          >
             当前项目还没有可用角色卡。先到「人物」页创建角色，再回到这里推进讨论。
-          </div>
+          </motion.div>
         ) : (
           cards.map((card) => {
             const selected = participants.includes(card.id);
             return (
-            <button
+            <motion.button
               key={card.id}
               type="button"
               onClick={() => toggleParticipant(card.id)}
@@ -174,41 +196,70 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
                   : "border-ink-700 bg-ink-950 text-ink-400 hover:bg-ink-800 hover:text-ink-200"
               }`}
               title={`选择「${card.name}」参与讨论`}
+              variants={reduce ? fadeOnly : staggerItem}
+              whileHover={hoverLift}
+              whileTap={tapPress}
             >
               {card.name}
-            </button>
+            </motion.button>
             );
           })
         )}
-      </div>
+      </motion.div>
 
-      {mode === "director" && (
-        <div className="mb-3 rounded-md border border-ink-700 bg-ink-950">
-          <div className="flex items-center gap-2 border-b border-ink-700 px-2.5 py-1.5 text-xs text-ink-400">
-            <MessageSquareText size={14} />
-            给下一轮一点方向
-          </div>
-          <div className="flex flex-wrap gap-1.5 border-b border-ink-800 px-2.5 py-2">
-            {QUICK_DIRECTOR_PROMPTS.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => setDirectorMessage(item.prompt)}
-                className="rounded border border-ink-700 bg-ink-900 px-2 py-1 text-[11px] text-ink-400 hover:border-accent-500/40 hover:text-accent-200"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <textarea
-            aria-label="下一轮讨论方向"
-            value={directorMessage}
-            onChange={(e) => setDirectorMessage(e.target.value)}
-            placeholder="例如：让他们重点讨论主角的真实动机，不要急着给结论。"
-            className="h-16 w-full resize-none bg-transparent px-2.5 py-2 text-xs leading-5 text-ink-100 outline-none placeholder:text-ink-500"
-          />
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {runError ? (
+          <motion.div
+            key="run-error"
+            role="alert"
+            variants={reduce ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="mb-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100"
+          >
+            {runError}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {mode === "director" && (
+          <motion.div
+            className="mb-3 rounded-md border border-ink-700 bg-ink-950"
+            variants={reduce ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <div className="flex items-center gap-2 border-b border-ink-700 px-2.5 py-1.5 text-xs text-ink-400">
+              <MessageSquareText size={14} />
+              给下一轮一点方向
+            </div>
+            <div className="flex flex-wrap gap-1.5 border-b border-ink-800 px-2.5 py-2">
+              {QUICK_DIRECTOR_PROMPTS.map((item) => (
+                <motion.button
+                  key={item.label}
+                  type="button"
+                  onClick={() => setDirectorMessage(item.prompt)}
+                  className="rounded border border-ink-700 bg-ink-900 px-2 py-1 text-[11px] text-ink-400 hover:border-accent-500/40 hover:text-accent-200"
+                  whileHover={hoverLift}
+                  whileTap={tapPress}
+                >
+                  {item.label}
+                </motion.button>
+              ))}
+            </div>
+            <textarea
+              aria-label="下一轮讨论方向"
+              value={directorMessage}
+              onChange={(e) => setDirectorMessage(e.target.value)}
+              placeholder="例如：让他们重点讨论主角的真实动机，不要急着给结论。"
+              className="h-16 w-full resize-none bg-transparent px-2.5 py-2 text-xs leading-5 text-ink-100 outline-none placeholder:text-ink-500"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex items-center gap-2">
         {mode === "auto" && (
@@ -227,83 +278,118 @@ export function DirectorPanel({ session, cards }: DirectorPanelProps): JSX.Eleme
           </label>
         )}
         {activeRoundId ? (
-          <button
+          <motion.button
             type="button"
             onClick={() => stopMut.mutate(activeRoundId)}
             disabled={stopMut.isPending}
             className="flex h-8 items-center gap-1.5 rounded-md bg-red-500/20 px-3 text-xs text-red-300 hover:bg-red-500/30 disabled:opacity-50"
+            whileHover={stopMut.isPending ? undefined : hoverLift}
+            whileTap={stopMut.isPending ? undefined : tapPress}
           >
             <Pause size={14} />
             停止
-          </button>
+          </motion.button>
         ) : (
-          <button
+          <motion.button
             type="button"
             onClick={() => runMut.mutate()}
             disabled={!canRun}
             className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-40"
+            whileHover={!canRun ? undefined : hoverLift}
+            whileTap={!canRun ? undefined : tapPress}
           >
-            {runMut.isPending ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+            {runMut.isPending ? <MotionSpinner className="h-3.5 w-3.5" /> : <Play size={14} />}
             {runMut.isPending ? "启动中" : "开始一轮"}
-          </button>
+          </motion.button>
         )}
         {mode === "director" && directorMessage.trim() && (
-          <button
+          <motion.button
             type="button"
             onClick={() => postDirectorMut.mutate(directorMessage.trim())}
             disabled={postDirectorMut.isPending}
             className="flex h-8 items-center gap-1.5 rounded-md bg-blue-500/20 px-3 text-xs text-blue-200 hover:bg-blue-500/30 disabled:opacity-50"
+            whileHover={postDirectorMut.isPending ? undefined : hoverLift}
+            whileTap={postDirectorMut.isPending ? undefined : tapPress}
           >
             <Send size={14} />
             发送引导
-          </button>
+          </motion.button>
         )}
-        <button
+        <motion.button
           type="button"
           onClick={() => setCompactOpen(true)}
           className="ml-auto flex h-8 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-950 px-3 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-200"
+          whileHover={hoverLift}
+          whileTap={tapPress}
         >
           <Archive size={14} />
           整理历史
-        </button>
+        </motion.button>
       </div>
 
-      {compactOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-ink-700 bg-ink-800 p-5 shadow-xl">
-            <h3 className="text-sm font-medium text-accent-300 mb-3">整理历史</h3>
-            <label className="block text-xs text-ink-300 mb-2">完整保留最近几条消息</label>
-            <input
-              aria-label="完整保留最近几条消息"
-              type="number"
-              value={compactKeepLastK}
-              onChange={(e) => setCompactKeepLastK(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-full rounded border border-ink-700 bg-ink-900 px-2 py-1 text-sm text-ink-100"
-              min={1}
-            />
-            <p className="text-[11px] text-ink-500 mt-2">
-              更早的讨论会被整理成一条简短回顾。需要先配置长讨论整理服务。
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setCompactOpen(false)}
-                className="rounded px-3 py-1.5 text-xs text-ink-400 hover:text-ink-200"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={() => compactMut.mutate(compactKeepLastK)}
-                disabled={compactMut.isPending}
-                className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
-              >
-                {compactMut.isPending ? "整理中…" : "开始整理"}
-              </button>
-            </div>
+      <AnimatedDialog
+        open={compactOpen}
+        onClose={() => setCompactOpen(false)}
+        labelledBy={compactTitleId}
+        overlayClassName="flex items-center justify-center p-4"
+        panelClassName="w-full max-w-sm rounded-lg border border-ink-700 bg-ink-800 p-5 shadow-xl"
+      >
+        <motion.div
+          variants={reduce ? fadeOnly : fadeSlideUp}
+          initial="initial"
+          animate="animate"
+        >
+          <h3 id={compactTitleId} className="mb-3 text-sm font-medium text-accent-300">
+            整理历史
+          </h3>
+          <label className="mb-2 block text-xs text-ink-300" htmlFor="compact-keep-last">
+            完整保留最近几条消息
+          </label>
+          <input
+            id="compact-keep-last"
+            type="number"
+            value={compactKeepLastK}
+            onChange={(e) => setCompactKeepLastK(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-full rounded border border-ink-700 bg-ink-900 px-2 py-1 text-sm text-ink-100"
+            min={1}
+          />
+          <p className="mt-2 text-[11px] text-ink-500">
+            更早的讨论会被整理成一条简短回顾。需要先配置长讨论整理服务。
+          </p>
+          {compactMut.isError && (
+            <motion.div
+              role="alert"
+              className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300"
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+            >
+              整理失败：{friendlyErrorMessage(compactMut.error, "讨论记录整理失败，请稍后重试。")}
+            </motion.div>
+          )}
+          <div className="mt-4 flex justify-end gap-2">
+            <motion.button
+              type="button"
+              onClick={() => setCompactOpen(false)}
+              className="rounded px-3 py-1.5 text-xs text-ink-400 hover:text-ink-200"
+              whileHover={hoverLift}
+              whileTap={tapPress}
+            >
+              取消
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={() => compactMut.mutate(compactKeepLastK)}
+              disabled={compactMut.isPending}
+              className="rounded bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
+              whileHover={compactMut.isPending ? undefined : hoverLift}
+              whileTap={compactMut.isPending ? undefined : tapPress}
+            >
+              {compactMut.isPending ? "整理中…" : "开始整理"}
+            </motion.button>
           </div>
-        </div>
-      )}
+        </motion.div>
+      </AnimatedDialog>
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion, useReducedMotion } from "motion/react";
 import type { CompanionState } from "../../stores/companion-store";
+import { DUR, EASE_STANDARD } from "../../lib/motion-tokens";
 
 interface CompanionBubbleProps {
   /** 桌宠精灵中心点屏幕坐标（px） */
@@ -30,7 +32,7 @@ interface CompanionBubbleProps {
  *        idle/typing → amber       sleepy → indigo
  *        cheering → emerald        midnight → violet
  *   5. 中文衬线字体 + 行高 1.55 —— 保证短句不会被竖排（min-w-[160px] + nowrap 单行兜底）。
- *   6. 入场 200 ms 上滑淡入 —— 不打扰，纯 CSS 关键帧。
+ *   6. 入场 200 ms 上滑淡入 —— 不打扰，并尊重系统减弱动态效果。
  *   7. SVG 尾巴 —— 矢量绘制带阴影，方向随翻转旋转，永远指向桌宠。
  */
 export function CompanionBubble({
@@ -40,6 +42,7 @@ export function CompanionBubble({
   message,
   state,
 }: CompanionBubbleProps): JSX.Element | null {
+  const reduce = useReducedMotion() === true;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [bubbleEl, setBubbleEl] = useState<HTMLDivElement | null>(null);
 
@@ -89,13 +92,20 @@ export function CompanionBubble({
   const tailX = Math.max(16, Math.min(w - 16, anchorX - bubbleLeft));
 
   const accent = ACCENT_BY_STATE[state];
+  const enterInitial = reduce
+    ? { opacity: 0 }
+    : { opacity: 0, y: placement === "top" ? 6 : -6, scale: 0.96 };
+  const enterAnimate = reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 };
 
   return createPortal(
-    <div
+    <motion.div
       ref={setBubbleEl}
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed z-[9999] animate-[companion-bubble-in_220ms_cubic-bezier(0.22,1,0.36,1)_both]"
+      className="pointer-events-none fixed z-[9999]"
+      initial={enterInitial}
+      animate={enterAnimate}
+      transition={{ duration: DUR.base, ease: EASE_STANDARD }}
       style={{
         left: `${bubbleLeft}px`,
         top: `${bubbleTop}px`,
@@ -152,7 +162,7 @@ export function CompanionBubble({
           fill="rgba(254,243,217,0.96)"
         />
       </svg>
-    </div>,
+    </motion.div>,
     document.body,
   );
 }

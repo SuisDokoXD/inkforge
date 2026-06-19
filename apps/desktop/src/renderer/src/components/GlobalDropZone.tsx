@@ -1,8 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { UploadCloud } from "lucide-react";
 import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import {
+  EASE_STANDARD,
+  dialogPanel,
+  fadeOnly,
+  overlayFade,
+  staggerContainer,
+  staggerItem,
+} from "../lib/motion-tokens";
 
 /**
  * v22+: 全局拖拽接管。
@@ -32,14 +42,31 @@ export function GlobalDropZone(): JSX.Element | null {
   // dragenter / dragleave 在子元素之间反复触发，用计数器抵消，
   // 避免鼠标在窗口里移动时蒙层闪烁。
   const dragCounter = useRef(0);
+  const toastTimersRef = useRef<Set<number>>(new Set());
+  const reduceMotion = useReducedMotion() === true;
+  const overlayMotion = reduceMotion ? fadeOnly : overlayFade;
+  const cardMotion = reduceMotion ? fadeOnly : dialogPanel;
+  const listMotion = reduceMotion ? fadeOnly : staggerContainer;
+  const itemMotion = reduceMotion ? fadeOnly : staggerItem;
 
-  const pushToast = (text: string, ok: boolean): void => {
+  const pushToast = useCallback((text: string, ok: boolean): void => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, text, ok }]);
-    setTimeout(() => {
+    const timer = window.setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      toastTimersRef.current.delete(timer);
     }, 3500);
-  };
+    toastTimersRef.current.add(timer);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      for (const timer of toastTimersRef.current) {
+        window.clearTimeout(timer);
+      }
+      toastTimersRef.current.clear();
+    };
+  }, []);
 
   useEffect(() => {
     const isAcceptable = (e: DragEvent): boolean => {
@@ -86,17 +113,21 @@ export function GlobalDropZone(): JSX.Element | null {
       const accepted = files.filter((f) => /\.(epub|txt)$/i.test(f.name));
       const rejected = files.filter((f) => !/\.(epub|txt)$/i.test(f.name));
       for (const f of rejected) {
-        pushToast(`✗ 不支持的文件：${f.name}`, false);
+        pushToast(`不支持的文件：${f.name}`, false);
       }
       if (accepted.length === 0) return;
 
       // 拖入即跳到素材库 view，便于用户立刻看到导入结果
       setMainView("materials");
 
-      for (const file of accepted) {
+      let importedCount = 0;
+      let failedCount = 0;
+      for (const [index, file] of accepted.entries()) {
         const ext = file.name.toLowerCase().endsWith(".epub") ? "epub" : "txt";
         const baseTitle = file.name.replace(/\.(epub|txt)$/i, "");
-        setBusyText(`导入中 · ${file.name}`);
+        const progress =
+          accepted.length > 1 ? `导入中 ${index + 1}/${accepted.length}` : "导入中";
+        setBusyText(`${progress} · ${file.name}`);
         try {
           if (ext === "epub") {
             // Electron 32+: use the preload bridge for the real filesystem path.
@@ -108,7 +139,8 @@ export function GlobalDropZone(): JSX.Element | null {
               projectId,
               filePath,
             });
-            pushToast(`✓ 已导入《${res.lib.title}》${res.chunkCount} 章`, true);
+            importedCount += 1;
+            pushToast(`已导入《${res.lib.title}》${res.chunkCount} 章`, true);
           } else {
             // 文本文件直接 renderer 端读取，避免新加 IPC
             const text = await file.text();
@@ -118,18 +150,29 @@ export function GlobalDropZone(): JSX.Element | null {
               title: baseTitle || "(无标题)",
               text,
             });
-            pushToast(`✓ 已导入《${res.lib.title}》${res.chunkCount} 章`, true);
+            importedCount += 1;
+            pushToast(`已导入《${res.lib.title}》${res.chunkCount} 章`, true);
           }
         } catch (err) {
+          failedCount += 1;
           const msg = friendlyErrorMessage(err, "导入失败，请检查文件内容后重试。");
-          pushToast(`✗ ${file.name}：${msg}`, false);
+          pushToast(`${file.name}：${msg}`, false);
         }
       }
       setBusyText(null);
+      if (accepted.length > 1) {
+        pushToast(
+          `素材导入完成：成功 ${importedCount} 个，失败 ${failedCount} 个`,
+          failedCount === 0,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
     };
     const onEsc = (e: KeyboardEvent): void => {
-      if (e.key === "Escape") setActive(false);
+      if (e.key === "Escape") {
+        dragCounter.current = 0;
+        setActive(false);
+      }
     };
 
     window.addEventListener("dragenter", onEnter);
@@ -144,44 +187,96 @@ export function GlobalDropZone(): JSX.Element | null {
       window.removeEventListener("drop", onDrop);
       window.removeEventListener("keydown", onEsc);
     };
-  }, [projectId, queryClient, setMainView]);
+  }, [projectId, pushToast, queryClient, setMainView]);
 
   return (
     <>
-      {active && (
-        <div className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/70 backdrop-blur-sm">
-          <div className="rounded-2xl border-2 border-dashed border-accent-400/60 bg-ink-800/90 px-10 py-8 text-center shadow-2xl">
-            <div className="text-4xl">📥</div>
-            <div className="mt-2 text-base font-semibold text-accent-100">
-              松开 → 导入素材库
-            </div>
-            <div className="mt-1 text-xs text-ink-300">
-              支持 .epub / .txt · 自动按章节切分 · ESC 取消
-            </div>
-          </div>
-        </div>
-      )}
-      {(busyText || toasts.length > 0) && (
-        <div className="pointer-events-none fixed bottom-6 right-6 z-[55] flex max-w-sm flex-col items-end gap-2">
-          {busyText && (
-            <div className="rounded-md border border-accent-500/40 bg-ink-800/95 px-3 py-2 text-xs text-accent-100 shadow-lg">
-              {busyText}
-            </div>
-          )}
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className={`rounded-md border px-3 py-2 text-xs shadow-lg ${
-                t.ok
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
-                  : "border-rose-500/40 bg-rose-500/10 text-rose-100"
-              }`}
+      <AnimatePresence initial={false}>
+        {active ? (
+          <motion.div
+            key="drop-overlay"
+            className="pointer-events-none fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/70 backdrop-blur-sm"
+            variants={overlayMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <motion.div
+              className="rounded-2xl border-2 border-dashed border-accent-400/60 bg-ink-800/90 px-10 py-8 text-center shadow-2xl"
+              variants={cardMotion}
             >
-              {t.text}
-            </div>
-          ))}
-        </div>
-      )}
+              <motion.span
+                aria-hidden
+                className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent-500/10 text-accent-200 ring-1 ring-accent-400/30"
+                animate={reduceMotion ? undefined : { y: [0, -2, 0] }}
+                transition={{ duration: 1.4, ease: EASE_STANDARD, repeat: Infinity }}
+              >
+                <UploadCloud className="h-7 w-7" />
+              </motion.span>
+              <div className="mt-3 text-base font-semibold text-accent-100">
+                松开 → 导入素材库
+              </div>
+              <div className="mt-1 text-xs text-ink-300">
+                支持 .epub / .txt · 自动按章节切分 · ESC 取消
+              </div>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence initial={false}>
+        {busyText || toasts.length > 0 ? (
+          <motion.div
+            key="drop-feedback"
+            className="pointer-events-none fixed bottom-6 right-6 z-[55] flex max-w-sm flex-col items-end gap-2"
+            variants={listMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            aria-live="polite"
+          >
+            <AnimatePresence initial={false}>
+              {busyText ? (
+                <motion.div
+                  key="busy"
+                  className="rounded-md border border-accent-500/40 bg-ink-800/95 px-3 py-2 text-xs text-accent-100 shadow-lg"
+                  role="status"
+                  variants={itemMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  <span>{busyText}</span>
+                  <motion.span
+                    aria-hidden
+                    className="ml-1 inline-block h-1 w-1 rounded-full bg-accent-300 align-middle"
+                    animate={reduceMotion ? undefined : { opacity: [0.35, 1, 0.35] }}
+                    transition={{ duration: 1, ease: EASE_STANDARD, repeat: Infinity }}
+                  />
+                </motion.div>
+              ) : null}
+              {toasts.map((toast) => (
+                <motion.div
+                  key={toast.id}
+                  role={toast.ok ? "status" : "alert"}
+                  className={`rounded-md border px-3 py-2 text-xs shadow-lg ${
+                    toast.ok
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
+                      : "border-rose-500/40 bg-rose-500/10 text-rose-100"
+                  }`}
+                  variants={itemMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  layout
+                >
+                  {toast.text}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

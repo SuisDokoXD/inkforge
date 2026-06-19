@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ChapterRecord } from "@inkforge/shared";
 import { ArrowDown, ArrowUp, Plus, Search, Upload } from "lucide-react";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../lib/motion-tokens";
 
 export interface ChapterHeadingItem {
   id: string;
@@ -108,11 +116,21 @@ export function ChapterTree({
   importing,
 }: ChapterTreeProps): JSX.Element {
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [query, setQuery] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   const flatAll = useMemo(() => buildTree(chapters), [chapters]);
   const rowAll = useMemo(() => buildRows(chapters, chapterHeadings), [chapters, chapterHeadings]);
@@ -130,7 +148,10 @@ export function ChapterTree({
   useEffect(() => {
     if (!menu) return;
     const close = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenu(null);
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenu(null);
+        setDeleteConfirmId(null);
+      }
     };
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
@@ -144,6 +165,8 @@ export function ChapterTree({
   }, [renamingId]);
 
   const orderedIds = useMemo(() => flatAll.map((c) => c.id), [flatAll]);
+  const menuChapter = menu ? chapters.find((c) => c.id === menu.chapterId) ?? null : null;
+  const confirmingDelete = !!menu && deleteConfirmId === menu.chapterId;
   const scrollRef = useRef<HTMLDivElement>(null);
   // M9 Phase 2.2: virtualize chapter list. Fixed-ish row height keeps DOM cheap on 1000+ chapters.
   const virtualizer = useVirtualizer({
@@ -180,28 +203,38 @@ export function ChapterTree({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-ink-200">章节</span>
           <div className="flex items-center gap-1">
-            <button
+            <motion.button
+              type="button"
               className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-200 hover:bg-ink-700/70 disabled:opacity-60"
               onClick={onImportMd}
               disabled={importing}
               title="从 Markdown 导入"
+              aria-label={importing ? "正在导入 Markdown" : "从 Markdown 导入章节"}
+              {...buttonMotion}
             >
               <Upload className="h-3.5 w-3.5" />
               {importing ? "…" : "导入"}
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              type="button"
               className="inline-flex items-center gap-1 rounded-md bg-ink-700 px-2 py-1 text-xs text-ink-100 hover:bg-ink-600 disabled:opacity-60"
               onClick={onCreate}
               disabled={creating}
+              aria-label={creating ? "正在创建新章节" : "新建章节"}
+              {...buttonMotion}
             >
               <Plus className="h-3.5 w-3.5" />
               {creating ? "创建中…" : "新章"}
-            </button>
+            </motion.button>
           </div>
         </div>
         <div className="relative mt-2">
+          <label htmlFor="chapter-tree-search" className="sr-only">
+            搜索章节
+          </label>
           <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-500" />
           <input
+            id="chapter-tree-search"
             className="h-8 w-full rounded-md border border-ink-700 bg-ink-900/60 pl-7 pr-2 text-xs text-ink-100 outline-none placeholder:text-ink-500 focus:border-accent-500"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -210,12 +243,32 @@ export function ChapterTree({
         </div>
       </div>
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-        {chapters.length === 0 && (
-          <p className="px-3 py-3 text-xs text-ink-400">还没有章节，点右上新建一章开始。</p>
-        )}
-        {chapters.length > 0 && rows.length === 0 && (
-          <p className="px-3 py-3 text-xs text-ink-400">没有匹配的章节。</p>
-        )}
+        <AnimatePresence initial={false} mode="wait">
+          {chapters.length === 0 && (
+            <motion.p
+              key="empty-chapters"
+              className="px-3 py-3 text-xs text-ink-400"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              还没有章节，点右上新建一章开始。
+            </motion.p>
+          )}
+          {chapters.length > 0 && rows.length === 0 && (
+            <motion.p
+              key="no-chapter-match"
+              className="px-3 py-3 text-xs text-ink-400"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              没有匹配的章节。
+            </motion.p>
+          )}
+        </AnimatePresence>
         <div
           style={{
             height: `${virtualizer.getTotalSize()}px`,
@@ -266,6 +319,7 @@ export function ChapterTree({
                   onContextMenu={(e) => {
                     if (isHeading) return;
                     e.preventDefault();
+                    setDeleteConfirmId(null);
                     setMenu({ chapterId: chapter.id, x: e.clientX, y: e.clientY });
                   }}
                 >
@@ -274,6 +328,7 @@ export function ChapterTree({
                       ref={renameInputRef}
                       className="flex-1 rounded border border-accent-400 bg-ink-900 px-2 py-0.5 text-sm text-ink-100 outline-none"
                       value={renameValue}
+                      aria-label="章节名称"
                       onChange={(e) => setRenameValue(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleRenameSubmit();
@@ -284,6 +339,8 @@ export function ChapterTree({
                   ) : (
                     <button
                       className="flex min-w-0 flex-1 items-center overflow-hidden text-left"
+                      type="button"
+                      aria-current={chapterActive || headingActive ? "true" : undefined}
                       onClick={() => {
                         if (isHeading) {
                           onSelectHeading?.(chapter.id, row.heading);
@@ -297,6 +354,11 @@ export function ChapterTree({
                         setRenameValue(chapter.title);
                       }}
                       title={isHeading ? `跳到第 ${row.heading.line} 行` : undefined}
+                      aria-label={
+                        isHeading
+                          ? `跳到 ${chapter.title} 的标题：${row.heading.title}`
+                          : `打开章节：${chapter.title}`
+                      }
                     >
                       <span className={`truncate ${isHeading ? "leading-5" : ""}`}>
                         {isHeading ? row.heading.title : chapter.title}
@@ -313,18 +375,22 @@ export function ChapterTree({
                   {!isRenaming && !isHeading && (
                     <div className="ml-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
+                        type="button"
                         className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, -1)}
                         disabled={!!normalizedQuery || fullIndex <= 0}
                         title={normalizedQuery ? "搜索时不可调整顺序" : "上移"}
+                        aria-label={`上移章节：${chapter.title}`}
                       >
                         <ArrowUp className="h-3.5 w-3.5" />
                       </button>
                       <button
+                        type="button"
                         className="rounded px-1 text-xs text-ink-400 hover:bg-ink-700 hover:text-ink-200 disabled:opacity-40"
                         onClick={() => handleMove(chapter.id, 1)}
                         disabled={!!normalizedQuery || fullIndex >= orderedIds.length - 1}
                         title={normalizedQuery ? "搜索时不可调整顺序" : "下移"}
+                        aria-label={`下移章节：${chapter.title}`}
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
                       </button>
@@ -337,39 +403,88 @@ export function ChapterTree({
         </div>
       </div>
 
-      {menu && (
-        <div
-          ref={menuRef}
-          className="fixed z-50 min-w-36 overflow-hidden rounded-md border border-ink-600 bg-ink-800 py-1 text-sm shadow-xl"
-          style={{ left: menu.x, top: menu.y }}
-        >
-          <button
-            className="block w-full px-3 py-1.5 text-left text-ink-200 hover:bg-ink-700"
-            onClick={() => {
-              const ch = chapters.find((c) => c.id === menu.chapterId);
-              if (ch) {
-                setRenamingId(ch.id);
-                setRenameValue(ch.title);
-              }
-              setMenu(null);
-            }}
+      <AnimatePresence initial={false}>
+        {menu && (
+          <motion.div
+            ref={menuRef}
+            className="fixed z-50 min-w-36 overflow-hidden rounded-md border border-ink-600 bg-ink-800 py-1 text-sm shadow-xl"
+            style={{ left: menu.x, top: menu.y }}
+            role="menu"
+            aria-label="章节操作"
+            variants={stateMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
-            重命名
-          </button>
-          <button
-            className="block w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20"
-            onClick={() => {
-              const ch = chapters.find((c) => c.id === menu.chapterId);
-              if (ch && window.confirm(`删除「${ch.title}」？此操作不可撤销。`)) {
-                onDelete(ch.id);
-              }
-              setMenu(null);
-            }}
-          >
-            删除
-          </button>
-        </div>
-      )}
+            <motion.button
+              type="button"
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left text-ink-200 hover:bg-ink-700"
+              onClick={() => {
+                if (menuChapter) {
+                  setRenamingId(menuChapter.id);
+                  setRenameValue(menuChapter.title);
+                }
+                setMenu(null);
+                setDeleteConfirmId(null);
+              }}
+              {...buttonMotion}
+            >
+              重命名
+            </motion.button>
+            <AnimatePresence initial={false} mode="wait">
+              {confirmingDelete ? (
+                <motion.div
+                  key="delete-confirm"
+                  role="none"
+                  variants={stateMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="border-t border-ink-700 px-2 py-1.5"
+                >
+                  <div className="mb-1 truncate px-1 text-[11px] text-red-300">
+                    确认删除「{menuChapter?.title ?? "章节"}」？
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex-1 rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+                      onClick={() => setDeleteConfirmId(null)}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex-1 rounded bg-red-500/10 px-2 py-1 text-xs font-medium text-red-200 hover:bg-red-500/20"
+                      onClick={() => {
+                        if (menuChapter) onDelete(menuChapter.id);
+                        setMenu(null);
+                        setDeleteConfirmId(null);
+                      }}
+                    >
+                      确认删除
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="delete-start"
+                  type="button"
+                  role="menuitem"
+                  className="block w-full px-3 py-1.5 text-left text-red-400 hover:bg-red-500/20"
+                  onClick={() => setDeleteConfirmId(menu.chapterId)}
+                  {...buttonMotion}
+                >
+                  删除
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

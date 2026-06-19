@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import type {
   SampleLibImportResponse,
   SampleLibRecord,
@@ -7,6 +8,7 @@ import type {
 import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { fadeOnly } from "../lib/motion-tokens";
 
 export function SampleLibPanel(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
@@ -21,6 +23,7 @@ export function SampleLibPanel(): JSX.Element {
   const [author, setAuthor] = useState("");
   const [busy, setBusy] = useState(false);
   const [lastImport, setLastImport] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const libsQuery = useQuery({
     queryKey: ["sample-libs", projectId],
@@ -30,7 +33,13 @@ export function SampleLibPanel(): JSX.Element {
 
   const deleteMutation = useMutation({
     mutationFn: sampleLibApi.delete,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sample-libs"] }),
+    onSuccess: () => {
+      setDeleteConfirmId(null);
+      queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
+    },
+    onError: (err) => {
+      setLastImport(friendlyErrorMessage(err, "参考库删除失败，请稍后重试。"));
+    },
   });
 
   const onImportText = async () => {
@@ -44,7 +53,7 @@ export function SampleLibPanel(): JSX.Element {
         author: author.trim() || undefined,
         text,
       });
-      setLastImport(`✓ 导入成功：《${res.lib.title}》${res.chunkCount} 章`);
+      setLastImport(`已导入：《${res.lib.title}》${res.chunkCount} 章`);
       if (textRef.current) textRef.current.value = "";
       setTextCharCount(0);
       setTitle("");
@@ -52,7 +61,7 @@ export function SampleLibPanel(): JSX.Element {
       setShowImport(null);
       queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
     } catch (err) {
-      setLastImport(`✗ ${friendlyErrorMessage(err, "导入失败，请检查文本内容后重试。")}`);
+      setLastImport(friendlyErrorMessage(err, "导入失败，请检查文本内容后重试。"));
     } finally {
       setBusy(false);
     }
@@ -76,20 +85,19 @@ export function SampleLibPanel(): JSX.Element {
         title: title.trim() || undefined,
         author: author.trim() || undefined,
       });
-      setLastImport(`✓ EPUB 已导入：《${res.lib.title}》${res.chunkCount} 章`);
+      setLastImport(`已导入 EPUB：《${res.lib.title}》${res.chunkCount} 章`);
       setTitle("");
       setAuthor("");
       setShowImport(null);
       queryClient.invalidateQueries({ queryKey: ["sample-libs"] });
     } catch (err) {
-      setLastImport(`✗ ${friendlyErrorMessage(err, "EPUB 导入失败，请换一本文件后重试。")}`);
+      setLastImport(friendlyErrorMessage(err, "EPUB 导入失败，请换一本文件后重试。"));
     } finally {
       setBusy(false);
     }
   };
 
   const handleDelete = (lib: SampleLibRecord) => {
-    if (!confirm(`删除参考库《${lib.title}》及其 ${lib.chunkCount} 章节？`)) return;
     deleteMutation.mutate({ libId: lib.id });
   };
 
@@ -215,7 +223,8 @@ export function SampleLibPanel(): JSX.Element {
 
       {lastImport ? (
         <p
-          className={`text-xs ${lastImport.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}
+          role={lastImport.startsWith("已") ? "status" : "alert"}
+          className={`text-xs ${lastImport.startsWith("已") ? "text-emerald-400" : "text-red-400"}`}
         >
           {lastImport}
         </p>
@@ -233,12 +242,49 @@ export function SampleLibPanel(): JSX.Element {
                   {lib.author ? `${lib.author} · ` : ""}{lib.chunkCount} 章
                 </div>
               </div>
-              <button
-                className="rounded-md border border-red-500/40 px-2 py-1 text-red-400 hover:bg-red-500/10"
-                onClick={() => handleDelete(lib)}
-              >
-                删除
-              </button>
+              <AnimatePresence initial={false} mode="wait">
+                {deleteConfirmId === lib.id ? (
+                  <motion.div
+                    key="delete-confirm"
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    className="flex items-center gap-1"
+                  >
+                    <span className="text-[11px] text-red-300">{lib.chunkCount} 章将一并删除</span>
+                    <button
+                      type="button"
+                      className="rounded-md border border-ink-700 px-2 py-1 text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+                      onClick={() => setDeleteConfirmId(null)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md border border-red-500/40 px-2 py-1 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                      onClick={() => handleDelete(lib)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      {deleteMutation.isPending ? "删除中" : "确认删除"}
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="delete-start"
+                    type="button"
+                    className="rounded-md border border-red-500/40 px-2 py-1 text-red-400 hover:bg-red-500/10"
+                    onClick={() => setDeleteConfirmId(lib.id)}
+                    variants={fadeOnly}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                  >
+                    删除
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </li>
           ))}
         </ul>

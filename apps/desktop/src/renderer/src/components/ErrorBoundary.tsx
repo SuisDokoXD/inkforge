@@ -1,5 +1,14 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Component, useId, type ErrorInfo, type ReactNode } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AlertTriangle, ChevronDown, ClipboardCopy, RotateCcw } from "lucide-react";
 import { t, coerceLang, type Lang } from "@inkforge/shared";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../lib/motion-tokens";
 
 interface ErrorBoundaryProps {
   /** Human name shown in the title, e.g. "Editor" / "Review". */
@@ -82,40 +91,124 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       : "此区域暂时无法显示。可以重试，或复制排查信息发给维护者。";
 
     return (
-      <div className="flex h-full w-full items-center justify-center p-8">
-        <div className="max-w-lg rounded-lg border border-red-900/60 bg-red-950/40 p-5 text-sm text-ink-100 shadow-lg">
-          <div className="mb-2 text-base font-semibold text-red-300">{title}</div>
-          <div className="mb-3 text-ink-300">{shortDesc}</div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="rounded border border-ink-600 bg-ink-800 px-3 py-1 text-xs hover:bg-ink-700"
-              onClick={this.reset}
-            >
-              {retry}
-            </button>
-            <button
-              type="button"
-              className="rounded border border-ink-600 bg-ink-800 px-3 py-1 text-xs hover:bg-ink-700"
-              onClick={this.copyDiag}
-            >
-              {copyDiag}
-            </button>
-            <button
-              type="button"
-              className="rounded px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
-              onClick={this.toggleDetails}
-            >
-              {showDetails ? "▾" : "▸"} 排查说明
-            </button>
-          </div>
-          {showDetails && (
-            <div className="mt-3 rounded bg-ink-900/80 p-3 text-xs leading-6 text-ink-300">
-              原始错误细节已隐藏，避免把内部调用信息直接显示在写作界面。需要排查时，请点击“{copyDiag}”。
-            </div>
-          )}
-        </div>
-      </div>
+      <ErrorFallbackView
+        title={title}
+        description={shortDesc}
+        retryLabel={retry}
+        copyLabel={copyDiag}
+        showDetails={showDetails}
+        onRetry={this.reset}
+        onCopy={this.copyDiag}
+        onToggleDetails={this.toggleDetails}
+      />
     );
   }
+}
+
+function ErrorFallbackView({
+  title,
+  description,
+  retryLabel,
+  copyLabel,
+  showDetails,
+  onRetry,
+  onCopy,
+  onToggleDetails,
+}: {
+  title: string;
+  description: string;
+  retryLabel: string;
+  copyLabel: string;
+  showDetails: boolean;
+  onRetry(): void;
+  onCopy(): void;
+  onToggleDetails(): void;
+}): JSX.Element {
+  const reduceMotion = useReducedMotion() === true;
+  const panelMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
+  const detailsId = useId();
+
+  return (
+    <div className="flex h-full w-full items-center justify-center p-8">
+      <motion.div
+        className="max-w-lg rounded-lg border border-red-900/60 bg-red-950/40 p-5 text-sm text-ink-100 shadow-lg ring-1 ring-red-500/10"
+        variants={panelMotion}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+      >
+        <div className="flex items-start gap-3">
+          <span className="rounded-md bg-red-500/10 p-2 text-red-300 ring-1 ring-red-400/20">
+            <AlertTriangle aria-hidden className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-base font-semibold text-red-300">{title}</div>
+            <div className="mt-1 text-ink-300">{description}</div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <motion.button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded border border-ink-600 bg-ink-800 px-3 py-1 text-xs hover:bg-ink-700"
+            onClick={onRetry}
+            {...buttonMotion}
+          >
+            <RotateCcw aria-hidden className="h-3.5 w-3.5" />
+            {retryLabel}
+          </motion.button>
+          <motion.button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded border border-ink-600 bg-ink-800 px-3 py-1 text-xs hover:bg-ink-700"
+            onClick={onCopy}
+            {...buttonMotion}
+          >
+            <ClipboardCopy aria-hidden className="h-3.5 w-3.5" />
+            {copyLabel}
+          </motion.button>
+          <motion.button
+            type="button"
+            className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-ink-400 hover:text-ink-200"
+            onClick={onToggleDetails}
+            aria-expanded={showDetails}
+            aria-controls={detailsId}
+            {...buttonMotion}
+          >
+            <motion.span
+              aria-hidden
+              className="inline-flex"
+              animate={{ rotate: showDetails ? 180 : 0 }}
+              transition={SPRING_SNAPPY}
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </motion.span>
+            排查说明
+          </motion.button>
+        </div>
+
+        <AnimatePresence initial={false}>
+          {showDetails ? (
+            <motion.div
+              id={detailsId}
+              key="details"
+              className="mt-3 rounded bg-ink-900/80 p-3 text-xs leading-6 text-ink-300"
+              variants={panelMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              原始错误细节已隐藏，避免把内部调用信息直接显示在写作界面。需要排查时，请点击“{copyLabel}”。
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </motion.div>
+    </div>
+  );
 }

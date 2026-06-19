@@ -1,8 +1,20 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Pencil } from "lucide-react";
 import type { ProjectRecord } from "@inkforge/shared";
 import { projectApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import {
+  fadeOnly,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
+import { AnimatedDialog } from "../AnimatedDialog";
+import { MotionSpinner } from "../MotionSpinner";
 
 interface EditBookDialogProps {
   /** 当前要编辑的书籍。null 时对话框隐藏。 */
@@ -23,6 +35,14 @@ export function EditBookDialog({
   const [name, setName] = useState("");
   const [dailyGoal, setDailyGoal] = useState(1000);
   const [error, setError] = useState<string | null>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   useEffect(() => {
     if (project) {
@@ -54,20 +74,31 @@ export function EditBookDialog({
   const dirty = name.trim() !== project.name || dailyGoal !== project.dailyGoal;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6"
-      role="dialog"
-      onClick={onClose}
+    <AnimatedDialog
+      open={project !== null}
+      onClose={onClose}
+      ariaLabel="编辑书籍信息"
+      overlayClassName="flex items-center justify-center p-6"
+      panelClassName="w-full max-w-md rounded-2xl border border-ink-600 bg-ink-800 p-5 text-ink-100 shadow-2xl"
     >
-      <div
-        className="w-full max-w-md rounded-2xl border border-ink-600 bg-ink-800 p-5 text-ink-100 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+      <motion.div
+        className="space-y-3"
+        variants={reduceMotion ? fadeOnly : staggerContainer}
+        initial="initial"
+        animate="animate"
       >
-        <h3 className="mb-3 text-base font-semibold">✏ 编辑书籍信息</h3>
+        <motion.h3
+          className="flex items-center gap-2 text-base font-semibold"
+          variants={reduceMotion ? fadeOnly : staggerItem}
+        >
+          <Pencil aria-hidden className="h-4 w-4 text-accent-300" />
+          编辑书籍信息
+        </motion.h3>
 
-        <label className="mb-3 block">
+        <motion.label className="block" htmlFor="edit-book-name" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">书名</span>
           <input
+            id="edit-book-name"
             type="text"
             autoFocus
             value={name}
@@ -78,48 +109,61 @@ export function EditBookDialog({
               if (e.key === "Enter" && canSubmit && dirty) updateMut.mutate();
             }}
           />
-        </label>
+        </motion.label>
 
-        <label className="mb-3 block">
+        <motion.label className="block" htmlFor="edit-book-daily-goal" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">每日字数目标</span>
           <input
+            id="edit-book-daily-goal"
             type="number"
             min={100}
             step={100}
             value={dailyGoal}
             onChange={(e) => setDailyGoal(Number(e.target.value) || 1000)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
           />
-        </label>
+        </motion.label>
 
-        <div className="mb-3 text-[11px] text-ink-500">
+        <motion.div className="text-[11px] text-ink-500" variants={reduceMotion ? fadeOnly : staggerItem}>
           注意：改名只更新数据库元数据，不会改动磁盘上的项目目录路径。
-        </div>
+        </motion.div>
 
-        {error && (
-          <div className="mb-3 rounded bg-rose-500/20 px-2 py-1 text-xs text-rose-200">
-            {error}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {error && (
+            <motion.div
+              className="rounded bg-rose-500/20 px-2 py-1 text-xs text-rose-200"
+              role="alert"
+              variants={reduceMotion ? fadeOnly : staggerItem}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="flex justify-end gap-2">
-          <button
+        <motion.div className="flex justify-end gap-2" variants={reduceMotion ? fadeOnly : staggerItem}>
+          <motion.button
             type="button"
             onClick={onClose}
             className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
+            {...buttonMotion}
           >
             取消
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             onClick={() => updateMut.mutate()}
             disabled={!canSubmit || !dirty}
-            className="rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:opacity-40"
+            className="inline-flex min-w-16 items-center justify-center gap-1.5 rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:cursor-default disabled:opacity-40"
+            {...(canSubmit && dirty ? buttonMotion : {})}
           >
+            {updateMut.isPending ? <MotionSpinner className="h-3.5 w-3.5" /> : null}
             {updateMut.isPending ? "保存中…" : "保存"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </motion.button>
+        </motion.div>
+      </motion.div>
+    </AnimatedDialog>
   );
 }

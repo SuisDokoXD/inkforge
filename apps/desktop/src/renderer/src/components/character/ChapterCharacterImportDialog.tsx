@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, FileText, Loader2, Wand2, X } from "lucide-react";
+import { Check, FileText, Wand2, X } from "lucide-react";
 import type {
   ChapterRecord,
   NovelCharacterExtractCandidate,
@@ -10,6 +10,7 @@ import type {
   ProjectRecord,
 } from "@inkforge/shared";
 import { AnimatedDialog } from "../AnimatedDialog";
+import { MotionSpinner } from "../MotionSpinner";
 import { chapterApi, novelCharacterApi } from "../../lib/api";
 
 interface ChapterCharacterImportDialogProps {
@@ -308,7 +309,7 @@ export function ChapterCharacterImportDialog({
             className="mt-auto inline-flex h-9 items-center justify-center gap-2 rounded-md bg-accent-500 px-3 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-60"
           >
             {extractMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <MotionSpinner className="h-4 w-4" />
             ) : (
               <Wand2 className="h-4 w-4" />
             )}
@@ -450,11 +451,18 @@ export function ChapterCharacterImportDialog({
                   {relationRows.map((relation) => {
                     const sourceReady = importableNameSet.has(keyOfName(relation.sourceName));
                     const targetReady = importableNameSet.has(keyOfName(relation.targetName));
+                    const relationDomId = relation.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+                    const sourceInputId = `character-import-source-${relationDomId}`;
+                    const labelInputId = `character-import-label-${relationDomId}`;
+                    const targetInputId = `character-import-target-${relationDomId}`;
+                    const evidenceInputId = `character-import-evidence-${relationDomId}`;
+
                     return (
                       <div key={relation.id} className="grid gap-2 px-3 py-3 md:grid-cols-[1fr_1fr_1fr_auto]">
-                        <label className="block">
+                        <label className="block" htmlFor={sourceInputId}>
                           <span className="mb-1 block text-[10px] text-ink-500">起点人物</span>
                           <input
+                            id={sourceInputId}
                             list="character-import-name-options"
                             value={relation.sourceName}
                             onChange={(event) =>
@@ -465,9 +473,10 @@ export function ChapterCharacterImportDialog({
                             }`}
                           />
                         </label>
-                        <label className="block">
+                        <label className="block" htmlFor={labelInputId}>
                           <span className="mb-1 block text-[10px] text-ink-500">关系</span>
                           <input
+                            id={labelInputId}
                             value={relation.label}
                             onChange={(event) =>
                               updateRelation(relation.id, "label", event.target.value)
@@ -476,9 +485,10 @@ export function ChapterCharacterImportDialog({
                             className="h-8 w-full rounded border border-ink-700 bg-ink-900 px-2 text-xs text-ink-100 outline-none placeholder:text-ink-600 focus:border-accent-400"
                           />
                         </label>
-                        <label className="block">
+                        <label className="block" htmlFor={targetInputId}>
                           <span className="mb-1 block text-[10px] text-ink-500">终点人物</span>
                           <input
+                            id={targetInputId}
                             list="character-import-name-options"
                             value={relation.targetName}
                             onChange={(event) =>
@@ -496,9 +506,10 @@ export function ChapterCharacterImportDialog({
                         >
                           删除
                         </button>
-                        <label className="md:col-span-4">
+                        <label className="md:col-span-4" htmlFor={evidenceInputId}>
                           <span className="mb-1 block text-[10px] text-ink-500">证据</span>
                           <input
+                            id={evidenceInputId}
                             value={relation.evidence}
                             onChange={(event) =>
                               updateRelation(relation.id, "evidence", event.target.value)
@@ -538,7 +549,7 @@ export function ChapterCharacterImportDialog({
             className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-accent-500 px-3 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-60"
           >
             {importMut.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <MotionSpinner className="h-4 w-4" />
             ) : (
               <Check className="h-4 w-4" />
             )}

@@ -11,13 +11,13 @@ export interface ProviderCatalogEntry {
   label: string;
   /** Adapter family used by runtime createProvider(). */
   vendor: ProviderVendor;
-  /** Canonical API URL (may be empty for custom entries). */
+  /** Canonical service address (may be empty for custom entries). */
   baseUrl: string;
   /** Suggested model when creating from this preset. */
   defaultModel: string;
   /** Known model ids surfaced in model suggestions. */
   knownModels: string[];
-  /** API key signup page shown in UI. */
+  /** Service-key signup page shown in UI. */
   signupUrl?: string;
   /** One-line explanation for UI hint text. */
   description: string;
@@ -51,7 +51,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "gpt-4.1-mini",
     knownModels: ["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o", "gpt-4o-mini", "o3-mini"],
     signupUrl: "https://platform.openai.com/",
-    description: "GPT models with broad API/tooling support.",
+    description: "GPT models with broad service and tooling support.",
     tags: ["flagship"],
   },
   {
@@ -79,7 +79,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "deepseek-chat",
     knownModels: ["deepseek-chat", "deepseek-reasoner"],
     signupUrl: "https://platform.deepseek.com/",
-    description: "DeepSeek chat/reasoning models via OpenAI-compatible API.",
+    description: "DeepSeek chat/reasoning models through a compatible interface.",
     tags: ["openai-compat", "budget"],
   },
   {
@@ -101,7 +101,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "qwen-plus",
     knownModels: ["qwen-max", "qwen-plus", "qwen-turbo", "qwen2.5-72b-instruct"],
     signupUrl: "https://dashscope.console.aliyun.com/",
-    description: "Alibaba Qwen models exposed with OpenAI-compatible endpoints.",
+    description: "Alibaba Qwen models through DashScope's compatible interface.",
     tags: ["openai-compat"],
   },
   {
@@ -112,7 +112,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "glm-4-plus",
     knownModels: ["glm-4-plus", "glm-4-air", "glm-4-flash", "glm-4-long"],
     signupUrl: "https://open.bigmodel.cn/",
-    description: "GLM models from Zhipu with OpenAI-style integration.",
+    description: "GLM models from Zhipu with compatible integration.",
     tags: ["openai-compat"],
   },
   {
@@ -123,7 +123,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "abab6.5s-chat",
     knownModels: ["abab6.5s-chat", "abab6.5g-chat", "MiniMax-Text-01"],
     signupUrl: "https://www.minimaxi.com/",
-    description: "MiniMax text models with OpenAI-compatible APIs.",
+    description: "MiniMax text models with compatible service access.",
     tags: ["openai-compat"],
   },
   {
@@ -134,7 +134,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "Baichuan4",
     knownModels: ["Baichuan4", "Baichuan3-Turbo", "Baichuan3-Turbo-128k"],
     signupUrl: "https://platform.baichuan-ai.com/",
-    description: "Baichuan hosted API with OpenAI-compatible routing.",
+    description: "Baichuan hosted service with compatible access.",
     tags: ["openai-compat"],
   },
   {
@@ -145,7 +145,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "step-1-32k",
     knownModels: ["step-1-32k", "step-1-128k", "step-2-16k"],
     signupUrl: "https://platform.stepfun.com/",
-    description: "StepFun models exposed through OpenAI-compatible endpoints.",
+    description: "StepFun models through a compatible interface.",
     tags: ["openai-compat", "long-context"],
   },
   {
@@ -161,7 +161,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "01-ai/Yi-1.5-34B-Chat",
     ],
     signupUrl: "https://siliconflow.cn/",
-    description: "Open-model aggregator behind a single OpenAI-compatible endpoint.",
+    description: "Open-model hub behind one compatible service address.",
     tags: ["openai-compat", "aggregator", "open-source"],
   },
   {
@@ -177,7 +177,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "qwen-qwq-32b",
     ],
     signupUrl: "https://console.groq.com/",
-    description: "Ultra-low latency inference exposed via OpenAI-compatible APIs.",
+    description: "Ultra-low latency inference through a compatible interface.",
     tags: ["openai-compat", "fast"],
   },
   {
@@ -193,7 +193,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "deepseek-ai/DeepSeek-V3",
     ],
     signupUrl: "https://api.together.xyz/",
-    description: "Large hosted open-source catalog via OpenAI-compatible APIs.",
+    description: "Large hosted open-source catalog with compatible access.",
     tags: ["openai-compat", "aggregator", "open-source"],
   },
   {
@@ -209,7 +209,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "accounts/fireworks/models/deepseek-v3",
     ],
     signupUrl: "https://fireworks.ai/",
-    description: "Fast hosted open models with OpenAI-compatible integration.",
+    description: "Fast hosted open models with compatible integration.",
     tags: ["openai-compat", "fast", "open-source"],
   },
   {
@@ -226,7 +226,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "codestral-latest",
     ],
     signupUrl: "https://console.mistral.ai/",
-    description: "Mistral hosted APIs with OpenAI-compatible behavior.",
+    description: "Mistral hosted service with compatible behavior.",
     tags: ["openai-compat"],
   },
   {
@@ -237,7 +237,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "grok-2-latest",
     knownModels: ["grok-2-latest", "grok-2-vision-latest", "grok-beta"],
     signupUrl: "https://x.ai/",
-    description: "Grok models from xAI via OpenAI-compatible endpoints.",
+    description: "Grok models from xAI through a compatible interface.",
     tags: ["openai-compat", "flagship"],
   },
   {
@@ -254,7 +254,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "google/gemini-2.0-flash-exp",
     ],
     signupUrl: "https://openrouter.ai/",
-    description: "Single API key gateway for many model vendors.",
+    description: "Single service-key gateway for many model services.",
     tags: ["openai-compat", "aggregator"],
   },
   {
@@ -265,7 +265,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "sonar",
     knownModels: ["sonar", "sonar-pro", "sonar-reasoning", "sonar-reasoning-pro"],
     signupUrl: "https://www.perplexity.ai/",
-    description: "Search-grounded Sonar models exposed via OpenAI-compatible APIs.",
+    description: "Search-grounded Sonar models through a compatible interface.",
     tags: ["openai-compat", "search-grounded"],
   },
   {
@@ -276,7 +276,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "llama-3.3-70b",
     knownModels: ["llama-3.3-70b", "llama3.1-8b"],
     signupUrl: "https://cerebras.ai/",
-    description: "Cerebras-hosted Llama models with OpenAI-compatible APIs.",
+    description: "Cerebras-hosted Llama models with compatible access.",
     tags: ["openai-compat", "fast"],
   },
   {
@@ -298,7 +298,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultModel: "local-model",
     knownModels: ["local-model"],
     signupUrl: "https://lmstudio.ai/",
-    description: "Use LM Studio local server via OpenAI-compatible APIs.",
+    description: "Use the LM Studio local server through a compatible interface.",
     tags: ["openai-compat", "local", "free"],
   },
   {
@@ -308,7 +308,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     baseUrl: "",
     defaultModel: "",
     knownModels: [],
-    description: "Use any OpenAI-compatible endpoint by filling in base URL/model manually.",
+    description: "Use any compatible model service by filling in the interface address and model manually.",
     tags: ["openai-compat", "custom"],
   },
 ];

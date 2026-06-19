@@ -1,9 +1,16 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { BookSummary } from "@inkforge/shared";
 import { BookOpen, Clock3, Library, Pencil, Plus, Settings, Target, Trash2 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CoverUploader } from "./CoverUploader";
-import { staggerContainer, staggerItem, fadeOnly, hoverLift, SPRING_SNAPPY } from "../../lib/motion-tokens";
+import {
+  fadeOnly,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 interface BookListGridProps {
   books: BookSummary[];
@@ -32,7 +39,7 @@ function fmtDate(value: string | null): string {
 }
 
 /**
- * 第一次进入书房或点 ➕ 时显示的"全部书"网格选择器。
+ * 第一次进入书房或点新建时显示的"全部书"网格选择器。
  * 现有 OnboardingPage / WorkspacePage 不动；这里用同样的 ink 颜色风格。
  */
 export function BookListGrid({
@@ -45,7 +52,15 @@ export function BookListGrid({
   onDeleteBook,
   onOpenSettings,
 }: BookListGridProps): JSX.Element {
-  const reduce = useReducedMotion();
+  const reduceMotion = useReducedMotion() === true;
+  const [activeActionBookId, setActiveActionBookId] = useState<string | null>(null);
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
   const totalWords = books.reduce((sum, book) => sum + book.totalWords, 0);
   const totalChapters = books.reduce((sum, book) => sum + book.chapterCount, 0);
   const todayWords = books.reduce((sum, book) => sum + book.todayWords, 0);
@@ -66,23 +81,25 @@ export function BookListGrid({
         </h2>
         <div className="flex items-center gap-2">
           {onCreateBook && (
-            <button
+            <motion.button
               type="button"
               onClick={onCreateBook}
               className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400"
+              {...buttonMotion}
             >
-              <Plus size={14} />
+              <Plus size={14} aria-hidden />
               新建书籍
-            </button>
+            </motion.button>
           )}
           {onClose && (
-            <button
+            <motion.button
               type="button"
               onClick={onClose}
               className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+              {...buttonMotion}
             >
               关闭
-            </button>
+            </motion.button>
           )}
         </div>
       </div>
@@ -96,14 +113,15 @@ export function BookListGrid({
               先创建一本书，之后章节、素材、人物和模型写作都会围绕这本书组织。
             </p>
             {onCreateBook && (
-              <button
+              <motion.button
                 type="button"
                 onClick={onCreateBook}
                 className="flex h-9 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-sm font-semibold text-ink-950 hover:bg-accent-400"
+                {...buttonMotion}
               >
-                <Plus size={15} />
+                <Plus size={15} aria-hidden />
                 创建第一本书
-              </button>
+              </motion.button>
             )}
           </div>
         ) : (
@@ -118,19 +136,29 @@ export function BookListGrid({
               return (
                 <motion.div
                   key={book.project.id}
-                  variants={reduce ? fadeOnly : staggerItem}
-                  whileHover={reduce ? undefined : hoverLift}
+                  variants={reduceMotion ? fadeOnly : staggerItem}
+                  whileHover={reduceMotion ? undefined : hoverLift}
                   transition={SPRING_SNAPPY}
+                  onHoverStart={() => setActiveActionBookId(book.project.id)}
+                  onHoverEnd={() => setActiveActionBookId(null)}
+                  onFocusCapture={() => setActiveActionBookId(book.project.id)}
+                  onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setActiveActionBookId(null);
+                    }
+                  }}
                   className={`group relative flex gap-3 rounded-lg border p-3 text-left transition-colors ${
                     opened
                       ? "border-accent-500/40 bg-accent-500/10"
                       : "border-ink-700 bg-ink-900/40 hover:border-accent-500/30 hover:bg-ink-800/60"
                   }`}
                 >
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => onPickBook(book.project.id)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    whileTap={reduceMotion ? undefined : tapPress}
+                    transition={SPRING_SNAPPY}
                   >
                     <CoverUploader
                       projectId={book.project.id}
@@ -149,17 +177,17 @@ export function BookListGrid({
                       <div className="mt-1 flex gap-1 text-[10px]">
                         {book.originCounts["ai-auto"] > 0 && (
                           <span className="rounded bg-violet-500/20 px-1 text-violet-200">
-                            🤖 {book.originCounts["ai-auto"]}
+                            初稿 {book.originCounts["ai-auto"]}
                           </span>
                         )}
                         {book.originCounts["ai-assisted"] > 0 && (
                           <span className="rounded bg-sky-500/20 px-1 text-sky-200">
-                            ✍🤖 {book.originCounts["ai-assisted"]}
+                            陪写 {book.originCounts["ai-assisted"]}
                           </span>
                         )}
                         {book.originCounts.manual > 0 && (
                           <span className="rounded bg-emerald-500/20 px-1 text-emerald-200">
-                            ✍ {book.originCounts.manual}
+                            手写 {book.originCounts.manual}
                           </span>
                         )}
                       </div>
@@ -167,49 +195,66 @@ export function BookListGrid({
                         <div className="mt-1 text-[10px] text-accent-300">已打开为标签页</div>
                       )}
                     </div>
-                  </button>
+                  </motion.button>
                   {(onRenameBook || onDeleteBook || onOpenSettings) && (
-                    <div className="pointer-events-none absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-                      {onOpenSettings && (
-                        <button
-                          type="button"
-                          title="设定 / 全局世界观"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenSettings(book);
-                          }}
-                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-accent-500/25 hover:text-accent-100"
+                    <AnimatePresence initial={false}>
+                      {activeActionBookId === book.project.id ? (
+                        <motion.div
+                          key="book-actions"
+                          className="absolute right-2 top-2 flex gap-1"
+                          variants={fadeOnly}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
                         >
-                          <Settings size={14} />
-                        </button>
-                      )}
-                      {onRenameBook && (
-                        <button
-                          type="button"
-                          title="改名 / 修改基础信息"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRenameBook(book);
-                          }}
-                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-sky-500/25 hover:text-sky-100"
-                        >
-                          <Pencil size={14} />
-                        </button>
-                      )}
-                      {onDeleteBook && (
-                        <button
-                          type="button"
-                          title="删除书籍"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteBook(book);
-                          }}
-                          className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-rose-500/25 hover:text-rose-100"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
+                          {onOpenSettings && (
+                            <motion.button
+                              type="button"
+                              title="设定 / 全局世界观"
+                              aria-label={`打开《${book.project.name}》的设定`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenSettings(book);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-accent-500/25 hover:text-accent-100"
+                              {...buttonMotion}
+                            >
+                              <Settings size={14} aria-hidden />
+                            </motion.button>
+                          )}
+                          {onRenameBook && (
+                            <motion.button
+                              type="button"
+                              title="改名 / 修改基础信息"
+                              aria-label={`编辑《${book.project.name}》的基础信息`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRenameBook(book);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-sky-500/25 hover:text-sky-100"
+                              {...buttonMotion}
+                            >
+                              <Pencil size={14} aria-hidden />
+                            </motion.button>
+                          )}
+                          {onDeleteBook && (
+                            <motion.button
+                              type="button"
+                              title="删除书籍"
+                              aria-label={`删除《${book.project.name}》`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteBook(book);
+                              }}
+                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-rose-500/25 hover:text-rose-100"
+                              {...buttonMotion}
+                            >
+                              <Trash2 size={14} aria-hidden />
+                            </motion.button>
+                          )}
+                        </motion.div>
+                      ) : null}
+                    </AnimatePresence>
                   )}
                 </motion.div>
               );
@@ -229,14 +274,15 @@ export function BookListGrid({
                   </p>
                 </div>
                 {onCreateBook && (
-                  <button
+                  <motion.button
                     type="button"
                     onClick={onCreateBook}
                     className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-accent-500/50 bg-accent-500/15 px-3 text-sm font-medium text-accent-100 hover:bg-accent-500/25"
+                    {...buttonMotion}
                   >
-                    <Plus size={15} />
+                    <Plus size={15} aria-hidden />
                     新书
-                  </button>
+                  </motion.button>
                 )}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -261,11 +307,12 @@ export function BookListGrid({
               ) : (
                 <div className="grid gap-2">
                   {recentBooks.map((book) => (
-                    <button
+                    <motion.button
                       key={book.project.id}
                       type="button"
                       onClick={() => onPickBook(book.project.id)}
                       className="flex items-center justify-between gap-3 rounded-md border border-ink-700 bg-ink-950/50 px-3 py-2 text-left hover:border-accent-500/40 hover:bg-accent-500/10"
+                      {...buttonMotion}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm text-ink-100">{book.project.name}</span>
@@ -276,7 +323,7 @@ export function BookListGrid({
                       <span className="shrink-0 text-xs text-ink-500">
                         {fmtDate(book.lastChapterUpdatedAt ?? book.project.lastOpened)}
                       </span>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               )}

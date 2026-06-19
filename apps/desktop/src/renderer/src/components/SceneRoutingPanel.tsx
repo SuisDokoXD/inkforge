@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   SCENE_KEYS_ADVANCED,
   SCENE_KEYS_BASIC,
@@ -8,6 +9,14 @@ import {
 } from "@inkforge/shared";
 import { providerApi, sceneBindingApi } from "../lib/api";
 import { useT } from "../lib/i18n";
+import { friendlyErrorMessage } from "../lib/friendly-error";
+import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
+
+type StatusMessage = {
+  kind: "success" | "error";
+  text: string;
+};
 
 const SCENE_LABEL_BASIC: Record<string, string> = {
   outline_generation: "大纲生成",
@@ -32,6 +41,9 @@ const SCENE_LABEL_ADVANCED: Record<string, string> = {
 export function SceneRoutingPanel(): JSX.Element {
   const t = useT();
   const queryClient = useQueryClient();
+  const { status, showStatus } = useTimedStatus<StatusMessage>();
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   const providersQuery = useQuery({
     queryKey: ["providers"],
@@ -45,22 +57,60 @@ export function SceneRoutingPanel(): JSX.Element {
 
   const upsertMutation = useMutation({
     mutationFn: sceneBindingApi.upsert,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["scene-bindings"] }),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "模型分配已保存。" }, 2000);
+      return queryClient.invalidateQueries({ queryKey: ["scene-bindings"] });
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "模型分配保存失败，请稍后重试。"),
+      });
+    },
   });
 
   const resetMutation = useMutation({
     mutationFn: sceneBindingApi.reset,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["scene-bindings"] }),
+    onMutate: () => showStatus(null),
+    onSuccess: () => {
+      showStatus({ kind: "success", text: "已恢复默认分配。" }, 2000);
+      return queryClient.invalidateQueries({ queryKey: ["scene-bindings"] });
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "恢复默认分配失败，请稍后重试。"),
+      });
+    },
   });
 
   const setModeMutation = useMutation({
     mutationFn: sceneBindingApi.setMode,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["scene-bindings"] }),
+    onMutate: () => showStatus(null),
+    onSuccess: (_data, input) => {
+      showStatus(
+        {
+          kind: "success",
+          text: input.mode === "basic" ? "已切换到常用功能分配。" : "已切换到全部功能分配。",
+        },
+        2200,
+      );
+      return queryClient.invalidateQueries({ queryKey: ["scene-bindings"] });
+    },
+    onError: (err) => {
+      showStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "切换模型分配方式失败，请稍后重试。"),
+      });
+    },
   });
 
   const providers = providersQuery.data ?? [];
   const data = bindingsQuery.data;
   const mode: SceneRoutingMode = data?.mode ?? "basic";
+  const isMutating =
+    upsertMutation.isPending || resetMutation.isPending || setModeMutation.isPending;
 
   const bindingMap = useMemo(() => {
     const map = new Map<SceneKey, { providerId: string | null; model: string | null }>();
@@ -114,8 +164,10 @@ export function SceneRoutingPanel(): JSX.Element {
         <td className="py-1.5 pr-3 text-ink-300">{label}</td>
         <td className="py-1.5 pr-3">
           <select
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-accent-500 focus:outline-none"
+            aria-label={`${label} 的模型服务`}
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs transition-[border-color,opacity] duration-200 focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             value={providerId}
+            disabled={isMutating || providersQuery.isLoading || bindingsQuery.isLoading}
             onChange={(e) => handleProviderChange(targetMode, sceneKey, e.target.value)}
           >
             <option value="">使用默认</option>
@@ -130,11 +182,11 @@ export function SceneRoutingPanel(): JSX.Element {
           <input
             type="text"
             list={knownModels.length ? `models-${targetMode}-${sceneKey}` : undefined}
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed"
+            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs transition-[border-color,opacity] duration-200 focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             value={model}
             placeholder={provider?.defaultModel ?? ""}
             aria-label={`${label}使用的模型名称`}
-            disabled={!providerId}
+            disabled={!providerId || isMutating || bindingsQuery.isLoading}
             onChange={(e) => handleModelChange(targetMode, sceneKey, providerId, e.target.value)}
           />
           {knownModels.length > 0 ? (
@@ -155,13 +207,19 @@ export function SceneRoutingPanel(): JSX.Element {
         <span className="text-ink-300">模型分配方式</span>
         <div className="flex overflow-hidden rounded-md border border-ink-600">
           <button
-            className={`px-3 py-1 ${mode === "basic" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+            type="button"
+            aria-pressed={mode === "basic"}
+            disabled={isMutating || mode === "basic"}
+            className={`px-3 py-1 transition-[background-color,color,opacity] duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${mode === "basic" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "basic" })}
           >
             常用功能（5 项）
           </button>
           <button
-            className={`px-3 py-1 ${mode === "advanced" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
+            type="button"
+            aria-pressed={mode === "advanced"}
+            disabled={isMutating || mode === "advanced"}
+            className={`px-3 py-1 transition-[background-color,color,opacity] duration-200 disabled:cursor-not-allowed disabled:opacity-70 ${mode === "advanced" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-700"}`}
             onClick={() => setModeMutation.mutate({ mode: "advanced" })}
           >
             全部功能（9 项）
@@ -169,6 +227,25 @@ export function SceneRoutingPanel(): JSX.Element {
         </div>
         <span className="text-ink-500">切换时会保留另一套选择</span>
       </div>
+
+      <AnimatePresence initial={false}>
+        {status ? (
+          <motion.p
+            className={`rounded-md border px-3 py-2 text-xs ${
+              status.kind === "error"
+                ? "border-red-500/20 bg-red-500/10 text-red-100"
+                : "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+            }`}
+            role={status.kind === "error" ? "alert" : "status"}
+            variants={statusMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            {status.text}
+          </motion.p>
+        ) : null}
+      </AnimatePresence>
 
       <details open={mode === "basic"} className="rounded-md border border-ink-700 p-3">
         <summary className="cursor-pointer text-xs font-medium text-ink-200">

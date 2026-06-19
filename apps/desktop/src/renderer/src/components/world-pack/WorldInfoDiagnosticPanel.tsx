@@ -4,16 +4,31 @@
 // SillyTavern 一直只往 console.log 写激活情况，作者问"为啥这条没生效"基本靠猜。
 // 本面板把每次 activator 跑的完整 trace 可视化：
 //   左：最近 N 次激活的简表（场景 + 时间 + 注入数 / 总数）
-//   右：选中那次的全部 entries 列表 + 状态徽章（✓注入 / ⊘预算超 / 概率失 / 逻辑失）
+//   右：选中那次的全部 entries 列表 + 状态徽章（已参考 / 容量超限 / 概率失 / 逻辑失）
 //
 // 数据来自 world_info_traces 表（v26），通过 worldInfoTraceApi 查询。
 // 调用方传 projectId 即可，UI 自己管理选中 + 刷新。
 // =============================================================================
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CircleX, Dices, RefreshCw, Trash2, Wallet, XCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import {
+  AlertTriangle,
+  BarChart3,
+  CheckCircle2,
+  CircleX,
+  Dices,
+  RefreshCw,
+  Trash2,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { worldInfoTraceApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../../lib/motion-tokens";
+import { useTimedStatus } from "../../lib/use-timed-status";
+import { MotionSpin } from "../MotionSpinner";
 import type {
   WorldInfoEntryTrace,
   WorldInfoTraceRecord,
@@ -101,6 +116,16 @@ function formatTimestamp(iso: string): string {
 export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
   const queryClient = useQueryClient();
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const { status, showStatus } = useTimedStatus();
+  const reduceMotion = useReducedMotion() === true;
+  const panelMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+      };
 
   const tracesQuery = useQuery({
     queryKey: ["world-info-traces", projectId],
@@ -108,8 +133,33 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
     refetchInterval: 5000, // 5 秒轮询，保证刚跑完的激活立刻能看到
   });
 
+  const clearMutation = useMutation({
+    mutationFn: () => worldInfoTraceApi.clear({ projectId }),
+    onMutate: () => {
+      showStatus(null);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["world-info-traces", projectId],
+      });
+      setSelectedTraceId(null);
+      setConfirmClear(false);
+      showStatus("参考记录已清空。", 2500);
+    },
+    onError: (err) => {
+      showStatus(friendlyErrorMessage(err, "清空参考记录失败，请稍后重试。"));
+    },
+  });
+
+  useEffect(() => {
+    setConfirmClear(false);
+    showStatus(null);
+  }, [projectId, showStatus]);
+
   const traces: WorldInfoTraceRecord[] = tracesQuery.data ?? [];
   const selected = traces.find((t) => t.id === selectedTraceId) ?? traces[0] ?? null;
+  const statusIsError = status !== null && /失败|无法|异常|错误/.test(status);
+  const clearDisabled = traces.length === 0 || clearMutation.isPending;
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-ink-900">
@@ -119,31 +169,100 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
           <span className="text-sm font-medium text-ink-200">参考记录</span>
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => tracesQuery.refetch()}
               title="刷新"
               aria-label="刷新参考记录"
               className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-200"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${tracesQuery.isFetching ? "animate-spin" : ""}`} />
+              <MotionSpin active={tracesQuery.isFetching}>
+                <RefreshCw className="h-3.5 w-3.5" />
+              </MotionSpin>
             </button>
             <button
-              onClick={async () => {
-                await worldInfoTraceApi.clear({ projectId });
-                queryClient.invalidateQueries({ queryKey: ["world-info-traces", projectId] });
-                setSelectedTraceId(null);
+              type="button"
+              onClick={() => {
+                showStatus(null);
+                setConfirmClear(true);
               }}
+              disabled={clearDisabled}
               title="清空所有参考记录"
               aria-label="清空所有参考记录"
-              className="rounded p-1 text-ink-400 hover:bg-rose-500/20 hover:text-rose-300"
+              aria-expanded={confirmClear}
+              aria-controls="world-info-clear-confirm"
+              className="rounded p-1 text-ink-400 hover:bg-rose-500/20 hover:text-rose-300 disabled:cursor-default disabled:opacity-40"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
+        <AnimatePresence initial={false}>
+          {confirmClear ? (
+            <motion.div
+              id="world-info-clear-confirm"
+              key="clear-confirm"
+              role="group"
+              aria-label="确认清空参考记录"
+              className="border-b border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-100"
+              variants={panelMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium">清空全部参考记录？</div>
+                  <p className="mt-0.5 text-[11px] leading-relaxed text-rose-100/75">
+                    只会移除这页的判断记录，不会删除世界观资料、卡牌或正文。
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 flex justify-end gap-1.5">
+                <motion.button
+                  type="button"
+                  onClick={() => setConfirmClear(false)}
+                  className="rounded px-2 py-1 text-[11px] text-ink-300 hover:bg-ink-800"
+                  {...buttonMotion}
+                >
+                  取消
+                </motion.button>
+                <motion.button
+                  type="button"
+                  onClick={() => clearMutation.mutate()}
+                  disabled={clearMutation.isPending}
+                  className="rounded bg-rose-500/25 px-2 py-1 text-[11px] font-medium text-rose-100 hover:bg-rose-500/35 disabled:cursor-wait disabled:opacity-60"
+                  {...buttonMotion}
+                >
+                  {clearMutation.isPending ? "清空中…" : "确认清空"}
+                </motion.button>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+        <AnimatePresence initial={false}>
+          {status ? (
+            <motion.div
+              key="clear-status"
+              className={`border-b px-3 py-2 text-xs ${
+                statusIsError
+                  ? "border-red-500/25 bg-red-500/10 text-red-200"
+                  : "border-ink-800 bg-ink-900/60 text-ink-300"
+              }`}
+              role={statusIsError ? "alert" : "status"}
+              variants={panelMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {status}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <div className="flex-1 overflow-y-auto">
           {traces.length === 0 ? (
             <div className="p-6 text-center text-xs text-ink-500">
-              <div className="mb-2 text-2xl opacity-40">📊</div>
+              <BarChart3 aria-hidden className="mx-auto mb-2 h-8 w-8 opacity-40" />
               暂无参考记录
               <br />
               触发带世界观资料的模型操作后会自动出现
@@ -258,7 +377,7 @@ export function WorldInfoDiagnosticPanel({ projectId }: Props): JSX.Element {
         ) : (
           <div className="flex h-full items-center justify-center text-ink-500">
             <div className="text-center">
-              <div className="mb-3 text-4xl opacity-30">📊</div>
+              <BarChart3 aria-hidden className="mx-auto mb-3 h-10 w-10 opacity-30" />
               从左侧选一条参考记录
             </div>
           </div>

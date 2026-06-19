@@ -1,14 +1,23 @@
 import { useState } from "react";
 import type { TavernMessageRecord } from "@inkforge/shared";
+import { AnimatePresence, motion } from "motion/react";
 import { useAppStore } from "../../stores/app-store";
 import { chapterApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { fadeOnly } from "../../lib/motion-tokens";
+import { MotionPulse } from "../MotionSpinner";
+import { useTimedStatus } from "../../lib/use-timed-status";
 
 interface RoleBubbleProps {
   message: TavernMessageRecord;
   cardName?: string;
   isStreaming?: boolean;
 }
+
+type ExtractStatus = {
+  kind: "success" | "error";
+  message: string;
+};
 
 function hashColor(id: string): string {
   let hash = 0;
@@ -28,6 +37,9 @@ export function RoleBubble({
   const [expanded, setExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [extracting, setExtracting] = useState(false);
+  const { status: extractStatus, showStatus: showExtractStatus } =
+    useTimedStatus<ExtractStatus>();
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -37,10 +49,15 @@ export function RoleBubble({
 
   const handleExtract = async () => {
     setMenuOpen(false);
+    showExtractStatus(null);
     if (!currentChapterId) {
-      alert("请先打开某一章节");
+      showExtractStatus({
+        kind: "error",
+        message: "请先打开一个章节，再把摘录写入正文。",
+      });
       return;
     }
+    setExtracting(true);
     try {
       const existing = await chapterApi.read({ id: currentChapterId });
       const title = cardName || message.role;
@@ -49,9 +66,14 @@ export function RoleBubble({
         id: currentChapterId,
         content: existing.content + blockquote,
       });
-      alert("已追加到当前章节末尾。");
+      showExtractStatus({ kind: "success", message: "已追加到当前章节末尾。" }, 2200);
     } catch (err) {
-      alert(`摘录失败：${friendlyErrorMessage(err, "摘录写入失败，请稍后重试。")}`);
+      showExtractStatus({
+        kind: "error",
+        message: `摘录失败：${friendlyErrorMessage(err, "摘录写入失败，请稍后重试。")}`,
+      });
+    } finally {
+      setExtracting(false);
     }
   };
 
@@ -69,11 +91,19 @@ export function RoleBubble({
         >
           📜 历史摘要 {expanded ? "（点击收起）" : "（点击展开）"}
         </button>
-        {expanded && (
-          <div className="mt-1 rounded border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs text-ink-300 whitespace-pre-wrap">
-            {message.content}
-          </div>
-        )}
+        <AnimatePresence initial={false}>
+          {expanded ? (
+            <motion.div
+              className="mt-1 rounded border border-ink-700 bg-ink-900/60 px-3 py-2 text-xs text-ink-300 whitespace-pre-wrap"
+              variants={fadeOnly}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {message.content}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     );
   }
@@ -122,7 +152,7 @@ export function RoleBubble({
             }
           >
             {message.content}
-            {isStreaming && <span className="ml-0.5 animate-pulse text-accent-300">▋</span>}
+            {isStreaming && <MotionPulse className="ml-0.5 inline-flex text-accent-300">▋</MotionPulse>}
           </div>
         </div>
         {isDirector && (
@@ -131,23 +161,59 @@ export function RoleBubble({
           </div>
         )}
       </div>
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-          <div
+      <AnimatePresence initial={false}>
+        {extractStatus ? (
+          <motion.div
+            key="extract-status"
+            role={extractStatus.kind === "error" ? "alert" : "status"}
+            aria-live="polite"
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className={`mt-1 text-xs ${isDirector ? "pr-10 text-right" : "pl-10 text-left"}`}
+          >
+            <span
+              className={`inline-flex rounded-md border px-2 py-1 ${
+                extractStatus.kind === "error"
+                  ? "border-rose-500/30 bg-rose-500/10 text-rose-100"
+                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+              }`}
+            >
+              {extractStatus.message}
+            </span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      {menuOpen ? (
+          <button
+            type="button"
+            aria-label="关闭摘录菜单"
+            className="fixed inset-0 z-40 cursor-default"
+            onClick={() => setMenuOpen(false)}
+          />
+      ) : null}
+      <AnimatePresence initial={false}>
+        {menuOpen ? (
+          <motion.div
             className="fixed z-50 rounded-md border border-ink-700 bg-ink-800 py-1 shadow-xl"
             style={{ left: menuPos.x, top: menuPos.y }}
+            variants={fadeOnly}
+            initial="initial"
+            animate="animate"
+            exit="exit"
           >
             <button
               type="button"
               onClick={handleExtract}
-              className="block w-full px-3 py-1.5 text-left text-xs text-ink-200 hover:bg-ink-700"
+              disabled={extracting}
+              className="block w-full px-3 py-1.5 text-left text-xs text-ink-200 hover:bg-ink-700 disabled:opacity-50"
             >
-              摘录到正文
+              {extracting ? "摘录中" : "摘录到正文"}
             </button>
-          </div>
-        </>
-      )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

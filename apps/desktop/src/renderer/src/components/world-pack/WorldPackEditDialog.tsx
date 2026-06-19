@@ -12,11 +12,12 @@
 //   - ./dialog-parts/EntryEditor       —— 右栏表单
 // =============================================================================
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus } from "lucide-react";
+import { BookOpen, Plus } from "lucide-react";
 import { worldPackApi } from "../../lib/api";
 import { usePackCover } from "../../hooks/usePackCover";
+import { MotionSpinner } from "../MotionSpinner";
 import { DialogShell, FieldLabel, type DialogSaveState } from "./dialog-parts/DialogShell";
 import { CoverDropZone } from "./dialog-parts/CoverDropZone";
 import { EntryListItem } from "./dialog-parts/EntryListItem";
@@ -40,6 +41,24 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
   const queryClient = useQueryClient();
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<DialogSaveState>("idle");
+  const saveIdleTimerRef = useRef<number | null>(null);
+
+  const clearSaveIdleTimer = (): void => {
+    if (saveIdleTimerRef.current !== null) {
+      window.clearTimeout(saveIdleTimerRef.current);
+      saveIdleTimerRef.current = null;
+    }
+  };
+
+  const scheduleSaveIdle = (hideAfterMs: number): void => {
+    clearSaveIdleTimer();
+    saveIdleTimerRef.current = window.setTimeout(() => {
+      saveIdleTimerRef.current = null;
+      setSaveState("idle");
+    }, hideAfterMs);
+  };
+
+  useEffect(() => clearSaveIdleTimer, []);
 
   const packQuery = useQuery({
     queryKey: ["world-pack", packId],
@@ -54,11 +73,12 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
   // 统一的"保存中→已保存→淡出"状态机
   function withSaveIndicator<T extends (...args: never[]) => Promise<unknown>>(fn: T): T {
     return (async (...args: Parameters<T>) => {
+      clearSaveIdleTimer();
       setSaveState("saving");
       try {
         const r = await fn(...args);
         setSaveState("saved");
-        window.setTimeout(() => setSaveState("idle"), 1200);
+        scheduleSaveIdle(1200);
         return r;
       } catch (e) {
         setSaveState("idle");
@@ -118,12 +138,19 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
         mime: file.type,
       });
     },
+    onMutate: () => {
+      clearSaveIdleTimer();
+      setSaveState("saving");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["world-pack", packId] });
       queryClient.invalidateQueries({ queryKey: ["world-packs"] });
       queryClient.invalidateQueries({ queryKey: ["world-pack-cover"] });
       setSaveState("saved");
-      window.setTimeout(() => setSaveState("idle"), 1500);
+      scheduleSaveIdle(1500);
+    },
+    onError: () => {
+      setSaveState("idle");
     },
   });
 
@@ -141,7 +168,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
     return (
       <DialogShell onClose={onClose} title="加载中…">
         <div className="flex h-full items-center justify-center text-ink-400">
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <MotionSpinner className="h-5 w-5" />
         </div>
       </DialogShell>
     );
@@ -275,7 +302,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
           <div className="flex-1 overflow-y-auto">
             {entries.length === 0 ? (
               <div className="p-6 text-center text-sm text-ink-500">
-                <div className="mb-2 text-2xl opacity-40">📖</div>
+                <BookOpen aria-hidden className="mx-auto mb-2 h-8 w-8 opacity-40" />
                 还没有条目
                 <br />
                 点上方"新条目"添加
@@ -322,7 +349,7 @@ export function WorldPackEditDialog({ packId, onClose }: Props): JSX.Element {
           ) : (
             <div className="flex h-full items-center justify-center text-ink-500">
               <div className="text-center">
-                <div className="mb-3 text-4xl opacity-30">←</div>
+                <BookOpen aria-hidden className="mx-auto mb-3 h-10 w-10 opacity-30" />
                 从左侧选一个条目，或新建一个
               </div>
             </div>

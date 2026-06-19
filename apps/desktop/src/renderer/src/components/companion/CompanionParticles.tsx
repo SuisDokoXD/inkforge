@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { EASE_IN_OUT } from "../../lib/motion-tokens";
 import { detectSeason } from "./companion-festivals";
 
 interface CompanionParticlesProps {
@@ -15,17 +17,18 @@ type ParticleKind = "cherry" | "firefly" | "leaf" | "snow" | "star" | "sun";
  * 桌宠周围环境粒子。
  * 6 颗粒子，按当前季节 + 时段自动选择类型：
  *   春樱 / 夏萤火 / 秋枫叶 / 冬雪 / 凌晨星星
- * 每颗粒子有独立的随机轨迹（CSS 动画 + delay）。
+ * 每颗粒子有独立的随机轨迹，并在系统减弱动态效果时关闭装饰性粒子。
  */
 export function CompanionParticles({
   centerX,
   centerY,
   enabled,
 }: CompanionParticlesProps): JSX.Element | null {
+  const reduce = useReducedMotion() === true;
   const kind = useMemo(() => pickKind(new Date()), []);
   const particles = useMemo(() => buildParticles(kind, 6), [kind]);
 
-  if (!enabled) return null;
+  if (!enabled || reduce) return null;
 
   return (
     <div
@@ -63,19 +66,32 @@ function ParticleDot({
 }: ParticleConfig): JSX.Element {
   const visual = VISUAL[kind];
   return (
-    <span
+    <motion.span
       className="absolute"
+      initial={{ opacity: 0, x: 0, y: 0, rotate: 0 }}
+      animate={{
+        x: [0, 2, 8, 1, -6],
+        y: [0, -8, -36, -52, -68],
+        rotate: [0, 80, 180, 270, 360],
+        opacity: [0, 0.85, 0.9, 0.6, 0],
+      }}
+      transition={{
+        duration,
+        ease: EASE_IN_OUT,
+        repeat: Infinity,
+        delay,
+        times: [0, 0.1, 0.5, 0.9, 1],
+      }}
       style={{
         left: `calc(50% + ${startX}px)`,
         top: `calc(50% + ${startY}px)`,
-        animation: `companion-particle-float ${duration}s ease-in-out ${delay}s infinite`,
         fontSize: visual.size,
         color: visual.color,
         filter: visual.glow ?? undefined,
       }}
     >
       {visual.glyph}
-    </span>
+    </motion.span>
   );
 }
 
