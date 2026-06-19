@@ -13,10 +13,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Settings, X } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Check, Settings, X } from "lucide-react";
+import { AnimatedDialog } from "../AnimatedDialog";
+import { MotionSpinner } from "../MotionSpinner";
 import { voiceProfileApi } from "../../lib/api";
+import { friendlyErrorMessage } from "../../lib/friendly-error";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 interface Props {
+  open: boolean;
   projectId: string;
   onClose(): void;
 }
@@ -130,16 +143,19 @@ const QUESTIONS: QuestionSpec[] = [
   },
 ];
 
-export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
+export function VoiceProfileDialog({ open, projectId, onClose }: Props): JSX.Element {
   const queryClient = useQueryClient();
+  const reduce = useReducedMotion();
   const profileQuery = useQuery({
     queryKey: ["voice-profile", projectId],
     queryFn: () => voiceProfileApi.get({ projectId }),
+    enabled: open,
   });
 
   // 本地表单状态：拷贝服务端答案到 local；保存时回写整个 answers
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [enabled, setEnabled] = useState<boolean>(true);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -147,6 +163,10 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
       setEnabled(!!profileQuery.data.enabled);
     }
   }, [profileQuery.data]);
+
+  useEffect(() => {
+    if (open) setSaveError(null);
+  }, [open]);
 
   const completion = useMemo(() => {
     const filled = QUESTIONS.filter((q) => (answers[q.key] ?? "").trim()).length;
@@ -162,9 +182,15 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
         completedAt:
           completion.filled === completion.total ? new Date().toISOString() : null,
       }),
+    onMutate: () => {
+      setSaveError(null);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["voice-profile", projectId] });
       onClose();
+    },
+    onError: (error) => {
+      setSaveError(friendlyErrorMessage(error, "保存写作声音档案失败，请稍后重试。"));
     },
   });
 
@@ -173,11 +199,22 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex h-full max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl">
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      labelledBy="voice-profile-title"
+      overlayClassName="flex items-center justify-center p-4"
+      panelClassName="flex h-full max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
+    >
+      <motion.div
+        className="flex min-h-0 flex-1 flex-col"
+        variants={reduce ? fadeOnly : fadeSlideUp}
+        initial="initial"
+        animate="animate"
+      >
         <header className="flex shrink-0 items-center justify-between border-b border-ink-700 bg-ink-950/60 px-4 py-3">
           <div>
-            <h2 className="flex items-center gap-2 text-base font-semibold text-ink-100">
+            <h2 id="voice-profile-title" className="flex items-center gap-2 text-base font-semibold text-ink-100">
               <Settings className="h-4 w-4 text-accent-400" />
               写作声音档案
             </h2>
@@ -185,19 +222,28 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
               填完后，模型生成会按你的风格输出 · {completion.filled}/{completion.total} 已填写
             </p>
           </div>
-          <button
+          <motion.button
             type="button"
             onClick={onClose}
             className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
             aria-label="关闭写作声音档案"
             title="关闭"
+            whileHover={hoverLift}
+            whileTap={tapPress}
           >
             <X className="h-4 w-4" />
-          </button>
+          </motion.button>
         </header>
 
         <div className="flex-1 overflow-y-auto p-5">
-          <label className="mb-4 flex cursor-pointer items-center gap-2 rounded-md border border-ink-700 bg-ink-800/50 p-3 text-sm">
+          <motion.label
+            className="mb-4 flex cursor-pointer items-center gap-2 rounded-md border border-ink-700 bg-ink-800/50 p-3 text-sm"
+            variants={reduce ? fadeOnly : fadeSlideUp}
+            initial="initial"
+            animate="animate"
+            whileHover={hoverLift}
+            whileTap={tapPress}
+          >
             <input
               type="checkbox"
               aria-label="启用写作声音档案"
@@ -208,11 +254,16 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
             <span className="text-ink-100">
               启用本档案 — 让模型生成跟随这套写作声音
             </span>
-          </label>
+          </motion.label>
 
-          <ol className="space-y-5">
+          <motion.ol
+            className="space-y-5"
+            variants={reduce ? undefined : staggerContainer}
+            initial="initial"
+            animate="animate"
+          >
             {QUESTIONS.map((q, idx) => (
-              <li key={q.key}>
+              <motion.li key={q.key} variants={reduce ? fadeOnly : staggerItem}>
                 <div className="mb-2">
                   <span className="mr-2 inline-block w-6 rounded bg-ink-800 px-1.5 py-0.5 text-center text-[11px] font-mono text-ink-400">
                     {idx + 1}
@@ -227,7 +278,7 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                     {q.presets.map((preset) => {
                       const active = (answers[q.key] ?? "") === preset;
                       return (
-                        <button
+                        <motion.button
                           key={preset}
                           type="button"
                           onClick={() => setAnswer(q.key, active ? "" : preset)}
@@ -236,10 +287,12 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                               ? "bg-accent-500 text-ink-900"
                               : "bg-ink-800 text-ink-300 hover:bg-ink-700"
                           }`}
+                          whileHover={hoverLift}
+                          whileTap={tapPress}
                         >
                           {active && <Check className="h-3 w-3" />}
                           {preset}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -262,37 +315,65 @@ export function VoiceProfileDialog({ projectId, onClose }: Props): JSX.Element {
                     placeholder="预设之外可自行输入"
                   />
                 )}
-              </li>
+              </motion.li>
             ))}
-          </ol>
+          </motion.ol>
         </div>
 
         <footer className="flex shrink-0 items-center justify-between gap-2 border-t border-ink-700 bg-ink-950/60 px-4 py-3">
-          <span className="text-xs text-ink-400">
-            进度 {completion.filled}/{completion.total}
-          </span>
+          <div className="min-w-0 flex-1">
+            <span className="text-xs text-ink-400">
+              进度 {completion.filled}/{completion.total}
+            </span>
+            <div className="mt-1 h-1.5 max-w-40 overflow-hidden rounded-full bg-ink-800">
+              <motion.div
+                className="h-full rounded-full bg-accent-500"
+                initial={false}
+                animate={{ width: `${(completion.filled / completion.total) * 100}%` }}
+              />
+            </div>
+            <AnimatePresence mode="wait">
+              {saveError && (
+                <motion.p
+                  key={saveError}
+                  role="alert"
+                  className="mt-1 text-[11px] text-red-300"
+                  variants={reduce ? fadeOnly : fadeSlideUp}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  {saveError}
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
               type="button"
               onClick={onClose}
               className="rounded-md px-3 py-1.5 text-sm text-ink-300 hover:bg-ink-800"
+              whileHover={hoverLift}
+              whileTap={tapPress}
             >
               取消
-            </button>
-            <button
+            </motion.button>
+            <motion.button
               type="button"
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
               className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
+              whileHover={saveMutation.isPending ? undefined : hoverLift}
+              whileTap={saveMutation.isPending ? undefined : tapPress}
             >
               {saveMutation.isPending && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <MotionSpinner className="h-3.5 w-3.5" />
               )}
               保存
-            </button>
+            </motion.button>
           </div>
         </footer>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatedDialog>
   );
 }

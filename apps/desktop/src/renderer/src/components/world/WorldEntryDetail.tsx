@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import type { WorldEntryRecord } from "@inkforge/shared";
 import { worldApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { fadeOnly } from "../../lib/motion-tokens";
+import { useTimedStatus } from "../../lib/use-timed-status";
 
 const CATEGORY_OPTIONS = ["地点", "门派", "物件", "事件", "概念"];
 
@@ -20,6 +23,44 @@ function arraysEqual(a: string[], b: string[]): boolean {
   return true;
 }
 
+interface WorldEntrySnapshot {
+  title: string;
+  category: string;
+  content: string;
+  aliases: string[];
+  tags: string[];
+}
+
+function emptyEntrySnapshot(): WorldEntrySnapshot {
+  return {
+    title: "",
+    category: CATEGORY_OPTIONS[0],
+    content: "",
+    aliases: [],
+    tags: [],
+  };
+}
+
+function snapshotFromEntry(entry: WorldEntryRecord): WorldEntrySnapshot {
+  return {
+    title: entry.title,
+    category: entry.category,
+    content: entry.content,
+    aliases: [...entry.aliases],
+    tags: [...entry.tags],
+  };
+}
+
+function snapshotsEqual(a: WorldEntrySnapshot, b: WorldEntrySnapshot): boolean {
+  return (
+    a.title === b.title &&
+    a.category === b.category &&
+    a.content === b.content &&
+    arraysEqual(a.aliases, b.aliases) &&
+    arraysEqual(a.tags, b.tags)
+  );
+}
+
 export function WorldEntryDetail({
   projectId,
   entry,
@@ -32,32 +73,11 @@ export function WorldEntryDetail({
   const [aliasesText, setAliasesText] = useState("");
   const [tagsText, setTagsText] = useState("");
   const [content, setContent] = useState("");
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!entry) {
-      setTitle("");
-      setCategory(CATEGORY_OPTIONS[0]);
-      setCustomCategory("");
-      setAliasesText("");
-      setTagsText("");
-      setContent("");
-      setSaveStatus(null);
-      return;
-    }
-    setTitle(entry.title);
-    if (CATEGORY_OPTIONS.includes(entry.category)) {
-      setCategory(entry.category);
-      setCustomCategory("");
-    } else {
-      setCategory("自定义");
-      setCustomCategory(entry.category);
-    }
-    setAliasesText(entry.aliases.join("、"));
-    setTagsText(entry.tags.join("、"));
-    setContent(entry.content);
-    setSaveStatus(null);
-  }, [entry]);
+  const { status: saveStatus, showStatus: showSaveStatus } = useTimedStatus();
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
+  const [syncedSnapshot, setSyncedSnapshot] = useState<WorldEntrySnapshot>(() => emptyEntrySnapshot());
+  const loadedEntryIdRef = useRef<string | null>(null);
+  const syncedUpdatedAtRef = useRef("");
 
   const parsedAliases = useMemo(
     () =>
@@ -77,15 +97,67 @@ export function WorldEntryDetail({
   );
   const effectiveCategory = category === "自定义" ? customCategory.trim() : category;
 
-  const isDirty = useMemo(() => {
-    if (!entry) return title.trim().length > 0 || content.trim().length > 0;
-    if (entry.title !== title.trim()) return true;
-    if (entry.category !== effectiveCategory) return true;
-    if (entry.content !== content) return true;
-    if (!arraysEqual(entry.aliases, parsedAliases)) return true;
-    if (!arraysEqual(entry.tags, parsedTags)) return true;
-    return false;
-  }, [entry, title, effectiveCategory, content, parsedAliases, parsedTags]);
+  const currentSnapshot = useMemo<WorldEntrySnapshot>(
+    () => ({
+      title: title.trim(),
+      category: effectiveCategory,
+      content,
+      aliases: parsedAliases,
+      tags: parsedTags,
+    }),
+    [title, effectiveCategory, content, parsedAliases, parsedTags],
+  );
+  const isDirty = !snapshotsEqual(currentSnapshot, syncedSnapshot);
+
+  useEffect(() => {
+    if (!entry) {
+      const nextSnapshot = emptyEntrySnapshot();
+      loadedEntryIdRef.current = null;
+      syncedUpdatedAtRef.current = "";
+      if (!snapshotsEqual(nextSnapshot, syncedSnapshot)) {
+        setSyncedSnapshot(nextSnapshot);
+      }
+      setDeleteConfirming(false);
+      setTitle("");
+      setCategory(CATEGORY_OPTIONS[0]);
+      setCustomCategory("");
+      setAliasesText("");
+      setTagsText("");
+      setContent("");
+      showSaveStatus(null);
+      return;
+    }
+
+    const isSameEntry = loadedEntryIdRef.current === entry.id;
+    const nextSnapshot = snapshotFromEntry(entry);
+    const isStaleExternalEntry =
+      isSameEntry &&
+      syncedUpdatedAtRef.current.length > 0 &&
+      entry.updatedAt <= syncedUpdatedAtRef.current &&
+      !snapshotsEqual(nextSnapshot, syncedSnapshot);
+
+    if (isStaleExternalEntry) return;
+    if (isSameEntry && isDirty) return;
+
+    loadedEntryIdRef.current = entry.id;
+    syncedUpdatedAtRef.current = entry.updatedAt;
+    if (!snapshotsEqual(nextSnapshot, syncedSnapshot)) {
+      setSyncedSnapshot(nextSnapshot);
+    }
+    setDeleteConfirming(false);
+    setTitle(entry.title);
+    if (CATEGORY_OPTIONS.includes(entry.category)) {
+      setCategory(entry.category);
+      setCustomCategory("");
+    } else {
+      setCategory("自定义");
+      setCustomCategory(entry.category);
+    }
+    setAliasesText(entry.aliases.join("、"));
+    setTagsText(entry.tags.join("、"));
+    setContent(entry.content);
+    showSaveStatus(null);
+  }, [entry, isDirty, showSaveStatus, syncedSnapshot]);
 
   const upsertMut = useMutation({
     mutationFn: async () => {
@@ -111,14 +183,18 @@ export function WorldEntryDetail({
       });
     },
     onSuccess: (record) => {
-      setSaveStatus(entry ? "已保存" : `已创建「${record.title}」`);
-      window.setTimeout(() => setSaveStatus(null), 2400);
+      loadedEntryIdRef.current = record.id;
+      syncedUpdatedAtRef.current = record.updatedAt;
+      const nextSnapshot = snapshotFromEntry(record);
+      if (!snapshotsEqual(nextSnapshot, syncedSnapshot)) {
+        setSyncedSnapshot(nextSnapshot);
+      }
+      showSaveStatus(entry ? "已保存" : `已创建「${record.title}」`, 2400);
       void queryClient.invalidateQueries({ queryKey: ["world-entries", projectId] });
       void queryClient.invalidateQueries({ queryKey: ["world-entry", record.id] });
     },
     onError: (err) => {
-      setSaveStatus(`保存失败：${friendlyErrorMessage(err)}`);
-      window.setTimeout(() => setSaveStatus(null), 3500);
+      showSaveStatus(`保存失败：${friendlyErrorMessage(err)}`);
     },
   });
 
@@ -128,12 +204,12 @@ export function WorldEntryDetail({
       return worldApi.delete({ id: entry.id });
     },
     onSuccess: (_data) => {
+      setDeleteConfirming(false);
       if (entry) onDeleted(entry.id);
       void queryClient.invalidateQueries({ queryKey: ["world-entries", projectId] });
     },
     onError: (err) => {
-      setSaveStatus(`删除失败：${friendlyErrorMessage(err)}`);
-      window.setTimeout(() => setSaveStatus(null), 3500);
+      showSaveStatus(`删除失败：${friendlyErrorMessage(err)}`);
     },
   });
 
@@ -153,20 +229,64 @@ export function WorldEntryDetail({
           {isDirty && <span className="ml-2 text-accent-300">● 未保存</span>}
         </span>
         <div className="flex items-center gap-2 text-xs text-ink-400">
-          {saveStatus && <span>{saveStatus}</span>}
+          <AnimatePresence initial={false}>
+            {saveStatus ? (
+              <motion.span
+                key="world-entry-save-status"
+                role="status"
+                variants={fadeOnly}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                {saveStatus}
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
           {entry && (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm(`确定删除「${entry.title}」？`)) {
-                  deleteMut.mutate();
-                }
-              }}
-              disabled={deleteMut.isPending}
-              className="rounded bg-red-500/15 px-2 py-1 text-red-300 hover:bg-red-500/25 disabled:opacity-50"
-            >
-              删除
-            </button>
+            <AnimatePresence initial={false} mode="wait">
+              {deleteConfirming ? (
+                <motion.div
+                  key="delete-confirm"
+                  variants={fadeOnly}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className="flex items-center gap-1"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirming(false)}
+                    disabled={deleteMut.isPending}
+                    className="rounded bg-ink-700 px-2 py-1 text-ink-200 hover:bg-ink-600 disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteMut.mutate()}
+                    disabled={deleteMut.isPending}
+                    className="rounded bg-red-500/15 px-2 py-1 text-red-300 hover:bg-red-500/25 disabled:opacity-50"
+                  >
+                    {deleteMut.isPending ? "删除中" : "确认删除"}
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="delete-start"
+                  type="button"
+                  onClick={() => setDeleteConfirming(true)}
+                  disabled={deleteMut.isPending}
+                  className="rounded bg-red-500/15 px-2 py-1 text-red-300 hover:bg-red-500/25 disabled:opacity-50"
+                  variants={fadeOnly}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                >
+                  删除
+                </motion.button>
+              )}
+            </AnimatePresence>
           )}
           <button
             type="button"

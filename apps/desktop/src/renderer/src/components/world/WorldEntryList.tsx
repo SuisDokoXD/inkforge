@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { WorldEntryRecord } from "@inkforge/shared";
 import { pickStableColor } from "../../lib/stable-color";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 interface WorldEntryListProps {
   entries: WorldEntryRecord[];
@@ -40,6 +48,15 @@ export function WorldEntryList({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   // 监听容器滚动 + resize，驱动可见窗口计算
   useEffect(() => {
@@ -73,28 +90,43 @@ export function WorldEntryList({
   return (
     <div className="flex h-full flex-col border-l border-ink-700 bg-ink-800/30">
       <div className="flex items-center gap-2 border-b border-ink-700 p-2">
+        <label htmlFor="world-entry-search" className="sr-only">
+          搜索世界观条目
+        </label>
         <input
+          id="world-entry-search"
           type="search"
           value={searchQuery}
           onChange={(e) => onQueryChange(e.target.value)}
           placeholder="🔍 搜索标题 / 别名 / 标签 / 正文"
           className="flex-1 rounded border border-ink-700 bg-ink-900 px-2 py-1 text-sm text-ink-100 placeholder:text-ink-500"
         />
-        <button
+        <motion.button
           type="button"
           onClick={onCreate}
           className="rounded bg-accent-500/20 px-2 py-1 text-xs text-accent-300 hover:bg-accent-500/30"
           title="新建条目"
+          aria-label="新建世界观条目"
+          {...buttonMotion}
         >
           + 新建
-        </button>
+        </motion.button>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-auto scrollbar-thin">
-        {total === 0 && (
-          <div className="p-8 text-center text-xs text-ink-500">
-            {searchQuery ? "未命中任何条目" : "当前分类暂无条目，点击「新建」开始。"}
-          </div>
-        )}
+        <AnimatePresence initial={false} mode="wait">
+          {total === 0 && (
+            <motion.div
+              key={searchQuery ? "world-empty-search" : "world-empty-category"}
+              className="p-8 text-center text-xs text-ink-500"
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {searchQuery ? "未命中任何条目" : "当前分类暂无条目，点击「新建」开始。"}
+            </motion.div>
+          )}
+        </AnimatePresence>
         {/* 虚拟化时撑出真实总高度，让原生滚动条位置正确 */}
         {virtualize && <div style={{ height: startIdx * ITEM_HEIGHT }} aria-hidden />}
         {visible.map((entry) => {
@@ -103,23 +135,16 @@ export function WorldEntryList({
           // 条目左侧色条：按类别稳定染色，帮助快速分群浏览
           const accent = pickStableColor(entry.category);
           const selected = !!selectedIds?.has(entry.id);
+          const checkboxId = `world-entry-select-${entry.id}`;
           const handleClick = (): void => {
             if (multiSelectMode) onToggleSelected?.(entry.id);
             else onSelect(entry.id);
           };
-          return (
-            <div
-              key={entry.id}
-              role="button"
-              tabIndex={0}
-              onClick={handleClick}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") handleClick();
-              }}
-              className={`relative cursor-pointer border-b border-ink-700/50 px-3 py-2 pl-3.5 transition ${
-                active && !multiSelectMode ? "bg-ink-700/60" : "hover:bg-ink-700/20"
-              } ${multiSelectMode && selected ? "bg-accent-500/10" : ""}`}
-            >
+          const rowClass = `relative block w-full cursor-pointer border-b border-ink-700/50 px-3 py-2 pl-3.5 text-left transition ${
+            active && !multiSelectMode ? "bg-ink-700/60" : "hover:bg-ink-700/20"
+          } ${multiSelectMode && selected ? "bg-accent-500/10" : ""}`;
+          const content = (
+            <>
               <span
                 aria-hidden
                 className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r"
@@ -128,10 +153,11 @@ export function WorldEntryList({
               <div className="flex items-center gap-2">
                 {multiSelectMode && (
                   <input
+                    id={checkboxId}
                     type="checkbox"
                     checked={selected}
                     onChange={() => onToggleSelected?.(entry.id)}
-                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`${selected ? "取消选择" : "选择"}世界观条目：${entry.title}`}
                     className="h-3.5 w-3.5 shrink-0 accent-accent-500"
                   />
                 )}
@@ -158,7 +184,31 @@ export function WorldEntryList({
                   ))}
                 </div>
               )}
-            </div>
+            </>
+          );
+          if (multiSelectMode) {
+            return (
+              <label
+                key={entry.id}
+                className={rowClass}
+                aria-label={`${selected ? "取消选择" : "选择"}世界观条目：${entry.title}`}
+              >
+                {content}
+              </label>
+            );
+          }
+          return (
+            <motion.button
+              key={entry.id}
+              type="button"
+              onClick={handleClick}
+              className={rowClass}
+              aria-pressed={active}
+              aria-label={`打开世界观条目：${entry.title}`}
+              {...buttonMotion}
+            >
+              {content}
+            </motion.button>
           );
         })}
         {/* 虚拟化时下方撑高，保证 endIdx 之后还有足够滚动空间 */}

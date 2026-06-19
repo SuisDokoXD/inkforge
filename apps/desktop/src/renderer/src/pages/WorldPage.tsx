@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
+import { BookOpen, Command, Globe2, Mic, StickyNote } from "lucide-react";
 import { useAppStore } from "../stores/app-store";
 import { worldApi } from "../lib/api";
 import { WorldCategorySidebar } from "../components/world/WorldCategorySidebar";
@@ -11,9 +13,16 @@ import { WorldPackLibrary } from "../components/world-pack/WorldPackLibrary";
 import { WorldInfoDiagnosticPanel } from "../components/world-pack/WorldInfoDiagnosticPanel";
 import { AuthorNotePanel } from "../components/AuthorNotePanel";
 import { VoiceProfileDialog } from "../components/voice-profile/VoiceProfileDialog";
+import { friendlyErrorMessage } from "../lib/friendly-error";
+import { fadeOnly } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 
 const DRAFT_ID = "__draft__";
 type WorldTab = "entries" | "graph" | "packs" | "note" | "diag";
+type BatchStatus = {
+  kind: "success" | "error";
+  text: string;
+};
 
 export function WorldPage(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
@@ -32,6 +41,11 @@ export function WorldPage(): JSX.Element {
   // —— 批量选择模式 ——
   const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [categoryEditorOpen, setCategoryEditorOpen] = useState(false);
+  const [batchCategoryDraft, setBatchCategoryDraft] = useState("");
+  const { status: batchStatus, showStatus: showBatchStatus } =
+    useTimedStatus<BatchStatus>();
   const queryClient = useQueryClient();
 
   const allEntriesQuery = useQuery({
@@ -92,35 +106,77 @@ export function WorldPage(): JSX.Element {
   // 失败的条目跳过、继续删剩余的，最后统一刷新列表。
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
+      let failed = 0;
       for (const id of ids) {
         try {
           await worldApi.delete({ id });
         } catch {
-          // 单条失败不打断；最后 toast 由调用方处理
+          failed += 1;
         }
       }
+      return { total: ids.length, failed };
     },
-    onSuccess: () => {
+    onMutate: () => showBatchStatus(null),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["world-entries", currentProjectId] });
-      setSelectedIds(new Set());
-      setMultiSelectMode(false);
+      if (result.failed > 0) {
+        showBatchStatus({
+          kind: "error",
+          text: `已尝试删除 ${result.total} 项，其中 ${result.failed} 项失败。列表已刷新，请检查剩余条目后重试。`,
+        });
+      } else {
+        showBatchStatus({ kind: "success", text: `已删除 ${result.total} 项` }, 2200);
+        setSelectedIds(new Set());
+        setMultiSelectMode(false);
+      }
+      setConfirmBatchDelete(false);
+      setCategoryEditorOpen(false);
+      setBatchCategoryDraft("");
+    },
+    onError: (err) => {
+      showBatchStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "批量删除失败，请稍后重试。"),
+      });
     },
   });
 
   // —— 批量动作：修改类别 ——
   const batchSetCategoryMutation = useMutation({
     mutationFn: async (input: { ids: string[]; category: string }) => {
+      let failed = 0;
       for (const id of input.ids) {
         try {
           await worldApi.update({ id, category: input.category });
         } catch {
-          // ignore individual failures
+          failed += 1;
         }
       }
+      return { total: input.ids.length, failed, category: input.category };
     },
-    onSuccess: () => {
+    onMutate: () => showBatchStatus(null),
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["world-entries", currentProjectId] });
-      setSelectedIds(new Set());
+      if (result.failed > 0) {
+        showBatchStatus({
+          kind: "error",
+          text: `已尝试修改 ${result.total} 项，其中 ${result.failed} 项失败。列表已刷新，请检查剩余条目后重试。`,
+        });
+      } else {
+        showBatchStatus(
+          { kind: "success", text: `已将 ${result.total} 项改为「${result.category}」` },
+          2600,
+        );
+        setSelectedIds(new Set());
+      }
+      setCategoryEditorOpen(false);
+      setBatchCategoryDraft("");
+    },
+    onError: (err) => {
+      showBatchStatus({
+        kind: "error",
+        text: friendlyErrorMessage(err, "批量修改类别失败，请稍后重试。"),
+      });
     },
   });
 
@@ -136,28 +192,39 @@ export function WorldPage(): JSX.Element {
   function handleBatchDelete(): void {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    if (!window.confirm(`确定批量删除 ${ids.length} 个条目？此操作不可撤销。`)) return;
+    setConfirmBatchDelete(false);
     batchDeleteMutation.mutate(ids);
   }
 
   function handleBatchSetCategory(): void {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    const category = window.prompt(`将选中的 ${ids.length} 个条目改为哪个类别？`);
-    if (!category || !category.trim()) return;
-    batchSetCategoryMutation.mutate({ ids: ids, category: category.trim() });
+    const category = batchCategoryDraft.trim();
+    if (!category) return;
+    batchSetCategoryMutation.mutate({ ids: ids, category });
   }
 
   function exitMultiSelect(): void {
     setMultiSelectMode(false);
     setSelectedIds(new Set());
+    setConfirmBatchDelete(false);
+    setCategoryEditorOpen(false);
+    setBatchCategoryDraft("");
+    showBatchStatus(null);
   }
+
+  useEffect(() => {
+    setConfirmBatchDelete(false);
+  }, [selectedIds]);
 
   if (!currentProjectId) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-accent-300">🌍 世界观设定库</div>
+          <div className="mb-2 flex items-center justify-center gap-2 text-lg text-accent-300">
+            <Globe2 aria-hidden className="h-5 w-5" />
+            世界观设定库
+          </div>
           <p className="text-sm text-ink-300">
             请先在侧边栏选择或创建一个项目以管理设定条目。
           </p>
@@ -186,14 +253,16 @@ export function WorldPage(): JSX.Element {
           onClick={() => setTab("packs")}
           title="跨项目卡牌库：保存好几套完整世界观，需要时挑一张或融合多张"
         >
-          🃏 卡牌库
+          <BookOpen aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+          卡牌库
         </button>
         <button
           className={`rounded-md px-3 py-1 ${tab === "note" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
           onClick={() => setTab("note")}
           title="全局风格批注：每次模型写作都会参考"
         >
-          📌 作者批注
+          <StickyNote aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+          作者批注
         </button>
         <button
           className={`rounded-md px-3 py-1 ${tab === "diag" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}
@@ -207,15 +276,17 @@ export function WorldPage(): JSX.Element {
             onClick={() => setPaletteOpen(true)}
             className="rounded-md border border-ink-700 px-2 py-1 text-[11px] text-ink-400 hover:bg-ink-800"
             title="打开命令面板（Ctrl/Cmd+K）"
+            aria-label="打开命令面板"
           >
-            ⌘K
+            <Command aria-hidden className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={() => setVoiceProfileOpen(true)}
             className="rounded-md px-3 py-1 text-ink-300 hover:bg-ink-800"
             title="编辑写作声音档案（每次模型生成都会参考）"
           >
-            🎙️ 写作声音
+            <Mic aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+            写作声音
           </button>
         </div>
       </div>
@@ -231,35 +302,147 @@ export function WorldPage(): JSX.Element {
           <section className="flex w-[300px] shrink-0 flex-col">
             {/* 批量操作条：仅在批量模式下显示 */}
             {multiSelectMode && (
-              <div className="flex items-center justify-between border-b border-accent-500/40 bg-accent-500/10 px-2 py-1.5 text-xs text-accent-200">
-                <span>已选 {selectedIds.size} 项</span>
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    onClick={handleBatchSetCategory}
-                    disabled={selectedIds.size === 0 || batchSetCategoryMutation.isPending}
-                    className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
-                  >
-                    改类别
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBatchDelete}
-                    disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
-                    className="rounded bg-rose-500/20 px-2 py-0.5 text-rose-200 hover:bg-rose-500/30 disabled:opacity-50"
-                  >
-                    删除
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exitMultiSelect}
-                    className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600"
-                  >
-                    退出
-                  </button>
+              <div className="border-b border-accent-500/40 bg-accent-500/10 px-2 py-1.5 text-xs text-accent-200">
+                <div className="flex items-center justify-between gap-2">
+                  <span>已选 {selectedIds.size} 项</span>
+                  <div className="flex gap-1">
+                    <AnimatePresence initial={false} mode="wait">
+                      {categoryEditorOpen ? (
+                        <motion.div
+                          key="category-editor"
+                          variants={fadeOnly}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          className="flex gap-1"
+                        >
+                          <input
+                            aria-label="批量设置类别"
+                            value={batchCategoryDraft}
+                            onChange={(event) => setBatchCategoryDraft(event.target.value)}
+                            placeholder="类别"
+                            className="h-5 w-24 rounded border border-accent-500/30 bg-ink-950 px-1.5 text-ink-100 outline-none placeholder:text-ink-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleBatchSetCategory}
+                            disabled={
+                              selectedIds.size === 0 ||
+                              !batchCategoryDraft.trim() ||
+                              batchSetCategoryMutation.isPending
+                            }
+                            className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
+                          >
+                            {batchSetCategoryMutation.isPending ? "保存中" : "保存"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCategoryEditorOpen(false);
+                              setBatchCategoryDraft("");
+                            }}
+                            disabled={batchSetCategoryMutation.isPending}
+                            className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600 disabled:opacity-50"
+                          >
+                            取消
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <motion.button
+                          key="category-start"
+                          type="button"
+                          onClick={() => {
+                            setConfirmBatchDelete(false);
+                            setCategoryEditorOpen(true);
+                          }}
+                          disabled={selectedIds.size === 0 || batchSetCategoryMutation.isPending}
+                          className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
+                          variants={fadeOnly}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                        >
+                          改类别
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                    <AnimatePresence initial={false} mode="wait">
+                      {confirmBatchDelete ? (
+                        <motion.div
+                          key="batch-delete-confirm"
+                          variants={fadeOnly}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                          className="flex gap-1"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setConfirmBatchDelete(false)}
+                            disabled={batchDeleteMutation.isPending}
+                            className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600 disabled:opacity-50"
+                          >
+                            取消
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleBatchDelete}
+                            disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
+                            className="rounded bg-rose-500/20 px-2 py-0.5 text-rose-100 hover:bg-rose-500/30 disabled:opacity-50"
+                          >
+                            {batchDeleteMutation.isPending ? "删除中" : `确认删除 ${selectedIds.size} 项`}
+                          </button>
+                        </motion.div>
+                      ) : (
+                        <motion.button
+                          key="batch-delete-start"
+                          type="button"
+                          onClick={() => {
+                            setCategoryEditorOpen(false);
+                            setBatchCategoryDraft("");
+                            setConfirmBatchDelete(true);
+                          }}
+                          disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
+                          className="rounded bg-rose-500/20 px-2 py-0.5 text-rose-200 hover:bg-rose-500/30 disabled:opacity-50"
+                          variants={fadeOnly}
+                          initial="initial"
+                          animate="animate"
+                          exit="exit"
+                        >
+                          删除
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+                    <button
+                      type="button"
+                      onClick={exitMultiSelect}
+                      className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600"
+                    >
+                      退出
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
+            <AnimatePresence initial={false}>
+              {batchStatus ? (
+                <motion.div
+                  key={batchStatus.text}
+                  role={batchStatus.kind === "error" ? "alert" : "status"}
+                  variants={fadeOnly}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  className={`border-b px-2 py-1.5 text-[11px] ${
+                    batchStatus.kind === "error"
+                      ? "border-red-500/30 bg-red-500/10 text-red-200"
+                      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+                  }`}
+                >
+                  {batchStatus.text}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
             <WorldEntryList
               entries={filteredEntries}
               activeId={activeEntryId}
@@ -295,12 +478,11 @@ export function WorldPage(): JSX.Element {
           <AuthorNotePanel projectId={currentProjectId} />
         </div>
       )}
-      {voiceProfileOpen && (
-        <VoiceProfileDialog
-          projectId={currentProjectId}
-          onClose={() => setVoiceProfileOpen(false)}
-        />
-      )}
+      <VoiceProfileDialog
+        open={voiceProfileOpen}
+        projectId={currentProjectId}
+        onClose={() => setVoiceProfileOpen(false)}
+      />
       <WorldCommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}

@@ -15,8 +15,19 @@
 // =============================================================================
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { WorldEntryRecord } from "@inkforge/shared";
 import { pickStableColor } from "../../lib/stable-color";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  SPRING_SNAPPY,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
+import { AnimatedDialog } from "../AnimatedDialog";
 
 interface CommandItem {
   id: string;
@@ -68,6 +79,16 @@ export function WorldCommandPalette({
   const [query, setQuery] = useState("");
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const reduceMotion = useReducedMotion() === true;
+  const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const itemMotion = reduceMotion ? fadeOnly : staggerItem;
+  const buttonMotion = reduceMotion
+    ? {}
+    : {
+        whileHover: hoverLift,
+        whileTap: tapPress,
+        transition: SPRING_SNAPPY,
+      };
 
   // 每次打开重置：清空搜索、聚焦输入、回到第一项
   useEffect(() => {
@@ -154,20 +175,23 @@ export function WorldCommandPalette({
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[12vh]"
-      onClick={onClose}
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      ariaLabel="世界观命令面板"
+      overlayClassName="flex items-start justify-center p-4 pt-[12vh]"
+      panelClassName="w-full max-w-xl overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
         onKeyDown={onKeyDown}
       >
         <div className="border-b border-ink-700 p-2">
+          <label htmlFor="world-command-search" className="sr-only">
+            搜索世界观条目或命令
+          </label>
           <input
+            id="world-command-search"
             ref={inputRef}
             value={query}
             onChange={(e) => {
@@ -176,48 +200,76 @@ export function WorldCommandPalette({
             }}
             placeholder="🔍 搜索条目，或输入命令..."
             className="w-full rounded bg-ink-950 px-3 py-2 text-sm text-ink-100 placeholder:text-ink-500 focus:outline-none"
+            aria-controls="world-command-results"
+            aria-activedescendant={items[activeIdx]?.id ? `world-command-${items[activeIdx].id}` : undefined}
           />
         </div>
-        <ul className="max-h-[50vh] overflow-y-auto">
-          {items.length === 0 ? (
-            <li className="p-6 text-center text-xs text-ink-500">无候选</li>
-          ) : (
-            items.map((item, idx) => {
-              const active = idx === activeIdx;
-              return (
-                <li
-                  key={item.id}
-                  onMouseEnter={() => setActiveIdx(idx)}
-                  onClick={() => trigger(item)}
-                  className={`flex cursor-pointer items-center gap-3 px-3 py-2 ${
-                    active ? "bg-ink-700/60" : "hover:bg-ink-800"
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: item.color ?? "transparent" }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm text-ink-100">{item.label}</div>
-                    {item.description && (
-                      <div className="truncate text-[11px] text-ink-500">
-                        {item.description}
-                      </div>
-                    )}
-                  </div>
-                  <span className="shrink-0 rounded bg-ink-800 px-1.5 py-[1px] text-[10px] text-ink-400">
-                    {item.kind === "entry" ? "条目" : "命令"}
-                  </span>
-                </li>
-              );
-            })
-          )}
-        </ul>
+        <motion.ul
+          id="world-command-results"
+          className="max-h-[50vh] overflow-y-auto"
+          variants={reduceMotion ? fadeOnly : staggerContainer}
+          initial="initial"
+          animate="animate"
+          role="listbox"
+          aria-label="世界观命令候选"
+        >
+          <AnimatePresence initial={false} mode="wait">
+            {items.length === 0 ? (
+              <motion.li
+                key="empty"
+                className="p-6 text-center text-xs text-ink-500"
+                variants={stateMotion}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
+                无候选
+              </motion.li>
+            ) : (
+              <motion.li key="items" className="py-1" variants={itemMotion}>
+                {items.map((item, idx) => {
+                  const active = idx === activeIdx;
+                  return (
+                    <motion.button
+                      id={`world-command-${item.id}`}
+                      key={item.id}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onMouseEnter={() => setActiveIdx(idx)}
+                      onClick={() => trigger(item)}
+                      className={`flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left ${
+                        active ? "bg-ink-700/60" : "hover:bg-ink-800"
+                      }`}
+                      {...buttonMotion}
+                    >
+                      <span
+                        aria-hidden
+                        className="inline-block h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: item.color ?? "transparent" }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-ink-100">{item.label}</span>
+                        {item.description && (
+                          <span className="block truncate text-[11px] text-ink-500">
+                            {item.description}
+                          </span>
+                        )}
+                      </span>
+                      <span className="shrink-0 rounded bg-ink-800 px-1.5 py-[1px] text-[10px] text-ink-400">
+                        {item.kind === "entry" ? "条目" : "命令"}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </motion.li>
+            )}
+          </AnimatePresence>
+        </motion.ul>
         <div className="border-t border-ink-700 bg-ink-950/40 px-3 py-1.5 text-[10px] text-ink-500">
           ↑↓ 选择 · ⏎ 确认 · ⎋ 关闭
         </div>
       </div>
-    </div>
+    </AnimatedDialog>
   );
 }
