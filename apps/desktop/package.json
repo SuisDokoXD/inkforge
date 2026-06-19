@@ -61,11 +61,14 @@
     "@xterm/xterm": "^5.5.0",
     "@xyflow/react": "^12.10.2",
     "better-sqlite3": "^11.5.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "electron-log": "^5.2.0",
     "electron-updater": "^6.3.9",
     "lucide-react": "^1.14.0",
-    "motion": "^12.40.0"
+    "motion": "^12.40.0",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@inkforge/auto-writer-engine": "workspace:*",
