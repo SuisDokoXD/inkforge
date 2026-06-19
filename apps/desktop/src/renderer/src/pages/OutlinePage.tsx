@@ -14,6 +14,7 @@ import {
 import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { MotionSpinner } from "../components/MotionSpinner";
 import { OutlineCardItem } from "../components/outline/OutlineCardItem";
 import { OutlineStatusTile } from "../components/outline/OutlineStatusTile";
 import {
@@ -31,7 +32,6 @@ import {
   ClipboardList,
   FileText,
   Layers3,
-  Loader2,
   PenLine,
   RotateCcw,
   Search,
@@ -322,7 +322,10 @@ export function OutlinePage(): JSX.Element {
     return (
       <div className="flex h-full items-center justify-center bg-ink-900/60 text-ink-300">
         <div className="max-w-md rounded-lg border border-ink-700 bg-ink-800/60 p-6 text-center">
-          <div className="mb-2 text-lg text-accent-300">📋 大纲生成</div>
+          <div className="mb-2 flex items-center justify-center gap-2 text-lg text-accent-300">
+            <ClipboardList aria-hidden className="h-5 w-5" />
+            大纲生成
+          </div>
           <p className="text-sm">请先选择或创建一个项目。</p>
         </div>
       </div>
@@ -359,7 +362,7 @@ export function OutlinePage(): JSX.Element {
             onClick={handleGenerateMaster}
             title={!canGenerateMaster ? "先补充梗概、类型、标签或背景语境" : undefined}
           >
-            {busy === "master" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+            {busy === "master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
             {project.masterOutline ? "重写总纲" : "生成总纲"}
           </button>
         </div>
@@ -413,7 +416,7 @@ export function OutlinePage(): JSX.Element {
               disabled={busy !== null || !canGenerateMaster}
               onClick={handleGenerateMaster}
             >
-              {busy === "master" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {busy === "master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
               {busy === "master" ? "生成中" : project.masterOutline ? "重新生成" : "生成总纲"}
             </button>
           </div>
@@ -453,7 +456,7 @@ export function OutlinePage(): JSX.Element {
                   disabled={busy !== null || !refineIntent.trim()}
                   onClick={handleRefineMaster}
                 >
-                  {busy === "refine-master" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                  {busy === "refine-master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
                   {busy === "refine-master" ? "优化中" : "模型优化"}
                 </button>
                 {project.preRefineMasterOutline ? (
@@ -508,7 +511,7 @@ export function OutlinePage(): JSX.Element {
               onClick={handleGenerateChapters}
               title={!project.masterOutline ? "先生成总大纲" : undefined}
             >
-              {busy === "chapters" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+              {busy === "chapters" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
               {busy === "chapters" ? "拆分中" : "拆分章节"}
             </button>
           </div>
@@ -580,16 +583,15 @@ export function OutlinePage(): JSX.Element {
         </section>
       </main>
 
-      {metaOpen ? (
-        <ProjectMetaDialog
-          draft={metaDraft}
-          busy={busy}
-          completeness={metaCompleteness}
-          onChange={handleMetaDraftChange}
-          onClose={handleCloseMeta}
-          onSave={handleSaveMeta}
-        />
-      ) : null}
+      <ProjectMetaDialog
+        open={metaOpen}
+        draft={metaDraft}
+        busy={busy}
+        completeness={metaCompleteness}
+        onChange={handleMetaDraftChange}
+        onClose={handleCloseMeta}
+        onSave={handleSaveMeta}
+      />
 
     </div>
   );

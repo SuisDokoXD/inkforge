@@ -4,10 +4,10 @@ import {
   BookOpenText,
   CheckCircle2,
   FileSearch,
-  Loader2,
   PenLine,
   RotateCcw,
 } from "lucide-react";
+import { MotionSpinner } from "../MotionSpinner";
 import { getCardQuality, parseOutlineSections } from "./outline-metrics";
 
 interface OutlineCardItemProps {
@@ -80,7 +80,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
             onClick={() => onAutoWriteOutlineCard(card)}
           >
             {isPreparing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <MotionSpinner />
             ) : (
               <PenLine className="h-3.5 w-3.5" />
             )}
@@ -150,7 +150,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
             onClick={() => onRefine(card)}
           >
             {isRefining ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <MotionSpinner />
             ) : (
               <PenLine className="h-3.5 w-3.5" />
             )}

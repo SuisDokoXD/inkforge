@@ -1,4 +1,5 @@
 import { memo } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   BookOpen,
   CheckCircle2,
@@ -9,6 +10,15 @@ import {
   Tags,
   X,
 } from "lucide-react";
+import { AnimatedDialog } from "../AnimatedDialog";
+import {
+  fadeOnly,
+  fadeSlideUp,
+  hoverLift,
+  staggerContainer,
+  staggerItem,
+  tapPress,
+} from "../../lib/motion-tokens";
 
 export interface ProjectMetaDraft {
   synopsis: string;
@@ -19,6 +29,7 @@ export interface ProjectMetaDraft {
 }
 
 interface ProjectMetaDialogProps {
+  open: boolean;
   draft: ProjectMetaDraft;
   busy: string | null;
   completeness: { done: number; total: number };
@@ -87,6 +98,7 @@ function mergeTags(current: string, additions: string[]): string {
 }
 
 export const ProjectMetaDialog = memo(function ProjectMetaDialog({
+  open,
   draft,
   busy,
   completeness,
@@ -94,6 +106,7 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
   onClose,
   onSave,
 }: ProjectMetaDialogProps): JSX.Element {
+  const reduce = useReducedMotion();
   const completenessPercent =
     completeness.total > 0 ? Math.round((completeness.done / completeness.total) * 100) : 0;
 
@@ -109,16 +122,19 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-5"
-      onMouseDown={onClose}
+    <AnimatedDialog
+      open={open}
+      onClose={onClose}
+      labelledBy="outline-project-meta-title"
+      zClassName="z-40"
+      overlayClassName="flex items-center justify-center p-5"
+      panelClassName="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
     >
-      <div
-        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-ink-700 bg-ink-900 shadow-2xl"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="outline-project-meta-title"
-        onMouseDown={(event) => event.stopPropagation()}
+      <motion.div
+        className="flex min-h-0 flex-1 flex-col"
+        variants={reduce ? fadeOnly : fadeSlideUp}
+        initial="initial"
+        animate="animate"
       >
         <header className="flex shrink-0 items-start gap-4 border-b border-ink-700 bg-ink-800/45 px-6 py-5">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-500/15 text-accent-200 ring-1 ring-accent-500/25">
@@ -138,25 +154,33 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
               <span>{completeness.done}/{completeness.total}</span>
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ink-700">
-              <div
+              <motion.div
                 className="h-full rounded-full bg-accent-500 transition-[width]"
-                style={{ width: `${completenessPercent}%` }}
+                initial={false}
+                animate={{ width: `${completenessPercent}%` }}
               />
             </div>
           </div>
-          <button
+          <motion.button
             type="button"
             className="rounded-md p-1 text-ink-400 transition-colors hover:bg-ink-700 hover:text-ink-100"
             onClick={onClose}
             aria-label="关闭项目设定"
+            whileHover={hoverLift}
+            whileTap={tapPress}
           >
             <X className="h-4 w-4" />
-          </button>
+          </motion.button>
         </header>
 
         <div className="grid flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="min-w-0 overflow-y-auto p-6 scrollbar-thin">
-            <section className="border-b border-ink-700/80 pb-5">
+            <motion.section
+              className="border-b border-ink-700/80 pb-5"
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+            >
               <div className="mb-3 flex items-center gap-2 text-sm font-medium text-ink-200">
                 <BookOpen className="h-4 w-4 text-accent-300" />
                 作品方向
@@ -196,9 +220,14 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
                   />
                 </label>
               </div>
-            </section>
+            </motion.section>
 
-            <section className="border-b border-ink-700/80 py-5">
+            <motion.section
+              className="border-b border-ink-700/80 py-5"
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+            >
               <label className="block">
                 <span className="mb-2 flex items-center gap-2 text-sm font-medium text-ink-200">
                   <FileText className="h-4 w-4 text-accent-300" />
@@ -219,9 +248,14 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
                 <span>情绪变化</span>
                 <span>结尾余味</span>
               </div>
-            </section>
+            </motion.section>
 
-            <section className="pt-5">
+            <motion.section
+              className="pt-5"
+              variants={reduce ? fadeOnly : fadeSlideUp}
+              initial="initial"
+              animate="animate"
+            >
               <label className="block">
                 <span className="mb-2 flex items-center gap-2 text-sm font-medium text-ink-200">
                   <MapPin className="h-4 w-4 text-accent-300" />
@@ -241,7 +275,7 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
               <p className="mt-2 text-xs leading-5 text-ink-500">
                 留空时，生成会按真实世界和常识处理；散文不需要额外编一套世界规则。
               </p>
-            </section>
+            </motion.section>
           </div>
 
           <aside className="border-t border-ink-700 bg-ink-800/35 p-5 lg:border-l lg:border-t-0">
@@ -249,13 +283,21 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
               <Sparkles className="h-4 w-4 text-accent-300" />
               快速起稿
             </div>
-            <div className="space-y-2">
+            <motion.div
+              className="space-y-2"
+              variants={reduce ? undefined : staggerContainer}
+              initial="initial"
+              animate="animate"
+            >
               {META_PRESETS.map((preset) => (
-                <button
+                <motion.button
                   key={preset.label}
                   type="button"
                   className="w-full rounded-md border border-ink-700 bg-ink-900/50 px-3 py-2 text-left transition-colors hover:border-accent-600 hover:bg-accent-900/35"
                   onClick={() => applyPreset(preset)}
+                  variants={reduce ? fadeOnly : staggerItem}
+                  whileHover={hoverLift}
+                  whileTap={tapPress}
                 >
                   <span className="flex items-center gap-2 text-xs font-medium text-ink-100">
                     <Tags className="h-3.5 w-3.5 text-accent-300" />
@@ -264,9 +306,9 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
                   <span className="mt-1 block text-[11px] leading-4 text-ink-500">
                     {preset.description}
                   </span>
-                </button>
+                </motion.button>
               ))}
-            </div>
+            </motion.div>
 
             <div className="mt-5 border-t border-ink-700 pt-4">
               <div className="mb-2 flex items-center gap-2 text-xs font-medium text-ink-300">
@@ -286,23 +328,27 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
           <div className="hidden min-w-0 flex-1 text-xs text-ink-500 sm:block">
             可先保存一小段线索，生成后再回来补细节。
           </div>
-          <button
+          <motion.button
             type="button"
             className="rounded-md border border-ink-600 px-4 py-2 text-sm transition-colors hover:bg-ink-700"
             onClick={onClose}
+            whileHover={hoverLift}
+            whileTap={tapPress}
           >
             取消
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
             className="rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink-900 transition-colors hover:bg-accent-400 disabled:opacity-50"
             disabled={busy !== null}
             onClick={onSave}
+            whileHover={busy !== null ? undefined : hoverLift}
+            whileTap={busy !== null ? undefined : tapPress}
           >
             {busy === "master" ? "保存中…" : "保存"}
-          </button>
+          </motion.button>
         </footer>
-      </div>
-    </div>
+      </motion.div>
+    </AnimatedDialog>
   );
 });
