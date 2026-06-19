@@ -64,3 +64,8 @@ export function resolveTriggerCount(stats: WordCountStats, language: string): nu
   if (language.startsWith("en")) return stats.words;
   return stats.graphemes;
 }
+
+export function resolveTriggerCountFromText(text: string, language: string): number {
+  if (language.startsWith("en")) return countWords(text);
+  return countGraphemes(text);
+}

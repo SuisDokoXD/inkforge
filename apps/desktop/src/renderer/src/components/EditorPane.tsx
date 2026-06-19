@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type {
   ChapterRecord,
+  ChapterReadResponse,
   OutlineCardRecord,
   ProviderRecord,
   SkillDefinition,
@@ -15,6 +17,7 @@ import {
   Archive,
   Download,
   Focus,
+  PenLine,
   RefreshCw,
   RotateCcw,
   RotateCw,
@@ -27,6 +30,8 @@ import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
+import { useTimedStatus } from "../lib/use-timed-status";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
@@ -54,12 +59,88 @@ interface EditorPaneProps {
 }
 
 type SavePhase = "saved" | "queued" | "saving" | "error";
+type StatusTone = "neutral" | "busy" | "success" | "error";
+
+interface EditorTransientStatus {
+  kind: Exclude<StatusTone, "neutral">;
+  text: string;
+}
 
 interface SaveRequest {
   chapterId: string;
   projectId: string;
   content: string;
   wordCount: number;
+}
+
+interface SaveStatusIndicatorProps {
+  phase: SavePhase;
+  label: string;
+  className: string;
+  title: string;
+  tone?: StatusTone;
+  reduceMotion: boolean;
+}
+
+function SaveStatusIndicator({
+  phase,
+  label,
+  className,
+  title,
+  tone,
+  reduceMotion,
+}: SaveStatusIndicatorProps): JSX.Element {
+  const resolvedTone =
+    tone ??
+    (phase === "error"
+      ? "error"
+      : phase === "saving" || phase === "queued"
+        ? "busy"
+        : "neutral");
+  const dotClass =
+    resolvedTone === "error"
+      ? "bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.45)]"
+      : resolvedTone === "success"
+        ? "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.4)]"
+      : resolvedTone === "busy"
+        ? "bg-accent-300 shadow-[0_0_10px_rgba(125,211,252,0.45)]"
+        : "bg-ink-500";
+  const isBusy = resolvedTone === "busy";
+
+  return (
+    <span
+      className={`inline-flex max-w-56 items-center gap-1.5 overflow-hidden ${className}`}
+      title={title}
+      role={resolvedTone === "error" ? "alert" : "status"}
+      aria-live={resolvedTone === "error" ? "assertive" : "polite"}
+    >
+      <motion.span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`}
+        animate={
+          !reduceMotion && isBusy
+            ? { opacity: [0.55, 1, 0.55], scale: [1, 1.35, 1] }
+            : { opacity: 1, scale: 1 }
+        }
+        transition={
+          !reduceMotion && isBusy
+            ? { duration: 0.9, ease: EASE_IN_OUT, repeat: Infinity }
+            : { duration: DUR.fast, ease: EASE_STANDARD }
+        }
+      />
+      <AnimatePresence initial={false} mode="wait">
+        <motion.span
+          key={`${phase}:${label}`}
+          className="truncate"
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
+          transition={{ duration: DUR.fast, ease: EASE_STANDARD }}
+        >
+          {label}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
 }
 
 export function EditorPane({
@@ -75,13 +156,15 @@ export function EditorPane({
   const analysisEnabled = settings.analysisEnabled;
   const analysisThreshold = settings.analysisThreshold;
   const flowActions = useWritingFlowActions();
+  const reduceMotion = useReducedMotion();
+  const shouldReduceMotion = reduceMotion === true;
 
   const [content, setContent] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
-  const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const { status: exportStatus, showStatus: showExportStatus } = useTimedStatus<EditorTransientStatus>();
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
-  const [skillStatus, setSkillStatus] = useState<string | null>(null);
+  const { status: skillStatus, showStatus: showSkillStatus } = useTimedStatus<EditorTransientStatus>();
   const [outlineDialogOpen, setOutlineDialogOpen] = useState(false);
   const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -105,9 +188,40 @@ export function EditorPane({
   const saveLoopPromiseRef = useRef<Promise<void> | null>(null);
   const activeSkillRunRef = useRef<{ runId: string; skillName: string; output: SkillOutputTarget } | null>(null);
   const lastHeadingJumpNonceRef = useRef<number | null>(null);
+  const setEditorContent = useCallback((nextContent: string, chapterId?: string | null) => {
+    contentRef.current = nextContent;
+    if (chapterId) {
+      contentCacheRef.current.set(chapterId, nextContent);
+    }
+    setContent(nextContent);
+  }, []);
   const handleEditorReady = useCallback((editor: Editor | null) => {
     setEditorInstance(editor);
   }, []);
+
+  const slimDropIn = useMemo(
+    () =>
+      shouldReduceMotion
+        ? fadeOnly
+        : {
+            initial: { opacity: 0, y: -8 },
+            animate: { opacity: 1, y: 0, transition: { duration: DUR.base, ease: EASE_STANDARD } },
+            exit: { opacity: 0, y: -6, transition: { duration: DUR.fast, ease: EASE_STANDARD } },
+          },
+    [shouldReduceMotion],
+  );
+
+  const softLiftIn = useMemo(
+    () =>
+      shouldReduceMotion
+        ? fadeOnly
+        : {
+            initial: { opacity: 0, y: 8 },
+            animate: { opacity: 1, y: 0, transition: { duration: DUR.base, ease: EASE_STANDARD } },
+            exit: { opacity: 0, y: -4, transition: { duration: DUR.fast, ease: EASE_STANDARD } },
+          },
+    [shouldReduceMotion],
+  );
 
   const readQuery = useQuery({
     queryKey: ["chapter-content", chapter?.id],
@@ -117,7 +231,7 @@ export function EditorPane({
 
   useEffect(() => {
     if (!chapter) {
-      setContent("");
+      setEditorContent("", null);
       setLoaded(false);
       loadedChapterIdRef.current = null;
       setRecoveryPrompt(null);
@@ -143,7 +257,7 @@ export function EditorPane({
       }
       const cached = contentCacheRef.current.get(chapter.id);
       const initialContent = cached ?? readQuery.data.content;
-      setContent(initialContent);
+      setEditorContent(initialContent, chapter.id);
       lastSavedRef.current = readQuery.data.content;
       lastAutosavedRef.current = readQuery.data.content;
       setSavePhase(initialContent === readQuery.data.content ? "saved" : "queued");
@@ -165,7 +279,7 @@ export function EditorPane({
         })
         .catch(() => setRecoveryPrompt(null));
     }
-  }, [readQuery.data, chapter]);
+  }, [readQuery.data, chapter, setEditorContent]);
 
   useEffect(() => {
     if (!chapter || !loaded || !readQuery.data) return;
@@ -179,14 +293,14 @@ export function EditorPane({
     contentCacheRef.current.set(chapter.id, nextContent);
     lastSavedRef.current = nextContent;
     lastAutosavedRef.current = nextContent;
-    setContent(nextContent);
+    setEditorContent(nextContent, chapter.id);
     setSavePhase("saved");
     setSaveError(null);
     setLastSavedAt(
       readQuery.data.chapter.updatedAt ? new Date(readQuery.data.chapter.updatedAt).getTime() : Date.now(),
     );
     setRecoveryPrompt(null);
-  }, [chapter, loaded, readQuery.data]);
+  }, [chapter, loaded, readQuery.data, setEditorContent]);
 
   useEffect(() => { contentRef.current = content; }, [content]);
 
@@ -219,11 +333,15 @@ export function EditorPane({
         setSavePhase("saving");
         setSaveError(null);
         try {
-          await chapterApi.update({
+          const updatedChapter = await chapterApi.update({
             id: request.chapterId,
             wordCount: request.wordCount,
             content: request.content,
           });
+          queryClient.setQueryData<ChapterReadResponse | null>(
+            ["chapter-content", request.chapterId],
+            (current) => (current ? { chapter: updatedChapter, content: request.content } : current),
+          );
           if (loadedChapterIdRef.current === request.chapterId) {
             lastSavedRef.current = request.content;
             setLastSavedAt(Date.now());
@@ -472,12 +590,15 @@ export function EditorPane({
     return providers[0]?.id;
   }, [activeProviderId, providers]);
 
-  const { forceTrigger } = useAnalysisTrigger({
+  const { rebaseline } = useAnalysisTrigger({
     text: content,
     threshold: analysisThreshold,
     debounceMs: 10_000,
     language: "zh",
     enabled: loaded && analysisEnabled,
+    // 基线键＝当前章节 id（仅正文载入后生效）。切章 / 首次载入即把"新增字数"基线
+    // 对齐到当前正文长度，避免把刚载入的整章误当新增、开章就全文分析、狂烧 token。
+    baselineKey: loaded ? chapter?.id ?? null : null,
     onTrigger: () => {
       if (!chapter) return;
       activeAnalysisChapterRef.current = chapter.id;
@@ -493,24 +614,28 @@ export function EditorPane({
 
   const handleExport = async () => {
     if (!chapter) return;
-    setExportStatus("导出中…");
+    showExportStatus({ kind: "busy", text: "导出中…" });
     try {
       const exportResult = await chapterApi.exportMd({ id: chapter.id });
       const result = await fsApi.saveFile({
         defaultPath: exportResult.fileName,
         content: exportResult.content,
       });
-      if (result.path) setExportStatus("已导出");
-      else setExportStatus(null);
+      if (result.path) showExportStatus({ kind: "success", text: "已导出" }, 3000);
+      else showExportStatus(null);
     } catch (err) {
-      setExportStatus(`导出失败：${friendlyErrorMessage(err, "导出失败，请稍后重试。")}`);
+      showExportStatus({
+        kind: "error",
+        text: `导出失败：${friendlyErrorMessage(err, "导出失败，请稍后重试。")}`,
+      });
     }
-    setTimeout(() => setExportStatus(null), 3000);
   };
 
   const handleManualAnalyze = () => {
     if (!chapter) return;
-    forceTrigger();
+    // 手动分析：仅对齐基线（不要再调 forceTrigger，否则会和下面的 manual 调用
+    // 重复放一炮）；随后直接发一次 trigger:"manual" 的分析。
+    rebaseline();
     activeAnalysisChapterRef.current = chapter.id;
     void llmApi.analyze({
       projectId: chapter.projectId,
@@ -589,30 +714,30 @@ export function EditorPane({
           active.output !== "ai-feedback" &&
           applySkillOutputToEditor(editorInstance, active.output, payload.text ?? "");
         if (applied) {
-          setSkillStatus(`「${active.skillName}」已写入正文`);
+          showSkillStatus({ kind: "success", text: `「${active.skillName}」已写入正文` }, 3500);
         } else {
-          setSkillStatus(`「${active.skillName}」已写入时间线`);
+          showSkillStatus({ kind: "success", text: `「${active.skillName}」已写入时间线` }, 3500);
           if (chapter) {
             void queryClient.invalidateQueries({ queryKey: ["feedbacks", chapter.id] });
           }
         }
       } else if (payload.status === "failed") {
-        setSkillStatus(
-          `「${active.skillName}」失败：${friendlyErrorMessage(payload.error, "技能运行失败，请稍后重试。")}`,
-        );
+        showSkillStatus({
+          kind: "error",
+          text: `「${active.skillName}」失败：${friendlyErrorMessage(payload.error, "技能运行失败，请稍后重试。")}`,
+        });
       } else if (payload.status === "cancelled") {
-        setSkillStatus(`「${active.skillName}」已取消`);
+        showSkillStatus({ kind: "success", text: `「${active.skillName}」已取消` }, 3500);
       }
       activeSkillRunRef.current = null;
-      window.setTimeout(() => setSkillStatus(null), 3500);
     });
     return () => offDone();
-  }, [chapter, queryClient, editorInstance]);
+  }, [chapter, queryClient, editorInstance, showSkillStatus]);
 
   const runManualSkill = async (skill: SkillDefinition) => {
     if (!chapter) return;
     setSkillMenuOpen(false);
-    setSkillStatus(`「${skill.name}」运行中…`);
+    showSkillStatus({ kind: "busy", text: `「${skill.name}」运行中…` });
     // 用变量定义的默认值组装 manualVariables，让 {{vars.xxx}} 在手动运行时也能取到值。
     const manualVariables: Record<string, string> = {};
     for (const v of skill.variables ?? []) {
@@ -632,10 +757,10 @@ export function EditorPane({
       });
       activeSkillRunRef.current = { runId: response.runId, skillName: skill.name, output: skill.output };
     } catch (err) {
-      setSkillStatus(
-        `「${skill.name}」启动失败：${friendlyErrorMessage(err, "技能启动失败，请稍后重试。")}`,
-      );
-      window.setTimeout(() => setSkillStatus(null), 3500);
+      showSkillStatus({
+        kind: "error",
+        text: `「${skill.name}」启动失败：${friendlyErrorMessage(err, "技能启动失败，请稍后重试。")}`,
+      });
     }
   };
 
@@ -668,18 +793,34 @@ export function EditorPane({
     return `${Math.floor(seconds / 60)} 分钟前保存`;
   }, [lastSavedAt, saveError, savePhase]);
 
-  const saveStatusClass =
-    savePhase === "error"
-      ? "text-red-300"
+  const displayedTransientStatus = skillStatus ?? exportStatus;
+  const displayedStatusTone: StatusTone =
+    displayedTransientStatus?.kind ??
+    (savePhase === "error"
+      ? "error"
       : savePhase === "saving" || savePhase === "queued"
+        ? "busy"
+        : "neutral");
+  const displayedStatusPhase: SavePhase =
+    displayedStatusTone === "error" ? "error" : displayedStatusTone === "busy" ? "saving" : "saved";
+  const saveStatusClass =
+    displayedStatusTone === "error"
+      ? "text-red-300"
+      : displayedStatusTone === "success"
+        ? "text-emerald-300"
+      : displayedStatusTone === "busy"
         ? "text-accent-300"
         : "text-ink-500";
+  const displayedStatusLabel = displayedTransientStatus?.text ?? saveStatusLabel;
 
   const handleSnapshotRestored = useCallback(
     (response: SnapshotRestoreResponse) => {
       if (!chapter) return;
-      setContent(response.chapterContent);
-      contentCacheRef.current.set(chapter.id, response.chapterContent);
+      setEditorContent(response.chapterContent, chapter.id);
+      queryClient.setQueryData<ChapterReadResponse | null>(
+        ["chapter-content", chapter.id],
+        (current) => (current ? { ...current, content: response.chapterContent } : current),
+      );
       lastSavedRef.current = response.chapterContent;
       lastAutosavedRef.current = response.chapterContent;
       setSavePhase("saved");
@@ -692,13 +833,13 @@ export function EditorPane({
       void queryClient.invalidateQueries({ queryKey: ["chapters", chapter.projectId] });
       void queryClient.invalidateQueries({ queryKey: ["daily-progress", chapter.projectId] });
     },
-    [chapter, queryClient],
+    [chapter, queryClient, setEditorContent],
   );
 
   if (!chapter) {
     return (
       <EmptyState
-        icon="✍"
+        icon={<PenLine className="h-10 w-10" />}
         title="开始你的第一章"
         description="左侧可新建、导入或拖入章节。选中一章即可进入沉浸式写作，停笔后会出现写作建议。"
         action={
@@ -782,17 +923,22 @@ export function EditorPane({
               <Archive className="h-3.5 w-3.5" />
               备份
             </button>
-            {snapshotMenuOpen && (
-              <div className="absolute right-0 top-full z-40 mt-2">
-                <SnapshotMenu
-                  chapterId={chapter.id}
-                  projectId={chapter.projectId}
-                  onBeforeSnapshotAction={flushCurrentContent}
-                  onRestored={handleSnapshotRestored}
-                  onClose={() => setSnapshotMenuOpen(false)}
-                />
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {snapshotMenuOpen && (
+                <motion.div
+                  className="absolute right-0 top-full z-40 mt-2"
+                  {...slimDropIn}
+                >
+                  <SnapshotMenu
+                    chapterId={chapter.id}
+                    projectId={chapter.projectId}
+                    onBeforeSnapshotAction={flushCurrentContent}
+                    onRestored={handleSnapshotRestored}
+                    onClose={() => setSnapshotMenuOpen(false)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <button
             className="inline-flex items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700"
@@ -832,27 +978,37 @@ export function EditorPane({
               技能
               <span className="text-[10px] opacity-70">▾</span>
             </button>
-            {skillMenuOpen && manualSkills.length > 0 && (
-              <div className="absolute right-0 top-full z-30 mt-1 w-60 rounded-md border border-ink-600 bg-ink-800/95 py-1 text-xs shadow-xl backdrop-blur">
-                <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-ink-500">
-                  手动触发
-                </div>
-                {manualSkills.map((skill) => (
-                  <button
-                    key={skill.id}
-                    className="block w-full truncate px-3 py-1.5 text-left hover:bg-ink-700"
-                    onClick={() => void runManualSkill(skill)}
-                    title={skill.prompt.slice(0, 120)}
-                  >
-                    {skill.name}
-                  </button>
-                ))}
-              </div>
-            )}
+            <AnimatePresence initial={false}>
+              {skillMenuOpen && manualSkills.length > 0 && (
+                <motion.div
+                  className="absolute right-0 top-full z-30 mt-1 w-60 rounded-md border border-ink-600 bg-ink-800/95 py-1 text-xs shadow-xl backdrop-blur"
+                  {...slimDropIn}
+                >
+                  <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-ink-500">
+                    手动触发
+                  </div>
+                  {manualSkills.map((skill) => (
+                    <button
+                      key={skill.id}
+                      className="block w-full truncate px-3 py-1.5 text-left hover:bg-ink-700"
+                      onClick={() => void runManualSkill(skill)}
+                      title={skill.prompt.slice(0, 120)}
+                    >
+                      {skill.name}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <span className={`max-w-56 truncate ${saveStatusClass}`} title={skillStatus ?? exportStatus ?? saveStatusLabel}>
-            {skillStatus ?? exportStatus ?? saveStatusLabel}
-          </span>
+          <SaveStatusIndicator
+            phase={displayedStatusPhase}
+            label={displayedStatusLabel}
+            className={saveStatusClass}
+            title={displayedStatusLabel}
+            tone={displayedStatusTone}
+            reduceMotion={shouldReduceMotion}
+          />
           <button
             className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-ink-700 ${focusMode ? "border-accent-500 text-accent-400" : "border-ink-600"}`}
             onClick={() => patchSettings({ focusMode: !focusMode })}
@@ -874,34 +1030,42 @@ export function EditorPane({
           if (linkedOutlineCard) flowActions.openOutline(linkedOutlineCard.id);
         }}
       />
-      {findOpen && (
-        <EditorFindBar
-          inputRef={findInputRef}
-          findText={findText}
-          setFindText={setFindText}
-          runFind={runFind}
-          onClose={() => setFindOpen(false)}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {findOpen && (
+          <motion.div {...slimDropIn}>
+            <EditorFindBar
+              inputRef={findInputRef}
+              findText={findText}
+              setFindText={setFindText}
+              runFind={runFind}
+              onClose={() => setFindOpen(false)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
       <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
         <div className={`mx-auto ${editorWidthClass} px-8 py-8`}>
-          {recoveryPrompt && (
-            <RecoveryPromptBanner
-              recoveryPrompt={recoveryPrompt}
-              onRestore={(text) => {
-                setContent(text);
-                setRecoveryPrompt(null);
-              }}
-              onDiscard={() => {
-                void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
-                setRecoveryPrompt(null);
-              }}
-            />
-          )}
+          <AnimatePresence initial={false}>
+            {recoveryPrompt && (
+              <motion.div {...softLiftIn}>
+                <RecoveryPromptBanner
+                  recoveryPrompt={recoveryPrompt}
+                  onRestore={(text) => {
+                    setEditorContent(text, chapter.id);
+                    setRecoveryPrompt(null);
+                  }}
+                  onDiscard={() => {
+                    void chapterApi.autosaveClear({ id: chapter.id }).catch(() => {});
+                    setRecoveryPrompt(null);
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
           <NovelEditor
             key={chapter?.id ?? "empty"}
             value={content}
-            onChange={(text) => setContent(text)}
+            onChange={(text) => setEditorContent(text, chapter.id)}
             placeholder="在这里写下第一行……"
             autofocus
             onEditorReady={handleEditorReady}
@@ -932,9 +1096,13 @@ export function EditorPane({
         projectId={chapter.projectId}
         chapterId={chapter.id}
       />
-      {focusMode && (
-        <FocusDraftBoard chapterId={chapter.id} projectId={chapter.projectId} />
-      )}
+      <AnimatePresence initial={false}>
+        {focusMode && (
+          <motion.div {...softLiftIn}>
+            <FocusDraftBoard chapterId={chapter.id} projectId={chapter.projectId} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {chapter ? (
         <ChapterFromOutlineDialog
           chapter={chapter}

@@ -5,6 +5,7 @@ import {
   countGraphemes,
   countWords,
   resolveTriggerCount,
+  resolveTriggerCountFromText,
 } from "../word-count";
 
 describe("word-count", () => {
@@ -35,5 +36,10 @@ describe("word-count", () => {
 
     expect(resolveTriggerCount(stats, "en-US")).toBe(3);
     expect(resolveTriggerCount(stats, "zh-CN")).toBe(10);
+  });
+
+  it("computes only the language-specific trigger count from text", () => {
+    expect(resolveTriggerCountFromText("hello, quiet world", "en-US")).toBe(3);
+    expect(resolveTriggerCountFromText(" A 中\nB ", "zh-CN")).toBe(3);
   });
 });

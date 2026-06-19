@@ -81,6 +81,10 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
     fontSize = 16, lineHeight = 2.0, spellcheck = true,
   } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  // 记录编辑器自己最近一次通过 onChange 发出的纯文本。下面 value→编辑器 的同步
+  // 副作用用它识别"自己刚打的字回流"，从而跳过 setContent，避免把正在输入的
+  // 内容（尤其中文 IME 合成中）清空——即用户反馈的"输入的字消失、刷新又出现"。
+  const lastEmittedRef = useRef<string>(normalizeEditorText(value));
 
   const editor = useEditor({
     extensions: [StarterKit.configure({ history: { depth: 200 } })],
@@ -129,6 +133,7 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
     onUpdate: ({ editor: ed }) => {
       syncEditorDomState(ed);
       const text = normalizeEditorText(ed.getText());
+      lastEmittedRef.current = text;
       onChange(text, ed.getHTML());
       if (typewriterMode) scrollCursorToCenter(ed);
     },
@@ -136,9 +141,17 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
 
   useEffect(() => {
     if (!editor) return;
+    // IME（中文/日文）合成途中绝不能 setContent，否则会打断合成、吞掉刚输入的字。
+    if ((editor.view as { composing?: boolean }).composing) return;
+    const normalizedValue = normalizeEditorText(value);
+    // value 只是"编辑器自己刚发出的文本"回流时跳过：受控组件里这一步若照旧
+    // setContent，会清掉用户正在输入的内容（表现为字消失、刷新才回来）。
+    if (normalizedValue === lastEmittedRef.current) return;
     const currentText = normalizeEditorText(editor.getText());
-    if (normalizeEditorText(value) === currentText) return;
+    if (normalizedValue === currentText) return;
+    // 走到这里才是真正的外部变更（切章 / 还原快照 / 技能写入 / 恢复草稿），需要回灌。
     editor.commands.setContent(plainTextToHtml(value), false);
+    lastEmittedRef.current = normalizedValue;
     syncEditorDomState(editor);
   }, [editor, value]);
 

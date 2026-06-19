@@ -1,4 +1,9 @@
-import { computeWordCount, resolveTriggerCount, type WordCountStats } from "./word-count";
+import {
+  computeWordCount,
+  resolveTriggerCount,
+  resolveTriggerCountFromText,
+  type WordCountStats,
+} from "./word-count";
 
 export interface AnalysisSchedulerOptions {
   threshold: number;
@@ -18,6 +23,7 @@ export interface AnalysisTriggerContext {
 export class AnalysisScheduler {
   private options: AnalysisSchedulerOptions;
   private baselineCount = 0;
+  private baselineCharacters = 0;
   private lastTriggerCount = 0;
   private pendingTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingText = "";
@@ -29,9 +35,9 @@ export class AnalysisScheduler {
 
   reset(text: string = ""): void {
     this.cancelTimer();
-    const stats = computeWordCount(text);
-    const count = resolveTriggerCount(stats, this.options.language);
+    const count = resolveTriggerCountFromText(text, this.options.language);
     this.baselineCount = count;
+    this.baselineCharacters = text.length;
     this.lastTriggerCount = count;
     this.pendingText = text;
   }
@@ -39,8 +45,10 @@ export class AnalysisScheduler {
   update(text: string): void {
     if (this.disposed) return;
     this.pendingText = text;
-    const stats = computeWordCount(text);
-    const count = resolveTriggerCount(stats, this.options.language);
+    // Fast path for long chapters: until raw text growth reaches the threshold,
+    // the language-specific trigger count cannot have crossed it either.
+    if (Math.max(0, text.length - this.baselineCharacters) < this.options.threshold) return;
+    const count = resolveTriggerCountFromText(text, this.options.language);
     const delta = count - this.baselineCount;
     if (delta < this.options.threshold) return;
     if (this.pendingTimer) return; // debounce already scheduled
@@ -77,6 +85,7 @@ export class AnalysisScheduler {
       triggeredAt: new Date().toISOString(),
     };
     this.baselineCount = count;
+    this.baselineCharacters = text.length;
     this.lastTriggerCount = count;
     try {
       this.options.onTrigger(context);
