@@ -38,9 +38,9 @@ html.theme-dark {
   --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
   --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
   --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
-  /* 液态玻璃 —— 深色主题：深蓝黑底半透 + 弱白描边 + 微弱顶部高光 */
-  --glass-tint-bg: rgba(16, 23, 38, 0.72);
-  --glass-bar-bg: rgba(10, 14, 26, 0.84);
+  /* 液态玻璃 —— 深色主题：深蓝黑底更低透明度 + 更强模糊 + 更亮高光，让透出的背景内容形成可见的"玻璃厚度"。 */
+  --glass-tint-bg: rgba(10, 14, 26, 0.48);
+  --glass-bar-bg: rgba(10, 14, 26, 0.68);
   --glass-border: rgba(148, 163, 184, 0.16);
   --glass-highlight: rgba(255, 255, 255, 0.07);
 }
@@ -90,9 +90,9 @@ html.theme-light {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃 —— 浅色主题：白半透 + 极淡冷灰描边 + 明亮顶部高光 */
-  --glass-tint-bg: rgba(255, 255, 255, 0.72);
-  --glass-bar-bg: rgba(250, 252, 255, 0.84);
+  /* 液态玻璃 —— 浅色主题：更透的白底 + 更亮高光 */
+  --glass-tint-bg: rgba(255, 255, 255, 0.5);
+  --glass-bar-bg: rgba(250, 252, 255, 0.7);
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-highlight: rgba(255, 255, 255, 0.55);
 }
@@ -135,9 +135,9 @@ html.theme-paper {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃 —— 纸感主题：暖米白半透 + 薄金描边 + 柔和顶部高光 */
-  --glass-tint-bg: rgba(250, 249, 244, 0.72);
-  --glass-bar-bg: rgba(250, 248, 241, 0.84);
+  /* 液态玻璃 —— 纸感主题：更透的暖米白底 + 更亮高光 */
+  --glass-tint-bg: rgba(250, 249, 244, 0.5);
+  --glass-bar-bg: rgba(250, 248, 241, 0.7);
   --glass-border: rgba(139, 119, 84, 0.13);
   --glass-highlight: rgba(255, 255, 255, 0.45);
 }
@@ -337,18 +337,18 @@ html.theme-paper .skeleton-shimmer {
 /* 面板/弹窗玻璃 */
 .glass-panel {
   background: var(--glass-tint-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(200%);
+  -webkit-backdrop-filter: blur(28px) saturate(200%);
   border-color: var(--glass-border) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45),
-              inset 0 1px 0 var(--glass-highlight),
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.55),
+              inset 0 1.5px 0 var(--glass-highlight),
               inset 0 0 0 1px var(--glass-highlight);
 }
-/* 标题栏/工具栏玻璃 — 更不透明、模糊更小（标题栏内容少、不需要透太多）。 */
+/* 标题栏/工具栏玻璃 — 更不透明、模糊更小。 */
 .glass-bar {
   background: var(--glass-bar-bg);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(200%);
+  -webkit-backdrop-filter: blur(16px) saturate(200%);
   border-bottom-color: var(--glass-border) !important;
   box-shadow: inset 0 1px 0 var(--glass-highlight);
 }

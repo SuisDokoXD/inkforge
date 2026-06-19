@@ -35,7 +35,7 @@ export function AnimatedDialog({
   ariaLabel,
   labelledBy,
   zClassName = "z-50",
-  glass = false,
+  glass = true,
 }: AnimatedDialogProps): JSX.Element {
   const reduce = useReducedMotion();
   const glassEnabled = useAppStore((s) => s.settings.glassEnabled);
