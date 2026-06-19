@@ -254,48 +254,43 @@ button:disabled {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
 }
 
-/* ===== M8 · 桌宠 Companion 动画 ===== */
-@keyframes companion-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-2px); }
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
 }
 
-@keyframes companion-jump {
-  0%, 100% { transform: translateY(0) scale(1); }
-  30%      { transform: translateY(-8px) scale(1.05, 0.95); }
-  60%      { transform: translateY(-3px) scale(0.97, 1.03); }
+.skeleton-shimmer {
+  --skeleton-sheen: rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
 }
 
-@keyframes companion-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.025); }
+html.theme-light .skeleton-shimmer,
+html.theme-paper .skeleton-shimmer {
+  --skeleton-sheen: rgba(255, 255, 255, 0.62);
 }
 
-@keyframes companion-bubble-in {
-  0%   { opacity: 0; transform: translateY(6px) scale(0.96); }
-  60%  { opacity: 1; }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes companion-dizzy {
-  0%   { transform: rotate(0deg) translateY(0); }
-  25%  { transform: rotate(8deg) translateY(-1px); }
-  50%  { transform: rotate(0deg) translateY(0); }
-  75%  { transform: rotate(-8deg) translateY(1px); }
-  100% { transform: rotate(0deg) translateY(0); }
-}
-
-@keyframes companion-particle-float {
-  0%   { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  10%  { opacity: 0.85; }
-  50%  { transform: translate(8px, -36px) rotate(180deg); opacity: 0.9; }
-  90%  { opacity: 0.6; }
-  100% { transform: translate(-6px, -68px) rotate(360deg); opacity: 0; }
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--skeleton-sheen) 48%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
 }
 
 /*
  * 无障碍：尊重系统"减弱动态效果"(prefers-reduced-motion)。
- * 关掉所有 CSS keyframes 动画与 transition（含桌宠/Tailwind animate-* 类）。
+ * 关掉所有 CSS keyframes 动画与 transition；motion 库侧由组件单独降级。
  * motion 库侧的进出场动画由各组件用 useReducedMotion 单独降级（见 motion-tokens.ts）。
  */
 @media (prefers-reduced-motion: reduce) {
@@ -306,6 +301,11 @@ button:disabled {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .skeleton-shimmer::after {
+    animation: none !important;
+    opacity: 0;
   }
 }
 

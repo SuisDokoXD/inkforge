@@ -25,11 +25,34 @@ export const SPRING_SNAPPY: Transition = { type: "spring", stiffness: 400, dampi
 
 // 可复用变体 ─────────────────────────────────────────────
 
+export type PageTransitionDirection = -1 | 0 | 1;
+
 // 页面切换：淡入 + 轻微上移；退场快速淡出并微微上移（衔接 mode="wait"）。
 export const fadeSlideUp: Variants = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: DUR.base, ease: EASE_STANDARD } },
   exit: { opacity: 0, y: -4, transition: { duration: DUR.fast, ease: EASE_STANDARD } },
+};
+
+// 主视图切换：按侧栏顺序带一点横向方向感。位移幅度小，避免影响阅读和编辑焦点。
+export const directionalPage: Variants = {
+  initial: (direction: PageTransitionDirection = 0) => ({
+    opacity: 0,
+    x: direction === 0 ? 0 : direction * 18,
+    y: direction === 0 ? 8 : 0,
+  }),
+  animate: {
+    opacity: 1,
+    x: 0,
+    y: 0,
+    transition: { duration: DUR.base, ease: EASE_STANDARD },
+  },
+  exit: (direction: PageTransitionDirection = 0) => ({
+    opacity: 0,
+    x: direction === 0 ? 0 : direction * -12,
+    y: direction === 0 ? -4 : 0,
+    transition: { duration: DUR.fast, ease: EASE_STANDARD },
+  }),
 };
 
 // reduced-motion 退化版：只淡入淡出，无任何位移/缩放（尊重"减弱动态效果"）。

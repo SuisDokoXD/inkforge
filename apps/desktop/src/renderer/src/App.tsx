@@ -1,13 +1,16 @@
 // M9 Phase 1+2.1: global shortcuts unified + 12 lazy pages + Suspense skeleton.
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import { dailyApi, providerApi, projectApi, settingsApi } from "./lib/api";
 import { useAppStore } from "./stores/app-store";
 import type { MainView } from "./stores/app-store";
 import { useT } from "./lib/i18n";
+import { fadeOnly, fadeSlideUp, type PageTransitionDirection } from "./lib/motion-tokens";
+import { NAV_SHORTCUTS } from "./lib/shortcuts";
 import { useGlobalShortcuts } from "./lib/use-app-shortcuts";
 import { useWindowResizePerf } from "./lib/use-window-resize-perf";
+import { useTimedStatus } from "./lib/use-timed-status";
 
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
@@ -38,6 +41,23 @@ import { CommandPalette } from "./components/CommandPalette";
 import { AnimatedPage } from "./components/AnimatedPage";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { LetterArrivalToast } from "./components/LetterArrivalToast";
+
+const MAIN_VIEW_ORDER = new Map<MainView, number>(
+  NAV_SHORTCUTS.map((item, index) => [item.view, index]),
+);
+
+type DiagnosticStatus = { kind: "success" | "error"; text: string };
+
+function getPageTransitionDirection(
+  previousView: MainView,
+  nextView: MainView,
+): PageTransitionDirection {
+  if (previousView === nextView) return 0;
+  const previousIndex = MAIN_VIEW_ORDER.get(previousView);
+  const nextIndex = MAIN_VIEW_ORDER.get(nextView);
+  if (previousIndex === undefined || nextIndex === undefined) return 0;
+  return nextIndex > previousIndex ? 1 : -1;
+}
 
 // 按当前主视图返回对应页面元素。抽成函数让 <AnimatePresence> 只需包一个带 key 的子节点，
 // 避免在 JSX 里铺 13 行 `mainView === x && <X/>` 条件渲染。
@@ -87,6 +107,14 @@ export function App(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const lang = settings.uiLanguage;
   const terminalEnabled = settings.devModeEnabled;
+  const previousMainViewRef = useRef(mainView);
+  const reduceMotion = useReducedMotion() === true;
+  const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
+  const { status: diagStatus, showStatus: showDiagStatus } = useTimedStatus<DiagnosticStatus>();
+  const pageTransitionDirection = getPageTransitionDirection(
+    previousMainViewRef.current,
+    mainView,
+  );
 
   const settingsQuery = useQuery({
     queryKey: ["app-settings"],
@@ -125,6 +153,10 @@ export function App(): JSX.Element {
   useWindowResizePerf();
 
   useEffect(() => {
+    previousMainViewRef.current = mainView;
+  }, [mainView]);
+
+  useEffect(() => {
     if (!terminalEnabled) toggleTerminal(false);
   }, [terminalEnabled, toggleTerminal]);
 
@@ -146,13 +178,21 @@ export function App(): JSX.Element {
         try {
           const r = await window.inkforge.diag.snapshot({});
           await navigator.clipboard.writeText(r.text);
-        } catch (e) {
-          // best-effort
-          console.warn("[copyDiagnostic]", e);
+          showDiagStatus({ kind: "success", text: "诊断信息已复制。" }, 2400);
+        } catch {
+          showDiagStatus({ kind: "error", text: "无法复制诊断信息，请稍后重试。" });
         }
       },
     }),
-    [setMainView, openSettings, openProviderPanel, toggleTerminal, terminalEnabled, setSettings],
+    [
+      setMainView,
+      openSettings,
+      openProviderPanel,
+      toggleTerminal,
+      terminalEnabled,
+      setSettings,
+      showDiagStatus,
+    ],
   );
 
   const providersQuery = useQuery({
@@ -200,8 +240,8 @@ export function App(): JSX.Element {
     return (
       <div className="flex h-full w-full flex-col">
         <TitleBar />
-        <div className="flex flex-1 items-center justify-center text-ink-300">
-          <div className="animate-pulse">{t("app.loading")}</div>
+        <div className="min-h-0 flex-1">
+          <PageSkeleton label={t("app.loading")} />
         </div>
       </div>
     );
@@ -236,6 +276,24 @@ export function App(): JSX.Element {
         <AchievementToast />
         <LetterArrivalToast />
         <GlobalDropZone />
+        <AnimatePresence initial={false}>
+          {diagStatus ? (
+            <motion.div
+              role={diagStatus.kind === "error" ? "alert" : "status"}
+              className={`fixed right-4 top-12 z-[70] max-w-sm rounded-md border px-3 py-2 text-xs shadow-2xl ${
+                diagStatus.kind === "error"
+                  ? "border-rose-500/30 bg-rose-500/15 text-rose-100"
+                  : "border-emerald-500/30 bg-emerald-500/15 text-emerald-100"
+              }`}
+              variants={statusMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              {diagStatus.text}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
         <div className="flex min-h-0 flex-1">
           <ErrorBoundary label="ActivityBar" lang={lang}>
             <ActivityBar onOpenPalette={() => setPaletteOpen(true)} />
@@ -245,8 +303,10 @@ export function App(): JSX.Element {
               {/* mode="wait"：旧页退场完成后新页再进场，贴近 macOS 单窗口切换的清晰感。
                   initial={false}：首屏不播放进场，避免应用启动时闪一下。 */}
               <AnimatePresence mode="wait" initial={false}>
-                <AnimatedPage key={mainView}>
-                  <Suspense fallback={<PageSkeleton />}>{renderPage(mainView)}</Suspense>
+                <AnimatedPage key={mainView} direction={pageTransitionDirection}>
+                  <Suspense fallback={<PageSkeleton label={t("app.loading")} />}>
+                    {renderPage(mainView)}
+                  </Suspense>
                 </AnimatedPage>
               </AnimatePresence>
             </ErrorBoundary>
