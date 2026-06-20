@@ -38,14 +38,20 @@ html.theme-dark {
   --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
   --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
   --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
-  /* 液态玻璃（深色）：深底半透 + 强模糊 + 亮玻璃边。深色下背后内容对比足，玻璃感最明显。 */
-  --glass-tint-bg: rgba(10, 14, 26, 0.46);
+  /* 液态玻璃（深色）：主体用干净磨砂，折射只放在边缘层，避免整块面板发脏。 */
+  --glass-tint-bg: rgba(14, 22, 38, 0.38);
   --glass-bar-bg: rgba(10, 14, 26, 0.66);
-  --glass-filter: blur(28px) saturate(200%);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-highlight: rgba(255, 255, 255, 0.14);
+  --glass-filter: blur(14px) saturate(175%);
+  --glass-edge-filter: url(#lglass) blur(1.5px) saturate(190%);
+  --glass-edge-opacity: 0.78;
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
   --glass-inner-rim: rgba(255, 255, 255, 0.06);
-  --glass-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+  --glass-shine: rgba(255, 255, 255, 0.11);
+  --glass-edge-shadow: rgba(255, 255, 255, 0.05);
+  --glass-chromatic-a: rgba(96, 165, 250, 0.1);
+  --glass-chromatic-b: rgba(251, 146, 60, 0.06);
+  --glass-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -93,14 +99,19 @@ html.theme-light {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃（浅色）：偏纯白底（比页面更亮 → 读作一块独立的磨砂玻璃）+ brightness 微提 +
-   * 明亮玻璃边 + 适配浅色的"柔和暖阴影"（绝不用深黑阴影，否则在亮底上发脏）。 */
-  --glass-tint-bg: rgba(255, 255, 255, 0.6);
+  /* 液态玻璃（浅色）：主体保持可读的轻磨砂，边缘层负责折射与玻璃轮廓。 */
+  --glass-tint-bg: rgba(255, 255, 255, 0.34);
   --glass-bar-bg: rgba(255, 255, 255, 0.72);
-  --glass-filter: blur(22px) saturate(180%) brightness(1.04);
+  --glass-filter: blur(14px) saturate(155%) brightness(1.04);
+  --glass-edge-filter: url(#lglass) blur(1.4px) saturate(175%) brightness(1.04);
+  --glass-edge-opacity: 0.82;
   --glass-border: rgba(255, 255, 255, 0.85);
   --glass-highlight: rgba(255, 255, 255, 0.95);
   --glass-inner-rim: rgba(255, 255, 255, 0.5);
+  --glass-shine: rgba(255, 255, 255, 0.76);
+  --glass-edge-shadow: rgba(78, 95, 130, 0.1);
+  --glass-chromatic-a: rgba(80, 140, 255, 0.18);
+  --glass-chromatic-b: rgba(255, 150, 70, 0.1);
   --glass-shadow: 0 18px 44px -12px rgba(60, 50, 40, 0.24), 0 2px 8px -2px rgba(60, 50, 40, 0.12);
 }
 
@@ -142,13 +153,19 @@ html.theme-paper {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 液态玻璃（纸感）：偏暖白底 + brightness 微提 + 亮玻璃边 + 暖调柔和阴影。 */
-  --glass-tint-bg: rgba(253, 251, 246, 0.62);
+  /* 液态玻璃（纸感）：暖白轻磨砂 + 边缘折射；主体不过度泛白，避免退化成普通白卡。 */
+  --glass-tint-bg: rgba(252, 250, 245, 0.38);
   --glass-bar-bg: rgba(252, 250, 244, 0.72);
-  --glass-filter: blur(22px) saturate(185%) brightness(1.03);
-  --glass-border: rgba(255, 255, 255, 0.8);
+  --glass-filter: blur(14px) saturate(155%) brightness(1.04);
+  --glass-edge-filter: url(#lglass) blur(1.4px) saturate(175%) brightness(1.04);
+  --glass-edge-opacity: 0.84;
+  --glass-border: rgba(255, 255, 255, 0.85);
   --glass-highlight: rgba(255, 255, 255, 0.9);
   --glass-inner-rim: rgba(255, 255, 255, 0.45);
+  --glass-shine: rgba(255, 255, 255, 0.72);
+  --glass-edge-shadow: rgba(110, 86, 52, 0.11);
+  --glass-chromatic-a: rgba(90, 135, 230, 0.13);
+  --glass-chromatic-b: rgba(255, 155, 75, 0.13);
   --glass-shadow: 0 18px 44px -12px rgba(80, 60, 35, 0.24), 0 2px 8px -2px rgba(80, 60, 35, 0.12);
 }
 
@@ -344,19 +361,65 @@ html.theme-paper .skeleton-shimmer {
  * 缩放期间 backdrop-filter 已由下方 win-resizing 规则停用。
  */
 
-/* 面板/弹窗玻璃 — 配方全部走主题变量（见各 theme 块的 --glass-*）：
- * 浅色/纸感 = 亮白磨砂 + 暖柔阴影；深色 = 深底磨砂 + 深阴影。
- * 注意：玻璃只用在"浮在内容之上的临时层"（弹窗/命令面板），常驻面板不用——否则背后无内容可透，只会发灰。 */
+/* 面板/弹窗玻璃 — 主体保持干净磨砂；伪元素只在边缘做 SVG 折射和高光。
+ * 这样浅色/纸感不会变成普通白卡，深色也不会因为整块折射而出现脏纹。 */
 .glass-panel {
-  background: var(--glass-tint-bg);
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(135deg, var(--glass-highlight), transparent 18%, transparent 72%, var(--glass-inner-rim)),
+    var(--glass-tint-bg);
   backdrop-filter: var(--glass-filter);
   -webkit-backdrop-filter: var(--glass-filter);
   border: 1px solid var(--glass-border) !important;
   box-shadow: var(--glass-shadow),
-              inset 0 1px 0 var(--glass-highlight),
+              inset 1.5px 1.5px 1px var(--glass-highlight),
+              inset -1px -1px 1px var(--glass-inner-rim),
               inset 0 0 0 1px var(--glass-inner-rim);
 }
-/* 标题栏玻璃 — 更不透明、模糊更小（细条不需要透太多）。 */
+
+.glass-panel::before,
+.glass-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glass-panel::before {
+  padding: 18px;
+  opacity: var(--glass-edge-opacity);
+  backdrop-filter: var(--glass-edge-filter);
+  -webkit-backdrop-filter: blur(1.5px) saturate(180%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.glass-panel::after {
+  background:
+    linear-gradient(90deg, var(--glass-highlight), transparent 14%, transparent 84%, var(--glass-edge-shadow)),
+    linear-gradient(180deg, var(--glass-highlight), transparent 20%),
+    radial-gradient(circle at 16% 8%, var(--glass-shine), transparent 26%),
+    radial-gradient(circle at 7% 42%, var(--glass-chromatic-a), transparent 34%),
+    radial-gradient(circle at 94% 86%, var(--glass-chromatic-b), transparent 34%),
+    linear-gradient(145deg, var(--glass-highlight), transparent 24%, transparent 72%, var(--glass-inner-rim));
+  opacity: 0.72;
+}
+
+.glass-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 标题栏玻璃 — 细条、背后内容少，只做磨砂不做折射。 */
 .glass-bar {
   background: var(--glass-bar-bg);
   backdrop-filter: blur(16px) saturate(180%);
@@ -372,6 +435,10 @@ html.theme-paper .skeleton-shimmer {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     background: rgb(var(--ink-900));
+  }
+  .glass-panel::before,
+  .glass-panel::after {
+    display: none;
   }
 }
 
