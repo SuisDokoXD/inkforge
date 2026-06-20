@@ -82,7 +82,6 @@ describe("settings validation", () => {
           theme: "paper",
           editorFontSize: 18,
           focusMode: true,
-          glassEnabled: false,
           unknownSetting: "ignored",
         },
       }),
@@ -91,7 +90,6 @@ describe("settings validation", () => {
         theme: "paper",
         editorFontSize: 18,
         focusMode: true,
-        glassEnabled: false,
       },
     });
   });

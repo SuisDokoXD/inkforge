@@ -18,7 +18,6 @@ const DEFAULTS: AppSettings = {
   autoIndent: true,
   spellcheck: true,
   focusMode: false,
-  glassEnabled: false,
 };
 
 type SettingRow = { key: string; value: string };
@@ -55,7 +54,6 @@ function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppS
     case "autoIndent":
     case "spellcheck":
     case "focusMode":
-    case "glassEnabled":
       return raw === "true";
     case "uiLanguage":
       return coerceLang(raw, DEFAULTS.uiLanguage);

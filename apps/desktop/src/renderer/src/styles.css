@@ -38,14 +38,6 @@ html.theme-dark {
   --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
   --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
   --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
-  /* 玻璃（深色）：只做克制磨砂和细高光，不做 SVG 折射。 */
-  --glass-tint-bg: rgba(10, 14, 26, 0.5);
-  --glass-bar-bg: rgba(10, 14, 26, 0.66);
-  --glass-filter: blur(18px) saturate(160%);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-highlight: rgba(255, 255, 255, 0.18);
-  --glass-inner-rim: rgba(255, 255, 255, 0.06);
-  --glass-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -93,14 +85,6 @@ html.theme-light {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 玻璃（浅色）：克制白色磨砂 + 明亮边，不做夸张折射。 */
-  --glass-tint-bg: rgba(255, 255, 255, 0.58);
-  --glass-bar-bg: rgba(255, 255, 255, 0.72);
-  --glass-filter: blur(16px) saturate(150%) brightness(1.03);
-  --glass-border: rgba(255, 255, 255, 0.85);
-  --glass-highlight: rgba(255, 255, 255, 0.95);
-  --glass-inner-rim: rgba(255, 255, 255, 0.5);
-  --glass-shadow: 0 18px 44px -12px rgba(60, 50, 40, 0.24), 0 2px 8px -2px rgba(60, 50, 40, 0.12);
 }
 
 /*
@@ -141,14 +125,6 @@ html.theme-paper {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
-  /* 玻璃（纸感）：暖白磨砂 + 柔和边与暖阴影。 */
-  --glass-tint-bg: rgba(252, 250, 245, 0.58);
-  --glass-bar-bg: rgba(252, 250, 244, 0.72);
-  --glass-filter: blur(16px) saturate(150%) brightness(1.03);
-  --glass-border: rgba(255, 255, 255, 0.85);
-  --glass-highlight: rgba(255, 255, 255, 0.9);
-  --glass-inner-rim: rgba(255, 255, 255, 0.45);
-  --glass-shadow: 0 18px 44px -12px rgba(80, 60, 35, 0.24), 0 2px 8px -2px rgba(80, 60, 35, 0.12);
 }
 
 html,
@@ -334,57 +310,13 @@ html.theme-paper .skeleton-shimmer {
 }
 
 /*
- * =============================================================================
- * 玻璃质感（Glass）
- * =============================================================================
- * 主题感知半透底色 + 顶部微高光，模拟克制的毛玻璃质感。
- * 只在设置开启后才生效 — consumers 看 settings.glassEnabled 决定是否加 .glass-* class。
- * 当系统请求「减少透明」(prefers-reduced-transparency)时自动降为不透明底色。
- * 缩放期间 backdrop-filter 已由下方 win-resizing 规则停用。
- */
-
-/* 面板/弹窗玻璃 — 仅用于临时浮层，保持克制，避免干扰写作界面。 */
-.glass-panel {
-  background: var(--glass-tint-bg);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
-  border: 1px solid var(--glass-border) !important;
-  box-shadow: var(--glass-shadow),
-              inset 0 1px 0 var(--glass-highlight),
-              inset 0 0 0 1px var(--glass-inner-rim);
-}
-
-/* 标题栏玻璃 — 细条、背后内容少，只做磨砂不做折射。 */
-.glass-bar {
-  background: var(--glass-bar-bg);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border-bottom-color: var(--glass-border) !important;
-  box-shadow: inset 0 1px 0 var(--glass-highlight);
-}
-
-/* 尊重系统"减少透明度"设置 — 改为纯色底色，去掉全部模糊。 */
-@media (prefers-reduced-transparency: reduce) {
-  .glass-panel,
-  .glass-bar {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    background: rgb(var(--ink-900));
-  }
-}
-
-/*
- * 性能：窗口缩放进行时临时停用毛玻璃 + 过渡/CSS 动画。
- * backdrop-filter 在连续 resize 重绘时开销极大（拖拽缩放卡顿的主因）；同时缩放期间元素的
+ * 性能：窗口缩放进行时临时停用过渡/CSS 动画。
  * transition / CSS keyframes 会被 resize 触发的布局变化反复重算，徒增主线程与绘制开销。
- * 由 use-window-resize-perf.ts 在缩放期间挂/撤 `win-resizing` 类，停止缩放约 160ms 后恢复，
- * 故空闲时观感完全不变。（motion 库的 JS 动画不受 CSS 影响，缩放期它们本就极少运行。）
+ * 由 use-window-resize-perf.ts 在缩放期间挂/撤 `win-resizing` 类，停止缩放约 160ms 后恢复。
  */
 html.win-resizing *,
 html.win-resizing *::before,
 html.win-resizing *::after {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
   transition: none !important;
   animation-play-state: paused !important;
 }

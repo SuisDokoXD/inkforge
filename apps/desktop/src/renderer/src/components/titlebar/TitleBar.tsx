@@ -105,7 +105,7 @@ export function TitleBar(): JSX.Element {
 
   return (
     <div
-      className={`relative flex h-9 shrink-0 select-none items-center justify-between border-b border-ink-700 text-[12px] text-ink-200 dark:border-white/[0.06] dark:bg-gradient-to-b dark:from-[#0e1626] dark:via-[#0b1322] dark:to-[#0a0e1a] ${useAppStore((s) => s.settings.glassEnabled === true) ? "glass-bar" : "bg-ink-800"}`}
+      className="relative flex h-9 shrink-0 select-none items-center justify-between border-b border-ink-700 bg-ink-800 text-[12px] text-ink-200 dark:border-white/[0.06] dark:bg-gradient-to-b dark:from-[#0e1626] dark:via-[#0b1322] dark:to-[#0a0e1a]"
       onDoubleClick={(e) => {
         // Windows / Linux 默认行为：双击标题栏切换最大化。
         // 排除点到右侧窗口控件 / 左侧状态胶囊（它们 region=no-drag）的双击。
@@ -118,7 +118,7 @@ export function TitleBar(): JSX.Element {
         { WebkitAppRegion: "drag" } as React.CSSProperties
       }
     >
-      {/* 顶部一根极淡的高光，模拟 Linear/Notion 的玻璃质感 */}
+      {/* 顶部细分隔高光，给标题栏保留清晰边界。 */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/[0.06] to-transparent dark:via-white/15"

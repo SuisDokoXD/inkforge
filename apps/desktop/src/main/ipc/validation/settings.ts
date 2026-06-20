@@ -22,7 +22,6 @@ const APP_SETTING_KEYS = [
   "autoIndent",
   "spellcheck",
   "focusMode",
-  "glassEnabled",
 ] as const satisfies readonly (keyof AppSettings)[];
 
 const APP_SETTING_KEY_SET = new Set<string>(APP_SETTING_KEYS);
@@ -60,7 +59,6 @@ function optionalSettingsUpdates(
       case "autoIndent":
       case "spellcheck":
       case "focusMode":
-      case "glassEnabled":
         if (typeof entry !== "boolean") fail(channel, key, "a boolean");
         parsedRecord[key] = entry;
         break;
