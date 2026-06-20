@@ -2,7 +2,7 @@
 // 点遮罩关闭 + role/aria」收口到一处，并用 <AnimatePresence> 提供进出场动画
 // （遮罩淡入、面板 scale+上移弹入；关闭时播放退场而非瞬间消失）。
 // 新弹窗直接用它包裹内容即可，风格天然一致。reduced-motion 下退化为纯淡入。
-// glass 属性启用液态玻璃质感（需 settings.glassEnabled=true 才生效）。
+// glass 属性启用玻璃质感（需 settings.glassEnabled=true 才生效）。
 import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { overlayFade, dialogPanel, fadeOnly } from "../lib/motion-tokens";
@@ -22,7 +22,7 @@ export interface AnimatedDialogProps {
   labelledBy?: string;
   /** z-index 层级，默认 50。命令面板等需要更高时覆写。 */
   zClassName?: string;
-  /** 启用液态玻璃质感（毛玻璃 blur + 活力色 + 边缘高光）。受 settings.glassEnabled 控制。 */
+  /** 启用玻璃质感（毛玻璃 blur + 轻高光）。受 settings.glassEnabled 控制。 */
   glass?: boolean;
 }
 
@@ -39,7 +39,7 @@ export function AnimatedDialog({
 }: AnimatedDialogProps): JSX.Element {
   const reduce = useReducedMotion();
   const glassEnabled = useAppStore((s) => s.settings.glassEnabled);
-  const effectiveGlass = glass && glassEnabled;
+  const effectiveGlass = glass && glassEnabled === true;
 
   // Esc 关闭：统一在这里处理，迁移后各弹窗不再各自写一遍。
   useEffect(() => {

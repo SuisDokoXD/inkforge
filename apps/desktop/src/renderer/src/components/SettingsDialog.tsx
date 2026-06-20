@@ -32,6 +32,7 @@ export function SettingsDialog(): JSX.Element | null {
   const setOpen = useAppStore((s) => s.openSettings);
   const settings = useAppStore((s) => s.settings);
   const setSettings = useAppStore((s) => s.setSettings);
+  const patchSettings = useAppStore((s) => s.patchSettings);
   const t = useT();
   const reduceMotion = useReducedMotion() === true;
 
@@ -59,6 +60,14 @@ export function SettingsDialog(): JSX.Element | null {
 
   const settingsMutation = useMutation({
     mutationFn: (updates: Partial<AppSettings>) => settingsApi.set({ updates }),
+    onMutate: (updates) => {
+      const previous = useAppStore.getState().settings;
+      patchSettings(updates);
+      return { previous };
+    },
+    onError: (_err, _updates, context) => {
+      if (context?.previous) setSettings(context.previous);
+    },
     onSuccess: (next) => setSettings(next),
   });
   const sectionMotion = reduceMotion ? fadeOnly : staggerItem;
@@ -416,12 +425,12 @@ export function SettingsDialog(): JSX.Element | null {
                   id="settings-glass-enabled"
                   type="checkbox"
                   className="h-4 w-4"
-                  checked={settings.glassEnabled !== false}
+                  checked={settings.glassEnabled === true}
                   onChange={(e) => settingsMutation.mutate({ glassEnabled: e.target.checked })}
                 />
                 <div>
-                  <div className="font-medium">液态玻璃质感</div>
-                  <div className="text-xs text-ink-400">弹窗和标题栏使用毛玻璃 + 活力色 + 边缘高光；弱机或省电可关</div>
+                  <div className="font-medium">玻璃质感</div>
+                  <div className="text-xs text-ink-400">弹窗和标题栏使用轻磨砂与高光；不喜欢或弱机可关</div>
                 </div>
               </label>
               <label className="flex items-center gap-3" htmlFor="settings-dev-mode">

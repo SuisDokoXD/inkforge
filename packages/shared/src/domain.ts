@@ -104,7 +104,7 @@ export interface AppSettings {
   autoIndent: boolean;
   spellcheck: boolean;
   focusMode: boolean;
-  /** 液态玻璃质感效果（毛玻璃面板/弹窗/标题栏）。为 true 时启用强化玻璃视觉。默认 true。 */
+  /** 玻璃质感效果（毛玻璃面板/弹窗/标题栏）。为 true 时启用，默认 false。 */
   glassEnabled: boolean;
 }
 

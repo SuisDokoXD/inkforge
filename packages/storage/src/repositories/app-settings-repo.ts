@@ -18,7 +18,7 @@ const DEFAULTS: AppSettings = {
   autoIndent: true,
   spellcheck: true,
   focusMode: false,
-  glassEnabled: true,
+  glassEnabled: false,
 };
 
 type SettingRow = { key: string; value: string };

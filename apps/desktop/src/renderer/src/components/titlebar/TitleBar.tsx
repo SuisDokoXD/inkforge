@@ -105,7 +105,7 @@ export function TitleBar(): JSX.Element {
 
   return (
     <div
-      className={`relative flex h-9 shrink-0 select-none items-center justify-between border-b border-ink-700 text-[12px] text-ink-200 dark:border-white/[0.06] dark:bg-gradient-to-b dark:from-[#0e1626] dark:via-[#0b1322] dark:to-[#0a0e1a] ${useAppStore((s) => s.settings.glassEnabled) ? "glass-bar" : "bg-ink-800"}`}
+      className={`relative flex h-9 shrink-0 select-none items-center justify-between border-b border-ink-700 text-[12px] text-ink-200 dark:border-white/[0.06] dark:bg-gradient-to-b dark:from-[#0e1626] dark:via-[#0b1322] dark:to-[#0a0e1a] ${useAppStore((s) => s.settings.glassEnabled === true) ? "glass-bar" : "bg-ink-800"}`}
       onDoubleClick={(e) => {
         // Windows / Linux 默认行为：双击标题栏切换最大化。
         // 排除点到右侧窗口控件 / 左侧状态胶囊（它们 region=no-drag）的双击。
