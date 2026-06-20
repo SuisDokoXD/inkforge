@@ -26,6 +26,7 @@ import {
   getCardQuality,
   getMetaCompleteness,
 } from "../components/outline/outline-metrics";
+import { Button, IconButton } from "../components/ui";
 import {
   AlertCircle,
   BookOpenCheck,
@@ -349,22 +350,24 @@ export function OutlinePage(): JSX.Element {
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <button
-            className="inline-flex items-center gap-1.5 rounded-md border border-ink-600 px-3 py-1.5 text-xs text-ink-200 transition-colors hover:bg-ink-800"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={handleOpenMeta}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
             {project.synopsis || project.genre || project.globalWorldview ? "编辑设定" : "填写设定"}
-          </button>
-          <button
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-900 transition-colors hover:bg-accent-400 disabled:opacity-50"
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
             disabled={busy !== null || !canGenerateMaster}
             onClick={handleGenerateMaster}
             title={!canGenerateMaster ? "先补充梗概、类型、标签或背景语境" : undefined}
           >
             {busy === "master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
             {project.masterOutline ? "重写总纲" : "生成总纲"}
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -372,13 +375,15 @@ export function OutlinePage(): JSX.Element {
         <div className="flex items-center gap-2 border-b border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1">{error}</span>
-          <button
-            className="rounded p-0.5 text-ink-400 transition-colors hover:bg-red-500/10 hover:text-ink-200"
+          <IconButton
+            size="xs"
+            variant="ghost"
+            className="shrink-0 text-ink-400 hover:bg-red-500/10 hover:text-ink-200"
             onClick={handleClearError}
             aria-label="关闭错误提示"
           >
             <X className="h-3.5 w-3.5" />
-          </button>
+          </IconButton>
         </div>
       ) : null}
 
@@ -411,14 +416,16 @@ export function OutlinePage(): JSX.Element {
               <Sparkles className="h-4 w-4 text-accent-300" />
               总大纲
             </h2>
-            <button
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+            <Button
+              size="sm"
+              variant="primary"
+              className="ml-auto"
               disabled={busy !== null || !canGenerateMaster}
               onClick={handleGenerateMaster}
             >
               {busy === "master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
               {busy === "master" ? "生成中" : project.masterOutline ? "重新生成" : "生成总纲"}
-            </button>
+            </Button>
           </div>
 
           {project.masterOutline ? (
@@ -451,23 +458,25 @@ export function OutlinePage(): JSX.Element {
                 maxLength={500}
               />
               <div className="flex gap-2">
-                <button
-                  className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+                <Button
+                  size="sm"
+                  variant="primary"
                   disabled={busy !== null || !refineIntent.trim()}
                   onClick={handleRefineMaster}
                 >
                   {busy === "refine-master" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
                   {busy === "refine-master" ? "优化中" : "模型优化"}
-                </button>
+                </Button>
                 {project.preRefineMasterOutline ? (
-                  <button
-                    className="inline-flex items-center gap-1.5 rounded-md border border-ink-600 px-3 py-1.5 text-xs hover:bg-ink-700 disabled:opacity-50"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={busy !== null}
                     onClick={handleUndoMaster}
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     撤销
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>
@@ -505,15 +514,16 @@ export function OutlinePage(): JSX.Element {
                 onChange={(e) => setGenTargetCount(Number(e.target.value) || 12)}
               />
             </label>
-            <button
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-xs font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+            <Button
+              size="sm"
+              variant="primary"
               disabled={busy !== null || !project.masterOutline}
               onClick={handleGenerateChapters}
               title={!project.masterOutline ? "先生成总大纲" : undefined}
             >
               {busy === "chapters" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
               {busy === "chapters" ? "拆分中" : "拆分章节"}
-            </button>
+            </Button>
           </div>
 
           <div className="flex shrink-0 items-center gap-2 border-b border-ink-700/70 bg-ink-900/70 px-3 py-2">
