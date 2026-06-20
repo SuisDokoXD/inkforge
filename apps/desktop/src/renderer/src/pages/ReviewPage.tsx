@@ -31,6 +31,7 @@ import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { MotionSpinner } from "../components/MotionSpinner";
 import { ReviewReportPanel } from "../components/review/ReviewReportPanel";
+import { Button } from "../components/ui";
 
 type RangeKind = "book" | "chapter";
 
@@ -274,34 +275,30 @@ export function ReviewPage(): JSX.Element {
         <section className="border-b border-ink-700 p-3">
           <div className="mb-2 text-xs font-medium text-ink-300">审查范围</div>
           <div className="grid grid-cols-2 gap-2 text-xs">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant={rangeKind === "book" ? "accentSoft" : "secondary"}
+              className="h-8 w-full"
+              aria-pressed={rangeKind === "book"}
               onClick={() => {
                 rangeTouchedRef.current = true;
                 setRangeKind("book");
               }}
-              className={`h-8 rounded-md border ${
-                rangeKind === "book"
-                  ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
-                  : "border-ink-700 text-ink-300 hover:bg-ink-800"
-              }`}
             >
               全书
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="sm"
+              variant={rangeKind === "chapter" ? "accentSoft" : "secondary"}
+              className="h-8 w-full"
+              aria-pressed={rangeKind === "chapter"}
               onClick={() => {
                 rangeTouchedRef.current = true;
                 setRangeKind("chapter");
               }}
-              className={`h-8 rounded-md border ${
-                rangeKind === "chapter"
-                  ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
-                  : "border-ink-700 text-ink-300 hover:bg-ink-800"
-              }`}
             >
               选章
-            </button>
+            </Button>
           </div>
           {rangeKind === "chapter" ? (
             <div className="mt-2 max-h-44 overflow-auto rounded-md border border-ink-700 bg-ink-950 p-1 scrollbar-thin">
@@ -343,31 +340,34 @@ export function ReviewPage(): JSX.Element {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8"
                 onClick={() => flowActions.openChapter(actionChapter.id)}
               >
                 <BookOpenText className="h-3.5 w-3.5" />
                 打开正文
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8"
                 onClick={() => flowActions.autoWriteChapter(actionChapter.id)}
               >
                 <PenLine className="h-3.5 w-3.5" />
                 续写精修
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-ink-300 hover:bg-ink-800"
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8"
                 onClick={() => flowActions.openOutline(actionOutlineCard?.id)}
                 title={actionOutlineCard ? `查看大纲卡：${actionOutlineCard.title}` : "回到大纲"}
               >
                 <ClipboardList className="h-3.5 w-3.5" />
                 回到大纲
-              </button>
+              </Button>
             </div>
           </section>
         ) : null}
@@ -423,11 +423,12 @@ export function ReviewPage(): JSX.Element {
         </section>
 
         <footer className="space-y-2 border-t border-ink-700 p-3">
-          <button
-            type="button"
+          <Button
+            size="md"
+            variant="primary"
+            className="h-10 w-full font-semibold"
             onClick={() => runMut.mutate()}
             disabled={!canRun}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
           >
             {runMut.isPending || runningReportId ? (
               <MotionSpinner className="h-4 w-4" />
@@ -435,17 +436,18 @@ export function ReviewPage(): JSX.Element {
               <Play className="h-4 w-4" />
             )}
             {runningReportId ? "审查运行中" : "开始审查"}
-          </button>
+          </Button>
           {runningReportId ? (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="danger"
+              className="h-8 w-full"
               onClick={() => cancelMut.mutate(runningReportId)}
               disabled={cancelMut.isPending}
-              className="flex h-8 w-full items-center justify-center gap-2 rounded-md border border-rose-500/40 text-xs text-rose-300 hover:bg-rose-500/10 disabled:opacity-50"
             >
               <Square className="h-3.5 w-3.5" />
               取消当前审查
-            </button>
+            </Button>
           ) : null}
           <AnimatePresence initial={false}>
             {status ? (
@@ -526,15 +528,16 @@ export function ReviewPage(): JSX.Element {
             </div>
           </div>
           {activeReportId ? (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8"
               onClick={() => exportMut.mutate(activeReportId)}
               disabled={exportMut.isPending || activeReport?.status === "running"}
-              className="flex h-8 items-center gap-1.5 rounded-md border border-ink-700 px-2.5 text-xs text-ink-300 hover:bg-ink-800 disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5" />
               导出
-            </button>
+            </Button>
           ) : null}
         </header>
 
