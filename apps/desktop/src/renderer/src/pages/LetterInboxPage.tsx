@@ -24,10 +24,8 @@ import { friendlyErrorMessage } from "../lib/friendly-error";
 import {
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
 } from "../lib/motion-tokens";
+import { Badge, Button, IconButton, Select } from "../components/ui";
 
 type LetterFilter = "all" | "unread" | "pinned";
 
@@ -204,14 +202,15 @@ export function LetterInboxPage(): JSX.Element {
                 让人物以自己的口吻写给作者，用来捕捉动机、关系和未说出口的情绪。
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="primary"
+              className="shrink-0"
               onClick={() => openGenerate()}
-              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent-500 px-2.5 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400"
             >
               <MailPlus className="h-3.5 w-3.5" />
               新来信
-            </button>
+            </Button>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px]">
@@ -222,18 +221,16 @@ export function LetterInboxPage(): JSX.Element {
 
           <div className="mt-3 flex rounded-md border border-ink-700 bg-ink-950/40 p-0.5">
             {FILTERS.map((item) => (
-              <button
+              <Button
                 key={item.value}
-                type="button"
+                size="sm"
+                variant={filter === item.value ? "accentSoft" : "ghost"}
+                className="min-w-0 flex-1 rounded px-2 py-1"
+                aria-pressed={filter === item.value}
                 onClick={() => setFilter(item.value)}
-                className={`min-w-0 flex-1 rounded px-2 py-1 text-xs transition-colors ${
-                  filter === item.value
-                    ? "bg-accent-500/18 text-accent-200"
-                    : "text-ink-400 hover:bg-ink-800 hover:text-ink-200"
-                }`}
               >
                 {item.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -351,27 +348,29 @@ function LetterGuide({
                 它会把“我为什么这样做”“我不愿说什么”“我希望作者别忘什么”整理出来。
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              size="md"
+              variant="primary"
               onClick={() => onGenerate()}
               disabled={!hasCharacters}
-              className="inline-flex items-center gap-2 rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:bg-ink-200 disabled:text-ink-500 disabled:opacity-100 dark:disabled:bg-ink-800 dark:disabled:text-ink-500"
+              className="px-4 py-2"
             >
               <MailPlus className="h-4 w-4" />
               生成一封来信
-            </button>
+            </Button>
           </div>
           {!hasCharacters && (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-500/45 bg-amber-500/15 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
               <span>当前项目还没有人物档案。先创建人物，来信才会有明确口吻。</span>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={onOpenCharacters}
-                className="inline-flex items-center gap-1.5 rounded-md border border-amber-600/45 bg-white/35 px-3 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-100/60 dark:border-amber-300/30 dark:bg-transparent dark:text-amber-100 dark:hover:bg-amber-400/10"
+                className="border-amber-600/45 bg-white/35 text-amber-950 hover:bg-amber-100/60 dark:border-amber-300/30 dark:bg-transparent dark:text-amber-100 dark:hover:bg-amber-400/10"
               >
                 <UserRound className="h-3.5 w-3.5" />
                 去人物页
-              </button>
+              </Button>
             </div>
           )}
         </section>
@@ -400,13 +399,9 @@ function LetterGuide({
                 disabled={generating}
                 className="rounded-lg border border-ink-700 bg-ink-900/45 p-4 text-left transition-colors hover:border-accent-400/40 hover:bg-ink-800/60 disabled:opacity-60"
               >
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] ring-1 ${
-                    TONE_LABEL[item.tone].color
-                  }`}
-                >
+                <Badge size="sm" className={TONE_LABEL[item.tone].color}>
                   {TONE_LABEL[item.tone].label}
-                </span>
+                </Badge>
                 <div className="mt-3 text-sm font-medium text-ink-100">
                   {item.title}
                 </div>
@@ -488,34 +483,36 @@ function LetterRow({
         </div>
       </button>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <span
-          className={`rounded-full px-1.5 py-0.5 text-[10px] ring-1 ${tone.color}`}
-        >
+        <Badge size="sm" className={tone.color}>
           {tone.label}
-        </span>
+        </Badge>
         <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-          <button
-            type="button"
+          <IconButton
+            size="xs"
+            variant="ghost"
+            aria-label={letter.pinned ? "取消置顶" : "置顶"}
             onClick={(e) => {
               e.stopPropagation();
               onPin();
             }}
             title={letter.pinned ? "取消置顶" : "置顶"}
-            className="rounded p-1 text-ink-500 hover:bg-ink-700 hover:text-accent-300"
+            className="text-ink-500 hover:bg-ink-700 hover:text-accent-300"
           >
             {letter.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            aria-label="归档"
             onClick={(e) => {
               e.stopPropagation();
               onDismiss();
             }}
             title="归档"
-            className="rounded p-1 text-ink-500 hover:bg-ink-700 hover:text-rose-300"
+            className="text-ink-500 hover:bg-ink-700 hover:text-rose-300"
           >
             <Archive className="h-3.5 w-3.5" />
-          </button>
+          </IconButton>
         </div>
       </div>
     </div>
@@ -544,32 +541,30 @@ function LetterDetail({
     <div className="flex h-full flex-col overflow-y-auto p-8">
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-5 flex flex-wrap items-center gap-3">
-          <span className={`rounded-full px-2.5 py-0.5 text-xs ring-1 ${tone.color}`}>
+          <Badge size="md" className={tone.color}>
             {tone.label}
-          </span>
+          </Badge>
           <span className="text-xs text-ink-500">
             {new Date(letter.generatedAt).toLocaleString("zh-CN")}
           </span>
           {deleteConfirming && !deleting && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="ghost"
               data-testid="letter-delete-cancel"
               onClick={onCancelDelete}
-              className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+              className="ml-auto"
             >
               取消
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant={deleteConfirming ? "danger" : "ghost"}
             data-testid="letter-delete-button"
             onClick={onRequestDelete}
             disabled={deleting}
-            className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs ${
-              deleteConfirming
-                ? "bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
-                : "text-ink-500 hover:bg-ink-800 hover:text-rose-300"
-            } disabled:cursor-wait disabled:opacity-70 ${deleteConfirming ? "" : "ml-auto"}`}
+            className={deleteConfirming ? "" : "ml-auto text-ink-500 hover:text-rose-300"}
           >
             {deleting ? (
               <MotionSpinner />
@@ -577,7 +572,7 @@ function LetterDetail({
               <Trash2 className="h-3.5 w-3.5" />
             )}
             {deleting ? "删除中" : deleteConfirming ? "确认删除" : "删除"}
-          </button>
+          </Button>
         </div>
         {deleteError && (
           <div className="mb-4 rounded-md border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
@@ -695,13 +690,6 @@ function GenerateLetterDialog({
   onGenerated: (letter: CharacterLetterRecord) => void;
 }): JSX.Element {
   const reduce = useReducedMotion();
-  const buttonMotion = reduce
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
   const [characterId, setCharacterId] = useState<string>("");
   const [tone, setTone] = useState<CharacterLetterTone | "">(initialTone ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -758,23 +746,24 @@ function GenerateLetterDialog({
             <p className="mt-1 text-xs leading-5 text-amber-900/80 dark:text-amber-100/80">
               先去人物页创建一个角色，填写基本身份、目标或关系，再回来生成来信会更有用。
             </p>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={onOpenCharacters}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-amber-600/45 bg-white/35 px-3 py-1.5 text-xs font-medium text-amber-950 hover:bg-amber-100/60 dark:border-amber-300/30 dark:bg-transparent dark:text-amber-100 dark:hover:bg-amber-400/10"
+              className="mt-3 border-amber-600/45 bg-white/35 text-amber-950 hover:bg-amber-100/60 dark:border-amber-300/30 dark:bg-transparent dark:text-amber-100 dark:hover:bg-amber-400/10"
             >
               <UserRound className="h-3.5 w-3.5" />
               去人物页
-            </button>
+            </Button>
           </div>
         ) : (
           <>
             <label className="mb-3 block text-xs">
               <div className="mb-1.5 text-ink-400">写信人物</div>
-              <select
+              <Select
                 value={characterId}
                 onChange={(e) => setCharacterId(e.target.value)}
-                className="w-full rounded-md border border-ink-700 bg-ink-800 px-2 py-2 text-sm text-ink-100"
+                className="rounded-md border-ink-700 py-2"
               >
                 <option value="">自动选择一位角色</option>
                 {characters.map((c) => (
@@ -782,17 +771,17 @@ function GenerateLetterDialog({
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
 
             <label className="mb-4 block text-xs">
               <div className="mb-1.5 text-ink-400">来信语气</div>
-              <select
+              <Select
                 value={tone}
                 onChange={(e) =>
                   setTone(e.target.value as CharacterLetterTone | "")
                 }
-                className="w-full rounded-md border border-ink-700 bg-ink-800 px-2 py-2 text-sm text-ink-100"
+                className="rounded-md border-ink-700 py-2"
               >
                 <option value="">自动判断</option>
                 <option value="grateful">感谢</option>
@@ -800,7 +789,7 @@ function GenerateLetterDialog({
                 <option value="curious">追问</option>
                 <option value="encouraging">鼓励</option>
                 <option value="neutral">日常</option>
-              </select>
+              </Select>
             </label>
 
             {error && (
@@ -818,27 +807,26 @@ function GenerateLetterDialog({
         )}
 
         <div className="mt-5 flex justify-end gap-2">
-          <motion.button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={onClose}
-            className="rounded-md px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
-            {...buttonMotion}
           >
             取消
-          </motion.button>
-          <motion.button
-            type="button"
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
             disabled={genMut.isPending || characters.length === 0}
             onClick={() => {
               setError(null);
               genMut.mutate();
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent-500 px-4 py-1.5 text-xs font-medium text-ink-950 hover:bg-accent-400 disabled:bg-ink-200 disabled:text-ink-500 disabled:opacity-100 dark:disabled:bg-ink-800 dark:disabled:text-ink-500"
-            {...(genMut.isPending || characters.length === 0 ? {} : buttonMotion)}
+            className="px-4"
           >
             {genMut.isPending && <MotionSpinner />}
             {genMut.isPending ? "生成中" : "生成"}
-          </motion.button>
+          </Button>
         </div>
       </motion.div>
     </AnimatedDialog>
