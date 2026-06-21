@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { WorldEntryRecord } from "@inkforge/shared";
 import { pickStableColor } from "../../lib/stable-color";
+import { Badge } from "../ui";
 
 const DEFAULT_CATEGORIES = ["地点", "门派", "物件", "事件", "概念"];
 
@@ -56,7 +57,12 @@ export function WorldCategorySidebar({
           style={{ background: dotColor }}
         />
         <span className="flex-1 truncate">{label}</span>
-        <span className="text-xs text-ink-500">{count}</span>
+        <Badge
+          tone="neutral"
+          className="ml-auto rounded bg-ink-800/50 px-1.5 py-0 text-xs font-normal text-ink-500 ring-ink-700/60"
+        >
+          {count}
+        </Badge>
       </button>
     );
   };

@@ -204,7 +204,12 @@ export function AchievementHallPage(): JSX.Element {
           <div key={cat} className="mb-5">
             <div className="mb-2 flex items-baseline gap-2 text-sm font-semibold text-ink-100">
               {labelOfCategory(cat)}
-              <span className="text-xs text-ink-500">{defs.length}</span>
+              <Badge
+                tone="neutral"
+                className="rounded bg-ink-800/60 px-1.5 py-0 text-xs font-normal text-ink-500 ring-ink-700/60"
+              >
+                {defs.length}
+              </Badge>
             </div>
             <motion.div
               className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"

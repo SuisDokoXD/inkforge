@@ -17,7 +17,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check, Settings, X } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
-import { Button, IconButton } from "../ui";
+import { Badge, Button, IconButton } from "../ui";
 import { voiceProfileApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -265,9 +265,12 @@ export function VoiceProfileDialog({ open, projectId, onClose }: Props): JSX.Ele
             {QUESTIONS.map((q, idx) => (
               <motion.li key={q.key} variants={reduce ? fadeOnly : staggerItem}>
                 <div className="mb-2">
-                  <span className="mr-2 inline-block w-6 rounded bg-ink-800 px-1.5 py-0.5 text-center text-[11px] font-mono text-ink-400">
+                  <Badge
+                    tone="neutral"
+                    className="mr-2 inline-flex w-6 justify-center rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[11px] font-normal text-ink-400 ring-ink-700/60"
+                  >
                     {idx + 1}
-                  </span>
+                  </Badge>
                   <span className="text-sm font-medium text-ink-100">{q.label}</span>
                   {q.hint && (
                     <span className="ml-2 text-[11px] text-ink-500">— {q.hint}</span>

@@ -231,9 +231,12 @@ export function WorldPackLibrary(): JSX.Element {
               </button>
             );
           })}
-          <span className="ml-auto text-xs text-ink-500">
+          <Badge
+            tone="neutral"
+            className="ml-auto rounded bg-ink-800/60 px-1.5 py-0 text-xs font-normal text-ink-500 ring-ink-700/60"
+          >
             {isLoading ? "加载中…" : `共 ${packs.length} 张卡`}
-          </span>
+          </Badge>
         </div>
       </div>
 

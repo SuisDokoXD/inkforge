@@ -471,7 +471,12 @@ export function ReviewPage(): JSX.Element {
           <div className="flex items-center gap-2">
             <ListChecks className="h-4 w-4 text-ink-400" />
             <h2 className="text-sm font-semibold">报告历史</h2>
-            <span className="ml-auto text-xs text-ink-500">{reports.length} 份</span>
+            <Badge
+              tone="neutral"
+              className="ml-auto rounded bg-ink-800/60 px-1.5 py-0 text-xs font-normal text-ink-500 ring-ink-700/60"
+            >
+              {reports.length} 份
+            </Badge>
           </div>
         </header>
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
