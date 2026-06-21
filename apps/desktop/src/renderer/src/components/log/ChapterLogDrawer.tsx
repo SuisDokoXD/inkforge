@@ -19,12 +19,13 @@ import {
   tapPress,
 } from "../../lib/motion-tokens";
 import { MotionSpinner } from "../MotionSpinner";
+import { Badge } from "../ui";
 
 const KIND_BADGE: Record<ChapterLogEntryKind, { label: string; cls: string }> = {
-  progress: { label: "进度", cls: "bg-emerald-500/20 text-emerald-200" },
-  "ai-run": { label: "模型运行", cls: "bg-violet-500/20 text-violet-200" },
-  manual: { label: "手记", cls: "bg-sky-500/20 text-sky-200" },
-  "daily-reminder": { label: "每日", cls: "bg-accent-500/20 text-accent-200" },
+  progress: { label: "进度", cls: "bg-emerald-500/20 text-emerald-200 ring-emerald-500/30" },
+  "ai-run": { label: "模型运行", cls: "bg-violet-500/20 text-violet-200 ring-violet-500/30" },
+  manual: { label: "手记", cls: "bg-sky-500/20 text-sky-200 ring-sky-500/30" },
+  "daily-reminder": { label: "每日", cls: "bg-accent-500/20 text-accent-200 ring-accent-500/30" },
 };
 
 interface ChapterLogDrawerProps {
@@ -274,9 +275,9 @@ function LogEntryItem({
       variants={reduceMotion ? fadeOnly : staggerItem}
     >
       <div className="flex items-center gap-2">
-        <span className={`rounded px-1.5 py-0.5 text-[10px] ${badge.cls}`}>
+        <Badge tone="neutral" className={`rounded px-1.5 font-normal ${badge.cls}`}>
           {badge.label}
-        </span>
+        </Badge>
         <span className="text-[10px] text-ink-500">
           {new Date(entry.createdAt).toLocaleString()}
         </span>

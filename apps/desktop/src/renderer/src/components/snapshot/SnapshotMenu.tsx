@@ -21,6 +21,7 @@ import {
 } from "../../lib/motion-tokens";
 import { useTimedStatus } from "../../lib/use-timed-status";
 import { MotionSpinner } from "../MotionSpinner";
+import { Badge } from "../ui";
 
 export interface SnapshotMenuProps {
   chapterId: string;
@@ -47,12 +48,12 @@ const KIND_LABELS: Record<ChapterSnapshotKind, string> = {
 };
 
 const KIND_COLORS: Record<ChapterSnapshotKind, string> = {
-  manual: "bg-accent-500/20 text-accent-200",
-  "pre-ai": "bg-sky-500/20 text-sky-200",
-  "post-ai": "bg-emerald-500/20 text-emerald-200",
-  "pre-rewrite": "bg-orange-500/20 text-orange-200",
-  "pre-restore": "bg-rose-500/20 text-rose-200",
-  "auto-periodic": "bg-violet-500/20 text-violet-200",
+  manual: "bg-accent-500/20 text-accent-200 ring-accent-500/30",
+  "pre-ai": "bg-sky-500/20 text-sky-200 ring-sky-500/30",
+  "post-ai": "bg-emerald-500/20 text-emerald-200 ring-emerald-500/30",
+  "pre-rewrite": "bg-orange-500/20 text-orange-200 ring-orange-500/30",
+  "pre-restore": "bg-rose-500/20 text-rose-200 ring-rose-500/30",
+  "auto-periodic": "bg-violet-500/20 text-violet-200 ring-violet-500/30",
 };
 
 type StatusMessage = {
@@ -368,11 +369,12 @@ export function SnapshotMenu({
               className="flex flex-col gap-1 rounded-md border border-ink-700 bg-ink-900/40 p-2 text-xs"
             >
               <div className="flex items-center gap-2">
-                <span
-                  className={`rounded px-1.5 py-0.5 text-[10px] ${KIND_COLORS[snap.kind]}`}
+                <Badge
+                  tone="neutral"
+                  className={`rounded px-1.5 font-normal ${KIND_COLORS[snap.kind]}`}
                 >
                   {KIND_LABELS[snap.kind]}
-                </span>
+                </Badge>
                 {snap.label && (
                   <span className="truncate text-ink-100" title={snap.label}>
                     {snap.label}

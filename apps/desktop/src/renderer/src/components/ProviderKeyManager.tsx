@@ -9,6 +9,7 @@ import type {
 import { providerKeyApi } from "../lib/api";
 import { fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Badge } from "./ui";
 
 interface ProviderKeyManagerProps {
   providerId: string;
@@ -50,21 +51,21 @@ function statusBadge(
   key: ProviderKeyRecord,
   health: ProviderHealthSnapshot | undefined,
 ): { color: string; text: string } {
-  if (key.disabled) return { color: "bg-ink-700 text-ink-400", text: "已停用" };
+  if (key.disabled) return { color: "bg-ink-700 text-ink-400 ring-ink-600/70", text: "已停用" };
   const hp = health?.keys.find((k) => k.keyId === key.id);
   if (hp?.cooldownUntil && formatCooldown(hp.cooldownUntil)) {
     return {
-      color: "bg-accent-500/20 text-accent-200",
+      color: "bg-accent-500/20 text-accent-200 ring-accent-500/30",
       text: `暂停 ${formatCooldown(hp.cooldownUntil)}`,
     };
   }
   if (key.failCount > 0) {
     return {
-      color: "bg-red-500/15 text-red-300",
+      color: "bg-red-500/15 text-red-300 ring-red-500/30",
       text: `失败 ${key.failCount}`,
     };
   }
-  return { color: "bg-emerald-500/15 text-emerald-300", text: "可用" };
+  return { color: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30", text: "可用" };
 }
 
 export function ProviderKeyManager({
@@ -268,9 +269,9 @@ export function ProviderKeyManager({
               <span className="flex-1 truncate text-[12px] text-ink-100">
                 {key.label}
               </span>
-              <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${badge.color}`}>
+              <Badge tone="neutral" className={`shrink-0 rounded px-1.5 font-normal ${badge.color}`}>
                 {badge.text}
-              </span>
+              </Badge>
               <input
                 type="number"
                 min={0}

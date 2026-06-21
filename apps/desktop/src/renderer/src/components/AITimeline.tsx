@@ -10,7 +10,7 @@ import {
   fadeSlideUp,
 } from "../lib/motion-tokens";
 import type { AIFeedbackRecord } from "@inkforge/shared";
-import { Button } from "./ui";
+import { Badge, Button } from "./ui";
 
 type DisplayItem = {
   kind: "streaming" | "history";
@@ -24,8 +24,8 @@ type DisplayItem = {
 };
 
 const TYPE_META: Record<string, { label: string; badgeClass: string }> = {
-  analysis: { label: "自动建议", badgeClass: "bg-sky-500/20 text-sky-300" },
-  critique: { label: "选段审查", badgeClass: "bg-accent-500/20 text-accent-300" },
+  analysis: { label: "自动建议", badgeClass: "bg-sky-500/20 text-sky-300 ring-sky-500/30" },
+  critique: { label: "选段审查", badgeClass: "bg-accent-500/20 text-accent-300 ring-accent-500/30" },
 };
 
 function summarize(text: string, max = 60): string {
@@ -335,11 +335,12 @@ export function AITimeline(): JSX.Element {
                       aria-expanded={expanded}
                       aria-controls={`ai-feedback-${item.id}`}
                     >
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${meta.badgeClass}`}
+                      <Badge
+                        tone="neutral"
+                        className={`rounded px-1.5 font-normal uppercase tracking-wide ${meta.badgeClass}`}
                       >
                         {meta.label}
-                      </span>
+                      </Badge>
                       <span className="flex-1 truncate text-[12px] text-ink-300">
                         {item.status === "streaming"
                           ? "生成中…"
