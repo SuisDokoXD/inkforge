@@ -16,6 +16,7 @@ import {
   hoverLift,
   tapPress,
 } from "../../../lib/motion-tokens";
+import { Badge } from "../../ui";
 
 export type DialogSaveState = "idle" | "saving" | "saved";
 
@@ -63,28 +64,28 @@ export function DialogShell({
               )}
             </div>
             {saveState && saveState !== "idle" && (
-              <motion.span
-                className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] transition-[color,background-color,box-shadow,opacity] duration-200 ${
-                  saveState === "saving"
-                    ? "bg-ink-800 text-ink-300"
-                    : "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-400/40"
-                }`}
+              <motion.div
                 variants={reduce ? fadeOnly : fadeSlideUp}
                 initial="initial"
                 animate="animate"
               >
-                {saveState === "saving" ? (
-                  <>
-                    <MotionSpinner className="h-3 w-3" />
-                    保存中
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3 w-3" />
-                    已保存
-                  </>
-                )}
-              </motion.span>
+                <Badge
+                  tone={saveState === "saving" ? "neutral" : "success"}
+                  className="gap-1 px-2 text-[11px]"
+                >
+                  {saveState === "saving" ? (
+                    <>
+                      <MotionSpinner className="h-3 w-3" />
+                      保存中
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3 w-3" />
+                      已保存
+                    </>
+                  )}
+                </Badge>
+              </motion.div>
             )}
             <motion.button
               onClick={onClose}

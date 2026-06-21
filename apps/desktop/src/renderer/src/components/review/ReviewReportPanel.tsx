@@ -34,6 +34,7 @@ import {
   staggerItem,
   tapPress,
 } from "../../lib/motion-tokens";
+import { Badge } from "../ui";
 
 interface ReviewReportPanelProps {
   reportId: string;
@@ -45,26 +46,26 @@ interface ReviewReportPanelProps {
 
 function severityMeta(severity: ReviewSeverity): {
   label: string;
-  className: string;
+  tone: "warning" | "danger" | "accent";
   icon: typeof AlertTriangle;
 } {
   if (severity === "error") {
     return {
       label: "严重",
-      className: "border-rose-500/35 bg-rose-500/8 text-rose-200",
+      tone: "danger",
       icon: AlertTriangle,
     };
   }
   if (severity === "info") {
     return {
       label: "提示",
-      className: "border-sky-500/35 bg-sky-500/8 text-sky-200",
+      tone: "accent",
       icon: Info,
     };
   }
   return {
     label: "警告",
-    className: "border-amber-500/35 bg-amber-500/8 text-amber-200",
+    tone: "warning",
     icon: AlertTriangle,
   };
 }
@@ -328,9 +329,13 @@ export function ReviewReportPanel({
                           {getReviewDimensionHelp(dim)}
                         </div>
                       </div>
-                      <span className="rounded bg-ink-950 px-2 py-0.5 text-xs text-ink-400">
+                      <Badge
+                        tone="neutral"
+                        size="md"
+                        className="bg-ink-950 px-2 text-ink-400 ring-ink-700"
+                      >
                         {list.length}
-                      </span>
+                      </Badge>
                     </header>
                     <motion.ul
                       className="divide-y divide-ink-700/70"
@@ -508,10 +513,10 @@ function FindingRow({
       className={`p-3 ${finding.dismissed ? "opacity-45" : ""}`}
     >
       <div className="mb-2 flex items-center gap-2 text-xs">
-        <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 ${meta.className}`}>
+        <Badge tone={meta.tone} className="gap-1 rounded-md px-1.5">
           <Icon aria-hidden className="h-3 w-3" />
           {meta.label}
-        </span>
+        </Badge>
         {chapter ? (
           <motion.button
             type="button"
