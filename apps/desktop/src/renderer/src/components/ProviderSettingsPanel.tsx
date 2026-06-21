@@ -13,6 +13,7 @@ import { providerApi, settingsApi } from "../lib/api";
 import { useT } from "../lib/i18n";
 import { useAppStore } from "../stores/app-store";
 import { ProviderKeyManager } from "./ProviderKeyManager";
+import { Badge, Button, IconButton, Select, TextField } from "./ui";
 import { fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 
@@ -323,14 +324,15 @@ export function ProviderSettingsPanel(): JSX.Element | null {
         <aside className="flex w-80 shrink-0 flex-col border-r border-ink-700">
           <div className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
             <span className="text-sm font-semibold">{t("provider.panel.listTitle")}</span>
-            <button
+            <Button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md bg-accent-500 px-2 py-1 text-xs font-medium text-ink-900 hover:bg-accent-400"
+              variant="primary"
+              size="sm"
               onClick={() => setForm(EMPTY_FORM)}
             >
               <Plus className="h-3.5 w-3.5" />
               {t("common.new")}
-            </button>
+            </Button>
           </div>
           <ul className="min-h-0 flex-1 overflow-auto scrollbar-thin py-1">
             {providers.length === 0 && (
@@ -350,9 +352,9 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                     <div className="flex w-full items-center gap-2">
                       <span className="truncate">{p.label}</span>
                       {isActive && (
-                        <span className="rounded-full bg-green-500/20 px-1.5 py-0.5 text-[10px] text-green-300">
+                        <Badge tone="success" size="sm">
                           {t("provider.panel.active")}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                     <span className="mt-0.5 text-xs text-ink-400">
@@ -371,23 +373,24 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <h2 className="text-base font-semibold">{t("provider.panel.title")}</h2>
               <p className="text-xs text-ink-400">{t("provider.panel.subtitle")}</p>
             </div>
-            <button
+            <IconButton
               type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
+              variant="ghost"
+              size="sm"
               onClick={() => setOpen(false)}
               aria-label={t("common.close")}
               title={t("common.close")}
             >
               <X className="h-4 w-4" />
-            </button>
+            </IconButton>
           </header>
 
           <div className="min-h-0 flex-1 overflow-auto scrollbar-thin px-5 py-4 text-sm">
             <div className="grid gap-3">
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.preset")}</span>
-                <select
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                <Select
+                  className="mt-1 bg-ink-900"
                   value={form.catalogId}
                   onChange={(e) => setForm((prev) => applyCatalogToForm(prev, e.target.value))}
                 >
@@ -397,7 +400,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                       {entry.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 {selectedCatalog && (
                   <p className="mt-1 text-xs text-ink-400">
                     {resolveCatalogDescription(selectedCatalog.id, selectedCatalog.description)}
@@ -420,8 +423,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
 
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.displayName")}</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                <TextField
+                  className="mt-1 bg-ink-900"
                   value={form.label}
                   aria-label={t("provider.panel.displayName")}
                   onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
@@ -431,8 +434,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-ink-300">{t("provider.panel.vendor")}</span>
-                  <select
-                    className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                  <Select
+                    className="mt-1 bg-ink-900"
                     value={form.vendor}
                     onChange={(e) => {
                       const vendor = e.target.value as ProviderVendor;
@@ -450,27 +453,28 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                         {t(vendor.labelKey)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label className="block">
                   <span className="text-ink-300">{t("provider.panel.defaultModel")}</span>
                   <div className="mt-1 flex gap-2">
-                    <input
+                    <TextField
                       list="provider-settings-models"
-                      className="flex-1 rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                      className="w-auto flex-1 bg-ink-900"
                       value={form.defaultModel}
                       aria-label={t("provider.panel.defaultModel")}
                       onChange={(e) => setForm((f) => ({ ...f, defaultModel: e.target.value }))}
                     />
-                    <button
+                    <Button
                       type="button"
-                      className="shrink-0 rounded-md border border-ink-600 px-2 py-1 text-xs text-ink-300 hover:bg-ink-700 disabled:opacity-50"
+                      className="shrink-0"
+                      size="sm"
                       disabled={fetchingModels}
                       onClick={handleFetchRemoteModels}
                       title="从模型服务读取可用模型列表"
                     >
                       {fetchingModels ? "读取中…" : "读取模型"}
-                    </button>
+                    </Button>
                   </div>
                   {(() => {
                     const merged = [...new Set([...suggestedModels, ...remoteModels])];
@@ -520,8 +524,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
 
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.baseUrl")}</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                <TextField
+                  className="mt-1 bg-ink-900"
                   value={form.baseUrl}
                   aria-label={t("provider.panel.baseUrl")}
                   placeholder={
@@ -540,8 +544,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                     <span className="text-ink-500">({t("provider.panel.apiKeyKeepExisting")})</span>
                   )}
                 </span>
-                <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 font-mono text-sm focus:border-accent-500 focus:outline-none"
+                <TextField
+                  className="mt-1 bg-ink-900 font-mono"
                   type="password"
                   value={form.apiKey}
                   aria-label={t("provider.panel.apiKey")}
@@ -552,8 +556,8 @@ export function ProviderSettingsPanel(): JSX.Element | null {
 
               <label className="block">
                 <span className="text-ink-300">{t("provider.panel.tags")}</span>
-                <input
-                  className="mt-1 w-full rounded-md border border-ink-600 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+                <TextField
+                  className="mt-1 bg-ink-900"
                   value={form.tags}
                   aria-label={t("provider.panel.tags")}
                   onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
@@ -588,20 +592,20 @@ export function ProviderSettingsPanel(): JSX.Element | null {
             <div className="flex gap-2">
               {form.id && (
                 <>
-                  <button
-                    className="rounded-md border border-ink-600 px-3 py-1.5 text-sm hover:bg-ink-700 disabled:opacity-50"
+                  <Button
+                    size="md"
                     onClick={() => testMutation.mutate(form.id!)}
                     disabled={testMutation.isPending}
                   >
                     {testMutation.isPending ? t("provider.panel.testing") : t("provider.panel.testConnection")}
-                  </button>
-                  <button
-                    className="rounded-md border border-ink-600 px-3 py-1.5 text-sm hover:bg-ink-700 disabled:opacity-50"
+                  </Button>
+                  <Button
+                    size="md"
                     onClick={() => setActiveMutation.mutate(form.id!)}
                     disabled={resolvedActiveId === form.id || setActiveMutation.isPending}
                   >
                     {resolvedActiveId === form.id ? t("provider.panel.active") : t("provider.panel.setActive")}
-                  </button>
+                  </Button>
                   <AnimatePresence initial={false} mode="wait">
                     {deleteConfirming ? (
                       <motion.div
@@ -615,30 +619,32 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                         <span className="max-w-52 truncate text-xs text-red-300">
                           {t("provider.panel.confirmDelete", { label: form.label })}
                         </span>
-                        <button
+                        <Button
                           type="button"
-                          className="rounded-md border border-ink-600 px-2 py-1 text-xs hover:bg-ink-700 disabled:opacity-50"
+                          size="sm"
                           onClick={() => setDeleteConfirming(false)}
                           disabled={deleteMutation.isPending}
                         >
                           {t("common.cancel")}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                           type="button"
-                          className="rounded-md border border-red-500/50 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                          variant="danger"
+                          size="sm"
                           onClick={() => {
                             if (form.id) deleteMutation.mutate(form.id);
                           }}
                           disabled={deleteMutation.isPending}
                         >
                           {deleteMutation.isPending ? "删除中" : t("common.confirm")}
-                        </button>
+                        </Button>
                       </motion.div>
                     ) : (
-                      <motion.button
+                      <Button
                         key="delete-start"
                         type="button"
-                        className="rounded-md border border-red-500/50 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                        variant="danger"
+                        size="md"
                         onClick={() => setDeleteConfirming(true)}
                         disabled={deleteMutation.isPending}
                         variants={fadeOnly}
@@ -647,21 +653,23 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                         exit="exit"
                       >
                         {t("common.delete")}
-                      </motion.button>
+                      </Button>
                     )}
                   </AnimatePresence>
                 </>
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                className="rounded-md bg-ink-700 px-3 py-1.5 text-sm hover:bg-ink-600"
+              <Button
+                size="md"
                 onClick={() => setForm(EMPTY_FORM)}
               >
                 {t("common.new")}
-              </button>
-              <button
-                className="rounded-md bg-accent-500 px-4 py-1.5 text-sm font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-60"
+              </Button>
+              <Button
+                className="px-4"
+                variant="primary"
+                size="md"
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending}
               >
@@ -670,7 +678,7 @@ export function ProviderSettingsPanel(): JSX.Element | null {
                   : form.id
                     ? t("provider.panel.saveChanges")
                     : t("provider.panel.create")}
-              </button>
+              </Button>
             </div>
           </footer>
         </section>
