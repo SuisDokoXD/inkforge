@@ -29,6 +29,7 @@ import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../../lib/motion-tokens";
 import { useTimedStatus } from "../../lib/use-timed-status";
 import { MotionSpin } from "../MotionSpinner";
+import { Badge } from "../ui";
 import type {
   WorldInfoEntryTrace,
   WorldInfoTraceRecord,
@@ -66,41 +67,41 @@ function sceneLabel(scene: string): string {
 function StatusBadge({ trace }: { trace: WorldInfoEntryTrace }): JSX.Element {
   if (trace.injected) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300 ring-1 ring-emerald-400/30">
+      <Badge tone="success" className="gap-1 px-1.5 text-[11px]">
         <CheckCircle2 className="h-3 w-3" />
         {trace.constant ? "总是参考" : "已参考"}
-      </span>
+      </Badge>
     );
   }
   if (trace.droppedReason === "budget_exceeded") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-orange-500/15 px-1.5 py-0.5 text-[11px] text-orange-300 ring-1 ring-orange-400/30">
+      <Badge tone="warning" className="gap-1 px-1.5 text-[11px]">
         <Wallet className="h-3 w-3" />
         字数超限
-      </span>
+      </Badge>
     );
   }
   if (trace.droppedReason === "prob_failed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-sky-500/15 px-1.5 py-0.5 text-[11px] text-sky-300 ring-1 ring-sky-400/30">
+      <Badge tone="accent" className="gap-1 px-1.5 text-[11px]">
         <Dices className="h-3 w-3" />
         随机跳过
-      </span>
+      </Badge>
     );
   }
   if (trace.droppedReason === "logic_failed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[11px] text-rose-300 ring-1 ring-rose-400/30">
+      <Badge tone="danger" className="gap-1 px-1.5 text-[11px]">
         <CircleX className="h-3 w-3" />
         未命中
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-ink-700 px-1.5 py-0.5 text-[11px] text-ink-300">
+    <Badge tone="neutral" className="gap-1 px-1.5 text-[11px]">
       <XCircle className="h-3 w-3" />
       未参考
-    </span>
+    </Badge>
   );
 }
 

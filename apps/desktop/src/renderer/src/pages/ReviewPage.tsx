@@ -31,7 +31,7 @@ import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { MotionSpinner } from "../components/MotionSpinner";
 import { ReviewReportPanel } from "../components/review/ReviewReportPanel";
-import { Button } from "../components/ui";
+import { Badge, Button } from "../components/ui";
 
 type RangeKind = "book" | "chapter";
 
@@ -570,32 +570,32 @@ export function ReviewPage(): JSX.Element {
 function StatusPill({ status }: { status: ReviewReportRecord["status"] }): JSX.Element {
   if (status === "completed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-300">
+      <Badge tone="success" className="gap-1 px-1.5 text-[11px]">
         <CheckCircle2 className="h-3 w-3" />
         已完成
-      </span>
+      </Badge>
     );
   }
   if (status === "running") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-accent-500/15 px-1.5 py-0.5 text-[11px] text-accent-300">
+      <Badge tone="accent" className="gap-1 px-1.5 text-[11px]">
         <MotionSpinner className="h-3 w-3" />
         运行中
-      </span>
+      </Badge>
     );
   }
   if (status === "failed") {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-rose-500/15 px-1.5 py-0.5 text-[11px] text-rose-300">
+      <Badge tone="danger" className="gap-1 px-1.5 text-[11px]">
         <AlertTriangle className="h-3 w-3" />
         失败
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-ink-800 px-1.5 py-0.5 text-[11px] text-ink-300">
+    <Badge tone="neutral" className="gap-1 px-1.5 text-[11px]">
       <Info className="h-3 w-3" />
       {reportStatusLabel(status)}
-    </span>
+    </Badge>
   );
 }
