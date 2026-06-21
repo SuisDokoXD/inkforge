@@ -498,12 +498,13 @@ function SearchQueryTrail({
       <div className="text-[11px] font-medium text-ink-300">已尝试的查法</div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {visibleQueries.map((item) => (
-          <span
+          <Badge
             key={item}
-            className="max-w-full rounded-full border border-ink-700 bg-ink-950/40 px-2 py-1 text-[11px] leading-4 text-ink-400"
+            tone="neutral"
+            className="max-w-full bg-ink-950/40 px-2 py-1 text-[11px] font-normal leading-4 text-ink-400 ring-ink-700"
           >
             {item}
-          </span>
+          </Badge>
         ))}
       </div>
     </div>
@@ -591,7 +592,12 @@ function SearchResults({
       {state.hits.map((hit, idx) => (
         <article key={`${hit.url}-${idx}`} className="px-5 py-4">
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
-            <span className="rounded bg-ink-800 px-1.5 py-[1px]">{providerLabel(hit.provider)}</span>
+            <Badge
+              tone="neutral"
+              className="bg-ink-800 px-1.5 py-[1px] text-[11px] font-normal text-ink-400 ring-ink-700"
+            >
+              {providerLabel(hit.provider)}
+            </Badge>
             {hit.score !== undefined && <span>相关度 {hit.score.toFixed(2)}</span>}
             {hit.url && (
               <a
