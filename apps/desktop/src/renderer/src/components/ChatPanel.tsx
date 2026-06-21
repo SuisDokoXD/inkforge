@@ -9,12 +9,10 @@ import { friendlyErrorMessage } from "../lib/friendly-error";
 import {
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
   staggerContainer,
   staggerItem,
-  tapPress,
 } from "../lib/motion-tokens";
+import { Button, Textarea } from "./ui";
 
 type DisplayMessage = LLMChatMessage & {
   id: string;
@@ -81,14 +79,6 @@ export function ChatPanel(): JSX.Element {
   const reduceMotion = useReducedMotion() === true;
   const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
   const messageMotion = reduceMotion ? fadeOnly : staggerItem;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
-
   useEffect(() => {
     setMessages(loadHistory(historyKey));
     setConfirmClear(false);
@@ -223,40 +213,45 @@ export function ChatPanel(): JSX.Element {
               role="group"
               aria-label="确认清空当前对话"
             >
-              <motion.button
+              <Button
                 type="button"
-                className="rounded px-2 py-0.5 text-ink-400 hover:bg-ink-700 hover:text-ink-100"
+                variant="ghost"
+                size="sm"
                 onClick={() => setConfirmClear(false)}
-                {...buttonMotion}
               >
                 取消
-              </motion.button>
-              <motion.button
+              </Button>
+              <Button
                 type="button"
-                className="rounded bg-red-500/10 px-2 py-0.5 font-medium text-red-200 hover:bg-red-500/20 disabled:cursor-default disabled:opacity-50"
+                variant="danger"
+                size="sm"
                 onClick={clear}
                 disabled={pending}
-                {...buttonMotion}
               >
                 确认清空
-              </motion.button>
+              </Button>
             </motion.div>
           ) : (
-            <motion.button
+            <Button
               key="clear-start"
               type="button"
-              className="inline-flex shrink-0 items-center gap-1 rounded px-2 py-0.5 text-ink-400 hover:bg-ink-700 disabled:cursor-default disabled:opacity-40"
+              className="shrink-0"
+              variant="ghost"
+              size="sm"
               onClick={() => setConfirmClear(true)}
               disabled={!canClear}
               title={pending ? "等待回复完成后再清空" : "清空当前对话"}
               aria-label="清空当前对话"
               aria-expanded={confirmClear}
               aria-controls="chat-clear-confirm"
-              {...buttonMotion}
+              variants={stateMotion}
+              initial="initial"
+              animate="animate"
+              exit="exit"
             >
               <Trash2 className="h-3 w-3" aria-hidden />
               清空
-            </motion.button>
+            </Button>
           )}
         </AnimatePresence>
       </div>
@@ -334,10 +329,10 @@ export function ChatPanel(): JSX.Element {
         <label htmlFor="chat-panel-input" className="sr-only">
           向写作助手提问
         </label>
-        <textarea
+        <Textarea
           id="chat-panel-input"
           ref={textareaRef}
-          className="min-h-[56px] w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1.5 text-[13px] text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none"
+          className="min-h-[56px] rounded-md bg-ink-900 px-2 py-1.5 text-[13px]"
           placeholder={pending ? "生成中…" : "问点什么，比如：这段怎么改更紧凑？"}
           value={input}
           disabled={pending}
@@ -348,15 +343,16 @@ export function ChatPanel(): JSX.Element {
         />
         <div className="mt-1 flex items-center justify-between text-[11px] text-ink-500">
           <span id="chat-panel-input-hint">Enter 发送 · Shift+Enter 换行</span>
-          <motion.button
+          <Button
             type="button"
-            className="rounded-md border border-accent-500/40 bg-accent-500/20 px-3 py-0.5 text-accent-200 hover:bg-accent-500/30 disabled:cursor-not-allowed disabled:opacity-40"
+            className="border-accent-500/40 bg-accent-500/20 px-3 py-0.5 text-accent-200 hover:bg-accent-500/30"
+            variant="accentSoft"
+            size="sm"
             onClick={() => void submit()}
             disabled={!canSend}
-            {...buttonMotion}
           >
             发送
-          </motion.button>
+          </Button>
         </div>
       </div>
     </div>
