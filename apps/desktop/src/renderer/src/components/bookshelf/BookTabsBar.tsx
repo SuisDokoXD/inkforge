@@ -5,11 +5,9 @@ import { useBookshelfStore } from "../../stores/bookshelf-store";
 import {
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
 } from "../../lib/motion-tokens";
 import { CoverUploader } from "./CoverUploader";
+import { Button, IconButton } from "../ui";
 
 interface BookTabsBarProps {
   books: BookSummary[];
@@ -33,13 +31,6 @@ export function BookTabsBar({
   const closeTab = useBookshelfStore((s) => s.closeBookTab);
   const reduceMotion = useReducedMotion() === true;
   const tabMotion = reduceMotion ? fadeOnly : fadeSlideUp;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   const bookMap = new Map(books.map((b) => [b.project.id, b]));
 
@@ -80,43 +71,46 @@ export function BookTabsBar({
                 />
                 <span className="max-w-[140px] truncate">{name}</span>
               </button>
-              <motion.button
+              <IconButton
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   closeTab(tab.projectId);
                 }}
-                className="inline-flex h-5 w-5 items-center justify-center rounded text-ink-500 opacity-0 transition-opacity hover:text-rose-400 focus-visible:opacity-100 group-hover:opacity-100"
+                className="h-5 w-5 text-ink-500 opacity-0 transition-opacity hover:bg-transparent hover:text-rose-400 focus-visible:opacity-100 group-hover:opacity-100"
+                variant="ghost"
+                size="xs"
                 aria-label={`关闭书籍标签：${name}`}
                 title="关闭"
-                {...buttonMotion}
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
-              </motion.button>
+              </IconButton>
             </motion.div>
           );
         })}
       </AnimatePresence>
-      <motion.button
+      <Button
         type="button"
         onClick={onOpenNewBook}
-        className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-ink-300 hover:bg-ink-700/60 hover:text-ink-100"
-        {...buttonMotion}
+        className="px-2 py-1"
+        variant="ghost"
+        size="sm"
       >
         <Plus className="h-3.5 w-3.5" aria-hidden />
         <span>打开</span>
-      </motion.button>
+      </Button>
       {onCreateBook && (
-        <motion.button
+        <Button
           type="button"
           onClick={onCreateBook}
-          className="flex items-center gap-1 rounded-md bg-accent-500/20 px-2 py-1 text-xs text-accent-200 hover:bg-accent-500/30"
+          className="bg-accent-500/20 px-2 py-1 text-accent-200 hover:bg-accent-500/30"
+          variant="accentSoft"
+          size="sm"
           title="新建一本书"
-          {...buttonMotion}
         >
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           <span>新建</span>
-        </motion.button>
+        </Button>
       )}
       {tabs.length === 0 && (
         <motion.div

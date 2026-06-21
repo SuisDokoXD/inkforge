@@ -11,6 +11,7 @@ import {
   staggerItem,
   tapPress,
 } from "../../lib/motion-tokens";
+import { Button, IconButton } from "../ui";
 
 interface BookListGridProps {
   books: BookSummary[];
@@ -81,25 +82,27 @@ export function BookListGrid({
         </h2>
         <div className="flex items-center gap-2">
           {onCreateBook && (
-            <motion.button
+            <Button
               type="button"
               onClick={onCreateBook}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400"
-              {...buttonMotion}
+              className="h-8"
+              variant="primary"
+              size="sm"
             >
               <Plus size={14} aria-hidden />
               新建书籍
-            </motion.button>
+            </Button>
           )}
           {onClose && (
-            <motion.button
+            <Button
               type="button"
               onClick={onClose}
-              className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
-              {...buttonMotion}
+              className="px-2 py-1"
+              variant="ghost"
+              size="sm"
             >
               关闭
-            </motion.button>
+            </Button>
           )}
         </div>
       </div>
@@ -113,15 +116,16 @@ export function BookListGrid({
               先创建一本书，之后章节、素材、人物和模型写作都会围绕这本书组织。
             </p>
             {onCreateBook && (
-              <motion.button
+              <Button
                 type="button"
                 onClick={onCreateBook}
-                className="flex h-9 items-center gap-1.5 rounded-md bg-accent-500 px-4 text-sm font-semibold text-ink-950 hover:bg-accent-400"
-                {...buttonMotion}
+                className="h-9 px-4"
+                variant="primary"
+                size="md"
               >
                 <Plus size={15} aria-hidden />
                 创建第一本书
-              </motion.button>
+              </Button>
             )}
           </div>
         ) : (
@@ -208,7 +212,7 @@ export function BookListGrid({
                           exit="exit"
                         >
                           {onOpenSettings && (
-                            <motion.button
+                            <IconButton
                               type="button"
                               title="设定 / 全局世界观"
                               aria-label={`打开《${book.project.name}》的设定`}
@@ -216,14 +220,15 @@ export function BookListGrid({
                                 e.stopPropagation();
                                 onOpenSettings(book);
                               }}
-                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-accent-500/25 hover:text-accent-100"
-                              {...buttonMotion}
+                              className="h-7 w-7 bg-ink-900/90 text-ink-300 hover:bg-accent-500/25 hover:text-accent-100"
+                              variant="ghost"
+                              size="xs"
                             >
                               <Settings size={14} aria-hidden />
-                            </motion.button>
+                            </IconButton>
                           )}
                           {onRenameBook && (
-                            <motion.button
+                            <IconButton
                               type="button"
                               title="改名 / 修改基础信息"
                               aria-label={`编辑《${book.project.name}》的基础信息`}
@@ -231,14 +236,15 @@ export function BookListGrid({
                                 e.stopPropagation();
                                 onRenameBook(book);
                               }}
-                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-sky-500/25 hover:text-sky-100"
-                              {...buttonMotion}
+                              className="h-7 w-7 bg-ink-900/90 text-ink-300 hover:bg-sky-500/25 hover:text-sky-100"
+                              variant="ghost"
+                              size="xs"
                             >
                               <Pencil size={14} aria-hidden />
-                            </motion.button>
+                            </IconButton>
                           )}
                           {onDeleteBook && (
-                            <motion.button
+                            <IconButton
                               type="button"
                               title="删除书籍"
                               aria-label={`删除《${book.project.name}》`}
@@ -246,11 +252,12 @@ export function BookListGrid({
                                 e.stopPropagation();
                                 onDeleteBook(book);
                               }}
-                              className="flex h-7 w-7 items-center justify-center rounded bg-ink-900/90 text-ink-300 hover:bg-rose-500/25 hover:text-rose-100"
-                              {...buttonMotion}
+                              className="h-7 w-7 bg-ink-900/90 text-ink-300 hover:bg-rose-500/25 hover:text-rose-100"
+                              variant="ghost"
+                              size="xs"
                             >
                               <Trash2 size={14} aria-hidden />
-                            </motion.button>
+                            </IconButton>
                           )}
                         </motion.div>
                       ) : null}
@@ -274,15 +281,16 @@ export function BookListGrid({
                   </p>
                 </div>
                 {onCreateBook && (
-                  <motion.button
+                  <Button
                     type="button"
                     onClick={onCreateBook}
-                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-md border border-accent-500/50 bg-accent-500/15 px-3 text-sm font-medium text-accent-100 hover:bg-accent-500/25"
-                    {...buttonMotion}
+                    className="h-9 shrink-0 border-accent-500/50 bg-accent-500/15 px-3 text-accent-100 hover:bg-accent-500/25"
+                    variant="accentSoft"
+                    size="md"
                   >
                     <Plus size={15} aria-hidden />
                     新书
-                  </motion.button>
+                  </Button>
                 )}
               </div>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
