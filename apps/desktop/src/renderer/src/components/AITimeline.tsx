@@ -8,11 +8,9 @@ import { friendlyErrorMessage } from "../lib/friendly-error";
 import {
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
 } from "../lib/motion-tokens";
 import type { AIFeedbackRecord } from "@inkforge/shared";
+import { Button } from "./ui";
 
 type DisplayItem = {
   kind: "streaming" | "history";
@@ -47,13 +45,6 @@ export function AITimeline(): JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion() === true;
   const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   const historyQuery = useQuery<AIFeedbackRecord[]>({
     queryKey: ["feedbacks", currentChapterId],
@@ -173,16 +164,17 @@ export function AITimeline(): JSX.Element {
       {(historyCount > 0 || dismissedCount > 0) && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-b border-ink-700 px-3 py-1.5 text-xs">
           {emptyHistoryCount > 0 && currentChapterId && (
-            <motion.button
+            <Button
               type="button"
-              className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-50"
+              className="px-2 py-0.5 text-[11px]"
+              variant="ghost"
+              size="sm"
               onClick={() => deleteEmpty.mutate(currentChapterId)}
               disabled={deleteEmpty.isPending || clearChapter.isPending}
               title="删除当前章节中内容为空的历史建议"
-              {...buttonMotion}
             >
               删除空建议 ({emptyHistoryCount})
-            </motion.button>
+            </Button>
           )}
           {historyCount > 0 && currentChapterId && (
             <AnimatePresence initial={false} mode="wait">
@@ -195,49 +187,59 @@ export function AITimeline(): JSX.Element {
                   exit="exit"
                   className="flex items-center gap-1"
                 >
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setConfirmClearChapter(false)}
                     disabled={deleteEmpty.isPending || clearChapter.isPending}
-                    className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 hover:text-ink-100 disabled:opacity-50"
+                    className="px-2 py-0.5 text-[11px]"
+                    variant="ghost"
+                    size="sm"
                   >
                     取消
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     onClick={() => clearChapter.mutate(currentChapterId)}
                     disabled={deleteEmpty.isPending || clearChapter.isPending}
-                    className="rounded bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                    className="px-2 py-0.5 text-[11px]"
+                    variant="danger"
+                    size="sm"
                   >
                     {clearChapter.isPending ? "清空中" : `确认清空 ${historyCount} 条`}
-                  </button>
+                  </Button>
                 </motion.div>
               ) : (
-                <motion.button
+                <Button
                   key="clear-start"
                   type="button"
-                  className="rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+                  className="px-2 py-0.5 text-[11px] text-ink-400 hover:bg-red-500/15 hover:text-red-300"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setConfirmClearChapter(true)}
                   disabled={deleteEmpty.isPending || clearChapter.isPending}
                   title="清空当前章节所有已保存的写作建议历史"
-                  {...buttonMotion}
+                  variants={stateMotion}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
                 >
                   清空本章
-                </motion.button>
+                </Button>
               )}
             </AnimatePresence>
           )}
-          <motion.button
+          <Button
             type="button"
-            className={`rounded px-2 py-0.5 text-[11px] text-ink-400 hover:bg-ink-700 ${
+            className={`px-2 py-0.5 text-[11px] ${
               dismissedCount > 0 ? "" : "hidden"
             }`}
+            variant="ghost"
+            size="sm"
             onClick={() => setShowDismissed((v) => !v)}
             aria-pressed={showDismissed}
-            {...buttonMotion}
           >
             {showDismissed ? "隐藏已忽略" : `显示已忽略 (${dismissedCount})`}
-          </motion.button>
+          </Button>
         </div>
       )}
       <AnimatePresence initial={false}>
@@ -251,13 +253,15 @@ export function AITimeline(): JSX.Element {
             exit="exit"
           >
             <span>{actionError}</span>
-            <button
+            <Button
               type="button"
-              className="shrink-0 rounded px-2 py-0.5 text-red-100 hover:bg-red-500/20"
+              className="shrink-0 px-2 py-0.5 text-red-100 hover:bg-red-500/20"
+              variant="ghost"
+              size="sm"
               onClick={() => setActionError(null)}
             >
               知道了
-            </button>
+            </Button>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -363,25 +367,27 @@ export function AITimeline(): JSX.Element {
                           {item.kind === "history" && item.status !== "failed" && (
                             <div className="mt-2 flex justify-end gap-2 text-xs">
                               {item.dismissed ? (
-                                <motion.button
+                                <Button
                                   type="button"
-                                  className="rounded px-2 py-0.5 text-ink-400 hover:bg-ink-700"
+                                  className="px-2 py-0.5"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => dismiss.mutate({ id: item.id, dismissed: false })}
                                   disabled={dismiss.isPending}
-                                  {...buttonMotion}
                                 >
                                   恢复
-                                </motion.button>
+                                </Button>
                               ) : (
-                                <motion.button
+                                <Button
                                   type="button"
-                                  className="rounded px-2 py-0.5 text-ink-400 hover:bg-ink-700"
+                                  className="px-2 py-0.5"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => dismiss.mutate({ id: item.id, dismissed: true })}
                                   disabled={dismiss.isPending}
-                                  {...buttonMotion}
                                 >
                                   忽略
-                                </motion.button>
+                                </Button>
                               )}
                             </div>
                           )}
