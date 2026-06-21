@@ -1,7 +1,7 @@
 // TextField / Textarea —— 文本输入原子组件。统一全站输入框外观与焦点环（accent-500 描边 + 半透明 ring）。
 // 外观值固化自已润色规范：rounded-lg、border-ink-600、bg-ink-800、focus:ring-1 ring-accent-500/30。
 // invalid 为 true 时切换到危险色描边/焦点环，供表单校验复用。
-import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 
 // 输入类元素共用的基础外壳样式。
@@ -15,10 +15,20 @@ export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { className, invalid, ...props },
+  { className, invalid, id, "aria-invalid": ariaInvalid, ...props },
   ref,
 ) {
-  return <input ref={ref} className={cn(fieldBase, invalid && fieldInvalid, className)} {...props} />;
+  const generatedId = useId();
+
+  return (
+    <input
+      ref={ref}
+      id={id ?? generatedId}
+      aria-invalid={ariaInvalid ?? (invalid ? true : undefined)}
+      className={cn(fieldBase, invalid && fieldInvalid, className)}
+      {...props}
+    />
+  );
 });
 
 export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -28,12 +38,16 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { className, invalid, resize = "y", ...props },
+  { className, invalid, resize = "y", id, "aria-invalid": ariaInvalid, ...props },
   ref,
 ) {
+  const generatedId = useId();
+
   return (
     <textarea
       ref={ref}
+      id={id ?? generatedId}
+      aria-invalid={ariaInvalid ?? (invalid ? true : undefined)}
       className={cn(fieldBase, resize === "none" ? "resize-none" : "resize-y", invalid && fieldInvalid, className)}
       {...props}
     />
