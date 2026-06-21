@@ -4,7 +4,7 @@ import type { ResearchCredentialStatus, ResearchProvider } from "@inkforge/share
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { X } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
-import { Button, IconButton } from "../ui";
+import { Badge, Button, IconButton } from "../ui";
 import { researchApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -161,15 +161,16 @@ export function ResearchCredentialsDialog({
                 <div className="mb-1 flex items-center justify-between text-[11px]">
                   <span className="text-ink-200">
                     {row.label}
-                    <span
-                      className={`ml-2 rounded px-1.5 py-[1px] text-[10px] ${
+                    <Badge
+                      tone={configured ? "success" : "neutral"}
+                      className={`ml-2 rounded px-1.5 py-[1px] font-normal ${
                         configured
-                          ? "bg-green-500/20 text-green-300"
-                          : "bg-ink-700 text-ink-400"
+                          ? "bg-green-500/20 text-green-300 ring-green-500/30"
+                          : "bg-ink-700 text-ink-400 ring-ink-600/70"
                       }`}
                     >
                       {configured ? "已配置" : "未配置"}
-                    </span>
+                    </Badge>
                   </span>
                   <span className="text-ink-500">{row.hint}</span>
                 </div>

@@ -28,6 +28,7 @@ import {
   tapPress,
 } from "../../lib/motion-tokens";
 import { AnimatedDialog } from "../AnimatedDialog";
+import { Badge } from "../ui";
 
 interface CommandItem {
   id: string;
@@ -256,9 +257,12 @@ export function WorldCommandPalette({
                           </span>
                         )}
                       </span>
-                      <span className="shrink-0 rounded bg-ink-800 px-1.5 py-[1px] text-[10px] text-ink-400">
+                      <Badge
+                        tone="neutral"
+                        className="shrink-0 rounded bg-ink-800 px-1.5 py-[1px] font-normal text-ink-400 ring-ink-700/60"
+                      >
                         {item.kind === "entry" ? "条目" : "命令"}
-                      </span>
+                      </Badge>
                     </motion.button>
                   );
                 })}

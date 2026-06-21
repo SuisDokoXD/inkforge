@@ -9,6 +9,7 @@ import {
   SPRING_SNAPPY,
   tapPress,
 } from "../../lib/motion-tokens";
+import { Badge } from "../ui";
 
 interface WorldEntryListProps {
   entries: WorldEntryRecord[];
@@ -162,9 +163,12 @@ export function WorldEntryList({
                   />
                 )}
                 <span className="truncate text-sm text-ink-100">{entry.title}</span>
-                <span className="shrink-0 rounded-sm bg-ink-900/60 px-1.5 py-[1px] text-[10px] text-ink-400">
+                <Badge
+                  tone="neutral"
+                  className="shrink-0 rounded-sm bg-ink-900/60 px-1.5 py-[1px] font-normal text-ink-400 ring-ink-700/60"
+                >
                   {entry.category}
-                </span>
+                </Badge>
               </div>
               {alias && (
                 <div className="mt-0.5 truncate text-[11px] text-ink-500">
@@ -175,12 +179,13 @@ export function WorldEntryList({
               {entry.tags.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-1">
                   {entry.tags.slice(0, 3).map((tag) => (
-                    <span
+                    <Badge
                       key={tag}
-                      className="rounded bg-ink-700/40 px-1.5 py-[1px] text-[10px] text-ink-300"
+                      tone="neutral"
+                      className="rounded bg-ink-700/40 px-1.5 py-[1px] font-normal text-ink-300 ring-ink-600/60"
                     >
                       #{tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
