@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LLMQuickActionInput } from "@inkforge/shared";
 import { chapterApi, chapterGenApi, llmApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
+import { Badge } from "../ui";
 
 /**
  * v22+: AutoWriter 完成后，让用户对任意段落"否决重写"。
@@ -132,9 +133,12 @@ export function PostRunSegmentRewriter({
   return (
     <section className="space-y-2 rounded-md border border-ink-700 bg-ink-900/40 p-2">
       <header className="flex items-center gap-2 text-xs">
-        <span className="rounded bg-ink-700 px-1.5 py-0.5 text-[10px] text-ink-200">
+        <Badge
+          tone="neutral"
+          className="rounded bg-ink-700 px-1.5 font-normal text-ink-200 ring-ink-600/70"
+        >
           ✏ 段落审改
-        </span>
+        </Badge>
         <span className="text-ink-400">点重写，让模型按你的反馈改这一段</span>
         <span className="ml-auto text-ink-500">{split.paragraphs.length} 段</span>
       </header>

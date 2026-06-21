@@ -8,6 +8,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { MotionSpinner } from "../MotionSpinner";
+import { Badge } from "../ui";
 import { getCardQuality, parseOutlineSections } from "./outline-metrics";
 
 interface OutlineCardItemProps {
@@ -58,12 +59,13 @@ export const OutlineCardItem = memo(function OutlineCardItem({
     >
       <div className="mb-2 flex items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate text-sm font-medium">{card.title}</h3>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ring-1 ${quality.cls}`}>
+        <Badge tone="neutral" className={`shrink-0 px-2 font-normal ${quality.cls}`}>
           {quality.label} · {quality.score}/10
-        </span>
+        </Badge>
         {card.chapterId ? (
-          <span
-            className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ring-1 ${
+          <Badge
+            tone={hasWrittenText ? "success" : "warning"}
+            className={`shrink-0 gap-1 px-2 font-normal ${
               hasWrittenText
                 ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/25"
                 : "bg-amber-500/15 text-amber-300 ring-amber-500/25"
@@ -71,7 +73,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
           >
             <CheckCircle2 className="h-3 w-3" />
             {hasWrittenText ? "已写" : hasLinkedChapter ? "待写" : "章节缺失"}
-          </span>
+          </Badge>
         ) : null}
         {!hasLinkedChapter ? (
           <button

@@ -6,6 +6,7 @@ import { authorNoteApi } from "../lib/api";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import type { AuthorNotePosition } from "@inkforge/shared";
+import { Badge } from "./ui";
 
 interface Props {
   projectId: string;
@@ -202,15 +203,16 @@ export function AuthorNotePanel({ projectId }: Props): JSX.Element {
             className="h-full w-full resize-none rounded-lg border border-ink-700 bg-ink-800/60 p-4 font-mono text-sm leading-relaxed text-ink-100 placeholder:text-ink-500 focus:border-accent-500/60 focus:bg-ink-800/80 focus:outline-none focus:ring-1 focus:ring-accent-500/30"
           />
           {/* 字符计数 */}
-          <div
-            className={`absolute bottom-2 right-3 rounded-full bg-ink-900/80 px-2 py-0.5 text-[10px] backdrop-blur-sm ${
-              overLimit ? "text-red-300 ring-1 ring-red-500/40" : "text-ink-500"
+          <Badge
+            tone={overLimit ? "danger" : "neutral"}
+            className={`absolute bottom-2 right-3 bg-ink-900/80 px-2 font-normal backdrop-blur-sm ${
+              overLimit ? "text-red-300 ring-red-500/40" : "text-ink-500 ring-ink-700/40"
             }`}
             title={overLimit ? "超过推荐长度，可能挤占模型可参考内容" : ""}
           >
             {charCount}
             {overLimit ? ` / ${MAX_RECOMMENDED}（偏长）` : ""}
-          </div>
+          </Badge>
         </div>
 
         {/* 保存指示器 */}

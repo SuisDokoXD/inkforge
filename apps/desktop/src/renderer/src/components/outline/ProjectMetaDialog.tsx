@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { AnimatedDialog } from "../AnimatedDialog";
-import { Button, IconButton } from "../ui";
+import { Badge, Button, IconButton } from "../ui";
 import {
   fadeOnly,
   fadeSlideUp,
@@ -260,9 +260,12 @@ export const ProjectMetaDialog = memo(function ProjectMetaDialog({
                 <span className="mb-2 flex items-center gap-2 text-sm font-medium text-ink-200">
                   <MapPin className="h-4 w-4 text-accent-300" />
                   背景与时代语境
-                  <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[10px] font-normal text-ink-500">
+                  <Badge
+                    tone="neutral"
+                    className="bg-ink-800 px-2 font-normal text-ink-500 ring-ink-700/60"
+                  >
                     可选
-                  </span>
+                  </Badge>
                 </span>
                 <textarea
                   aria-label="背景与时代语境"

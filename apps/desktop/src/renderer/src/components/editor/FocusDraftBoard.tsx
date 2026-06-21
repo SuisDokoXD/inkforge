@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { GripVertical, Minus, NotepadText, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly, hoverLift, SPRING_SNAPPY, tapPress } from "../../lib/motion-tokens";
+import { Badge } from "../ui";
 
 interface DraftPosition {
   x: number;
@@ -166,9 +167,12 @@ export function FocusDraftBoard({
           <NotepadText className="h-4 w-4 shrink-0 text-accent-300" />
           <span className="truncate text-sm font-medium">专注草稿</span>
           {text.trim() && (
-            <span className="rounded bg-ink-950 px-1.5 py-0.5 text-[10px] text-ink-500">
+            <Badge
+              tone="neutral"
+              className="rounded bg-ink-950 px-1.5 font-normal text-ink-500 ring-ink-700/60"
+            >
               {text.trim().length} 字
-            </span>
+            </Badge>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1">

@@ -7,7 +7,7 @@ import { AnimatedDialog } from "./AnimatedDialog";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { DUR, EASE_IN_OUT, fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
-import { Button, IconButton } from "./ui";
+import { Badge, Button, IconButton } from "./ui";
 
 interface DailySummaryDialogProps {
   open: boolean;
@@ -201,9 +201,12 @@ export function DailySummaryDialog({
                   今日字数 <span className="text-ink-200">{summary.wordsAdded}</span> /
                   目标 <span className="text-ink-200">{summary.goal}</span>
                   {summary.goalHit && (
-                    <span className="ml-1 rounded bg-green-500/20 px-1.5 py-0.5 text-[10px] text-green-300">
+                    <Badge
+                      tone="success"
+                      className="ml-1 rounded bg-green-500/20 px-1.5 font-normal text-green-300 ring-green-500/30"
+                    >
                       已达成
-                    </span>
+                    </Badge>
                   )}
                 </span>
                 {summary.generatedAt && (
