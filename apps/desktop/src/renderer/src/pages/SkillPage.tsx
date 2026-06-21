@@ -549,14 +549,14 @@ export function SkillPage(): JSX.Element {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs text-ink-500">套用模板</span>
                   {PROMPT_TEMPLATES.map((tpl) => (
-                    <button
+                    <Button
                       key={tpl.name}
-                      type="button"
-                      className="rounded-full border border-ink-600 bg-ink-900/40 px-3 py-1 text-xs text-ink-200 transition hover:border-accent-500/70 hover:bg-accent-500/15 hover:text-accent-200"
+                      size="sm"
+                      className="rounded-full border-ink-600 bg-ink-900/40 px-3 py-1 text-xs text-ink-200 hover:border-accent-500/70 hover:bg-accent-500/15 hover:text-accent-200"
                       onClick={() => applyPromptTemplate(tpl.prompt)}
                     >
                       {tpl.name}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -577,10 +577,10 @@ export function SkillPage(): JSX.Element {
                 </div>
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
                   {CORE_PLACEHOLDERS.map((item) => (
-                    <button
+                    <Button
                       key={item.token}
-                      type="button"
-                      className="rounded-md border border-ink-700 bg-ink-900 px-2.5 py-2 text-left transition hover:border-accent-500/60 hover:bg-accent-500/10"
+                      size="sm"
+                      className="flex h-full flex-col items-start justify-start gap-0 rounded-md border-ink-700 bg-ink-900 px-2.5 py-2 text-left hover:border-accent-500/60 hover:bg-accent-500/10"
                       onClick={() => insertPromptText(item.token)}
                       title={`插入：${item.label}`}
                     >
@@ -589,7 +589,7 @@ export function SkillPage(): JSX.Element {
                         点击插入
                       </span>
                       <span className="mt-1 block text-[11px] text-ink-500">{item.help}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -600,15 +600,15 @@ export function SkillPage(): JSX.Element {
                 </summary>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ADVANCED_MACROS.map((macro) => (
-                    <button
+                    <Button
                       key={macro.token}
-                      type="button"
-                      className="rounded-md border border-ink-700 bg-ink-950/60 px-2 py-1 text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
+                      size="sm"
+                      className="rounded-md border-ink-700 bg-ink-950/60 px-2 py-1 text-xs text-ink-300 hover:border-accent-500/60 hover:text-accent-200"
                       onClick={() => insertPromptText(macro.token)}
                       title={`插入：${macro.label}`}
                     >
                       {macro.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </details>

@@ -13,6 +13,7 @@ import { WorldPackLibrary } from "../components/world-pack/WorldPackLibrary";
 import { WorldInfoDiagnosticPanel } from "../components/world-pack/WorldInfoDiagnosticPanel";
 import { AuthorNotePanel } from "../components/AuthorNotePanel";
 import { VoiceProfileDialog } from "../components/voice-profile/VoiceProfileDialog";
+import { Button, IconButton } from "../components/ui";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
@@ -272,22 +273,24 @@ export function WorldPage(): JSX.Element {
           参考记录
         </button>
         <div className="ml-auto flex items-center gap-2">
-          <button
+          <IconButton
             onClick={() => setPaletteOpen(true)}
-            className="rounded-md border border-ink-700 px-2 py-1 text-[11px] text-ink-400 hover:bg-ink-800"
+            className="h-7 w-8 border-ink-700 text-ink-400 hover:bg-ink-800"
             title="打开命令面板（Ctrl/Cmd+K）"
             aria-label="打开命令面板"
           >
             <Command aria-hidden className="h-3.5 w-3.5" />
-          </button>
-          <button
+          </IconButton>
+          <Button
             onClick={() => setVoiceProfileOpen(true)}
-            className="rounded-md px-3 py-1 text-ink-300 hover:bg-ink-800"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-3 text-xs text-ink-300 hover:bg-ink-800"
             title="编辑写作声音档案（每次模型生成都会参考）"
           >
-            <Mic aria-hidden className="mr-1 inline h-3.5 w-3.5 align-[-2px]" />
+            <Mic aria-hidden className="h-3.5 w-3.5" />
             写作声音
-          </button>
+          </Button>
         </div>
       </div>
       {tab === "entries" ? (
@@ -323,29 +326,31 @@ export function WorldPage(): JSX.Element {
                             placeholder="类别"
                             className="h-5 w-24 rounded border border-accent-500/30 bg-ink-950 px-1.5 text-ink-100 outline-none placeholder:text-ink-500"
                           />
-                          <button
-                            type="button"
+                          <Button
+                            size="sm"
                             onClick={handleBatchSetCategory}
                             disabled={
                               selectedIds.size === 0 ||
                               !batchCategoryDraft.trim() ||
                               batchSetCategoryMutation.isPending
                             }
-                            className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
+                            className="h-5 rounded px-2 py-0.5 text-xs"
+                            variant="accentSoft"
                           >
                             {batchSetCategoryMutation.isPending ? "保存中" : "保存"}
-                          </button>
-                          <button
-                            type="button"
+                          </Button>
+                          <Button
+                            size="sm"
                             onClick={() => {
                               setCategoryEditorOpen(false);
                               setBatchCategoryDraft("");
                             }}
                             disabled={batchSetCategoryMutation.isPending}
-                            className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600 disabled:opacity-50"
+                            className="h-5 rounded bg-ink-700 px-2 py-0.5 text-xs text-ink-200 hover:bg-ink-600"
+                            variant="ghost"
                           >
                             取消
-                          </button>
+                          </Button>
                         </motion.div>
                       ) : (
                         <motion.button
@@ -413,13 +418,14 @@ export function WorldPage(): JSX.Element {
                         </motion.button>
                       )}
                     </AnimatePresence>
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       onClick={exitMultiSelect}
-                      className="rounded bg-ink-700 px-2 py-0.5 text-ink-200 hover:bg-ink-600"
+                      className="h-5 rounded bg-ink-700 px-2 py-0.5 text-xs text-ink-200 hover:bg-ink-600"
+                      variant="ghost"
                     >
                       退出
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
