@@ -9,6 +9,7 @@ import { fsApi, sampleLibApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly } from "../lib/motion-tokens";
+import { Button, TextField, Textarea } from "./ui";
 
 export function SampleLibPanel(): JSX.Element {
   const projectId = useAppStore((s) => s.currentProjectId);
@@ -110,36 +111,36 @@ export function SampleLibPanel(): JSX.Element {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-xs">
-        <button
-          className="rounded-md border border-ink-600 px-3 py-1 text-ink-200 hover:bg-ink-700"
+        <Button
+          size="sm"
           onClick={() => setShowImport("text")}
         >
           + 粘贴 TXT
-        </button>
-        <button
-          className="rounded-md border border-ink-600 px-3 py-1 text-ink-200 hover:bg-ink-700"
+        </Button>
+        <Button
+          size="sm"
           onClick={() => setShowImport("epub")}
         >
           + 选择 EPUB 文件
-        </button>
+        </Button>
         <span className="ml-auto text-ink-500">续写精修会按片段匹配；也可在写作前手动指定用哪几本文集</span>
       </div>
 
       {showImport === "text" ? (
         <div className="space-y-2 rounded-md border border-ink-700 p-3">
-          <input
+          <TextField
             type="text"
             placeholder="书名（必填）"
             aria-label="参考文集书名"
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
+            className="bg-ink-900 px-2 py-1 text-xs"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <input
+          <TextField
             type="text"
             placeholder="作者（可选）"
             aria-label="参考文集作者"
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
+            className="bg-ink-900 px-2 py-1 text-xs"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
           />
@@ -149,12 +150,12 @@ export function SampleLibPanel(): JSX.Element {
             字数提示用 onInput 节流到下一帧后再 setState，仅更新一个数字、
             不会拖累整个面板（textarea 自身完全不重渲染）。
           */}
-          <textarea
+          <Textarea
             ref={textRef}
             defaultValue=""
             placeholder="粘贴小说全文，自动按「第 X 章」拆章"
             aria-label="参考文集正文"
-            className="h-32 w-full resize-y rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
+            className="h-32 rounded-md bg-ink-900 px-2 py-1 text-xs"
             onInput={(e) => {
               const len = (e.target as HTMLTextAreaElement).value.length;
               // 仅当数量级跳变时才 setState，避免每键 setState 也成为新瓶颈
@@ -168,55 +169,57 @@ export function SampleLibPanel(): JSX.Element {
             <span className="ml-auto">大文本粘贴流畅；提交时一次性读取</span>
           </div>
           <div className="flex gap-2 text-xs">
-            <button
-              className="rounded-md bg-accent-500 px-3 py-1 font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy || !title.trim()}
               onClick={onImportText}
             >
               {busy ? "导入中…" : "确认导入"}
-            </button>
-            <button
-              className="rounded-md border border-ink-600 px-3 py-1 text-ink-300 hover:bg-ink-700"
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setShowImport(null)}
             >
               取消
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
 
       {showImport === "epub" ? (
         <div className="space-y-2 rounded-md border border-ink-700 p-3">
-          <input
+          <TextField
             type="text"
             placeholder="书名（留空读 EPUB 元数据）"
             aria-label="EPUB 书名"
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
+            className="bg-ink-900 px-2 py-1 text-xs"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <input
+          <TextField
             type="text"
             placeholder="作者（留空读 EPUB 元数据）"
             aria-label="EPUB 作者"
-            className="w-full rounded-md border border-ink-600 bg-ink-900 px-2 py-1 text-xs"
+            className="bg-ink-900 px-2 py-1 text-xs"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
           />
           <div className="flex gap-2 text-xs">
-            <button
-              className="rounded-md bg-accent-500 px-3 py-1 font-medium text-ink-900 hover:bg-accent-400 disabled:opacity-50"
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy}
               onClick={onImportEpub}
             >
               {busy ? "导入中…" : "选择文件并导入"}
-            </button>
-            <button
-              className="rounded-md border border-ink-600 px-3 py-1 text-ink-300 hover:bg-ink-700"
+            </Button>
+            <Button
+              size="sm"
               onClick={() => setShowImport(null)}
             >
               取消
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
@@ -253,28 +256,30 @@ export function SampleLibPanel(): JSX.Element {
                     className="flex items-center gap-1"
                   >
                     <span className="text-[11px] text-red-300">{lib.chunkCount} 章将一并删除</span>
-                    <button
+                    <Button
                       type="button"
-                      className="rounded-md border border-ink-700 px-2 py-1 text-ink-300 hover:bg-ink-800 disabled:opacity-50"
+                      size="sm"
                       onClick={() => setDeleteConfirmId(null)}
                       disabled={deleteMutation.isPending}
                     >
                       取消
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="rounded-md border border-red-500/40 px-2 py-1 text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                      variant="danger"
+                      size="sm"
                       onClick={() => handleDelete(lib)}
                       disabled={deleteMutation.isPending}
                     >
                       {deleteMutation.isPending ? "删除中" : "确认删除"}
-                    </button>
+                    </Button>
                   </motion.div>
                 ) : (
-                  <motion.button
+                  <Button
                     key="delete-start"
                     type="button"
-                    className="rounded-md border border-red-500/40 px-2 py-1 text-red-400 hover:bg-red-500/10"
+                    variant="danger"
+                    size="sm"
                     onClick={() => setDeleteConfirmId(lib.id)}
                     variants={fadeOnly}
                     initial="initial"
@@ -282,7 +287,7 @@ export function SampleLibPanel(): JSX.Element {
                     exit="exit"
                   >
                     删除
-                  </motion.button>
+                  </Button>
                 )}
               </AnimatePresence>
             </li>
