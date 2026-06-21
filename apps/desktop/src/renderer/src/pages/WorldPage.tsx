@@ -353,22 +353,23 @@ export function WorldPage(): JSX.Element {
                           </Button>
                         </motion.div>
                       ) : (
-                        <motion.button
+                        <Button
                           key="category-start"
-                          type="button"
+                          size="sm"
+                          variant="accentSoft"
                           onClick={() => {
                             setConfirmBatchDelete(false);
                             setCategoryEditorOpen(true);
                           }}
                           disabled={selectedIds.size === 0 || batchSetCategoryMutation.isPending}
-                          className="rounded bg-accent-500/20 px-2 py-0.5 hover:bg-accent-500/30 disabled:opacity-50"
+                          className="h-5 rounded px-2 py-0.5 text-xs"
                           variants={fadeOnly}
                           initial="initial"
                           animate="animate"
                           exit="exit"
                         >
                           改类别
-                        </motion.button>
+                        </Button>
                       )}
                     </AnimatePresence>
                     <AnimatePresence initial={false} mode="wait">
