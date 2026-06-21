@@ -10,7 +10,7 @@ import {
   SPRING_SNAPPY,
   tapPress,
 } from "../lib/motion-tokens";
-import { Button } from "./ui";
+import { Badge, Button } from "./ui";
 
 export interface ChapterHeadingItem {
   id: string;
@@ -366,9 +366,12 @@ export function ChapterTree({
                       </span>
                       {isHeading ? (
                         duplicateHeading ? (
-                          <span className="ml-2 shrink-0 rounded-full border border-ink-600/70 bg-ink-950/10 px-1.5 py-0.5 text-[10px] font-normal text-ink-400 dark:border-ink-700 dark:bg-ink-950/35">
+                          <Badge
+                            tone="neutral"
+                            className="ml-2 shrink-0 bg-ink-950/10 px-1.5 font-normal text-ink-400 ring-ink-600/70 dark:bg-ink-950/35 dark:ring-ink-700"
+                          >
                             {row.heading.line} 行
-                          </span>
+                          </Badge>
                         ) : null
                       ) : null}
                     </button>

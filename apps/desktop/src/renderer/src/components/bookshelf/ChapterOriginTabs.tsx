@@ -5,6 +5,7 @@ import {
   SPRING_SNAPPY,
   tapPress,
 } from "../../lib/motion-tokens";
+import { Badge } from "../ui";
 
 const ITEMS: { key: ChapterOrigin | "all"; label: string; color: string }[] = [
   { key: "all", label: "全部", color: "text-ink-100" },
@@ -58,9 +59,14 @@ export function ChapterOriginTabs({
             <span className={item.color}>{item.label}</span>
             <motion.span
               layout
-              className="rounded bg-ink-900/50 px-1.5 py-0.5 text-[10px] text-ink-400"
+              className="inline-flex"
             >
-              {count}
+              <Badge
+                tone="neutral"
+                className="rounded bg-ink-900/50 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+              >
+                {count}
+              </Badge>
             </motion.span>
           </motion.button>
         );

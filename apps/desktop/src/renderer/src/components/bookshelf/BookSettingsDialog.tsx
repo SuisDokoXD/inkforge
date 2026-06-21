@@ -12,7 +12,7 @@ import {
 } from "../../lib/motion-tokens";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
-import { Button, TextField, Textarea } from "../ui";
+import { Badge, Button, TextField, Textarea } from "../ui";
 
 interface BookSettingsDialogProps {
   project: ProjectRecord | null;
@@ -148,10 +148,13 @@ export function BookSettingsDialog({
 
         <motion.label className="block" htmlFor="book-settings-global-worldview" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 flex flex-wrap items-center gap-2 text-xs text-ink-400">
-            <span className="inline-flex items-center gap-1 rounded bg-accent-500/30 px-1.5 py-0.5 text-accent-100">
+            <Badge
+              tone="accent"
+              className="gap-1 rounded bg-accent-500/30 px-1.5 text-accent-100 ring-accent-500/30"
+            >
               <Globe2 aria-hidden className="h-3 w-3" />
               全局世界观
-            </span>
+            </Badge>
             <span>
               续写精修每段开始前都会参考这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
             </span>
