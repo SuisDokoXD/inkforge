@@ -37,7 +37,7 @@ import {
   staggerContainer,
   staggerItem,
 } from "../lib/motion-tokens";
-import { Button, IconButton, Select, TextField, Textarea } from "../components/ui";
+import { Badge, Button, IconButton, Select, TextField, Textarea } from "../components/ui";
 
 type Tab = "materials" | "worldview" | "samples";
 type KindFilter = MaterialKind | "all";
@@ -551,9 +551,12 @@ function KindButton({
     >
       <Icon className="h-4 w-4 shrink-0" />
       <span className="min-w-0 flex-1 truncate">{label}</span>
-      <span className="rounded bg-ink-950 px-1.5 py-0.5 text-[10px] text-ink-400">
+      <Badge
+        tone="neutral"
+        className="bg-ink-950 px-1.5 text-[10px] font-normal text-ink-400 ring-ink-700"
+      >
         {count}
-      </span>
+      </Badge>
     </button>
   );
 }
@@ -655,10 +658,14 @@ function MaterialRow({
             ))}
           </Select>
         ) : (
-          <span className="flex h-7 shrink-0 items-center gap-1 rounded bg-ink-800 px-2 text-ink-200">
+          <Badge
+            tone="neutral"
+            size="md"
+            className="h-7 shrink-0 gap-1 rounded-md bg-ink-800 px-2 text-ink-200 ring-ink-700"
+          >
             <Icon className="h-3.5 w-3.5" />
             {meta.label}
-          </span>
+          </Badge>
         )}
 
         {editing ? (
@@ -814,12 +821,13 @@ function MaterialRow({
           {item.tags.length > 0 ? (
             <div className="mb-2 flex flex-wrap gap-1">
               {item.tags.map((tag) => (
-                <span
+                <Badge
                   key={tag}
-                  className="rounded bg-ink-950 px-1.5 py-0.5 text-[10px] text-ink-400"
+                  tone="neutral"
+                  className="bg-ink-950 px-1.5 text-[10px] font-normal text-ink-400 ring-ink-700"
                 >
                   #{tag}
-                </span>
+                </Badge>
               ))}
             </div>
           ) : null}
