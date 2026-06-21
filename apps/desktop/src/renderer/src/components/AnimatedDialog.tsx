@@ -68,7 +68,7 @@ export function AnimatedDialog({
             aria-modal="true"
             aria-label={ariaLabel}
             aria-labelledby={labelledBy}
-            className={cn(panelClassName)}
+            className={cn("dialog-surface", panelClassName)}
             variants={reduce ? fadeOnly : dialogPanel}
             // 面板继承父级的 initial/animate/exit 编排状态。
             onClick={(e) => e.stopPropagation()}

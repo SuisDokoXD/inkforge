@@ -38,6 +38,10 @@ html.theme-dark {
   --c-indigo-100: 224 231 255; --c-indigo-200: 199 210 254; --c-indigo-300: 165 180 252;
   --c-orange-100: 255 237 213; --c-orange-200: 254 215 170; --c-orange-300: 253 186 116;
   --c-yellow-100: 254 249 195; --c-yellow-200: 254 240 138; --c-yellow-300: 253 224 71;
+  --dialog-bg: 16 23 38;
+  --dialog-fg: 226 232 240;
+  --dialog-border: 35 48 68;
+  --dialog-shadow: 0 28px 70px -24px rgba(0, 0, 0, 0.78), 0 8px 24px -16px rgba(0, 0, 0, 0.72);
 }
 
 /*
@@ -85,6 +89,10 @@ html.theme-light {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
+  --dialog-bg: 255 255 255;
+  --dialog-fg: 29 29 31;
+  --dialog-border: 208 214 228;
+  --dialog-shadow: 0 24px 60px -28px rgba(20, 32, 48, 0.34), 0 8px 20px -16px rgba(20, 32, 48, 0.22);
 }
 
 /*
@@ -125,6 +133,10 @@ html.theme-paper {
   --c-indigo-100: 55 48 163; --c-indigo-200: 67 56 202; --c-indigo-300: 79 70 229;
   --c-orange-100: 154 52 18; --c-orange-200: 194 65 12; --c-orange-300: 234 88 12;
   --c-yellow-100: 133 77 14; --c-yellow-200: 161 98 7; --c-yellow-300: 202 138 4;
+  --dialog-bg: 255 252 246;
+  --dialog-fg: 45 34 25;
+  --dialog-border: 218 206 190;
+  --dialog-shadow: 0 24px 60px -28px rgba(80, 60, 35, 0.34), 0 8px 20px -16px rgba(80, 60, 35, 0.22);
 }
 
 html,
@@ -250,8 +262,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.dialog-surface {
+  background-color: rgb(var(--dialog-bg)) !important;
+  border-color: rgb(var(--dialog-border)) !important;
+  color: rgb(var(--dialog-fg));
+  box-shadow: var(--dialog-shadow);
+}
+
 [role="dialog"] {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--dialog-shadow);
 }
 
 @keyframes skeleton-shimmer {

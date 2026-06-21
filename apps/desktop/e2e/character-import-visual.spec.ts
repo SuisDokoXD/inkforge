@@ -76,6 +76,7 @@ test("character page chapter import entry renders", async () => {
   await win.reload({ waitUntil: "domcontentloaded" });
   await expect(win.getByText("书中角色")).toBeVisible();
   await expect(win.getByRole("button", { name: "从章节识别人物" })).toBeVisible();
+  await win.waitForTimeout(350);
   await win.screenshot({
     path: path.join(AUDIT_DIR, "character-page.png"),
     fullPage: true,
@@ -85,6 +86,7 @@ test("character page chapter import entry renders", async () => {
   await expect(win.getByRole("dialog", { name: "从章节识别人物" })).toBeVisible();
   const chapterOptions = await win.getByLabel("章节").locator("option").allTextContents();
   expect(chapterOptions.some((text) => text.includes("雨夜来客"))).toBeTruthy();
+  await win.waitForTimeout(350);
   await win.screenshot({
     path: path.join(AUDIT_DIR, "character-import-dialog.png"),
     fullPage: true,
@@ -109,6 +111,7 @@ test("character page chapter import entry renders", async () => {
   await win.reload({ waitUntil: "domcontentloaded" });
   await expect(win.getByRole("heading", { name: "资料检索" })).toBeVisible();
   await expect(win.getByText("不联网，只帮你整理关键词")).toBeVisible();
+  await win.waitForTimeout(350);
   await win.screenshot({
     path: path.join(AUDIT_DIR, "research-page.png"),
     fullPage: true,
@@ -135,6 +138,7 @@ test("character page chapter import entry renders", async () => {
   await win.getByRole("button", { name: "+ 新建" }).click();
   await expect(win.getByText("玩法模板")).toBeVisible();
   await expect(win.getByText("冲突圆桌")).toBeVisible();
+  await win.waitForTimeout(350);
   await win.screenshot({
     path: path.join(AUDIT_DIR, "tavern-new-session.png"),
     fullPage: true,
