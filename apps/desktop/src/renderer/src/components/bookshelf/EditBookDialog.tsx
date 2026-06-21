@@ -7,14 +7,12 @@ import { projectApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
   fadeOnly,
-  hoverLift,
-  SPRING_SNAPPY,
   staggerContainer,
   staggerItem,
-  tapPress,
 } from "../../lib/motion-tokens";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button, TextField } from "../ui";
 
 interface EditBookDialogProps {
   /** 当前要编辑的书籍。null 时对话框隐藏。 */
@@ -36,13 +34,6 @@ export function EditBookDialog({
   const [dailyGoal, setDailyGoal] = useState(1000);
   const [error, setError] = useState<string | null>(null);
   const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   useEffect(() => {
     if (project) {
@@ -97,14 +88,14 @@ export function EditBookDialog({
 
         <motion.label className="block" htmlFor="edit-book-name" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">书名</span>
-          <input
+          <TextField
             id="edit-book-name"
             type="text"
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={80}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+            className="bg-ink-900 px-3 py-2"
             onKeyDown={(e) => {
               if (e.key === "Enter" && canSubmit && dirty) updateMut.mutate();
             }}
@@ -113,14 +104,14 @@ export function EditBookDialog({
 
         <motion.label className="block" htmlFor="edit-book-daily-goal" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">每日字数目标</span>
-          <input
+          <TextField
             id="edit-book-daily-goal"
             type="number"
             min={100}
             step={100}
             value={dailyGoal}
             onChange={(e) => setDailyGoal(Number(e.target.value) || 1000)}
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+            className="bg-ink-900 px-3 py-2"
           />
         </motion.label>
 
@@ -144,24 +135,25 @@ export function EditBookDialog({
         </AnimatePresence>
 
         <motion.div className="flex justify-end gap-2" variants={reduceMotion ? fadeOnly : staggerItem}>
-          <motion.button
+          <Button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
-            {...buttonMotion}
+            variant="secondary"
+            size="sm"
           >
             取消
-          </motion.button>
-          <motion.button
+          </Button>
+          <Button
             type="button"
             onClick={() => updateMut.mutate()}
             disabled={!canSubmit || !dirty}
-            className="inline-flex min-w-16 items-center justify-center gap-1.5 rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:cursor-default disabled:opacity-40"
-            {...(canSubmit && dirty ? buttonMotion : {})}
+            variant="accentSoft"
+            size="sm"
+            className="min-w-16"
           >
             {updateMut.isPending ? <MotionSpinner className="h-3.5 w-3.5" /> : null}
             {updateMut.isPending ? "保存中…" : "保存"}
-          </motion.button>
+          </Button>
         </motion.div>
       </motion.div>
     </AnimatedDialog>

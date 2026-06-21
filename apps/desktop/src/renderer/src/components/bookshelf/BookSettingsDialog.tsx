@@ -7,14 +7,12 @@ import { outlineGenApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
   fadeOnly,
-  hoverLift,
-  SPRING_SNAPPY,
   staggerContainer,
   staggerItem,
-  tapPress,
 } from "../../lib/motion-tokens";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button, TextField, Textarea } from "../ui";
 
 interface BookSettingsDialogProps {
   project: ProjectRecord | null;
@@ -42,13 +40,6 @@ export function BookSettingsDialog({
   const [globalWorldview, setGlobalWorldview] = useState("");
   const [error, setError] = useState<string | null>(null);
   const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   useEffect(() => {
     if (project) {
@@ -110,47 +101,48 @@ export function BookSettingsDialog({
         <motion.div className="grid grid-cols-2 gap-3" variants={reduceMotion ? fadeOnly : staggerItem}>
           <label className="block" htmlFor="book-settings-genre">
             <span className="mb-1 block text-xs text-ink-400">类型（如：玄幻 / 科幻 / 都市）</span>
-            <input
+            <TextField
               id="book-settings-genre"
               type="text"
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
-              className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+              className="bg-ink-900 px-3 py-2"
             />
           </label>
           <label className="block" htmlFor="book-settings-subgenre">
             <span className="mb-1 block text-xs text-ink-400">子类型</span>
-            <input
+            <TextField
               id="book-settings-subgenre"
               type="text"
               value={subGenre}
               onChange={(e) => setSubGenre(e.target.value)}
-              className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+              className="bg-ink-900 px-3 py-2"
             />
           </label>
         </motion.div>
 
         <motion.label className="block" htmlFor="book-settings-tags" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">标签（逗号分隔）</span>
-          <input
+          <TextField
             id="book-settings-tags"
             type="text"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="比如：穿越, 群像, 慢热"
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+            className="bg-ink-900 px-3 py-2"
           />
         </motion.label>
 
         <motion.label className="block" htmlFor="book-settings-synopsis" variants={reduceMotion ? fadeOnly : staggerItem}>
           <span className="mb-1 block text-xs text-ink-400">简介 / Synopsis</span>
-          <textarea
+          <Textarea
             id="book-settings-synopsis"
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
             rows={3}
             placeholder="一段话讲清你这本书在写什么。生成大纲时会作为种子使用。"
-            className="w-full resize-none rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-accent-500 focus:outline-none"
+            resize="none"
+            className="bg-ink-900 px-3 py-2"
           />
         </motion.label>
 
@@ -164,14 +156,15 @@ export function BookSettingsDialog({
               续写精修每段开始前都会参考这一段；建议写：时代背景 / 力量体系 / 政治格局 / 关键禁忌
             </span>
           </span>
-          <textarea
+          <Textarea
             id="book-settings-global-worldview"
             value={globalWorldview}
             onChange={(e) => setGlobalWorldview(e.target.value)}
             rows={10}
             placeholder={`例如：\n这是一个修真复辟的近未来世界。元婴期以下不得乘坐空艇；元婴以上对凡人施法即斩。\n大乘期共 11 人，号「十一灯」，每人对应一州……`}
             aria-describedby="book-settings-global-worldview-count"
-            className="w-full resize-none rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm font-mono focus:border-accent-500 focus:outline-none"
+            resize="none"
+            className="bg-ink-900 px-3 py-2 font-mono"
           />
           <span id="book-settings-global-worldview-count" className="mt-1 block text-[11px] text-ink-500">
             {globalWorldview.length} 字
@@ -200,24 +193,25 @@ export function BookSettingsDialog({
         </AnimatePresence>
 
         <motion.div className="flex justify-end gap-2" variants={reduceMotion ? fadeOnly : staggerItem}>
-          <motion.button
+          <Button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
-            {...buttonMotion}
+            variant="secondary"
+            size="sm"
           >
             取消
-          </motion.button>
-          <motion.button
+          </Button>
+          <Button
             type="button"
             onClick={() => saveMut.mutate()}
             disabled={saveMut.isPending}
-            className="inline-flex min-w-16 items-center justify-center gap-1.5 rounded-md bg-accent-500/30 px-3 py-1.5 text-xs font-semibold text-accent-100 hover:bg-accent-500/40 disabled:cursor-default disabled:opacity-40"
-            {...(saveMut.isPending ? {} : buttonMotion)}
+            variant="accentSoft"
+            size="sm"
+            className="min-w-16"
           >
             {saveMut.isPending ? <MotionSpinner className="h-3.5 w-3.5" /> : null}
             {saveMut.isPending ? "保存中…" : "保存"}
-          </motion.button>
+          </Button>
         </motion.div>
       </motion.div>
     </AnimatedDialog>

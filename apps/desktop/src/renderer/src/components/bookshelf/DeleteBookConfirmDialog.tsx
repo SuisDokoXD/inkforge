@@ -7,7 +7,8 @@ import { AnimatedDialog } from "../AnimatedDialog";
 import { projectApi } from "../../lib/api";
 import { useBookshelfStore } from "../../stores/bookshelf-store";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
-import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../../lib/motion-tokens";
+import { fadeOnly, fadeSlideUp } from "../../lib/motion-tokens";
+import { Button, TextField } from "../ui";
 
 interface DeleteBookConfirmDialogProps {
   project: ProjectRecord | null;
@@ -100,13 +101,13 @@ export function DeleteBookConfirmDialog({
               {requiredText}
             </code>
           </span>
-          <input
+          <TextField
             id="delete-book-confirm-text"
             type="text"
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
             autoFocus
-            className="w-full rounded-md border border-ink-700 bg-ink-900 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none"
+            className="bg-ink-900 px-3 py-2 focus:border-rose-500 focus:ring-rose-500/30"
           />
         </label>
 
@@ -126,32 +127,31 @@ export function DeleteBookConfirmDialog({
         </AnimatePresence>
 
         <div className="flex justify-end gap-2">
-          <motion.button
+          <Button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
-            whileHover={reduceMotion ? undefined : hoverLift}
-            whileTap={reduceMotion ? undefined : tapPress}
+            variant="secondary"
+            size="sm"
           >
             取消
-          </motion.button>
-          <motion.button
+          </Button>
+          <Button
             type="button"
             onClick={() => {
               if (!project) return;
               deleteMut.mutate({ id: project.id, removeFiles });
             }}
             disabled={!canSubmit}
-            className="rounded-md bg-rose-500/40 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-500/50 disabled:opacity-40"
-            whileHover={reduceMotion || !canSubmit ? undefined : hoverLift}
-            whileTap={reduceMotion || !canSubmit ? undefined : tapPress}
+            variant="danger"
+            size="sm"
+            className="bg-rose-500/40 text-rose-100 hover:bg-rose-500/50"
           >
             {deleteMut.isPending
               ? "删除中…"
               : removeFiles
               ? "永久删除（含文件）"
               : "删除元数据"}
-          </motion.button>
+          </Button>
         </div>
         </>
       )}
