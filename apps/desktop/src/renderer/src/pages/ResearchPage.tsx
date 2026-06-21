@@ -24,6 +24,7 @@ import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyActionError, friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Badge, Button, Select, TextField } from "../components/ui";
 
 const PROVIDER_OPTIONS: Array<{ value: ResearchProvider; label: string; hint: string }> = [
   {
@@ -285,21 +286,21 @@ export function ResearchPage(): JSX.Element {
                 写作前查清背景，写作中保存出处。输入一个问题后，会自动扩展成多种查法。
               </p>
             </div>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => setCredentialsOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-ink-700 px-3 py-1.5 text-xs text-ink-300 hover:bg-ink-800"
               title="设置联网搜索服务"
             >
               <KeyRound className="h-3.5 w-3.5" />
               搜索服务设置
-            </button>
+            </Button>
           </div>
 
           <div className="mt-4 grid gap-2 lg:grid-cols-[1fr_210px_auto]">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-500" />
-              <input
+              <TextField
                 type="text"
                 aria-label="资料检索问题"
                 value={query}
@@ -310,26 +311,27 @@ export function ResearchPage(): JSX.Element {
                   }
                 }}
                 placeholder="输入要查的具体问题，例如：富士山的地理、登山路线和民间传说"
-                className="w-full rounded-md border border-ink-700 bg-ink-950/70 py-2 pl-9 pr-3 text-sm text-ink-100 placeholder:text-ink-600"
+                className="rounded-md border-ink-700 bg-ink-950/70 py-2 pl-9 pr-3 placeholder:text-ink-600"
               />
             </div>
-            <select
+            <Select
               value={provider}
               aria-label="选择检索来源"
               onChange={(e) => setProvider(e.target.value as ResearchProvider)}
-              className="rounded-md border border-ink-700 bg-ink-950/70 px-2 py-2 text-sm text-ink-100"
+              className="rounded-md border-ink-700 bg-ink-950/70 px-2 py-2"
             >
               {PROVIDER_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
-            </select>
-            <button
-              type="button"
+            </Select>
+            <Button
+              size="md"
+              variant="primary"
+              className="px-4 py-2"
               onClick={() => searchMut.mutate()}
               disabled={!query.trim() || searchMut.isPending}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent-500 px-4 py-2 text-sm font-medium text-ink-950 hover:bg-accent-400 disabled:opacity-50"
             >
               {searchMut.isPending ? (
                 <MotionSpinner className="h-4 w-4" />
@@ -337,7 +339,7 @@ export function ResearchPage(): JSX.Element {
                 <Search className="h-4 w-4" />
               )}
               {searchMut.isPending ? "检索中" : "检索"}
-            </button>
+            </Button>
           </div>
 
           <div className="mt-2 rounded-md border border-ink-800 bg-ink-950/35 px-3 py-2 text-[11px] leading-5 text-ink-400">
@@ -463,23 +465,17 @@ function ResearchStarter({
                   : "还没有打开章节。保存资料不受影响，插入章节需要先回到写作页打开一章。"}
               </p>
             </div>
-            <span
-              className={`rounded-full px-2.5 py-1 text-[11px] ring-1 ${
-                currentChapterReady
-                  ? "bg-emerald-500/15 text-emerald-700 ring-emerald-400/30 dark:text-emerald-200"
-                  : "bg-ink-800 text-ink-400 ring-ink-700"
-              }`}
-            >
+            <Badge tone={currentChapterReady ? "success" : "neutral"} size="md">
               {currentChapterReady ? "可插入章节" : "仅保存资料"}
-            </span>
+            </Badge>
             {onOpenChapter && (
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={onOpenChapter}
-                className="rounded-md border border-ink-700 px-2.5 py-1 text-[11px] text-ink-300 hover:bg-ink-800"
               >
                 回到正文
-              </button>
+              </Button>
             )}
           </div>
         </section>
@@ -575,19 +571,19 @@ function SearchResults({
               </>
             )}
             {state.fellBackToLlm && (
-              <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-800 ring-1 ring-amber-400/20 dark:text-amber-200">
+              <Badge tone="warning" size="md" className="font-normal">
                 已改用整理查找思路（不查网页）
-              </span>
+              </Badge>
             )}
           </div>
           {onOpenChapter && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={onOpenChapter}
-              className="rounded-md border border-ink-700 px-2.5 py-1 text-[11px] text-ink-300 hover:bg-ink-800"
             >
               回到正文
-            </button>
+            </Button>
           )}
         </div>
         <SearchQueryTrail queries={state.expandedQueries} />
@@ -616,34 +612,34 @@ function SearchResults({
             </p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => onSave(hit)}
               disabled={savePending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-ink-700/70 px-2.5 py-1.5 text-xs text-ink-200 hover:bg-ink-700 disabled:opacity-50"
             >
               <NotebookPen className="h-3.5 w-3.5" />
               保存资料
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => onInsert(hit)}
               disabled={insertPending || !currentChapterReady}
-              className="inline-flex items-center gap-1.5 rounded-md bg-ink-700/70 px-2.5 py-1.5 text-xs text-ink-200 hover:bg-ink-700 disabled:opacity-50"
               title={currentChapterReady ? "插入到当前章节末尾" : "请先在写作页打开章节"}
             >
               <FilePlus2 className="h-3.5 w-3.5" />
               加入当前章末
-            </button>
+            </Button>
             {hit.url && (
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => onCopyUrl(hit.url)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-ink-700 px-2.5 py-1.5 text-xs text-ink-300 hover:bg-ink-700"
               >
                 <ClipboardCopy className="h-3.5 w-3.5" />
                 复制链接
-              </button>
+              </Button>
             )}
           </div>
         </article>
@@ -675,9 +671,9 @@ function ResearchNotesSidebar({
             <NotebookPen className="h-4 w-4 text-accent-300" />
             我的资料
           </h2>
-          <span className="rounded-full bg-ink-950/50 px-2 py-0.5 text-[11px] text-ink-400">
+          <Badge tone="neutral" size="sm" className="font-normal">
             {notes.length} 条
-          </span>
+          </Badge>
         </div>
         <p className="mt-1 text-xs leading-5 text-ink-500">
           保存后的检索结果会按主题归档，作为这本书的资料库。
