@@ -19,6 +19,7 @@ import { WorldPackCard, WorldPackCardSkeleton } from "./WorldPackCard";
 import { WorldPackEditDialog } from "./WorldPackEditDialog";
 import { FusionDialog } from "./FusionDialog";
 import { PackSlotPanel } from "./PackSlotPanel";
+import { Badge } from "../ui";
 
 type FilterOrigin = "all" | WorldPackOrigin;
 
@@ -163,15 +164,17 @@ export function WorldPackLibrary(): JSX.Element {
                 <Layers className="h-4 w-4" />
                 <span>本书使用</span>
                 {slottedIds.size > 0 && (
-                  <span
-                    className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                  <Badge
+                    size="sm"
+                    tone={showSlotPanel ? "neutral" : "accent"}
+                    className={`h-5 min-w-[20px] justify-center px-1 font-bold ${
                       showSlotPanel
                         ? "bg-ink-900 text-accent-300"
                         : "bg-accent-500 text-ink-900"
                     }`}
                   >
                     {slottedIds.size}
-                  </span>
+                  </Badge>
                 )}
               </button>
             )}
@@ -238,9 +241,12 @@ export function WorldPackLibrary(): JSX.Element {
       {fusionMode && (
         <div className="border-b border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-500/20 to-fuchsia-500/10 px-4 py-2 text-xs text-fuchsia-100 ring-1 ring-fuchsia-400/20">
           <span className="font-medium">融合模式</span>　点选 2-4 张源卡，会按你的融合要求生成一张新卡。已选{" "}
-          <span className="rounded bg-fuchsia-500/30 px-1.5 py-0.5 font-bold">
+          <Badge
+            tone="accent"
+            className="rounded bg-fuchsia-500/30 px-1.5 font-bold text-fuchsia-100 ring-fuchsia-400/30"
+          >
             {fusionSourceIds.length} / 4
-          </span>
+          </Badge>
         </div>
       )}
 
