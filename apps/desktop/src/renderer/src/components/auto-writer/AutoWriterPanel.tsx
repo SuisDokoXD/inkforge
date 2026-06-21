@@ -36,6 +36,7 @@ import { useWritingFlowActions } from "../../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { MotionSpinner } from "../MotionSpinner";
 import { SampleReferencePicker } from "../SampleReferencePicker";
+import { Badge, Button, IconButton, Select, TextField, Textarea } from "../ui";
 import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
 
 const ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
@@ -293,15 +294,16 @@ export function AutoWriterPanel({
             <div className="mt-1 truncate text-xs text-ink-500">{chapterTitle}</div>
           ) : null}
         </div>
-        <button
+        <IconButton
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+          variant="ghost"
+          size="sm"
           title="关闭"
           aria-label="关闭 AI 写作"
         >
           <X className="h-4 w-4" />
-        </button>
+        </IconButton>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5 scrollbar-thin">
@@ -310,7 +312,7 @@ export function AutoWriterPanel({
             <BookText className="h-4 w-4 text-ink-400" />
             <label className="text-sm font-medium text-ink-200">本次写作要求</label>
           </div>
-          <textarea
+          <Textarea
             value={userIdeas}
             onChange={(event) => setUserIdeas(event.target.value)}
             placeholder={
@@ -319,7 +321,7 @@ export function AutoWriterPanel({
                 : "写下本次要继续或修正什么：场景、人物状态、情绪变化、需要保留的细节、不要越界的地方。"
             }
             disabled={isRunning}
-            className="h-36 w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6 text-ink-100 placeholder:text-ink-500 focus:border-accent-500 focus:outline-none disabled:opacity-60"
+            className="h-36 rounded-md border-ink-700 bg-ink-950 p-3 leading-6"
           />
           <div className="mt-2 text-xs text-ink-500">{userIdeas.length} 字</div>
         </section>
@@ -340,18 +342,19 @@ export function AutoWriterPanel({
               <Settings2 className="h-4 w-4 text-ink-400" />
               模型与长度
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => setAdvanced((value) => !value)}
-              className="flex items-center gap-1 rounded-md border border-ink-700 px-2 py-1 text-xs text-ink-300 hover:bg-ink-800"
+              variant="secondary"
+              size="sm"
             >
               {advanced ? "收起高级" : "高级"}
               <ChevronDown className={`h-3.5 w-3.5 transition ${advanced ? "rotate-180" : ""}`} />
-            </button>
+            </Button>
           </div>
 
           <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-2">
-            <select
+            <Select
               aria-label="选择 AI 写作使用的模型服务"
               value={primaryProviderId}
               onChange={(event) => {
@@ -361,7 +364,7 @@ export function AutoWriterPanel({
                 if (provider) setPrimaryModel(provider.defaultModel);
               }}
               disabled={isRunning}
-              className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
+              className="h-9 border-ink-700 bg-ink-950 py-0"
             >
               <option value="">选择模型服务</option>
               {providers.map((provider) => (
@@ -369,15 +372,15 @@ export function AutoWriterPanel({
                   {provider.label}
                 </option>
               ))}
-            </select>
-            <input
+            </Select>
+            <TextField
               aria-label="AI 写作使用的模型名称"
               type="text"
               value={primaryModel}
               onChange={(event) => setPrimaryModel(event.target.value)}
               placeholder="模型名称"
               disabled={isRunning}
-              className="h-9 rounded-md border border-ink-700 bg-ink-950 px-2 text-sm"
+              className="h-9 border-ink-700 bg-ink-950 py-0"
             />
           </div>
 
@@ -471,7 +474,7 @@ export function AutoWriterPanel({
                 return (
                   <div key={role} className="grid grid-cols-[56px_minmax(0,1fr)_150px] gap-2 text-xs">
                     <span className="self-center text-ink-400">{ROLE_LABELS[role]}</span>
-                    <select
+                    <Select
                       aria-label={`${ROLE_LABELS[role]}使用的模型服务`}
                       value={binding?.providerId ?? ""}
                       onChange={(event) =>
@@ -484,7 +487,7 @@ export function AutoWriterPanel({
                         }))
                       }
                       disabled={isRunning}
-                      className="h-8 rounded-md border border-ink-700 bg-ink-900 px-2"
+                      className="h-8 border-ink-700 bg-ink-900 py-0 text-xs"
                     >
                       <option value="">使用主模型</option>
                       {providers.map((provider) => (
@@ -492,8 +495,8 @@ export function AutoWriterPanel({
                           {provider.label}
                         </option>
                       ))}
-                    </select>
-                    <input
+                    </Select>
+                    <TextField
                       aria-label={`${ROLE_LABELS[role]}使用的模型名称`}
                       type="text"
                       value={binding?.model ?? ""}
@@ -508,7 +511,7 @@ export function AutoWriterPanel({
                       }
                       placeholder="模型"
                       disabled={isRunning}
-                      className="h-8 rounded-md border border-ink-700 bg-ink-900 px-2"
+                      className="h-8 border-ink-700 bg-ink-900 py-0 text-xs"
                     />
                   </div>
                 );
@@ -519,24 +522,28 @@ export function AutoWriterPanel({
 
         <section className="mb-4">
           {!isRunning ? (
-            <button
+            <Button
               type="button"
               disabled={!canStart || startMut.isPending}
               onClick={() => startMut.mutate()}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-accent-500 text-sm font-semibold text-ink-950 hover:bg-accent-400 disabled:opacity-45"
+              className="h-11 w-full"
+              variant="primary"
+              size="md"
             >
               {startMut.isPending ? <MotionSpinner className="h-4 w-4" /> : <PenLine className="h-4 w-4" />}
               {isStartingDraft ? "开始写作" : "继续写作"}
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="button"
               onClick={() => stopMut.mutate()}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-md bg-rose-500 text-sm font-semibold text-white hover:bg-rose-400"
+              className="h-11 w-full bg-rose-500 text-white hover:bg-rose-400"
+              variant="danger"
+              size="md"
             >
               <Square className="h-4 w-4" />
               停止
-            </button>
+            </Button>
           )}
           {startMut.isError ? (
             <div className="mt-2 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
@@ -548,9 +555,9 @@ export function AutoWriterPanel({
         {currentPhase ? (
           <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-3 text-xs">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-accent-500/15 px-2 py-0.5 text-accent-200">
+              <Badge tone="accent" size="md" className="rounded">
                 {PHASE_LABELS[currentPhase.phase]}
-              </span>
+              </Badge>
               <span className="text-ink-500">第 {currentPhase.segmentIndex + 1} 段</span>
               {currentPhase.rewriteCount ? (
                 <span className="text-ink-500">重写 {currentPhase.rewriteCount}</span>
@@ -562,31 +569,33 @@ export function AutoWriterPanel({
         {isRunning ? (
           <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/35 p-4">
             <div className="mb-2 text-sm font-medium text-ink-200">中途补充</div>
-            <textarea
+            <Textarea
               value={interruptDraft}
               onChange={(event) => setInterruptDraft(event.target.value)}
               placeholder="补充新要求，或指出刚才生成内容里的偏差。"
-              className="h-20 w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6"
+              className="h-20 rounded-md border-ink-700 bg-ink-950 p-3 leading-6"
             />
             <div className="mt-2 flex gap-2">
-              <button
+              <Button
                 type="button"
                 disabled={!interruptDraft.trim() || injectMut.isPending}
                 onClick={() => injectMut.mutate(interruptDraft.trim())}
-                className="flex h-8 items-center gap-1.5 rounded-md border border-sky-500/35 bg-sky-500/10 px-3 text-xs text-sky-200 hover:bg-sky-500/20 disabled:opacity-45"
+                className="h-8 border-sky-500/35 bg-sky-500/10 px-3 text-sky-200 hover:bg-sky-500/20"
+                size="sm"
               >
                 <Send className="h-3.5 w-3.5" />
                 补充方向
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={!interruptDraft.trim() || correctMut.isPending}
                 onClick={() => correctMut.mutate(interruptDraft.trim())}
-                className="flex h-8 items-center gap-1.5 rounded-md border border-rose-500/35 bg-rose-500/10 px-3 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-45"
+                className="h-8 border-rose-500/35 bg-rose-500/10 px-3 text-rose-200 hover:bg-rose-500/20"
+                size="sm"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 要求修正
-              </button>
+              </Button>
             </div>
           </section>
         ) : null}
@@ -637,31 +646,35 @@ export function AutoWriterPanel({
                 </div>
               ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
+                <Button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md bg-accent-500 px-2.5 text-xs font-medium text-ink-950 hover:bg-accent-400"
+                  className="h-8"
+                  variant="primary"
+                  size="sm"
                   onClick={() => flowActions.openChapter(chapterId)}
                 >
                   <BookOpenText className="h-3.5 w-3.5" />
                   打开正文
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-current/30 px-2.5 text-xs hover:bg-white/10"
+                  className="h-8 border-current/30 text-current hover:bg-white/10"
+                  size="sm"
                   onClick={() => flowActions.reviewChapter(chapterId)}
                 >
                   <FileSearch className="h-3.5 w-3.5" />
                   审查本章
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-current/30 px-2.5 text-xs hover:bg-white/10"
+                  className="h-8 border-current/30 text-current hover:bg-white/10"
+                  size="sm"
                   onClick={() => flowActions.openOutline(linkedOutlineCard?.id)}
                   title={linkedOutlineCard ? `查看大纲卡：${linkedOutlineCard.title}` : "回到大纲"}
                 >
                   <ClipboardList className="h-3.5 w-3.5" />
                   回到大纲
-                </button>
+                </Button>
               </div>
             </section>
 
@@ -704,7 +717,7 @@ function NumberField({
   return (
     <label className="flex flex-col gap-1">
       <span className="text-ink-400">{label}</span>
-      <input
+      <TextField
         aria-label={label}
         type="number"
         min={min}
@@ -713,7 +726,7 @@ function NumberField({
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
         disabled={disabled}
-        className="h-8 rounded-md border border-ink-700 bg-ink-950 px-2"
+        className="h-8 border-ink-700 bg-ink-950 px-2 py-0 text-xs"
       />
     </label>
   );
