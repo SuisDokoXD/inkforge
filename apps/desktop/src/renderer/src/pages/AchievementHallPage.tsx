@@ -15,13 +15,11 @@ import {
   DUR,
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
   staggerContainer,
   staggerItem,
-  tapPress,
 } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Badge, Button } from "../components/ui";
 
 /**
  * 作家档案 + 成就大厅。
@@ -35,13 +33,6 @@ export function AchievementHallPage(): JSX.Element {
   const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
   const listMotion = reduceMotion ? fadeOnly : staggerContainer;
   const itemMotion = reduceMotion ? fadeOnly : staggerItem;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
 
   const statsQuery = useQuery({
     queryKey: ["achievement-stats", projectId],
@@ -110,12 +101,11 @@ export function AchievementHallPage(): JSX.Element {
                 解锁 {stats?.totalUnlocked ?? "—"} / {stats?.totalCatalog ?? "—"} 成就
               </div>
             </div>
-            <motion.button
-              type="button"
+            <Button
+              size="sm"
+              variant="accentSoft"
               onClick={() => checkMut.mutate()}
               disabled={checkMut.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent-500/20 px-3 py-1.5 text-xs text-accent-200 ring-1 ring-accent-400/30 hover:bg-accent-500/30 disabled:cursor-default disabled:opacity-60"
-              {...buttonMotion}
             >
               <motion.span
                 className="inline-flex"
@@ -129,7 +119,7 @@ export function AchievementHallPage(): JSX.Element {
                 <RefreshCw className="h-3.5 w-3.5" aria-hidden />
               </motion.span>
               {checkMut.isPending ? "扫描中…" : "重新扫描"}
-            </motion.button>
+            </Button>
           </div>
 
           <AnimatePresence initial={false}>
@@ -197,10 +187,11 @@ export function AchievementHallPage(): JSX.Element {
                 return (
                   <motion.div
                     key={r}
-                    className={`rounded-full px-2.5 py-0.5 ring-1 ${c.bg} ${c.text} ${c.ring}`}
                     variants={itemMotion}
                   >
-                    {labelOfRarity(r)} · {stats.byRarity[r]}
+                    <Badge size="md" className={c.bg + " " + c.text + " " + c.ring}>
+                      {labelOfRarity(r)} · {stats.byRarity[r]}
+                    </Badge>
                   </motion.div>
                 );
               })}
