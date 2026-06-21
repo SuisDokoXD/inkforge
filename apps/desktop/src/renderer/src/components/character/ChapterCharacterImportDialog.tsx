@@ -11,7 +11,7 @@ import type {
 } from "@inkforge/shared";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
-import { Button, IconButton } from "../ui";
+import { Badge, Button, IconButton } from "../ui";
 import { chapterApi, novelCharacterApi } from "../../lib/api";
 
 interface ChapterCharacterImportDialogProps {
@@ -395,13 +395,19 @@ export function ChapterCharacterImportDialog({
                               又名 {candidate.aliases.join("、")}
                             </span>
                           ) : null}
-                          <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+                          <Badge
+                            tone="neutral"
+                            className="rounded bg-ink-800 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+                          >
                             {Math.round(candidate.confidence * 100)}%
-                          </span>
+                          </Badge>
                           {exists ? (
-                            <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+                            <Badge
+                              tone="neutral"
+                              className="rounded bg-ink-800 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+                            >
                               已在人物库
-                            </span>
+                            </Badge>
                           ) : null}
                         </span>
                         {candidate.persona ? (

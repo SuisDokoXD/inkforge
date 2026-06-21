@@ -6,6 +6,7 @@ import type { NovelCharacterRecord, TavernCardCreateInput, TavernCardRecord } fr
 import { tavernCardApi, providerApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../../lib/motion-tokens";
+import { Badge } from "../ui";
 
 interface TavernCardListProps {
   projectId: string;
@@ -146,9 +147,12 @@ export function TavernCardList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
                   <span className="truncate text-sm font-medium text-ink-100">{card.name}</span>
-                  <span className="shrink-0 rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+                  <Badge
+                    tone="neutral"
+                    className="shrink-0 rounded bg-ink-800 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+                  >
                     {syncModeLabel(card.syncMode)}
-                  </span>
+                  </Badge>
                 </div>
                 <div className="mt-1 truncate text-[11px] text-ink-500">
                   {card.linkedNovelCharacterId ? "已关联书中人物" : "独立讨论角色"}

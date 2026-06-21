@@ -6,6 +6,7 @@ import {
   SCOPE_LABELS,
   describeTriggers,
 } from "./skill-page-model";
+import { Badge } from "../ui";
 
 interface SkillLibrarySidebarProps {
   skills: SkillDefinition[];
@@ -100,18 +101,27 @@ export function SkillLibrarySidebar({
             <div className="flex w-full items-center justify-between">
               <span className="truncate text-sm font-medium text-ink-100">{skill.name}</span>
               {!skill.enabled && (
-                <span className="shrink-0 rounded bg-ink-700 px-1.5 py-0.5 text-[11px] text-ink-400">
+                <Badge
+                  tone="neutral"
+                  className="shrink-0 rounded bg-ink-700 px-1.5 text-[11px] font-normal text-ink-400 ring-ink-600/70"
+                >
                   停用
-                </span>
+                </Badge>
               )}
             </div>
             <div className="mt-1 flex max-w-full flex-wrap gap-1 text-[11px] text-ink-400">
-              <span className="rounded bg-ink-900/70 px-1.5 py-0.5">
+              <Badge
+                tone="neutral"
+                className="rounded bg-ink-900/70 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+              >
                 {SCOPE_LABELS[skill.scope]}
-              </span>
-              <span className="rounded bg-ink-900/70 px-1.5 py-0.5">
+              </Badge>
+              <Badge
+                tone="neutral"
+                className="rounded bg-ink-900/70 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+              >
                 {OUTPUT_EFFECTS[skill.output]}
-              </span>
+              </Badge>
             </div>
             <div className="mt-1 text-xs leading-5 text-ink-400">
               {describeTriggers(skill.triggers)}

@@ -1,5 +1,6 @@
 import type { SampleLibRecord } from "@inkforge/shared";
 import { BookOpenText } from "lucide-react";
+import { Badge } from "./ui";
 
 interface SampleReferencePickerProps {
   libs: SampleLibRecord[];
@@ -44,9 +45,12 @@ export function SampleReferencePicker({
           <BookOpenText className="h-3.5 w-3.5 text-accent-300" />
           参考文集
         </div>
-        <span className="rounded bg-ink-800 px-1.5 py-0.5 text-[10px] text-ink-400">
+        <Badge
+          tone="neutral"
+          className="rounded bg-ink-800 px-1.5 font-normal text-ink-400 ring-ink-700/60"
+        >
           {autoMode ? "自动匹配片段" : `只参考 ${selectedIds.length} 本`}
-        </span>
+        </Badge>
         <label className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-ink-300">
           <input
             aria-label="自动选择参考文集"

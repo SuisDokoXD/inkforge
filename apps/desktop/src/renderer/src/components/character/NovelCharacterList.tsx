@@ -8,6 +8,7 @@ import { novelCharacterApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { staggerContainer, staggerItem, fadeOnly } from "../../lib/motion-tokens";
 import { ChapterCharacterImportDialog } from "./ChapterCharacterImportDialog";
+import { Badge } from "../ui";
 
 interface NovelCharacterListProps {
   projectId: string;
@@ -118,13 +119,19 @@ export function NovelCharacterList({
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm text-ink-100">{char.name}</span>
               {char.linkedTavernCardId ? (
-                <span className="shrink-0 rounded bg-green-500/20 px-1 text-[10px] text-green-400">
+                <Badge
+                  tone="success"
+                  className="shrink-0 rounded bg-green-500/20 px-1 font-normal text-green-400 ring-green-500/25"
+                >
                   已绑定
-                </span>
+                </Badge>
               ) : (
-                <span className="shrink-0 rounded bg-ink-700 px-1 text-[10px] text-ink-400">
+                <Badge
+                  tone="neutral"
+                  className="shrink-0 rounded bg-ink-700 px-1 font-normal text-ink-400 ring-ink-600/70"
+                >
                   未绑定
-                </span>
+                </Badge>
               )}
             </div>
             <div className="mt-1 truncate text-xs text-ink-400">

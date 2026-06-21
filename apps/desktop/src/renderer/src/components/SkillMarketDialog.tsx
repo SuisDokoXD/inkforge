@@ -6,7 +6,7 @@ import type { MarketSkillMetaDTO } from "@inkforge/shared";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly, fadeSlideUp, hoverLift, tapPress } from "../lib/motion-tokens";
-import { Button, IconButton } from "./ui";
+import { Badge, Button, IconButton } from "./ui";
 
 interface SkillMarketDialogProps {
   open: boolean;
@@ -193,9 +193,14 @@ export function SkillMarketDialog({ open, onClose }: SkillMarketDialogProps): JS
                 <p className="text-sm text-ink-200">{selected.description}</p>
                 <div className="flex gap-1 text-xs">
                   {selected.tags.map((t) => (
-                    <span key={t} className="rounded bg-ink-700 px-2 py-0.5 text-ink-300">
+                    <Badge
+                      key={t}
+                      tone="neutral"
+                      size="md"
+                      className="rounded bg-ink-700 px-2 font-normal text-ink-300 ring-ink-600/70"
+                    >
                       {t}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
                 <div className="mt-2 flex gap-2">
