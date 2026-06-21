@@ -34,11 +34,10 @@ import { SampleLibPanel } from "../components/SampleLibPanel";
 import {
   fadeSlideUp,
   fadeOnly,
-  hoverLift,
   staggerContainer,
   staggerItem,
-  tapPress,
 } from "../lib/motion-tokens";
+import { Button, IconButton, Select, TextField, Textarea } from "../components/ui";
 
 type Tab = "materials" | "worldview" | "samples";
 type KindFilter = MaterialKind | "all";
@@ -206,40 +205,23 @@ function TabBtn({
   active: boolean;
   onClick: () => void;
 }): JSX.Element {
-  const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-      };
-
   return (
-    <motion.button
-      type="button"
+    <Button
+      size="sm"
+      variant={active ? "accentSoft" : "secondary"}
+      className="h-8"
+      aria-pressed={active}
       onClick={onClick}
-      className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 ${
-        active
-          ? "border-accent-500/50 bg-accent-500/15 text-accent-100"
-          : "border-ink-700 text-ink-300 hover:bg-ink-800"
-      }`}
-      {...buttonMotion}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
       <span>{label}</span>
-    </motion.button>
+    </Button>
   );
 }
 
 function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-      };
   const [filterKind, setFilterKind] = useState<KindFilter>("all");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -347,14 +329,16 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
             className="min-w-0 flex-1 bg-transparent text-xs text-ink-100 outline-none placeholder:text-ink-500"
           />
           {search ? (
-            <button
-              type="button"
+            <IconButton
+              size="xs"
+              variant="ghost"
+              aria-label="清空搜索"
               onClick={() => setSearch("")}
               className="text-ink-500 hover:text-ink-200"
               title="清空搜索"
             >
               <X className="h-3.5 w-3.5" />
-            </button>
+            </IconButton>
           ) : null}
         </div>
 
@@ -432,25 +416,25 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
 
         <section className="mb-4 rounded-md border border-ink-700 bg-ink-900/45 p-3">
           <div className="mb-2 grid grid-cols-[160px_minmax(0,1fr)_220px_auto] gap-2 text-xs">
-            <select
+            <Select
               aria-label="素材类型"
               value={draftKind}
               onChange={(e) => setDraftKind(e.target.value as MaterialKind)}
-              className="h-8 rounded-md border border-ink-700 bg-ink-950 px-2 text-ink-100"
+              className="h-8 rounded-md border-ink-700 bg-ink-950 px-2 py-0 text-xs"
             >
               {KIND_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
-            <input
+            </Select>
+            <TextField
               aria-label="素材标题"
               type="text"
               value={draftTitle}
               onChange={(e) => setDraftTitle(e.target.value)}
               placeholder="标题"
-              className="h-8 rounded-md border border-ink-700 bg-ink-950 px-2 text-ink-100 placeholder:text-ink-500"
+              className="h-8 rounded-md border-ink-700 bg-ink-950 px-2 py-0 text-xs"
             />
             <div className="flex h-8 items-center gap-1 rounded-md border border-ink-700 bg-ink-950 px-2">
               <Tags className="h-3.5 w-3.5 text-ink-500" />
@@ -463,12 +447,12 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
                 className="min-w-0 flex-1 bg-transparent text-ink-100 outline-none placeholder:text-ink-500"
               />
             </div>
-            <motion.button
-              type="button"
+            <Button
+              size="sm"
+              variant="primary"
+              className="h-8 min-w-16"
               disabled={!draftTitle.trim() || createMut.isPending}
               onClick={() => createMut.mutate()}
-              className="inline-flex h-8 min-w-16 items-center justify-center gap-1.5 rounded-md bg-accent-500 px-3 font-medium text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
-              {...(!draftTitle.trim() || createMut.isPending ? {} : buttonMotion)}
             >
               {createMut.isPending ? (
                 <MotionSpinner className="h-3.5 w-3.5" />
@@ -476,15 +460,15 @@ function MaterialsTab({ projectId }: { projectId: string }): JSX.Element {
                 <Plus className="h-3.5 w-3.5" aria-hidden />
               )}
               {createMut.isPending ? "保存中" : "新增"}
-            </motion.button>
+            </Button>
           </div>
-          <textarea
+          <Textarea
             aria-label={`${activeKindMeta.label}内容`}
             value={draftContent}
             onChange={(e) => setDraftContent(e.target.value)}
             rows={4}
             placeholder={activeKindMeta.placeholder}
-            className="w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-2 text-xs text-ink-100 placeholder:text-ink-500"
+            className="rounded-md border-ink-700 bg-ink-950 p-2 text-xs"
           />
         </section>
 
@@ -611,12 +595,6 @@ function MaterialRow({
 }): JSX.Element {
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-      };
   const [editing, setEditing] = useState(false);
   const [deleteConfirming, setDeleteConfirming] = useState(false);
   const [kind, setKind] = useState<MaterialKind>(item.kind);
@@ -664,18 +642,18 @@ function MaterialRow({
     <div className="rounded-md border border-ink-700 bg-ink-900/45 p-3">
       <div className="mb-2 flex min-w-0 items-center gap-2 text-xs">
         {editing ? (
-          <select
+          <Select
             aria-label="素材类型"
             value={kind}
             onChange={(e) => setKind(e.target.value as MaterialKind)}
-            className="h-7 rounded-md border border-ink-700 bg-ink-950 px-2 text-ink-100"
+            className="h-7 rounded-md border-ink-700 bg-ink-950 px-2 py-0 text-xs"
           >
             {KIND_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
-          </select>
+          </Select>
         ) : (
           <span className="flex h-7 shrink-0 items-center gap-1 rounded bg-ink-800 px-2 text-ink-200">
             <Icon className="h-3.5 w-3.5" />
@@ -684,12 +662,12 @@ function MaterialRow({
         )}
 
         {editing ? (
-          <input
+          <TextField
             aria-label="素材标题"
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="h-7 min-w-0 flex-1 rounded-md border border-accent-500/40 bg-ink-950 px-2 text-ink-100"
+            className="h-7 min-w-0 flex-1 rounded-md border-accent-500/40 bg-ink-950 px-2 py-0 text-xs"
           />
         ) : (
           <span className="min-w-0 flex-1 truncate font-medium text-ink-100">{item.title}</span>
@@ -700,12 +678,12 @@ function MaterialRow({
         </span>
         {editing ? (
           <>
-            <motion.button
-              type="button"
+            <Button
+              size="sm"
+              variant="primary"
+              className="h-7 min-w-14 px-2 text-[11px]"
               disabled={!title.trim() || saveMut.isPending}
               onClick={() => saveMut.mutate()}
-              className="inline-flex h-7 min-w-14 items-center justify-center gap-1 rounded-md bg-accent-500 px-2 text-[11px] font-medium text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
-              {...(!title.trim() || saveMut.isPending ? {} : buttonMotion)}
             >
               {saveMut.isPending ? (
                 <MotionSpinner className="h-3.5 w-3.5" />
@@ -713,32 +691,30 @@ function MaterialRow({
                 <Save className="h-3.5 w-3.5" aria-hidden />
               )}
               {saveMut.isPending ? "保存中" : "保存"}
-            </motion.button>
-            <motion.button
-              type="button"
+            </Button>
+            <IconButton
+              size="xs"
+              variant="secondary"
               onClick={() => setEditing(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-300 hover:bg-ink-800"
               title="取消"
               aria-label={`取消编辑素材：${item.title}`}
-              {...buttonMotion}
             >
               <X className="h-3.5 w-3.5" aria-hidden />
-            </motion.button>
+            </IconButton>
           </>
         ) : (
-          <motion.button
-            type="button"
+          <IconButton
+            size="xs"
+            variant="secondary"
             onClick={() => {
               onClearDeleteError();
               setEditing(true);
             }}
-            className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-300 hover:bg-ink-800"
             title="编辑"
             aria-label={`编辑素材：${item.title}`}
-            {...buttonMotion}
           >
             <Edit3 className="h-3.5 w-3.5" aria-hidden />
-          </motion.button>
+          </IconButton>
         )}
         <AnimatePresence initial={false} mode="wait">
           {deleteConfirming ? (
@@ -750,48 +726,48 @@ function MaterialRow({
               exit="exit"
               className="flex h-7 items-center gap-1"
             >
-              <motion.button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-7 px-2 text-[11px]"
                 disabled={deleting}
                 onClick={() => {
                   setDeleteConfirming(false);
                   onClearDeleteError();
                 }}
-                className="h-7 rounded-md border border-ink-700 px-2 text-[11px] text-ink-300 hover:bg-ink-800 disabled:cursor-default disabled:opacity-40"
-                {...(deleting ? {} : buttonMotion)}
               >
                 取消
-              </motion.button>
-              <motion.button
-                type="button"
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                className="h-7 px-2 text-[11px]"
                 disabled={deleting}
                 onClick={() => {
                   onClearDeleteError();
                   onDelete();
                 }}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 text-[11px] font-medium text-rose-100 hover:bg-rose-500/20 disabled:cursor-default disabled:opacity-40"
-                {...(deleting ? {} : buttonMotion)}
               >
                 {deleting ? <MotionSpinner className="h-3 w-3" /> : null}
                 {deleting ? "删除中" : "确认删除"}
-              </motion.button>
+              </Button>
             </motion.div>
           ) : (
-            <motion.button
+            <IconButton
               key="delete-start"
-              type="button"
+              size="xs"
+              variant="secondary"
               disabled={deleting}
               onClick={() => {
                 onClearDeleteError();
                 setDeleteConfirming(true);
               }}
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-ink-700 text-ink-400 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200 disabled:opacity-40"
+              className="text-ink-400 hover:border-rose-500/40 hover:bg-rose-500/10 hover:text-rose-200"
               title="删除"
               aria-label={`删除素材：${item.title}`}
-              {...(deleting ? {} : buttonMotion)}
             >
               <Trash2 className="h-3.5 w-3.5" aria-hidden />
-            </motion.button>
+            </IconButton>
           )}
         </AnimatePresence>
       </div>
@@ -825,12 +801,12 @@ function MaterialRow({
               className="min-w-0 flex-1 bg-transparent text-ink-100 outline-none placeholder:text-ink-500"
             />
           </div>
-          <textarea
+          <Textarea
             aria-label="素材内容"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={7}
-            className="w-full resize-y rounded-md border border-ink-700 bg-ink-950 p-2 text-xs text-ink-100"
+            className="rounded-md border-ink-700 bg-ink-950 p-2 text-xs"
           />
         </div>
       ) : (
@@ -862,13 +838,6 @@ function MaterialRow({
 
 function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Element {
   const queryClient = useQueryClient();
-  const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-      };
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
@@ -895,22 +864,23 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
 
   return (
     <div className="p-4">
-      <textarea
+      <Textarea
         aria-label="世界观草稿"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={22}
+        resize="none"
         placeholder="时代背景、力量体系、政治格局、关键禁忌、地理与组织关系"
-        className="w-full resize-none rounded-md border border-ink-700 bg-ink-950 p-3 text-sm leading-6 text-ink-100 placeholder:text-ink-500"
+        className="rounded-md border-ink-700 bg-ink-950 p-3 text-sm leading-6"
       />
       <div className="mt-2 flex items-center justify-between text-[11px] text-ink-500">
         <span>{draft.length} 字</span>
-        <motion.button
-          type="button"
+        <Button
+          size="sm"
+          variant="primary"
+          className="h-8 min-w-20 font-semibold"
           disabled={!dirty || saveMut.isPending}
           onClick={() => saveMut.mutate()}
-          className="inline-flex h-8 min-w-20 items-center justify-center gap-1.5 rounded-md bg-accent-500 px-3 text-xs font-semibold text-ink-950 hover:bg-accent-400 disabled:cursor-default disabled:opacity-40"
-          {...(!dirty || saveMut.isPending ? {} : buttonMotion)}
         >
           {saveMut.isPending ? (
             <MotionSpinner className="h-3.5 w-3.5" />
@@ -918,7 +888,7 @@ function WorldviewTab({ project }: { project: ProjectRecord | null }): JSX.Eleme
             <Save className="h-3.5 w-3.5" aria-hidden />
           )}
           {saveMut.isPending ? "保存中" : dirty ? "保存" : "已保存"}
-        </motion.button>
+        </Button>
       </div>
     </div>
   );
