@@ -15,6 +15,7 @@ import { fadeOnly, SPRING_SNAPPY } from "../lib/motion-tokens";
 import { applySkillOutputToEditor, type SkillApplyRange } from "../lib/skill-output";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { useTimedStatus } from "../lib/use-timed-status";
+import { Button, Select } from "./ui";
 
 const CONTEXT_WINDOW = 400;
 
@@ -373,29 +374,33 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           transition={SPRING_SNAPPY}
         >
           {ACTIONS.map((action) => (
-            <button
+            <Button
               key={action.kind}
               title={action.tip}
-              className="rounded px-2 py-1 hover:bg-ink-700 disabled:opacity-60"
+              className="px-2 py-1"
+              variant="ghost"
+              size="sm"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => runAction(action)}
               disabled={!!result?.loading}
             >
               {action.label}
-            </button>
+            </Button>
           ))}
           {selectionSkills.length > 0 && (
             <div ref={skillMenuRef} className="relative">
-              <button
+              <Button
                 title="运行一个选中文本类技能"
-                className="flex items-center gap-0.5 rounded px-2 py-1 hover:bg-ink-700 disabled:opacity-60"
+                className="gap-0.5 px-2 py-1"
+                variant="ghost"
+                size="sm"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setSkillMenuOpen((v) => !v)}
                 disabled={!!result?.loading}
               >
                 技能
                 <span className="text-[10px] opacity-70">▾</span>
-              </button>
+              </Button>
               {skillMenuOpen && (
                 <div className="absolute left-1/2 top-full z-50 mt-1 w-56 -translate-x-1/2 rounded-md border border-ink-600 bg-ink-800/95 py-1 text-xs shadow-xl backdrop-blur">
                   <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-ink-500">
@@ -421,8 +426,8 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           <span className="px-1 text-ink-500">|</span>
           <label className="flex items-center gap-1 px-1 text-ink-400" title="一次生成几个可选版本">
             候选
-            <select
-              className="rounded border border-ink-600 bg-ink-900 px-1 py-0.5 text-xs text-ink-100 focus:border-accent-500 focus:outline-none"
+            <Select
+              className="w-auto rounded border-ink-600 bg-ink-900 px-1 py-0.5 text-xs"
               value={candidateCount}
               onChange={(e) => setCandidateCount(Number(e.target.value) as 1 | 2 | 3)}
               onMouseDown={(e) => e.stopPropagation()}
@@ -430,7 +435,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
               <option value={1}>1</option>
               <option value={2}>2</option>
               <option value={3}>3</option>
-            </select>
+            </Select>
           </label>
         </motion.div>
       )}
@@ -486,12 +491,14 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
     >
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink-100">{title}</h3>
-        <button
-          className="rounded px-2 py-1 text-xs text-ink-300 hover:bg-ink-700"
+        <Button
+          className="px-2 py-1"
+          variant="ghost"
+          size="sm"
           onClick={onClose}
         >
           关闭
-        </button>
+        </Button>
       </div>
       {loading && (
         <div className="py-6 text-center text-sm text-ink-400">模型正在生成，请稍候…</div>
@@ -516,19 +523,20 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
                   {response.durationMs > 0 && ` · ${(response.durationMs / 1000).toFixed(1)}s`}
                 </span>
                 <div className="flex gap-2">
-                  <button
-                    className="rounded border border-ink-600 px-2 py-1 hover:bg-ink-700"
+                  <Button
+                    size="sm"
                     onClick={() => navigator.clipboard.writeText(text)}
                   >
                     复制
-                  </button>
+                  </Button>
                   {action.placement !== "timeline" && (
-                    <button
-                      className="rounded bg-accent-500 px-2 py-1 font-medium text-ink-900 hover:bg-accent-400"
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => onApply(text)}
                     >
                       {action.placement === "insert-after" ? "追加" : "替换"}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </div>
