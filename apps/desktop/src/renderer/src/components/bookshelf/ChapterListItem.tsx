@@ -16,6 +16,7 @@ import {
   tapPress,
 } from "../../lib/motion-tokens";
 import { MotionSpinner } from "../MotionSpinner";
+import { Badge, Button, IconButton, Select, TextField } from "../ui";
 
 const ORIGIN_BADGE: Record<ChapterOrigin, { label: string; cls: string }> = {
   "ai-auto": { label: "初稿", cls: "bg-violet-500/20 text-violet-200" },
@@ -132,7 +133,7 @@ export function ChapterListItem({
       <div className="flex items-center gap-2">
         {renaming ? (
           <div className="flex min-w-0 flex-1 items-center gap-1.5">
-            <input
+            <TextField
               type="text"
               autoFocus
               aria-label="章节标题"
@@ -146,7 +147,7 @@ export function ChapterListItem({
                   setRenaming(false);
                 }
               }}
-              className="min-w-0 flex-1 rounded border border-accent-500/40 bg-ink-900 px-2 py-1 text-sm text-ink-100 focus:outline-none"
+              className="w-auto min-w-0 flex-1 border-accent-500/40 bg-ink-900 px-2 py-1"
             />
             <AnimatePresence initial={false}>
               {renameMut.isPending ? (
@@ -180,9 +181,9 @@ export function ChapterListItem({
             {chapter.title || "（未命名）"}
           </motion.button>
         )}
-        <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] ${badge.cls}`}>
+        <Badge className={`shrink-0 rounded ${badge.cls}`} size="sm">
           {badge.label}
-        </span>
+        </Badge>
       </div>
       <div className="flex items-center gap-2 text-[11px] text-ink-500">
         <span>{chapter.wordCount} 字</span>
@@ -190,61 +191,65 @@ export function ChapterListItem({
           <span>· {new Date(chapter.updatedAt).toLocaleDateString()}</span>
         )}
         <div className="ml-auto flex items-center gap-1">
-          <select
+          <Select
             value={origin}
             onChange={(e) => setTagMut.mutate(e.target.value as ChapterOrigin)}
-            className="rounded border border-ink-700 bg-ink-900 px-1 py-0.5 text-[10px] text-ink-300"
+            className="w-auto rounded border-ink-700 bg-ink-900 px-1 py-0.5 text-[10px] text-ink-300"
             aria-label={`设置《${chapter.title || "未命名章节"}》的章节来源`}
             title="设置章节来源"
           >
             <option value="ai-auto">模型初稿</option>
             <option value="ai-assisted">模型陪写</option>
             <option value="manual">我手写</option>
-          </select>
-          <motion.button
+          </Select>
+          <Button
             type="button"
             onClick={() => setAutoWriterOpen(true)}
             className="rounded bg-accent-500/20 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-500/30"
+            variant="accentSoft"
+            size="sm"
             title="打开续写精修"
-            {...buttonMotion}
           >
             续写
-          </motion.button>
-          <motion.button
+          </Button>
+          <Button
             type="button"
             onClick={() => setLogOpen(true)}
             className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-600"
+            variant="secondary"
+            size="sm"
             title="章节日志"
-            {...buttonMotion}
           >
             <NotebookPen className="mr-1 inline h-3 w-3" aria-hidden />
             日志
-          </motion.button>
-          <motion.button
+          </Button>
+          <Button
             type="button"
             onClick={() => setSnapshotOpen((v) => !v)}
             className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-600"
+            variant="secondary"
+            size="sm"
             aria-label="打开章节版本备份"
             title="章节版本备份"
-            {...buttonMotion}
           >
             <RotateCcw className="mr-1 inline h-3 w-3" aria-hidden />
             备份
-          </motion.button>
-          <motion.button
+          </Button>
+          <IconButton
             type="button"
             onClick={() => {
               setDeleteConfirming(false);
               setRenameDraft(chapter.title);
               setRenaming(true);
             }}
-            className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-sky-500/30 hover:text-sky-100"
+            className="h-6 w-6 rounded bg-ink-700 text-ink-300 hover:bg-sky-500/30 hover:text-sky-100"
+            variant="ghost"
+            size="xs"
             aria-label="重命名章节"
             title="改名"
-            {...buttonMotion}
           >
             <Pencil className="h-3 w-3" aria-hidden />
-          </motion.button>
+          </IconButton>
           <AnimatePresence initial={false} mode="wait">
             {deleteConfirming ? (
               <motion.div
@@ -258,43 +263,46 @@ export function ChapterListItem({
                 <span className="max-w-52 truncate text-[11px] text-rose-200">
                   不会删除磁盘 .md 文件
                 </span>
-                <motion.button
+                <Button
                   type="button"
                   onClick={() => setDeleteConfirming(false)}
                   disabled={deleteMut.isPending}
-                  className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-600 disabled:cursor-default disabled:opacity-50"
-                  {...(deleteMut.isPending ? {} : buttonMotion)}
+                  className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-ink-600"
+                  variant="secondary"
+                  size="sm"
                 >
                   取消
-                </motion.button>
-                <motion.button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => deleteMut.mutate()}
                   disabled={deleteMut.isPending}
-                  className="inline-flex items-center gap-1 rounded bg-rose-500/20 px-2 py-0.5 text-[11px] text-rose-100 hover:bg-rose-500/30 disabled:cursor-default disabled:opacity-50"
-                  {...(deleteMut.isPending ? {} : buttonMotion)}
+                  className="rounded bg-rose-500/20 px-2 py-0.5 text-[11px] text-rose-100 hover:bg-rose-500/30"
+                  variant="danger"
+                  size="sm"
                 >
                   {deleteMut.isPending ? <MotionSpinner className="h-3 w-3" /> : null}
                   {deleteMut.isPending ? "删除中" : "确认删除"}
-                </motion.button>
+                </Button>
               </motion.div>
             ) : (
-              <motion.button
+              <IconButton
                 key="delete-start"
                 type="button"
                 onClick={() => setDeleteConfirming(true)}
                 disabled={deleteMut.isPending}
-                className="rounded bg-ink-700 px-2 py-0.5 text-[11px] text-ink-300 hover:bg-rose-500/30 hover:text-rose-100 disabled:opacity-50"
+                className="h-6 w-6 rounded bg-ink-700 text-ink-300 hover:bg-rose-500/30 hover:text-rose-100"
+                variant="ghost"
+                size="xs"
                 aria-label="删除章节"
                 title="删除章节"
                 variants={fadeOnly}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                {...buttonMotion}
               >
                 <Trash2 className="h-3 w-3" aria-hidden />
-              </motion.button>
+              </IconButton>
             )}
           </AnimatePresence>
         </div>
