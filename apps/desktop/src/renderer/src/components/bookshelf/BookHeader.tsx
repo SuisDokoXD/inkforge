@@ -4,10 +4,8 @@ import { motion, useReducedMotion } from "motion/react";
 import {
   fadeOnly,
   fadeSlideUp,
-  hoverLift,
-  SPRING_SNAPPY,
-  tapPress,
 } from "../../lib/motion-tokens";
+import { Button } from "../ui";
 import { CoverUploader } from "./CoverUploader";
 
 interface BookHeaderProps {
@@ -31,13 +29,6 @@ export function BookHeader({
   const { project, chapterCount, totalWords, todayWords, originCounts, lastChapterUpdatedAt } =
     book;
   const reduceMotion = useReducedMotion() === true;
-  const buttonMotion = reduceMotion
-    ? {}
-    : {
-        whileHover: hoverLift,
-        whileTap: tapPress,
-        transition: SPRING_SNAPPY,
-      };
   const stateMotion = reduceMotion ? fadeOnly : fadeSlideUp;
 
   return (
@@ -62,30 +53,32 @@ export function BookHeader({
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-1 text-[11px]">
             {onRename && (
-              <motion.button
+              <Button
                 type="button"
                 onClick={onRename}
-                className="inline-flex items-center gap-1 rounded border border-ink-700 px-2 py-0.5 text-ink-300 hover:border-sky-500/40 hover:text-sky-200"
+                variant="secondary"
+                size="sm"
+                className="gap-1 rounded border-ink-700 px-2 py-0.5 text-[11px] hover:border-sky-500/40 hover:text-sky-200"
                 aria-label={`编辑《${project.name}》的基础信息`}
                 title="改名 / 修改基础信息"
-                {...buttonMotion}
               >
                 <Pencil aria-hidden className="h-3.5 w-3.5" />
                 改名
-              </motion.button>
+              </Button>
             )}
             {onOpenSettings && (
-              <motion.button
+              <Button
                 type="button"
                 onClick={onOpenSettings}
-                className="inline-flex items-center gap-1 rounded border border-ink-700 px-2 py-0.5 text-ink-300 hover:border-accent-500/40 hover:text-accent-200"
+                variant="secondary"
+                size="sm"
+                className="gap-1 rounded border-ink-700 px-2 py-0.5 text-[11px] hover:border-accent-500/40 hover:text-accent-200"
                 aria-label={`打开《${project.name}》的设定和全局世界观`}
                 title="设定 / 全局世界观"
-                {...buttonMotion}
               >
                 <Settings aria-hidden className="h-3.5 w-3.5" />
                 设定
-              </motion.button>
+              </Button>
             )}
           </div>
         </div>

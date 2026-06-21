@@ -14,6 +14,7 @@ import {
 } from "../../lib/motion-tokens";
 import { useTimedStatus } from "../../lib/use-timed-status";
 import { MotionSpinner } from "../MotionSpinner";
+import { Button } from "../ui";
 
 interface CoverUploaderProps {
   projectId: string;
@@ -248,44 +249,48 @@ export function CoverUploader({
               animate="animate"
               exit="exit"
             >
-              <button
+              <Button
                 type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleteMut.isPending}
-                className="rounded px-1.5 py-0.5 text-ink-500 hover:bg-ink-800 hover:text-ink-300 disabled:cursor-default disabled:opacity-60"
+                variant="ghost"
+                size="sm"
+                className="h-auto rounded px-1.5 py-0.5 text-[10px] text-ink-500 hover:bg-ink-800 hover:text-ink-300"
               >
                 取消
-              </button>
-              <motion.button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => deleteMut.mutate()}
                 disabled={deleteMut.isPending}
-                className="inline-flex min-w-[52px] items-center justify-center gap-1 rounded px-1.5 py-0.5 text-rose-300 hover:bg-rose-500/10 disabled:cursor-default disabled:opacity-60"
-                {...(deleteMut.isPending ? {} : buttonMotion)}
+                variant="danger"
+                size="sm"
+                className="h-auto min-w-[52px] gap-1 rounded bg-transparent px-1.5 py-0.5 text-[10px] text-rose-300 hover:bg-rose-500/10"
               >
                 {deleteMut.isPending ? <MotionSpinner className="h-3 w-3" /> : null}
                 {deleteMut.isPending ? "移除中" : "确认移除"}
-              </motion.button>
+              </Button>
             </motion.div>
           ) : (
-            <motion.button
+            <Button
               key="delete-start"
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 setConfirmDelete(true);
               }}
-              className="inline-flex items-center gap-1 text-[10px] text-ink-500 hover:text-rose-400"
+              variant="ghost"
+              size="sm"
+              className="h-auto gap-1 rounded px-1.5 py-0 text-[10px] text-ink-500 hover:bg-transparent hover:text-rose-400"
               variants={fadeOnly}
               initial="initial"
               animate="animate"
               exit="exit"
               aria-label="移除封面"
-              {...buttonMotion}
             >
               <Trash2 className="h-3 w-3" aria-hidden />
               移除封面
-            </motion.button>
+            </Button>
           )}
         </AnimatePresence>
       )}
