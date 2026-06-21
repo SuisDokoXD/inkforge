@@ -8,6 +8,7 @@ import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { useAppStore } from "../../stores/app-store";
 import { fadeOnly } from "../../lib/motion-tokens";
 import { useTimedStatus } from "../../lib/use-timed-status";
+import { Badge } from "../ui";
 
 interface NovelCharacterDetailProps {
   novelCharacter: NovelCharacterRecord;
@@ -386,7 +387,12 @@ export function NovelCharacterDetail({
             <div className="flex items-center gap-3">
               <div className="text-right">
                 <div className="text-sm text-accent-200">{linkedCard.name}</div>
-                <div className="text-[10px] text-ink-500">{syncModeLabel(linkedCard.syncMode)}</div>
+                <Badge
+                  tone="neutral"
+                  className="ml-auto mt-1 flex w-fit rounded bg-ink-800/60 px-1.5 py-0 font-normal text-ink-500 ring-ink-700/60"
+                >
+                  {syncModeLabel(linkedCard.syncMode)}
+                </Badge>
               </div>
               <AnimatePresence initial={false} mode="wait">
                 {unbindConfirming ? (

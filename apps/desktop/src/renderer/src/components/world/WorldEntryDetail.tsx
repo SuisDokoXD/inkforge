@@ -6,6 +6,7 @@ import { worldApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import { fadeOnly } from "../../lib/motion-tokens";
 import { useTimedStatus } from "../../lib/use-timed-status";
+import { Badge } from "../ui";
 
 const CATEGORY_OPTIONS = ["地点", "门派", "物件", "事件", "概念"];
 
@@ -356,12 +357,13 @@ export function WorldEntryDetail({
           {parsedAliases.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {parsedAliases.map((alias) => (
-                <span
+                <Badge
                   key={alias}
-                  className="rounded bg-ink-700/40 px-2 py-[1px] text-[11px] text-ink-300"
+                  tone="neutral"
+                  className="rounded bg-ink-700/40 px-2 py-[1px] font-normal text-ink-300 ring-ink-600/60"
                 >
                   {alias}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
@@ -382,12 +384,13 @@ export function WorldEntryDetail({
           {parsedTags.length > 0 && (
             <div className="mt-1 flex flex-wrap gap-1">
               {parsedTags.map((tag) => (
-                <span
+                <Badge
                   key={tag}
-                  className="rounded bg-accent-500/20 px-2 py-[1px] text-[11px] text-accent-200"
+                  tone="accent"
+                  className="rounded bg-accent-500/20 px-2 py-[1px] font-normal text-accent-200 ring-accent-500/30"
                 >
                   #{tag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}

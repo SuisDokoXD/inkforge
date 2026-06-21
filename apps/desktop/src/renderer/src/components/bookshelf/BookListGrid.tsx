@@ -11,7 +11,7 @@ import {
   staggerItem,
   tapPress,
 } from "../../lib/motion-tokens";
-import { Button, IconButton } from "../ui";
+import { Badge, Button, IconButton } from "../ui";
 
 interface BookListGridProps {
   books: BookSummary[];
@@ -180,23 +180,37 @@ export function BookListGrid({
                       </div>
                       <div className="mt-1 flex gap-1 text-[10px]">
                         {book.originCounts["ai-auto"] > 0 && (
-                          <span className="rounded bg-violet-500/20 px-1 text-violet-200">
+                          <Badge
+                            tone="neutral"
+                            className="rounded bg-violet-500/20 px-1 py-0 font-normal text-violet-200 ring-violet-500/30"
+                          >
                             初稿 {book.originCounts["ai-auto"]}
-                          </span>
+                          </Badge>
                         )}
                         {book.originCounts["ai-assisted"] > 0 && (
-                          <span className="rounded bg-sky-500/20 px-1 text-sky-200">
+                          <Badge
+                            tone="neutral"
+                            className="rounded bg-sky-500/20 px-1 py-0 font-normal text-sky-200 ring-sky-500/30"
+                          >
                             陪写 {book.originCounts["ai-assisted"]}
-                          </span>
+                          </Badge>
                         )}
                         {book.originCounts.manual > 0 && (
-                          <span className="rounded bg-emerald-500/20 px-1 text-emerald-200">
+                          <Badge
+                            tone="neutral"
+                            className="rounded bg-emerald-500/20 px-1 py-0 font-normal text-emerald-200 ring-emerald-500/30"
+                          >
                             手写 {book.originCounts.manual}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                       {opened && (
-                        <div className="mt-1 text-[10px] text-accent-300">已打开为标签页</div>
+                        <Badge
+                          tone="accent"
+                          className="mt-1 flex w-fit rounded bg-accent-500/15 px-1.5 py-0 font-normal text-accent-300 ring-accent-500/25"
+                        >
+                          已打开为标签页
+                        </Badge>
                       )}
                     </div>
                   </motion.button>

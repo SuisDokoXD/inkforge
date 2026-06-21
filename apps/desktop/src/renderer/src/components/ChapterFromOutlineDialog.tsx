@@ -14,7 +14,7 @@ import {
   tapPress,
 } from "../lib/motion-tokens";
 import { AnimatedDialog } from "./AnimatedDialog";
-import { Button } from "./ui";
+import { Badge, Button } from "./ui";
 
 interface ChapterFromOutlineDialogProps {
   chapter: ChapterRecord;
@@ -159,7 +159,12 @@ export function ChapterFromOutlineDialog({
                   >
                     <div className="font-medium">{card.title}</div>
                     {card.chapterId === chapter.id ? (
-                      <div className="text-[10px] text-emerald-400">已关联本章</div>
+                      <Badge
+                        tone="success"
+                        className="mt-1 flex w-fit rounded bg-emerald-500/15 px-1.5 py-0 font-normal text-emerald-400 ring-emerald-500/25"
+                      >
+                        已关联本章
+                      </Badge>
                     ) : null}
                   </motion.button>
                 </motion.li>
