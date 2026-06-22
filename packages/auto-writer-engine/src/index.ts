@@ -5,6 +5,15 @@
 export type {
   SegmentState,
   AutoWriterStats,
+  ChapterQualityFinding,
+  ChapterFactCheckResult,
+  AutoWriterReferenceTrace,
+  AutoWriterRunReport,
+  WritingConflictAnalysis,
+  PlotCommitment,
+  BookDiagnosisFinding,
+  BookDiagnosisResult,
+  BookRevisionTask,
   PipelineRunInput,
   AgentCallInput,
   AgentCallOutput,
@@ -30,6 +39,10 @@ export type {
   BuildWriterPromptInput,
   BuildCriticPromptInput,
   BuildReflectorPromptInput,
+  BuildChapterFactCheckPromptInput,
+  BuildWritingConflictPromptInput,
+  BookDiagnosisChapterInput,
+  BuildBookDiagnosisPromptInput,
 } from "./context-merger";
 export {
   buildPlannerSystem,
@@ -40,6 +53,12 @@ export {
   buildCriticUser,
   buildReflectorSystem,
   buildReflectorUser,
+  buildChapterFactCheckSystem,
+  buildChapterFactCheckUser,
+  buildWritingConflictSystem,
+  buildWritingConflictUser,
+  buildBookDiagnosisSystem,
+  buildBookDiagnosisUser,
 } from "./context-merger";
 
 // ---- ooc-gate ----
@@ -49,6 +68,44 @@ export {
   shouldRewriteFromFindings,
   summarizeFindings,
 } from "./ooc-gate";
+
+// ---- prompt constraints ----
+export type {
+  PromptConstraintSet,
+  EvaluateSegmentConstraintsInput,
+} from "./prompt-constraints";
+export {
+  extractPromptConstraints,
+  mergePromptConstraints,
+  hasPromptConstraints,
+  getRequiredTermsForText,
+  renderPromptConstraintBlock,
+  evaluateSegmentConstraints,
+} from "./prompt-constraints";
+
+// ---- chapter quality ----
+export {
+  parseChapterFactCheck,
+  summarizeChapterQuality,
+  chapterQualityFindingsToMarkdown,
+} from "./chapter-quality";
+
+// ---- writing conflict ----
+export { parseWritingConflictAnalysis } from "./writing-conflict";
+
+// ---- plot commitments ----
+export {
+  extractPlotCommitments,
+  extractPlotCommitmentsFromText,
+  mergePlotCommitments,
+  renderPlotCommitmentsBlock,
+} from "./plot-commitments";
+
+// ---- run report ----
+export { renderAutoWriterRunReportMarkdown } from "./auto-writer-report";
+
+// ---- book diagnosis ----
+export { parseBookDiagnosis } from "./book-diagnosis";
 
 // ---- user-interrupt-queue ----
 export { UserInterruptQueue } from "./user-interrupt-queue";

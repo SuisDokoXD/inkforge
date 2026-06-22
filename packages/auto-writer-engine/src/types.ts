@@ -28,6 +28,125 @@ export interface AutoWriterStats {
   totalTokensOut: number;
   startedAt: string;
   finishedAt?: string;
+  report?: AutoWriterRunReport;
+}
+
+export interface ChapterQualityFinding {
+  severity: "info" | "warn" | "error";
+  category:
+    | "fact"
+    | "timeline"
+    | "character"
+    | "world"
+    | "constraint"
+    | "plot-boundary"
+    | "foreshadow"
+    | "style";
+  excerpt: string;
+  suggestion: string;
+}
+
+export interface ChapterFactCheckResult {
+  result: "PASS" | "FAIL";
+  issues: ChapterQualityFinding[];
+  rawText?: string;
+}
+
+export interface AutoWriterReferenceTrace {
+  segmentIndex: number;
+  beat: string;
+  usedContext: {
+    hasExistingChapterText: boolean;
+    hasGlobalWorldview: boolean;
+    hasPreviousChaptersText: boolean;
+    styleSampleSources: string[];
+    characterNames: string[];
+    worldEntryTitles: string[];
+    requiredTerms: string[];
+    forbiddenTerms: string[];
+  };
+}
+
+export interface AutoWriterRunReport {
+  constraints: {
+    requiredTerms: Array<{ term: string; matched: boolean; segmentIndexes: number[] }>;
+    forbiddenTerms: Array<{ term: string; matched: boolean; segmentIndexes: number[] }>;
+    styleDirectives: string[];
+    plotBoundaries: string[];
+  };
+  plotCommitments: PlotCommitment[];
+  segments: Array<{
+    index: number;
+    beat: string;
+    rewriteCount: number;
+    acceptedFindingCount: number;
+    requiredTerms: string[];
+    referenceTrace?: AutoWriterReferenceTrace;
+  }>;
+  chapterQuality?: {
+    status: "not-run" | "pass" | "warn" | "fail";
+    findings: ChapterQualityFinding[];
+  };
+  writingConflict?: {
+    status: "not-run" | "not-needed" | "completed" | "failed";
+    analysis?: WritingConflictAnalysis;
+    reason?: string;
+  };
+}
+
+export interface PlotCommitment {
+  kind: "foreshadow" | "payoff" | "reveal" | "avoid-reveal";
+  text: string;
+  exactTerms: string[];
+  source: "userIdeas" | "correction" | "outline";
+}
+
+export interface WritingConflictAnalysis {
+  reconcilable: boolean;
+  summary: string;
+  rootCause:
+    | "outline-history"
+    | "constraint-history"
+    | "world-history"
+    | "foreshadow-outline"
+    | "mixed"
+    | "other";
+  extraConstraints: string;
+  suggestedActions: Array<{
+    id: "edit-outline" | "adjust-constraints" | "retry" | "keep-draft";
+    label: string;
+    description: string;
+  }>;
+}
+
+export interface BookDiagnosisFinding {
+  severity: "info" | "warn" | "error";
+  category:
+    | "structure"
+    | "pacing"
+    | "character"
+    | "world"
+    | "timeline"
+    | "foreshadow"
+    | "style"
+    | "continuity";
+  scope: string;
+  evidence: string;
+  recommendation: string;
+}
+
+export interface BookRevisionTask {
+  priority: "P0" | "P1" | "P2";
+  chapterHint: string;
+  action: string;
+  reason: string;
+}
+
+export interface BookDiagnosisResult {
+  status: "pass" | "review" | "fail";
+  summary: string;
+  findings: BookDiagnosisFinding[];
+  revisionTasks: BookRevisionTask[];
 }
 
 export interface PipelineRunInput {
@@ -77,6 +196,8 @@ export interface AgentCallInput {
   binding: AutoWriterAgentBinding;
   systemPrompt: string;
   userPrompt: string;
+  /** Internal calls that should not stream raw assistant text into the UI. */
+  silent?: boolean;
 }
 
 export interface AgentCallOutput {

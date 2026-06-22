@@ -753,6 +753,10 @@ async function invokeOneAgentOnce(args: {
 
   const flushDelta = (force = false): void => {
     if (!bufferedDelta) return;
+    if (agentInput.silent) {
+      bufferedDelta = "";
+      return;
+    }
     const now = Date.now();
     if (!force && bufferedDelta.length < 120 && now - lastChunkEmitAt < 90) return;
     const event: AutoWriterChunkEvent = {

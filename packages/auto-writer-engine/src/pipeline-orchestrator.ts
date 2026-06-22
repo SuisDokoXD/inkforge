@@ -2,12 +2,16 @@ import type { AutoWriterAgentRole, AutoWriterCorrectionEntry } from "@inkforge/s
 import {
   buildCriticSystem,
   buildCriticUser,
+  buildChapterFactCheckSystem,
+  buildChapterFactCheckUser,
   buildPlannerSystem,
   buildPlannerUser,
   buildReflectorSystem,
   buildReflectorUser,
   buildWriterSystem,
   buildWriterUser,
+  buildWritingConflictSystem,
+  buildWritingConflictUser,
 } from "./context-merger";
 import {
   findingsToMarkdown,
@@ -16,11 +20,30 @@ import {
   summarizeFindings,
 } from "./ooc-gate";
 import {
+  parseChapterFactCheck,
+  summarizeChapterQuality,
+} from "./chapter-quality";
+import {
+  extractPlotCommitments,
+  mergePlotCommitments,
+} from "./plot-commitments";
+import {
+  evaluateSegmentConstraints,
+  extractPromptConstraints,
+  getRequiredTermsForText,
+  mergePromptConstraints,
+  type PromptConstraintSet,
+} from "./prompt-constraints";
+import { parseWritingConflictAnalysis } from "./writing-conflict";
+import {
   makeRoleResolver,
   type AgentCallOutput,
+  type AutoWriterReferenceTrace,
+  type AutoWriterRunReport,
   type AutoWriterStats,
   type PipelineDeps,
   type PipelineRunInput,
+  type PlotCommitment,
   type SegmentState,
 } from "./types";
 
@@ -103,6 +126,148 @@ function buildFallbackBeats(userIdeas: string, maxSegments: number): PlannerBeat
     });
   }
   return beats.slice(0, segCount);
+}
+
+function appendRequiredTermsToBeat(beat: string, terms: string[]): string {
+  const missing = terms.filter((term) => term && !beat.includes(term));
+  if (missing.length === 0) return beat;
+  return `${beat}\n【本段必须直接写入关键词：${missing.join("、")}】`;
+}
+
+function ensureRequiredTermsAssigned(
+  beats: PlannerBeat[],
+  constraints: PromptConstraintSet,
+): PlannerBeat[] {
+  if (beats.length === 0 || constraints.requiredTerms.length === 0) return beats;
+  let assignIndex = 0;
+  const repaired = beats.map((beat) => ({ ...beat }));
+  for (const term of constraints.requiredTerms) {
+    if (repaired.some((beat) => beat.beat.includes(term))) continue;
+    const target = repaired[assignIndex % repaired.length];
+    target.beat = appendRequiredTermsToBeat(target.beat, [term]);
+    assignIndex += 1;
+  }
+  return repaired;
+}
+
+function mergeCorrectionsIntoConstraints(
+  constraints: PromptConstraintSet,
+  corrections: AutoWriterCorrectionEntry[],
+): { constraints: PromptConstraintSet; newlyRequiredTerms: string[] } {
+  if (corrections.length === 0) {
+    return { constraints, newlyRequiredTerms: [] };
+  }
+  const next = extractPromptConstraints(corrections.map((c) => c.content));
+  const newlyRequiredTerms = next.requiredTerms.filter(
+    (term) => !constraints.requiredTerms.includes(term),
+  );
+  return {
+    constraints: mergePromptConstraints(constraints, next),
+    newlyRequiredTerms,
+  };
+}
+
+interface AcceptedSegmentReportInput {
+  index: number;
+  beat: string;
+  text: string;
+  rewriteCount: number;
+  acceptedFindingCount: number;
+  requiredTerms: string[];
+  referenceTrace: AutoWriterReferenceTrace;
+}
+
+function collectTermMatches(
+  terms: readonly string[],
+  segments: readonly AcceptedSegmentReportInput[],
+): Array<{ term: string; matched: boolean; segmentIndexes: number[] }> {
+  return terms.map((term) => {
+    const segmentIndexes = segments
+      .filter((segment) => segment.text.includes(term))
+      .map((segment) => segment.index);
+    return {
+      term,
+      matched: segmentIndexes.length > 0,
+      segmentIndexes,
+    };
+  });
+}
+
+function buildReferenceTrace(input: {
+  segmentIndex: number;
+  beat: string;
+  runInput: PipelineRunInput;
+  promptConstraints: PromptConstraintSet;
+  requiredTerms: string[];
+}): AutoWriterReferenceTrace {
+  return {
+    segmentIndex: input.segmentIndex,
+    beat: input.beat,
+    usedContext: {
+      hasExistingChapterText: input.runInput.existingChapterText.trim().length > 0,
+      hasGlobalWorldview: (input.runInput.globalWorldview ?? "").trim().length > 0,
+      hasPreviousChaptersText: (input.runInput.previousChaptersText ?? "").trim().length > 0,
+      styleSampleSources: (input.runInput.styleSamples ?? [])
+        .map((sample) => sample.source.trim())
+        .filter(Boolean),
+      characterNames: input.runInput.characters
+        .map((character) => character.name.trim())
+        .filter(Boolean),
+      worldEntryTitles: input.runInput.worldEntries
+        .map((entry) => entry.title.trim())
+        .filter(Boolean),
+      requiredTerms: input.requiredTerms,
+      forbiddenTerms: input.promptConstraints.forbiddenTerms,
+    },
+  };
+}
+
+function buildAutoWriterRunReport(input: {
+  promptConstraints: PromptConstraintSet;
+  plotCommitments: PlotCommitment[];
+  acceptedSegments: AcceptedSegmentReportInput[];
+}): AutoWriterRunReport {
+  return {
+    constraints: {
+      requiredTerms: collectTermMatches(
+        input.promptConstraints.requiredTerms,
+        input.acceptedSegments,
+      ),
+      forbiddenTerms: collectTermMatches(
+        input.promptConstraints.forbiddenTerms,
+        input.acceptedSegments,
+      ),
+      styleDirectives: [...input.promptConstraints.styleDirectives],
+      plotBoundaries: [...input.promptConstraints.plotBoundaries],
+    },
+    plotCommitments: [...input.plotCommitments],
+    segments: input.acceptedSegments.map((segment) => ({
+      index: segment.index,
+      beat: segment.beat,
+      rewriteCount: segment.rewriteCount,
+      acceptedFindingCount: segment.acceptedFindingCount,
+      requiredTerms: segment.requiredTerms,
+      referenceTrace: segment.referenceTrace,
+    })),
+    chapterQuality: {
+      status: "not-run",
+      findings: [],
+    },
+    writingConflict: {
+      status: "not-run",
+    },
+  };
+}
+
+function chapterQualityStatus(input: ReturnType<typeof parseChapterFactCheck>): NonNullable<
+  AutoWriterRunReport["chapterQuality"]
+>["status"] {
+  if (input.result === "FAIL" && input.issues.length === 0) return "fail";
+  const findings = input.issues;
+  const summary = summarizeChapterQuality(findings);
+  if (summary.errorCount > 0) return "fail";
+  if (summary.warnCount > 0) return "warn";
+  return "pass";
 }
 
 /**
@@ -288,6 +453,15 @@ export async function runAutoWriterPipeline(
   if (deps.isCancelled()) return finish(stats);
 
   const initialInterrupts = deps.drainInterrupts();
+  let allCorrections: AutoWriterCorrectionEntry[] = [...initialInterrupts];
+  let promptConstraints = extractPromptConstraints([
+    input.userIdeas,
+    ...initialInterrupts.map((c) => c.content),
+  ]);
+  let plotCommitments = extractPlotCommitments({
+    userIdeas: input.userIdeas,
+    corrections: initialInterrupts,
+  });
   const plannerOut = await callAgent(
     deps,
     resolveRole,
@@ -306,6 +480,8 @@ export async function runAutoWriterPipeline(
       previousChaptersText: input.previousChaptersText,
       styleSamples: input.styleSamples,
       detailLevel: input.speedMode === "fast" ? "compact" : undefined,
+      promptConstraints,
+      plotCommitments,
     }),
     stats,
   );
@@ -335,6 +511,8 @@ export async function runAutoWriterPipeline(
         previousChaptersText: input.previousChaptersText,
         styleSamples: input.styleSamples,
         detailLevel: input.speedMode === "fast" ? "compact" : undefined,
+        promptConstraints,
+        plotCommitments,
       }),
       stats,
     );
@@ -344,6 +522,7 @@ export async function runAutoWriterPipeline(
     // 再不行就用兜底，并继续；上层根据 stats.totalSegments 仍可判断 partial。
     beats = buildFallbackBeats(input.userIdeas, input.maxSegments);
   }
+  beats = ensureRequiredTermsAssigned(beats, promptConstraints);
 
   // ---------- Loop over beats ----------
   let chapterSoFar = input.existingChapterText;
@@ -352,6 +531,7 @@ export async function runAutoWriterPipeline(
   let lastCriticFindingsText: string | null = null;
   // 累计未消费的 user interrupts（每段开始前会 drain 全部）
   let pendingCorrections: AutoWriterCorrectionEntry[] = [];
+  const acceptedSegments: AcceptedSegmentReportInput[] = [];
 
   for (let i = 0; i < beats.length; i += 1) {
     if (deps.isCancelled()) break;
@@ -375,7 +555,24 @@ export async function runAutoWriterPipeline(
       chapterText: chapterSoFar,
     });
 
-    pendingCorrections = [...pendingCorrections, ...deps.drainInterrupts()];
+    const writerCorrections = deps.drainInterrupts();
+    allCorrections = [...allCorrections, ...writerCorrections];
+    pendingCorrections = [...pendingCorrections, ...writerCorrections];
+    const writerConstraintMerge = mergeCorrectionsIntoConstraints(
+      promptConstraints,
+      pendingCorrections,
+    );
+    promptConstraints = writerConstraintMerge.constraints;
+    if (writerConstraintMerge.newlyRequiredTerms.length > 0) {
+      beat.beat = appendRequiredTermsToBeat(
+        beat.beat,
+        writerConstraintMerge.newlyRequiredTerms,
+      );
+    }
+    plotCommitments = mergePlotCommitments(
+      plotCommitments,
+      extractPlotCommitments({ userIdeas: "", corrections: pendingCorrections }),
+    );
 
     let segmentText = "";
     /**
@@ -393,6 +590,8 @@ export async function runAutoWriterPipeline(
       tentativeChapter: string;
     }
     const candidates: SegmentCandidate[] = [];
+    let acceptedFindingCount = 0;
+    let acceptedRequiredTerms: string[] = [];
 
     // ---------- Writer (with up to N rewrites) ----------
     while (true) {
@@ -422,6 +621,8 @@ export async function runAutoWriterPipeline(
           globalWorldview: input.globalWorldview,
           previousChaptersText: input.previousChaptersText,
           styleSamples: input.styleSamples,
+          promptConstraints,
+          plotCommitments,
         }),
         stats,
       );
@@ -458,12 +659,38 @@ export async function runAutoWriterPipeline(
       if (input.speedMode === "fast" || !input.enableOocGate) {
         chapterSoFar = tentativeChapter;
         seg.text = segmentText;
+        acceptedFindingCount = 0;
+        acceptedRequiredTerms = getRequiredTermsForText(
+          beat.beat,
+          promptConstraints.requiredTerms,
+        );
         seg.status = "completed";
         break;
       }
 
       seg.status = "criticking";
       deps.emitPhase({ phase: "critic", segmentIndex: i });
+      const criticCorrections = deps.drainInterrupts();
+      allCorrections = [...allCorrections, ...criticCorrections];
+      const criticConstraintMerge = mergeCorrectionsIntoConstraints(
+        promptConstraints,
+        criticCorrections,
+      );
+      promptConstraints = criticConstraintMerge.constraints;
+      if (criticConstraintMerge.newlyRequiredTerms.length > 0) {
+        beat.beat = appendRequiredTermsToBeat(
+          beat.beat,
+          criticConstraintMerge.newlyRequiredTerms,
+        );
+      }
+      plotCommitments = mergePlotCommitments(
+        plotCommitments,
+        extractPlotCommitments({ userIdeas: "", corrections: criticCorrections }),
+      );
+      const segmentRequiredTerms = getRequiredTermsForText(
+        beat.beat,
+        promptConstraints.requiredTerms,
+      );
 
       // v22+: critic（LLM 调用）和 OOC gate（同步启发式 / 也可能 LLM）并行，
       // 节约一次来回。之前串行：每段写完要等 critic 跑完再跑 OOC gate。
@@ -480,11 +707,13 @@ export async function runAutoWriterPipeline(
             userIdeas: input.userIdeas,
             characters: input.characters,
             worldEntries: input.worldEntries,
-            recentCorrections: deps.drainInterrupts(),
+            recentCorrections: criticCorrections,
             voiceBlock: input.voiceBlock,
             globalWorldview: input.globalWorldview,
             previousChaptersText: input.previousChaptersText,
             styleSamples: input.styleSamples,
+            promptConstraints,
+            plotCommitments,
           }),
           stats,
         ),
@@ -499,7 +728,12 @@ export async function runAutoWriterPipeline(
       ]);
 
       const llmFindings = parseFindings(criticOut.text);
-      const findings = [...llmFindings, ...extraFindings];
+      const localConstraintFindings = evaluateSegmentConstraints({
+        segmentText,
+        promptConstraints,
+        requiredTerms: segmentRequiredTerms,
+      });
+      const findings = [...llmFindings, ...extraFindings, ...localConstraintFindings];
       const summary = summarizeFindings(findings);
       deps.emitPhase({
         phase: "critic",
@@ -560,16 +794,53 @@ export async function runAutoWriterPipeline(
       chapterSoFar = accepted.tentativeChapter;
       seg.text = accepted.text;
       seg.lastCriticFindingsText = findingsToMarkdown(accepted.findings);
+      acceptedFindingCount = accepted.findings.length;
+      acceptedRequiredTerms = segmentRequiredTerms;
       seg.status = "completed";
       break;
     }
 
     if (deps.isCancelled()) break;
 
+    if (seg.status === "completed") {
+      acceptedSegments.push({
+        index: i,
+        beat: beat.beat,
+        text: seg.text,
+        rewriteCount: seg.rewriteCount,
+        acceptedFindingCount,
+        requiredTerms: acceptedRequiredTerms,
+        referenceTrace: buildReferenceTrace({
+          segmentIndex: i,
+          beat: beat.beat,
+          runInput: input,
+          promptConstraints,
+          requiredTerms: acceptedRequiredTerms,
+        }),
+      });
+    }
+
     // ---------- Reflector ----------
     if (input.speedMode !== "fast") {
       seg.status = "reflecting";
       deps.emitPhase({ phase: "reflector", segmentIndex: i });
+      const reflectorCorrections = deps.drainInterrupts();
+      allCorrections = [...allCorrections, ...reflectorCorrections];
+      const reflectorConstraintMerge = mergeCorrectionsIntoConstraints(
+        promptConstraints,
+        reflectorCorrections,
+      );
+      promptConstraints = reflectorConstraintMerge.constraints;
+      if (reflectorConstraintMerge.newlyRequiredTerms.length > 0 && beats[i + 1]) {
+        beats[i + 1].beat = appendRequiredTermsToBeat(
+          beats[i + 1].beat,
+          reflectorConstraintMerge.newlyRequiredTerms,
+        );
+      }
+      plotCommitments = mergePlotCommitments(
+        plotCommitments,
+        extractPlotCommitments({ userIdeas: "", corrections: reflectorCorrections }),
+      );
       const reflectorOut = await callAgent(
         deps,
         resolveRole,
@@ -579,11 +850,13 @@ export async function runAutoWriterPipeline(
           segmentText: seg.text,
           segmentIndex: i,
           criticFindingsText: seg.lastCriticFindingsText ?? "",
-          recentCorrections: deps.drainInterrupts(),
+          recentCorrections: reflectorCorrections,
           voiceBlock: input.voiceBlock,
           globalWorldview: input.globalWorldview,
           previousChaptersText: input.previousChaptersText,
           styleSamples: input.styleSamples,
+          promptConstraints,
+          plotCommitments,
         }),
         stats,
       );
@@ -597,6 +870,108 @@ export async function runAutoWriterPipeline(
     deps.emitPhase({ phase: "next-segment", segmentIndex: i });
   }
 
+  stats.report = buildAutoWriterRunReport({
+    promptConstraints,
+    plotCommitments,
+    acceptedSegments,
+  });
+
+  if (
+    input.speedMode !== "fast" &&
+    input.enableOocGate &&
+    !deps.isCancelled() &&
+    acceptedSegments.length > 0
+  ) {
+    try {
+      const chapterFactCheckOut = await callAgent(
+        deps,
+        resolveRole,
+        "critic",
+        buildChapterFactCheckSystem(),
+        buildChapterFactCheckUser({
+          chapterTitle: input.chapterTitle,
+          userIdeas: input.userIdeas,
+          chapterText: chapterSoFar,
+          characters: input.characters,
+          worldEntries: input.worldEntries,
+          recentCorrections: allCorrections,
+          voiceBlock: input.voiceBlock,
+          globalWorldview: input.globalWorldview,
+          previousChaptersText: input.previousChaptersText,
+          styleSamples: input.styleSamples,
+          promptConstraints,
+          plotCommitments,
+        }),
+        stats,
+        { silent: true },
+      );
+      const chapterFactCheck = parseChapterFactCheck(chapterFactCheckOut.text);
+      stats.report.chapterQuality = {
+        status: chapterQualityStatus(chapterFactCheck),
+        findings: chapterFactCheck.issues,
+      };
+      if (stats.report.chapterQuality.status === "fail") {
+        try {
+          const conflictOut = await callAgent(
+            deps,
+            resolveRole,
+            "critic",
+            buildWritingConflictSystem(),
+            buildWritingConflictUser({
+              chapterTitle: input.chapterTitle,
+              userIdeas: input.userIdeas,
+              chapterText: chapterSoFar,
+              chapterFindings: chapterFactCheck.issues,
+              characters: input.characters,
+              worldEntries: input.worldEntries,
+              recentCorrections: allCorrections,
+              voiceBlock: input.voiceBlock,
+              globalWorldview: input.globalWorldview,
+              previousChaptersText: input.previousChaptersText,
+              styleSamples: input.styleSamples,
+              promptConstraints,
+              plotCommitments,
+            }),
+            stats,
+            { silent: true },
+          );
+          stats.report.writingConflict = {
+            status: "completed",
+            analysis: parseWritingConflictAnalysis(conflictOut.text),
+          };
+        } catch (error) {
+          stats.report.writingConflict = {
+            status: "failed",
+            reason: error instanceof Error ? error.message : String(error),
+          };
+        }
+      } else {
+        stats.report.writingConflict = {
+          status: "not-needed",
+          reason: "章节级检查未发现需要冲突分析的问题。",
+        };
+      }
+    } catch (error) {
+      stats.report.chapterQuality = {
+        status: "warn",
+        findings: [
+          {
+            severity: "warn",
+            category: "fact",
+            excerpt: "",
+            suggestion: `章节级检查未完成，正文已保留。原因：${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          },
+        ],
+      };
+      stats.report.writingConflict = {
+        status: "not-needed",
+        reason: "章节级检查未完成，跳过冲突分析。",
+      };
+    }
+  }
+
   deps.emitPhase({ phase: "done", segmentIndex: stats.totalSegments });
   return finish(stats);
 }
@@ -608,6 +983,7 @@ async function callAgent(
   systemPrompt: string,
   userPrompt: string,
   stats: AutoWriterStats,
+  options: { silent?: boolean } = {},
 ): Promise<AgentCallOutput> {
   const binding = resolve(role);
   const out = await deps.invokeAgent(
@@ -616,6 +992,7 @@ async function callAgent(
       binding,
       systemPrompt,
       userPrompt,
+      silent: options.silent,
     },
     () => {
       // delta 转发由 deps 内部处理；orchestrator 不需要在这里聚合
