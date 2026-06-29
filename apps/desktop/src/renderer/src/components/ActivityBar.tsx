@@ -60,7 +60,7 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
 
   return (
     <nav
-      className="flex w-14 shrink-0 flex-col items-center gap-2 border-r border-ink-700 bg-ink-900 py-3"
+      className="relative z-10 flex w-14 shrink-0 flex-col items-center gap-2 border-r border-ink-700 bg-ink-900 py-3"
       role="tablist"
       aria-label={t("nav.aria.label")}
     >

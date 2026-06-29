@@ -38,6 +38,7 @@ import { MotionSpinner } from "../MotionSpinner";
 import { SampleReferencePicker } from "../SampleReferencePicker";
 import { Badge, Button, IconButton, Select, TextField, Textarea } from "../ui";
 import { PostRunSegmentRewriter } from "./PostRunSegmentRewriter";
+import { AutoWriterRunReportPanel } from "./AutoWriterRunReportPanel";
 
 const ROLE_LABELS: Record<AutoWriterAgentRole, string> = {
   planner: "结构",
@@ -160,6 +161,14 @@ export function AutoWriterPanel({
   const sampleLibsQuery = useQuery<SampleLibRecord[]>({
     queryKey: ["sample-libs", projectId],
     queryFn: () => sampleLibApi.list({ projectId }),
+  });
+  const completedRunQuery = useQuery({
+    queryKey: ["auto-writer-run", doneEvent?.runId],
+    queryFn: () =>
+      doneEvent
+        ? autoWriterApi.getRun({ runId: doneEvent.runId })
+        : Promise.resolve(null),
+    enabled: !!doneEvent?.runId,
   });
   const linkedOutlineCard =
     outlineCardsQuery.data?.find((card) => card.chapterId === chapterId) ?? null;
@@ -637,7 +646,7 @@ export function AutoWriterPanel({
                       : "运行失败"}
               </div>
               <div className="mt-1 text-xs opacity-85">
-                {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · 生成消耗：
+                {doneEvent.totalSegments} 段 · 重写 {doneEvent.totalRewrites} 次 · 模型用量：
                 输入量 {doneEvent.totalTokensIn} / 输出量 {doneEvent.totalTokensOut}
               </div>
               {doneEvent.error ? (
@@ -677,6 +686,11 @@ export function AutoWriterPanel({
                 </Button>
               </div>
             </section>
+
+            <AutoWriterRunReportPanel
+              run={completedRunQuery.data ?? null}
+              loading={completedRunQuery.isLoading || completedRunQuery.isFetching}
+            />
 
             {(doneEvent.status === "completed" || doneEvent.status === "partial") && (
               <PostRunSegmentRewriter

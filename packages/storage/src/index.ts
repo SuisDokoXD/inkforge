@@ -16,6 +16,7 @@ export * from "./repositories/tavern-session-repo";
 export * from "./repositories/tavern-message-repo";
 export * from "./repositories/world-entry-repo";
 export * from "./repositories/provider-key-repo";
+export * from "./repositories/research-credential-repo";
 export * from "./repositories/research-note-repo";
 export * from "./repositories/review-dim-repo";
 export * from "./repositories/review-report-repo";

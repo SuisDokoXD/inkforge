@@ -5,6 +5,8 @@ import type {
   AppSettings,
   ChapterRecord,
   ProjectRecord,
+  ResearchProvider,
+  ResearchSearchHit,
   SyncDiffRow,
   TokenBudgetState,
 } from "@inkforge/shared";
@@ -61,6 +63,20 @@ export interface AutoWriterRemembered {
   sampleLibIds?: string[];
 }
 
+/**
+ * 资料检索搜索结果 —— 从 ResearchPage useState 上提到 store，跨视图切换保持。
+ */
+export interface ResearchSearchState {
+  topic: string;
+  hits: ResearchSearchHit[];
+  usedProvider: ResearchProvider | null;
+  fellBackToLlm: boolean;
+  error?: string;
+  expandedQueries?: string[];
+  attemptedProviders?: ResearchProvider[];
+  queriedAt: string; // ISO timestamp
+}
+
 export interface AppState {
   currentProjectId: string | null;
   currentChapterId: string | null;
@@ -71,6 +87,8 @@ export interface AppState {
   mainView: MainView;
   outlineFocusCardId: string | null;
   researchDraftQuery: string | null;
+  researchSearchState: ResearchSearchState | null;
+  researchSearchHistory: ResearchSearchState[];
   rightPanel: "timeline" | "chat";
   terminalOpen: boolean;
   terminalHeight: number;
@@ -106,6 +124,8 @@ export interface AppState {
   setMainView: (view: MainView) => void;
   setOutlineFocusCard: (cardId: string | null) => void;
   setResearchDraftQuery: (query: string | null) => void;
+  setResearchSearchState: (state: ResearchSearchState | null) => void;
+  clearResearchSearchHistory: () => void;
   setRightPanel: (panel: "timeline" | "chat") => void;
   toggleTerminal: (open?: boolean) => void;
   setTerminalHeight: (h: number) => void;
@@ -172,6 +192,8 @@ export const useAppStore = create<AppState>()(
       mainView: "writing",
       outlineFocusCardId: null,
       researchDraftQuery: null,
+      researchSearchState: null,
+      researchSearchHistory: [],
       rightPanel: "timeline",
       terminalOpen: false,
       terminalHeight: 240,
@@ -209,6 +231,23 @@ export const useAppStore = create<AppState>()(
       setMainView: (view) => set(() => ({ mainView: view })),
       setOutlineFocusCard: (cardId) => set(() => ({ outlineFocusCardId: cardId })),
       setResearchDraftQuery: (query) => set(() => ({ researchDraftQuery: query })),
+      setResearchSearchState: (state) =>
+        set((s) => {
+          if (!state) return { researchSearchState: null };
+          // 同名查询替换旧条目，避免历史记录膨胀
+          // 空结果不进入历史记录
+          const filtered = state.hits.length === 0
+            ? s.researchSearchHistory
+            : s.researchSearchHistory.filter(
+                (entry) => entry.topic !== state.topic,
+              );
+          const history = state.hits.length === 0
+            ? filtered
+            : [state, ...filtered].slice(0, 30);
+          return { researchSearchState: state, researchSearchHistory: history };
+        }),
+      clearResearchSearchHistory: () =>
+        set(() => ({ researchSearchHistory: [], researchSearchState: null })),
       setRightPanel: (panel) => set(() => ({ rightPanel: panel })),
       toggleTerminal: (open) =>
         set((state) => ({ terminalOpen: typeof open === "boolean" ? open : !state.terminalOpen })),

@@ -1,0 +1,26 @@
+[
+  {
+    "theme": "theme-dark",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-dark.png",
+    "realBackdropFilter": "url(\"#lglass\") blur(2.5px) saturate(1.8)",
+    "frostBackdropFilter": "blur(2.5px) saturate(1.8)",
+    "realBg": "rgba(18, 26, 44, 0.34)",
+    "realBorder": "rgba(255, 255, 255, 0.14)"
+  },
+  {
+    "theme": "theme-light",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-light.png",
+    "realBackdropFilter": "url(\"#lglass\") blur(2.5px) saturate(1.8) brightness(1.05)",
+    "frostBackdropFilter": "blur(2.5px) saturate(1.8) brightness(1.05)",
+    "realBg": "rgba(255, 255, 255, 0.55)",
+    "realBorder": "rgba(255, 255, 255, 0.85)"
+  },
+  {
+    "theme": "theme-paper",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-paper.png",
+    "realBackdropFilter": "url(\"#lglass\") blur(2.5px) saturate(1.8) brightness(1.05)",
+    "frostBackdropFilter": "blur(2.5px) saturate(1.8) brightness(1.05)",
+    "realBg": "rgba(252, 250, 245, 0.55)",
+    "realBorder": "rgba(255, 255, 255, 0.85)"
+  }
+]

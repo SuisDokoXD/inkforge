@@ -7,11 +7,14 @@ import {
   type ResearchProviderAdapter,
 } from "@inkforge/research-core";
 import {
+  deleteResearchCredential as deleteResearchCredentialFromDB,
   deleteResearchNote,
+  getResearchCredentialEncrypted,
   getResearchNoteById,
   insertResearchNote,
   listResearchNotes,
   updateResearchNote,
+  upsertResearchCredential as upsertResearchCredentialToDB,
 } from "@inkforge/storage";
 import type {
   ResearchCredentialDeleteInput,
@@ -38,7 +41,71 @@ import {
 } from "./llm-runtime";
 
 const CREDENTIAL_PROVIDERS: ResearchProvider[] = ["tavily", "bing", "serpapi"];
-const MAX_EXPANDED_QUERIES = 6;
+const MAX_EXPANDED_QUERIES = 8;
+
+/**
+ * Clean up noisy search result snippets: strip HTML tags, wiki/markdown syntax,
+ * decode entities, remove coordinate noise, collapse whitespace.
+ */
+function cleanSnippet(text: string): string {
+  if (!text) return "";
+  let cleaned = text
+    // Decode common HTML entities first (before stripping tags)
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&#[xX]?[0-9a-fA-F]+;/g, "")
+    .replace(/&[a-z]+;/gi, "")
+    // Strip HTML tags
+    .replace(/<[^>]*>/g, " ")
+    // Strip JSON blobs (often leaked from rich search results)
+    .replace(/\{[^{}]*"(?:html|text|title|snippet)"[^}]*\}/g, " ")
+    // Strip wiki heading markers (= Heading =, == Heading ==)
+    .replace(/^=+\s*|\s*=+$/gm, " ")
+    // Strip markdown ATX headings (# ## ###)
+    .replace(/^#{1,6}\s*/gm, " ")
+    // Strip wiki list markers
+    .replace(/^[\*#;:]+/gm, " ")
+    // Strip wiki template invocations {{...}}
+    .replace(/\{\{[^}]*\}\}/g, " ")
+    // Strip wiki links [[target]] and [[target|text]]
+    .replace(/\[\[[^\]]*\]\]/g, " ")
+    // Strip wiki reference/citation markers [1] [note 1] [a]
+    .replace(/\[\s*[a-z]*\s*\d*\s*\]/gi, " ")
+    // Strip URL query noise from wiki
+    .replace(/[&?](?:action|redlink|oldid|diff|printable|veaction|section|params)=[^&\s]*/gi, " ")
+    // Strip geo coordinate patterns (Chinese + Western formats)
+    .replace(/座標[：:]\s*\d{1,3}°\d{1,2}[′']\d{1,2}(\.\d+)?[″"][NSEW]/g, " ")
+    .replace(/\d{1,3}°\d{1,2}[′']\d{1,2}(\.\d+)?[″"]?\s*[NSEW]/g, " ")
+    .replace(/geohack\.toolforge\.org[^\s]*/gi, " ")
+    // Strip raw URLs
+    .replace(/https?:\/\/\S+/g, " ")
+    // Strip parenthesized geo coords (23.6546083°N 113.8144750°E)
+    .replace(/\(?\s*\d{1,3}(\.\d+)?\s*[°\s]\s*\d{1,3}(\.\d+)?\s*[°\s]*[NSEW][^)]*\)?/g, " ")
+    // Strip wiki "(页面不存在)" noise
+    .replace(/[（(]页面不存在[）)]/g, "")
+    // Strip leftover quoted attribute values from stripped HTML
+    .replace(/"\s*[^"]{2,40}\s*"\s*\)/g, " ")
+    .replace(/\"[^"]*\"/g, " ")  // Remove quoted strings (wiki alt text leftovers)
+    // Collapse whitespace
+    .replace(/\s+/g, " ")
+    .replace(/\s*\.\s*\.\s*/g, ". ")  // Fix double periods
+    .replace(/\(\s*\)/g, "")  // Remove empty parens
+    .replace(/\[\s*\]/g, "")  // Remove empty brackets
+    .trim();
+
+  // Second pass: remove leftover fragments that only make sense in wiki context
+  cleaned = cleaned
+    .replace(/^\s*[·•●]\s*/gm, "")  // Bullet points
+    .replace(/^\s*\d+\.\s*/gm, "")  // Numbered list markers
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return cleaned;
+}
 
 function pushUnique(target: string[], value: string): void {
   const normalized = value.trim().replace(/\s+/g, " ");
@@ -150,7 +217,8 @@ function credentialAccount(provider: ResearchProvider): string {
 async function readCredential(provider: ResearchProvider): Promise<string | null> {
   if (!CREDENTIAL_PROVIDERS.includes(provider)) return null;
   const ctx = getAppContext();
-  return ctx.keystore.getKey(credentialAccount(provider), null);
+  const encrypted = getResearchCredentialEncrypted(ctx.db, provider);
+  return ctx.keystore.getKey(credentialAccount(provider), encrypted);
 }
 
 async function writeCredential(
@@ -161,12 +229,19 @@ async function writeCredential(
     throw new Error(`credentials not supported for provider: ${provider}`);
   }
   const ctx = getAppContext();
-  await ctx.keystore.setKey(credentialAccount(provider), apiKey);
+  const result = await ctx.keystore.setKey(credentialAccount(provider), apiKey);
+  upsertResearchCredentialToDB(
+    ctx.db,
+    provider,
+    result.encrypted ?? null,
+    result.storedInKeychain,
+  );
 }
 
 async function removeCredential(provider: ResearchProvider): Promise<void> {
   const ctx = getAppContext();
   await ctx.keystore.deleteKey(credentialAccount(provider));
+  deleteResearchCredentialFromDB(ctx.db, provider);
 }
 
 async function buildLlmFallbackHits(options: {
@@ -281,7 +356,7 @@ async function searchAdapterWithQueries(options: {
       ? [buildLlmFallbackQuery(query, expandedQueries)]
       : expandedQueries;
   const perQueryTopK =
-    providerId === "llm-fallback" ? topK : Math.min(Math.max(Math.ceil(topK / 2), 3), 5);
+    providerId === "llm-fallback" ? topK : Math.min(Math.max(Math.ceil(topK / 3), 6), 10);
 
   for (const searchQuery of queries) {
     try {
@@ -322,7 +397,7 @@ export async function searchResearch(
     };
   }
   const preferred: ResearchProvider = input.provider ?? "llm-fallback";
-  const topK = input.topK ?? 5;
+  const topK = input.topK ?? 20;
   const expandedQueries = buildResearchQueries(query);
 
   const attempts: ResearchProvider[] = [preferred];
@@ -354,8 +429,27 @@ export async function searchResearch(
         lastError = "no_hits";
         continue;
       }
+      const cleanedHits = hits
+        .map((h) => ({
+          ...h,
+          title: cleanSnippet(h.title),
+          snippet: cleanSnippet(h.snippet),
+        }))
+        .filter((h) => {
+          // Filter out Wikipedia disambiguation pages
+          const combined = `${h.title} ${h.snippet}`;
+          if (/消歧[義义]页/.test(combined)) return false;
+          if (/羅列了有相同或相近的標題/.test(combined)) return false;
+          // Filter out commercial booking/tour sites
+          if (/\b(?:From|Starting from)\s*[£€$¥]\d/i.test(h.snippet)) return false;
+          if (/Book Tickets & Tours/i.test(h.title)) return false;
+          if (/\bgetyourguide\.com\b/i.test(h.url)) return false;
+          // Filter out hits whose snippet became nearly empty after cleaning
+          if (h.snippet.length < 30 && h.url) return false;
+          return true;
+        });
       return {
-        hits,
+        hits: cleanedHits,
         usedProvider: providerId,
         fellBackToLlm: providerId === "llm-fallback" && preferred !== "llm-fallback",
         error: hits.length === 0 ? "no_hits" : undefined,

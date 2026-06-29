@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   BookMarked,
   ClipboardCopy,
+  Clock,
   ExternalLink,
   FilePlus2,
   KeyRound,
@@ -17,7 +18,7 @@ import type {
   ResearchSearchHit,
 } from "@inkforge/shared";
 import { chapterApi, researchApi } from "../lib/api";
-import { useAppStore } from "../stores/app-store";
+import { useAppStore, type ResearchSearchState } from "../stores/app-store";
 import { ResearchCredentialsDialog } from "../components/research/ResearchCredentialsDialog";
 import { MotionSpinner } from "../components/MotionSpinner";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
@@ -85,16 +86,6 @@ const STARTER_CARDS = [
   },
 ];
 
-interface SearchState {
-  topic: string;
-  hits: ResearchSearchHit[];
-  usedProvider: ResearchProvider | null;
-  fellBackToLlm: boolean;
-  error?: string;
-  expandedQueries?: string[];
-  attemptedProviders?: ResearchProvider[];
-}
-
 function researchErrorMessage(error?: string): string | null {
   if (!error) return null;
   if (error === "empty_query") return "请输入要检索的主题。";
@@ -122,8 +113,13 @@ export function ResearchPage(): JSX.Element {
 
   const [provider, setProvider] = useState<ResearchProvider>("llm-fallback");
   const [query, setQuery] = useState("");
-  const [searchState, setSearchState] = useState<SearchState | null>(null);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
+
+  const searchState = useAppStore((s) => s.researchSearchState);
+  const setSearchState = useAppStore((s) => s.setResearchSearchState);
+  const searchHistory = useAppStore((s) => s.researchSearchHistory);
+  const clearSearchHistory = useAppStore((s) => s.clearResearchSearchHistory);
+
   const { status, showStatus } = useTimedStatus();
   const reduceMotion = useReducedMotion() === true;
   const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
@@ -163,6 +159,7 @@ export function ResearchPage(): JSX.Element {
         error: res.error,
         expandedQueries: res.expandedQueries,
         attemptedProviders: res.attemptedProviders,
+        queriedAt: new Date().toISOString(),
       });
       const detail = researchErrorMessage(res.error);
       const queryCount = res.expandedQueries?.length ?? 1;
@@ -409,6 +406,10 @@ export function ResearchPage(): JSX.Element {
         groupedNotes={groupedNotes}
         deletingNoteId={deleteNoteMut.isPending ? deleteNoteMut.variables : null}
         onDelete={(id) => deleteNoteMut.mutate(id)}
+        searchHistory={searchHistory}
+        activeTopic={searchState?.topic}
+        onSelectHistory={(entry) => setSearchState(entry)}
+        onClearHistory={() => clearSearchHistory()}
       />
 
       <ResearchCredentialsDialog
@@ -521,7 +522,7 @@ function SearchResults({
   onOpenChapter,
   onCopyUrl,
 }: {
-  state: SearchState;
+  state: ResearchSearchState;
   currentChapterReady: boolean;
   savePending: boolean;
   insertPending: boolean;
@@ -659,11 +660,19 @@ function ResearchNotesSidebar({
   groupedNotes,
   deletingNoteId,
   onDelete,
+  searchHistory,
+  activeTopic,
+  onSelectHistory,
+  onClearHistory,
 }: {
   notes: ResearchNoteRecord[];
   groupedNotes: Array<[string, ResearchNoteRecord[]]>;
   deletingNoteId?: string | null;
   onDelete: (id: string) => void;
+  searchHistory: ResearchSearchState[];
+  activeTopic?: string;
+  onSelectHistory: (entry: ResearchSearchState) => void;
+  onClearHistory: () => void;
 }): JSX.Element {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const reduceMotion = useReducedMotion() === true;
@@ -671,6 +680,50 @@ function ResearchNotesSidebar({
 
   return (
     <aside className="flex w-[340px] shrink-0 flex-col border-l border-ink-700 bg-ink-900/45">
+      {searchHistory.length > 0 && (
+        <div className="border-b border-ink-700 px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">
+              <Clock className="h-4 w-4 text-accent-300" />
+              搜索记录
+            </h2>
+            <button
+              type="button"
+              onClick={onClearHistory}
+              className="text-[10px] text-ink-500 hover:text-red-300 transition-colors"
+            >
+              清空
+            </button>
+          </div>
+          <ul className="mt-2 space-y-1 max-h-[280px] overflow-auto scrollbar-thin">
+            {searchHistory.map((entry) => (
+              <li key={entry.queriedAt}>
+                <button
+                  type="button"
+                  onClick={() => onSelectHistory(entry)}
+                  className={`w-full text-left px-2 py-1.5 rounded text-xs leading-5 transition-colors ${
+                    entry.topic === activeTopic
+                      ? "bg-accent-500/15 text-accent-200"
+                      : "text-ink-300 hover:bg-ink-700 hover:text-ink-100"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate">{entry.topic}</span>
+                    <span className="shrink-0 text-[10px] text-ink-500">
+                      {entry.hits.length} 条
+                    </span>
+                  </div>
+                  <div className="mt-0.5 text-[10px] text-ink-500 flex items-center gap-2">
+                    <span>{providerLabel(entry.usedProvider)}</span>
+                    <span>·</span>
+                    <span>{new Date(entry.queriedAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="border-b border-ink-700 px-4 py-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">

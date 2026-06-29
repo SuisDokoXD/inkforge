@@ -1159,6 +1159,22 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 28,
+    name: "research_credentials",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS research_credentials (
+          provider TEXT PRIMARY KEY,
+          api_key_enc TEXT,
+          api_key_iv TEXT,
+          api_key_tag TEXT,
+          stored_in_keychain INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {

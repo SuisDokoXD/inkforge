@@ -6,7 +6,7 @@
 
 File: `src/migrations.ts`. Array of `{ version: number, name: string, up: (db) => void }` objects.
 
-**Current head version: v26.** (46 tables total.)
+**Current head version: v28.** (47 tables.)
 
 Append new migration at end of array. Never edit existing entries.
 

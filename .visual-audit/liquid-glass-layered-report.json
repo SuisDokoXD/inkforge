@@ -1,0 +1,29 @@
+[
+  {
+    "theme": "theme-dark",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-layered-dark.png",
+    "realBackdropFilter": "blur(14px) saturate(1.75)",
+    "edgeBackdropFilter": "url(\"#lglass\") blur(1.5px) saturate(1.9)",
+    "edgeOpacity": "0.78",
+    "realBg": "rgba(14, 22, 38, 0.38)",
+    "realBorder": "rgba(255, 255, 255, 0.14)"
+  },
+  {
+    "theme": "theme-light",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-layered-light.png",
+    "realBackdropFilter": "blur(14px) saturate(1.55) brightness(1.04)",
+    "edgeBackdropFilter": "url(\"#lglass\") blur(1.4px) saturate(1.75) brightness(1.04)",
+    "edgeOpacity": "0.62",
+    "realBg": "rgba(255, 255, 255, 0.44)",
+    "realBorder": "rgba(255, 255, 255, 0.85)"
+  },
+  {
+    "theme": "theme-paper",
+    "shot": "C:\\Users\\123\\Desktop\\inkforge\\.visual-audit\\liquid-glass-layered-paper.png",
+    "realBackdropFilter": "blur(14px) saturate(1.55) brightness(1.04)",
+    "edgeBackdropFilter": "url(\"#lglass\") blur(1.4px) saturate(1.75) brightness(1.04)",
+    "edgeOpacity": "0.64",
+    "realBg": "rgba(252, 250, 245, 0.46)",
+    "realBorder": "rgba(255, 255, 255, 0.85)"
+  }
+]

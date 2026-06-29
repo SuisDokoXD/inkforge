@@ -70,6 +70,8 @@ const EXPECTED_TABLES = [
   // ----- v26: Voice Profile + World Info Trace -----
   "voice_profiles",
   "world_info_traces",
+  // ----- v28: Research Credentials (research API key persistence) -----
+  "research_credentials",
 ];
 
 const EXPECTED_INDEXES = [
@@ -133,7 +135,7 @@ const EXPECTED_INDEXES = [
   "idx_world_info_traces_project_time",
 ];
 
-const EXPECTED_MAX_VERSION = 27;
+const EXPECTED_MAX_VERSION = 28;
 const EXPECTED_VERSIONS = Array.from(
   { length: EXPECTED_MAX_VERSION },
   (_, i) => i + 1,
