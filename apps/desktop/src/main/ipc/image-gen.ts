@@ -5,8 +5,8 @@ import { generateImage } from "../services/image-gen-service";
 import { getAppContext } from "../services/app-state";
 
 export function registerImageGenHandlers(): void {
-  ipcMain.handle("image-gen:generate", async (_e, input: ImageGenRequest): Promise<ImageGenResult> => {
-    return generateImage(input);
+  ipcMain.handle("image-gen:generate", async (_e, input: unknown): Promise<ImageGenResult> => {
+    return generateImage(input as ImageGenRequest);
   });
 
   ipcMain.handle("image-gen:get-settings", async (): Promise<ImageGenSettings> => {
@@ -19,11 +19,12 @@ export function registerImageGenHandlers(): void {
     };
   });
 
-  ipcMain.handle("image-gen:save-settings", async (_e, input: ImageGenSettings): Promise<{ ok: true }> => {
+  ipcMain.handle("image-gen:save-settings", async (_e, input: unknown): Promise<{ ok: true }> => {
+    const { backend, apiUrl } = input as ImageGenSettings;
     const ctx = getAppContext();
     const now = new Date().toISOString();
-    ctx.db.prepare(`INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('imageGenBackend', ?, ?)`).run(input.backend, now);
-    ctx.db.prepare(`INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('imageGenApiUrl', ?, ?)`).run(input.apiUrl, now);
+    ctx.db.prepare(`INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('imageGenBackend', ?, ?)`).run(backend, now);
+    ctx.db.prepare(`INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('imageGenApiUrl', ?, ?)`).run(apiUrl, now);
     return { ok: true };
   });
 }
