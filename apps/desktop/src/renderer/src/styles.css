@@ -139,15 +139,118 @@ html.theme-paper {
   --dialog-shadow: 0 24px 60px -28px rgba(80, 60, 35, 0.34), 0 8px 20px -16px rgba(80, 60, 35, 0.22);
 }
 
+/*
+ * 主题 4/5：sepia（暖棕书页）· 比 paper 更深沉的复古书卷感。
+ */
+html.theme-sepia {
+  color-scheme: light;
+  --ink-50: 24 16 8;
+  --ink-100: 56 36 20;
+  --ink-200: 80 54 35;
+  --ink-300: 110 80 55;
+  --ink-400: 135 105 80;
+  --ink-500: 160 130 105;
+  --ink-600: 210 190 165;
+  --ink-700: 230 215 195;
+  --ink-800: 245 235 220;
+  --ink-900: 253 246 236;
+  --accent-50: 90 50 18;
+  --accent-100: 120 68 24;
+  --accent-200: 150 88 34;
+  --accent-300: 175 108 45;
+  --accent-400: 195 125 55;
+  --accent-500: 210 140 70;
+  --accent-600: 220 158 95;
+  --accent-700: 232 180 128;
+  --accent-800: 242 210 175;
+  --accent-900: 250 235 215;
+  --c-rose-100: 130 28 48; --c-rose-200: 155 35 56; --c-rose-300: 180 45 68;
+  --c-red-100: 125 35 35; --c-red-200: 150 42 42; --c-red-300: 175 50 50;
+  --c-emerald-100: 8 80 58; --c-emerald-200: 10 95 70; --c-emerald-300: 14 115 85;
+  --c-green-100: 25 88 48; --c-green-200: 30 105 58; --c-green-300: 38 128 72;
+  --c-sky-100: 8 72 110; --c-sky-200: 10 85 128; --c-sky-300: 14 102 155;
+  --c-blue-100: 30 55 155; --c-blue-200: 35 65 180; --c-blue-300: 42 78 210;
+  --c-violet-100: 75 28 150; --c-violet-200: 90 35 175; --c-violet-300: 108 45 200;
+  --c-fuchsia-100: 108 20 118; --c-fuchsia-200: 128 25 140; --c-fuchsia-300: 152 32 165;
+  --c-indigo-100: 45 40 138; --c-indigo-200: 55 48 165; --c-indigo-300: 68 58 195;
+  --c-orange-100: 128 42 16; --c-orange-200: 155 52 22; --c-orange-300: 185 65 30;
+  --c-yellow-100: 108 62 12; --c-yellow-200: 130 78 15; --c-yellow-300: 160 100 20;
+  --dialog-bg: 253 246 236;
+  --dialog-fg: 56 36 20;
+  --dialog-border: 210 190 165;
+  --dialog-shadow: 0 24px 60px -28px rgba(90, 50, 18, 0.34), 0 8px 20px -16px rgba(90, 50, 18, 0.22);
+}
+
+html.theme-sepia body {
+  background-image:
+    linear-gradient(rgba(245,235,220,0.4), rgba(245,235,220,0.15)),
+    radial-gradient(circle at 1px 1px, rgba(120, 90, 60, 0.04) 1px, transparent 0);
+  background-size: auto, 16px 16px;
+}
+
+/*
+ * 主题 5/5：mint（薄荷绿）· 清新现代，低饱和绿色调，护眼舒适。
+ */
+html.theme-mint {
+  color-scheme: light;
+  --ink-50: 8 16 12;
+  --ink-100: 22 38 30;
+  --ink-200: 38 58 48;
+  --ink-300: 60 82 72;
+  --ink-400: 82 105 95;
+  --ink-500: 108 130 120;
+  --ink-600: 185 208 196;
+  --ink-700: 210 230 220;
+  --ink-800: 235 245 240;
+  --ink-900: 248 252 250;
+  --accent-50: 8 80 52;
+  --accent-100: 10 95 62;
+  --accent-200: 14 115 75;
+  --accent-300: 20 135 90;
+  --accent-400: 28 150 102;
+  --accent-500: 35 165 115;
+  --accent-600: 72 180 135;
+  --accent-700: 118 195 158;
+  --accent-800: 170 218 192;
+  --accent-900: 210 235 222;
+  --c-rose-100: 130 20 45; --c-rose-200: 155 25 52; --c-rose-300: 180 32 62;
+  --c-red-100: 120 30 30; --c-red-200: 145 35 35; --c-red-300: 170 42 42;
+  --c-emerald-100: 6 75 52; --c-emerald-200: 8 90 62; --c-emerald-300: 10 108 75;
+  --c-green-100: 20 80 42; --c-green-200: 25 95 50; --c-green-300: 30 115 60;
+  --c-sky-100: 6 68 100; --c-sky-200: 8 80 118; --c-sky-300: 10 95 142;
+  --c-blue-100: 25 50 140; --c-blue-200: 30 60 165; --c-blue-300: 38 72 195;
+  --c-violet-100: 70 25 142; --c-violet-200: 85 30 168; --c-violet-300: 100 38 192;
+  --c-fuchsia-100: 100 18 110; --c-fuchsia-200: 120 22 130; --c-fuchsia-300: 142 28 155;
+  --c-indigo-100: 42 36 128; --c-indigo-200: 50 42 152; --c-indigo-300: 62 52 180;
+  --c-orange-100: 125 40 15; --c-orange-200: 150 48 20; --c-orange-300: 178 58 28;
+  --c-yellow-100: 105 58 10; --c-yellow-200: 125 72 14; --c-yellow-300: 155 92 18;
+  --dialog-bg: 248 252 250;
+  --dialog-fg: 22 38 30;
+  --dialog-border: 185 208 196;
+  --dialog-shadow: 0 24px 60px -28px rgba(20, 80, 55, 0.28), 0 8px 20px -16px rgba(20, 80, 55, 0.18);
+}
+
+html.theme-mint body {
+  background-image:
+    linear-gradient(rgba(235,245,240,0.35), rgba(248,252,250,0.1));
+  background-size: auto;
+}
+
 html,
 body,
 #root {
   height: 100%;
   overflow: hidden;
-  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui,
+  /* 无衬线作为默认中文阅读栈，优先系统自带以获得最佳渲染性能。 */
+  font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui,
     -apple-system, sans-serif;
   background-color: rgb(var(--ink-900));
   color: rgb(var(--ink-100));
+}
+
+/* B2: paper 主题使用衬线字体模拟纸书阅读感。 */
+html.theme-paper body {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "STSong", "Songti SC", "SimSun", "PingFang SC", serif;
 }
 
 /*
@@ -218,8 +321,22 @@ html.theme-paper textarea::selection {
 }
 
 .ProseMirror p {
-  margin: 0 0 0.5em 0;
+  /* B2: 中文排版段落间距从 0.5em 提升到 0.8em，改善长文可读性。
+   * 末尾段 margin-bottom 仍归零，避免编辑器底部留白。 */
+  margin: 0 0 0.8em 0;
   min-height: 1.2em;
+  /* B2: 中文标点避头尾——禁止行首出现右括号类标点。 */
+  hanging-punctuation: first allow-end;
+}
+
+/* B2: 中文右括号/右引号/句号/逗号等不应出现在换行行首。
+ * 用 word-break 策略配合零宽空格让浏览器尽量把标点留在上行末尾。 */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3 {
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .ProseMirror p:last-child {
@@ -253,6 +370,55 @@ html.theme-paper .ProseMirror {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.25);
   border-radius: 3px;
+}
+
+/* A8: skill 写入正文后的短暂高亮（环形光晕 3s 淡出）。
+ * 用 CSS @keyframes 而非 motion 库，因为这是纯视觉装饰，无需 JS 编排。 */
+@keyframes skill-glow {
+  0% {
+    box-shadow:
+      0 0 0 0 rgb(var(--accent-500) / 0.35),
+      inset 0 0 0 0 rgb(var(--accent-500) / 0.08);
+  }
+  30% {
+    box-shadow:
+      0 0 24px 2px rgb(var(--accent-500) / 0.18),
+      inset 0 0 40px 0 rgb(var(--accent-500) / 0.06);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(var(--accent-500) / 0),
+      inset 0 0 0 0 rgb(var(--accent-500) / 0);
+  }
+}
+.skill-highlight-active {
+  border-radius: 0.5rem;
+}
+
+/* B4: 专注模式——编辑器背景暗角（微弱的径向渐变，引导视线到中央） */
+.editor-focus-vignette {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgb(var(--ink-900)) 0%, rgb(var(--ink-900) / 0.92) 60%, rgb(var(--ink-900) / 0.78) 100%);
+}
+
+/* B4: 打字机行高亮——仅高亮当前段落，其余半透明。
+ * 通过 ProseMirror 的 :has() + 伪类无法精确定位当前行，故提供 CSS 变量钩子。
+ * 实现方式：NovelEditor 在 typewriterMode 时给当前段加 data-typewriter-active 属性。
+ */
+.ProseMirror[data-typewriter="true"] p {
+  transition: opacity 0.3s ease;
+  opacity: 0.38;
+}
+.ProseMirror[data-typewriter="true"] p[data-typewriter-active="true"] {
+  opacity: 1;
+}
+
+/* C9: 自定义强调色——当用户设置了 customAccent 时覆盖 accent-500（主色）。
+ * accent-400 略亮、accent-600 略暗，用于 hover/按下。 */
+html[style*="--accent-custom-active: 1"] {
+  --accent-500: var(--accent-custom-r) var(--accent-custom-g) var(--accent-custom-b);
+  --accent-400: calc(var(--accent-custom-r) + 30) calc(var(--accent-custom-g) + 30) calc(var(--accent-custom-b) + 30);
+  --accent-600: calc(var(--accent-custom-r) - 20) calc(var(--accent-custom-g) - 20) calc(var(--accent-custom-b) - 20);
 }
 
 button {

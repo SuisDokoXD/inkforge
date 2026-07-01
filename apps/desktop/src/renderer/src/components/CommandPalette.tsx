@@ -8,8 +8,13 @@ import { AnimatedDialog } from "./AnimatedDialog";
 const GROUP_LABEL_KEY: Record<string, string> = {
   navigate: "palette.group.navigate",
   action: "palette.group.action",
+  project: "palette.group.project",
+  writer: "palette.group.writer",
   tool: "palette.group.tool",
 };
+
+// A4: 命令显示优先级（左侧分组先出现）
+const GROUP_ORDER = ["navigate", "action", "project", "writer", "tool"] as const;
 
 export interface CommandPaletteProps {
   open: boolean;
@@ -30,11 +35,15 @@ export function CommandPalette({
     [terminalEnabled],
   );
 
-  const groups: Array<["navigate" | "action" | "tool", typeof commands]> = [
-    ["navigate", commands.filter((c) => c.group === "navigate")],
-    ["action", commands.filter((c) => c.group === "action")],
-    ["tool", commands.filter((c) => c.group === "tool")],
-  ];
+  // A4: 按 GROUP_ORDER 分组，过滤 requiresProject（无项目时跳过）
+  const groups = GROUP_ORDER
+    .map((g): [string, typeof commands] => [
+      g,
+      commands.filter(
+        (c) => c.group === g && (!c.requiresProject || ctx.hasProject),
+      ),
+    ])
+    .filter(([, cmds]) => cmds.length > 0);
 
   return (
     <AnimatedDialog

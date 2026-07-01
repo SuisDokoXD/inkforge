@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BookOpen } from "lucide-react";
+import { BookOpen, LayoutTemplate } from "lucide-react";
 import { projectApi } from "../../lib/api";
 import { friendlyErrorMessage } from "../../lib/friendly-error";
 import {
@@ -11,12 +11,64 @@ import {
 } from "../../lib/motion-tokens";
 import { AnimatedDialog } from "../AnimatedDialog";
 import { MotionSpinner } from "../MotionSpinner";
-import { Button, TextField } from "../ui";
+import { Button, Select, TextField } from "../ui";
+
+// C10: 内置项目模板定义
+interface ProjectTemplate {
+  id: string;
+  name: string;
+  genre: string;
+  subGenre: string;
+  tags: string;
+  description: string;
+}
+
+const BUILTIN_TEMPLATES: ProjectTemplate[] = [
+  {
+    id: "xuanhuan",
+    name: "玄幻修仙",
+    genre: "玄幻",
+    subGenre: "仙侠",
+    tags: "修仙, 宗门, 奇遇, 天道",
+    description: "修真世界、法则突破、渡劫飞升。适合大世界观长篇。",
+  },
+  {
+    id: "urban",
+    name: "都市言情",
+    genre: "言情",
+    subGenre: "都市",
+    tags: "都市, 职场, 爱情, 成长",
+    description: "现代都市恋爱、职场斗争、角色成长线。",
+  },
+  {
+    id: "scifi",
+    name: "科幻未来",
+    genre: "科幻",
+    subGenre: "未来世界",
+    tags: "科幻, AI, 太空, 未来",
+    description: "近未来/远未来科幻，科技伦理、人类命运。",
+  },
+  {
+    id: "mystery",
+    name: "悬疑推理",
+    genre: "悬疑",
+    subGenre: "推理",
+    tags: "悬疑, 推理, 犯罪, 真相",
+    description: "案件调查、线索编织、层层反转。",
+  },
+  {
+    id: "history",
+    name: "历史架空",
+    genre: "历史",
+    subGenre: "架空",
+    tags: "历史, 架空, 权谋, 战争",
+    description: "架空历史权谋战争，人物群像。",
+  },
+];
 
 interface NewBookDialogProps {
   open: boolean;
   onClose: () => void;
-  /** 创建成功后回调，传 projectId（用于自动打开 Tab）。 */
   onCreated?: (projectId: string) => void;
 }
 
@@ -28,8 +80,15 @@ export function NewBookDialog({
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [dailyGoal, setDailyGoal] = useState(1000);
+  // C10: 模板选择
+  const [templateId, setTemplateId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const reduceMotion = useReducedMotion() === true;
+
+  const activeTemplate = useMemo(
+    () => BUILTIN_TEMPLATES.find((t) => t.id === templateId) ?? null,
+    [templateId],
+  );
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -43,6 +102,7 @@ export function NewBookDialog({
       onCreated?.(project.id);
       setName("");
       setDailyGoal(1000);
+      setTemplateId("");
       setError(null);
       onClose();
     },
@@ -101,6 +161,32 @@ export function NewBookDialog({
             onChange={(e) => setDailyGoal(Number(e.target.value) || 1000)}
             className="bg-ink-900 px-3 py-2"
           />
+        </motion.label>
+
+        {/* C10: 模板选择器 */}
+        <motion.label className="block" htmlFor="new-book-template" variants={reduceMotion ? fadeOnly : staggerItem}>
+          <span className="mb-1 flex items-center gap-1 text-xs text-ink-400">
+            <LayoutTemplate className="h-3 w-3" />
+            模板（可选）
+          </span>
+          <Select
+            id="new-book-template"
+            value={templateId}
+            onChange={(e) => setTemplateId(e.target.value)}
+            className="w-full bg-ink-900 px-3 py-2"
+          >
+            <option value="">无模板 · 空白开始</option>
+            {BUILTIN_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+          {activeTemplate ? (
+            <p className="mt-1 text-[10px] leading-4 text-ink-500">
+              {activeTemplate.description}
+            </p>
+          ) : null}
         </motion.label>
 
         <motion.div className="text-[11px] text-ink-500" variants={reduceMotion ? fadeOnly : staggerItem}>

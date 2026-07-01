@@ -147,6 +147,8 @@ export const i18nResources: Resources = {
   "settings.theme.dark": { zh: "深色", en: "Dark", ja: "ダーク" },
   "settings.theme.light": { zh: "浅色", en: "Light", ja: "ライト" },
   "settings.theme.paper": { zh: "纸感", en: "Paper", ja: "紙" },
+  "settings.theme.sepia": { zh: "暖棕", en: "Sepia", ja: "セピア" },
+  "settings.theme.mint":  { zh: "薄荷", en: "Mint", ja: "ミント" },
   "settings.devMode": { zh: "启用排查工具", en: "Enable developer mode", ja: "開発者モードを有効化" },
   "settings.devModeHint": {
     zh: "显示排查菜单、排查摘要与内嵌终端入口",
@@ -435,6 +437,8 @@ export const i18nResources: Resources = {
   "nav.achievement": { zh: "成就", en: "Achievements", ja: "アチーブメント" },
   "nav.autoWriter":  { zh: "续写精修", en: "Continue & Polish", ja: "続きを整える" },
   "nav.materials":   { zh: "素材库", en: "Materials", ja: "素材ライブラリ" },
+  // C4: 写作统计
+  "nav.stats":       { zh: "统计", en: "Stats", ja: "統計" },
   "app.loading":     { zh: "正在打开 InkForge…", en: "Opening InkForge…", ja: "InkForge を起動中…" },
   "shortcut.settings":        { zh: "设置", en: "Settings", ja: "設定" },
   "shortcut.providers":       { zh: "模型服务面板", en: "Model services panel", ja: "モデルサービスパネル" },
@@ -449,6 +453,22 @@ export const i18nResources: Resources = {
   "palette.group.navigate": { zh: "跳转", en: "Navigate", ja: "ジャンプ" },
   "palette.group.action":   { zh: "动作", en: "Actions", ja: "アクション" },
   "palette.group.tool":     { zh: "工具", en: "Tools", ja: "ツール" },
+  // A4: 命令面板扩展——新增项目/写作分组和操作
+  "palette.group.project": { zh: "项目", en: "Project", ja: "プロジェクト" },
+  "palette.group.writer":  { zh: "写作", en: "Writing", ja: "執筆" },
+  "cmd.createChapter":         { zh: "新建章节", en: "New Chapter", ja: "新規章" },
+  "cmd.reviewChapter":         { zh: "审查当前章节", en: "Review Current Chapter", ja: "章をレビュー" },
+  "cmd.autoWrite":             { zh: "AI 自动写作", en: "AI Auto Writer", ja: "AI自動執筆" },
+  "cmd.export":                { zh: "导入 / 导出", en: "Import / Export", ja: "インポート/エクスポート" },
+  "cmd.toggleFocusMode":       { zh: "切换专注模式", en: "Toggle Focus Mode", ja: "集中モード切替" },
+  "cmd.toggleTypewriterMode":  { zh: "切换打字机模式", en: "Toggle Typewriter Mode", ja: "タイプライター切替" },
+  "cmd.runAnalysis":           { zh: "分析当前章节", en: "Analyze Current Chapter", ja: "章を分析" },
+  "cmd.toggleRightPanel":      { zh: "切换右侧面板", en: "Toggle Right Panel", ja: "右パネル切替" },
+  "cmd.editorWidthNarrow":     { zh: "编辑器宽度：窄", en: "Editor Width: Narrow", ja: "エディタ幅：狭" },
+  "cmd.editorWidthMedium":     { zh: "编辑器宽度：中", en: "Editor Width: Medium", ja: "エディタ幅：中" },
+  "cmd.editorWidthWide":       { zh: "编辑器宽度：宽", en: "Editor Width: Wide", ja: "エディタ幅：広" },
+  "cmd.fontLarger":            { zh: "放大字号", en: "Increase Font Size", ja: "フォント拡大" },
+  "cmd.fontSmaller":           { zh: "缩小字号", en: "Decrease Font Size", ja: "フォント縮小" },
   // M9 Phase 4.3: HelpMenu + ShortcutCheatSheet
   "help.menu.title":            { zh: "帮助", en: "Help", ja: "ヘルプ" },
   "help.menu.replayOnboarding": { zh: "重看新手引导", en: "Replay onboarding", ja: "オンボーディングをもう一度" },
@@ -465,6 +485,23 @@ export const i18nResources: Resources = {
   "settings.diag.show":    { zh: "查看", en: "Show", ja: "表示" },
   "settings.diag.refresh": { zh: "刷新", en: "Refresh", ja: "更新" },
   "settings.diag.hint":    { zh: "点右上「查看」生成排查摘要（含启动耗时 / 数据库大小 / 处理器 / 近期错误）。", en: "Click Show to generate a diagnostic snapshot (startup time, DB size, CPU, recent errors).", ja: "「表示」をクリックして診断スナップショットを生成。" },
+  // ===== C12: Timeline =====
+  "nav.timeline":      { zh: "时间线", en: "Timeline", ja: "タイムライン" },
+  "timeline.addEvent": { zh: "添加情节事件", en: "Add Plot Event", ja: "イベント追加" },
+  "timeline.editEvent":{ zh: "编辑事件", en: "Edit Event", ja: "編集" },
+  "timeline.deleteEvent":{ zh: "删除事件", en: "Delete Event", ja: "削除" },
+  "timeline.eventTitle":{ zh: "事件标题", en: "Event Title", ja: "タイトル" },
+  "timeline.chapters": { zh: "章节序列", en: "Chapter Sequence", ja: "章シーケンス" },
+  "timeline.noChapters":{ zh: "暂无章节，去写作页创建吧", en: "No chapters yet", ja: "章がありません" },
+  // ===== C13: Image Gen =====
+  "imageGen.title":    { zh: "AI 图片生成", en: "AI Image Generation", ja: "AI画像生成" },
+  "imageGen.prompt":   { zh: "提示词", en: "Prompt", ja: "プロンプト" },
+  "imageGen.generate": { zh: "生成", en: "Generate", ja: "生成" },
+  "imageGen.setAsCover":{ zh: "设为封面", en: "Set as Cover", ja: "表紙に設定" },
+  "imageGen.generating":{ zh: "生成中…", en: "Generating...", ja: "生成中…" },
+  "imageGen.settings": { zh: "AI 图片生成", en: "AI Image Gen", ja: "AI画像生成" },
+  "imageGen.backend":  { zh: "后端类型", en: "Backend", ja: "バックエンド" },
+  "imageGen.apiUrl":   { zh: "API 地址", en: "API URL", ja: "API URL" },
 };
 
 /**
@@ -495,3 +532,4 @@ export function t(
 export function listI18nKeys(): string[] {
   return Object.keys(i18nResources);
 }
+

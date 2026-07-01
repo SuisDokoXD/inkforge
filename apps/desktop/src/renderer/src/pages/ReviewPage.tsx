@@ -71,6 +71,7 @@ export function ReviewPage(): JSX.Element {
   const currentChapterId = useAppStore((s) => s.currentChapterId);
   const setMainView = useAppStore((s) => s.setMainView);
   const setActiveChapter = useAppStore((s) => s.setChapter);
+  const setReviewJumpExcerpt = useAppStore((s) => s.setReviewJumpExcerpt);
   const queryClient = useQueryClient();
   const flowActions = useWritingFlowActions();
 
@@ -236,8 +237,10 @@ export function ReviewPage(): JSX.Element {
     );
   };
 
-  const handleJumpToChapter = (chapterId: string) => {
+  // A2: Review→Editor 跳转——附带摘录文本，EditorPane 检测后自动滚动到对应位置。
+  const handleJumpToChapter = (chapterId: string, excerpt?: string) => {
     setActiveChapter(chapterId);
+    if (excerpt) setReviewJumpExcerpt(excerpt);
     setMainView("writing");
   };
 

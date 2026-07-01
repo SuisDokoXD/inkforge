@@ -89,7 +89,7 @@ export type AppSettingKey =
   | "focusMode";
 
 export interface AppSettings {
-  theme: "dark" | "light" | "paper";
+  theme: "dark" | "light" | "paper" | "sepia" | "mint";
   activeProviderId: string | null;
   analysisEnabled: boolean;
   analysisThreshold: number;
@@ -104,6 +104,8 @@ export interface AppSettings {
   autoIndent: boolean;
   spellcheck: boolean;
   focusMode: boolean;
+  /** C9: 自定义强调色（十六进制，如 #007AFF）。null 表示用主题默认。 */
+  customAccent: string | null;
 }
 
 // ===== Scene Bindings (ported from ainovel) =====
@@ -997,4 +999,91 @@ export interface MaterialRecord {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== C12: Timeline Events =====
+export type TimelineEventCategory =
+  | "plot_point"
+  | "character_entrance"
+  | "reveal"
+  | "climax"
+  | "resolution"
+  | "flashback"
+  | "timeskip"
+  | "custom";
+
+export interface TimelineEventRecord {
+  id: string;
+  projectId: string;
+  chapterId: string | null;
+  title: string;
+  description: string;
+  eventOrder: number;
+  color: string | null;
+  category: TimelineEventCategory;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimelineEventCreateInput {
+  id?: string;
+  projectId: string;
+  chapterId?: string | null;
+  title: string;
+  description?: string;
+  eventOrder?: number;
+  color?: string | null;
+  category?: TimelineEventCategory;
+}
+
+export interface TimelineView {
+  chapters: TimelineChapterNode[];
+  events: TimelineEventRecord[];
+}
+
+export interface TimelineChapterNode {
+  id: string;
+  order: number;
+  title: string;
+  wordCount: number;
+  status: string;
+  updatedAt: string | null;
+  summary: string | null;
+  outlineCards: TimelineOutlineCard[];
+  origin: "ai" | "manual" | "hybrid";
+}
+
+export interface TimelineOutlineCard {
+  id: string;
+  title: string;
+  sections: Array<{ label: string; body: string }>;
+}
+
+// ===== C13: Image Generation =====
+export type ImageGenBackend = "comfyui" | "sdwebui" | "none";
+
+export interface ImageGenSettings {
+  backend: ImageGenBackend;
+  apiUrl: string;
+}
+
+export interface ImageGenRequest {
+  prompt: string;
+  negativePrompt?: string;
+  width: number;
+  height: number;
+  projectId: string;
+}
+
+export interface ImageGenProgress {
+  step: number;
+  totalSteps: number;
+  preview?: string;
+}
+
+export interface ImageGenResult {
+  success: boolean;
+  imagePath?: string;
+  dataUrl?: string;
+  error?: string;
 }

@@ -193,6 +193,11 @@ export interface InkforgeApi {
     autosaveWrite(input: ChapterAutosaveWriteInput): Promise<{ savedAt: number }>;
     autosavePeek(input: ChapterAutosavePeekInput): Promise<ChapterAutosavePeekResponse>;
     autosaveClear(input: ChapterAutosaveClearInput): Promise<{ ok: true }>;
+    // A6: 回收站
+    trashList(input: { projectId: string }): Promise<ChapterRecord[]>;
+    trashRestore(input: { id: string }): Promise<ChapterRecord>;
+    trashDestroy(input: { id: string }): Promise<{ id: string }>;
+    trashEmpty(input: { projectId: string }): Promise<{ count: number }>;
   };
   provider: {
     save(input: ProviderSaveInput): Promise<ProviderRecord>;
@@ -800,5 +805,25 @@ export interface InkforgeApi {
     ): Promise<WorldInfoTraceRecord[]>;
     get(input: WorldInfoTraceGetInput): Promise<WorldInfoTraceRecord | null>;
     clear(input: WorldInfoTraceClearInput): Promise<{ projectId: string }>;
+  };
+}
+
+// ===== C12: Timeline =====
+export interface InkforgeApi {
+  timeline: {
+    getView(input: { projectId: string }): Promise<{ chapters: import("./domain").TimelineChapterNode[]; events: import("./domain").TimelineEventRecord[] }>;
+    listEvents(input: { projectId: string }): Promise<{ events: import("./domain").TimelineEventRecord[] }>;
+    upsertEvent(input: import("./domain").TimelineEventCreateInput): Promise<import("./domain").TimelineEventRecord>;
+    deleteEvent(input: { id: string }): Promise<{ id: string }>;
+    reorderEvents(input: { eventIds: string[] }): Promise<{ ok: true }>;
+  };
+}
+
+// ===== C13: Image Generation =====
+export interface InkforgeApi {
+  imageGen: {
+    generate(input: import("./domain").ImageGenRequest): Promise<import("./domain").ImageGenResult>;
+    getSettings(): Promise<import("./domain").ImageGenSettings>;
+    saveSettings(input: import("./domain").ImageGenSettings): Promise<{ ok: true }>;
   };
 }

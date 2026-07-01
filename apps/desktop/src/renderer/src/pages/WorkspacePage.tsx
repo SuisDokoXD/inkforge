@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ChapterRecord } from "@inkforge/shared";
-import { chapterApi, fsApi, llmApi, projectApi, providerApi, settingsApi } from "../lib/api";
+import { chapterApi, fsApi, llmApi, outlineApi, projectApi, providerApi, settingsApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useChapterShortcuts } from "../lib/use-app-shortcuts";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
+import { EditorTabBar } from "../components/editor/EditorTabBar";  // A7
 import { AITimeline } from "../components/AITimeline";
 import { ChatPanel } from "../components/ChatPanel";
 import { TerminalPanel } from "../components/TerminalPanel";
@@ -16,12 +17,16 @@ import { StatusBar } from "../components/StatusBar";
 import { ProviderSwitcher } from "../components/ProviderSwitcher";
 import { ProviderSettingsPanel } from "../components/ProviderSettingsPanel";
 import { ExportDialog } from "../components/ExportDialog";
+import { PomodoroTimer } from "../components/PomodoroTimer";
+import { Timer } from "lucide-react";
 import { Button, Tabs } from "../components/ui";
 
 interface ChapterHeadingItem {
   id: string;
   title: string;
   line: number;
+  // Fix 3: 标题级别 (1-4)，用于 ChapterTree 视觉缩进
+  level?: number;
 }
 
 interface HeadingJumpTarget extends ChapterHeadingItem {
@@ -29,14 +34,17 @@ interface HeadingJumpTarget extends ChapterHeadingItem {
   nonce: number;
 }
 
+// Fix 3: 改进标题提取——支持 H1-H4，记录级别用于树形缩进
 function extractChapterHeadings(chapterId: string, content: string): ChapterHeadingItem[] {
   const headings: ChapterHeadingItem[] = [];
   const lines = content.split(/\r?\n/);
-  const headingPattern = /^\s{0,3}#{2,4}\s+(.+?)\s*#*\s*$/;
+  // 匹配 H1-H4：捕获 # 数量(1-4) + 空格 + 标题文字
+  const headingPattern = /^\s{0,3}(#{1,4})\s+(.+?)\s*#*\s*$/;
   lines.forEach((line, index) => {
     const match = line.match(headingPattern);
     if (!match) return;
-    const title = match[1].trim();
+    const level = match[1].length; // H1=1, H2=2, H3=3, H4=4
+    const title = match[2].trim();
     if (!title) return;
     const previous = headings[headings.length - 1];
     if (previous?.title === title) {
@@ -48,9 +56,10 @@ function extractChapterHeadings(chapterId: string, content: string): ChapterHead
       id: `${chapterId}:${index}`,
       title,
       line: index + 1,
+      level,
     });
   });
-  return headings.slice(0, 24);
+  return headings.slice(0, 30);
 }
 
 export function WorkspacePage(): JSX.Element {
@@ -73,8 +82,17 @@ export function WorkspacePage(): JSX.Element {
   const settings = useAppStore((s) => s.settings);
   const focusMode = settings.focusMode;
   const terminalEnabled = settings.devModeEnabled;
+  // A7: 多标签+分屏
+  const openEditorTabs = useAppStore((s) => s.openEditorTabs);
+  const activeTabIndex = useAppStore((s) => s.activeTabIndex);
+  const splitMode = useAppStore((s) => s.splitMode);
+  const openInTab = useAppStore((s) => s.openInTab);
+  const setSplitMode = useAppStore((s) => s.setSplitMode);
+
 
   const [exportOpen, setExportOpen] = useState(false);
+  // C5: Pomodoro 冲刺面板开关
+  const [pomodoroOpen, setPomodoroOpen] = useState(false);
   const [headingJumpTarget, setHeadingJumpTarget] = useState<HeadingJumpTarget | null>(null);
   const [chapterActionError, setChapterActionError] = useState<string | null>(null);
   const headingJumpNonceRef = useRef(0);
@@ -99,6 +117,18 @@ export function WorkspacePage(): JSX.Element {
   });
 
   const chapters = useMemo(() => chaptersQuery.data ?? [], [chaptersQuery.data]);
+
+  // A3: 大纲关联章节 ID 集合——用于 ChapterTree 显示大纲徽章
+  const outlineCardsQuery = useQuery({
+    queryKey: ["outline-cards", resolvedProjectId],
+    queryFn: () => (resolvedProjectId ? outlineApi.list({ projectId: resolvedProjectId }) : Promise.resolve([])),
+    enabled: !!resolvedProjectId,
+    staleTime: 60_000,
+  });
+  const outlineChapterIds = useMemo(
+    () => new Set((outlineCardsQuery.data ?? []).filter((c) => c.chapterId).map((c) => c.chapterId!)),
+    [outlineCardsQuery.data],
+  );
   const headingQueries = useQueries({
     queries: chapters.map((chapter) => ({
       queryKey: ["chapter-heading-outline", chapter.id, chapter.updatedAt, chapter.wordCount],
@@ -121,6 +151,19 @@ export function WorkspacePage(): JSX.Element {
     () => chapters.find((c) => c.id === currentChapterId) ?? null,
     [chapters, currentChapterId],
   );
+
+  // A7: 分屏时各面板对应的章节列表
+  const splitChapters = useMemo(() => {
+    if (!splitMode) return [currentChapter];
+    const count = splitMode === "3col" ? 3 : 2;
+    // right column: next tab; third column: tab after that
+    const result: (ChapterRecord | null)[] = [currentChapter];
+    for (let i = 1; i < count; i++) {
+      const tabId = openEditorTabs[activeTabIndex + i];
+      result.push(tabId ? (chapters.find((c) => c.id === tabId) ?? null) : null);
+    }
+    return result;
+  }, [splitMode, currentChapter, openEditorTabs, activeTabIndex, chapters]);
 
   useEffect(() => {
     if (chapters.length === 0) return;
@@ -290,7 +333,8 @@ export function WorkspacePage(): JSX.Element {
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col bg-ink-900 text-ink-100">
-      <header className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4">
+      {/* B4: 专注模式下标题栏淡出（hover/focus-within 时显示） */}
+      <header className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-accent-300">墨炉</span>
           <label htmlFor="workspace-project-select" className="sr-only">
@@ -336,13 +380,16 @@ export function WorkspacePage(): JSX.Element {
           >
             导出
           </Button>
+          {/* C5: 写作冲刺按钮 */}
           <Button
-            variant="secondary"
+            variant={pomodoroOpen ? "accentSoft" : "secondary"}
             size="md"
-            onClick={() => openSettings(true)}
-            title="设置 (Ctrl+,)"
+            onClick={() => setPomodoroOpen((v) => !v)}
+            aria-pressed={pomodoroOpen}
+            title="写作冲刺 · 番茄钟"
           >
-            设置
+            <Timer className="h-4 w-4" />
+            冲刺
           </Button>
         </div>
       </header>
@@ -383,6 +430,8 @@ export function WorkspacePage(): JSX.Element {
               setHeadingJumpTarget(null);
               setChapter(id);
             }}
+            // A7: Ctrl+Click 在后台标签页打开
+            onOpenInTab={(id) => openInTab(id)}
             onSelectHeading={(chapterId, heading) => {
               headingJumpNonceRef.current += 1;
               setHeadingJumpTarget({ ...heading, chapterId, nonce: headingJumpNonceRef.current });
@@ -395,18 +444,45 @@ export function WorkspacePage(): JSX.Element {
             onImportMd={() => importMd.mutate()}
             creating={createChapter.isPending}
             importing={importMd.isPending}
+            outlineChapterIds={outlineChapterIds}
+            projectId={resolvedProjectId}
+            onTrashChanged={() => queryClient.invalidateQueries({ queryKey: ["chapters", resolvedProjectId] })}
           />
         </aside>
         )}
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <EditorPane
-            chapter={currentChapter}
-            headingJumpTarget={headingJumpTarget}
-            providers={providersQuery.data ?? []}
-            onCreateChapter={() => createChapter.mutate()}
-            creatingChapter={createChapter.isPending}
-          />
+        {/* A7+B4: 编辑器区——多标签栏 + 可选分屏 */}
+        <section className={`flex min-w-0 flex-1 flex-col ${focusMode ? "editor-focus-vignette" : ""}`}>
+          <EditorTabBar chapters={chapters} focusMode={focusMode} />
+          {splitMode ? (
+            /* 分屏模式：2-3 列并排 */
+            <div className="flex min-h-0 flex-1 divide-x divide-ink-700">
+              {splitChapters.map((ch, i) => (
+                <div
+                  key={ch?.id ?? `empty-${i}`}
+                  className="min-w-0 flex-1 overflow-auto"
+                  style={i > 0 ? { borderLeft: "1px solid rgb(var(--ink-700))" } : undefined}
+                >
+                  <EditorPane
+                    chapter={ch}
+                    headingJumpTarget={i === 0 ? headingJumpTarget : null}
+                    providers={providersQuery.data ?? []}
+                    onCreateChapter={() => createChapter.mutate()}
+                    creatingChapter={createChapter.isPending}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* 单标签模式 */
+            <EditorPane
+              chapter={currentChapter}
+              headingJumpTarget={headingJumpTarget}
+              providers={providersQuery.data ?? []}
+              onCreateChapter={() => createChapter.mutate()}
+              creatingChapter={createChapter.isPending}
+            />
+          )}
         </section>
 
         {!focusMode && (
@@ -436,7 +512,23 @@ export function WorkspacePage(): JSX.Element {
         />
       )}
 
-      <StatusBar />
+      {/* C5: Pomodoro 冲刺面板——浮动在右下角 */}
+      <AnimatePresence initial={false}>
+        {pomodoroOpen && (
+          <motion.div
+            className="fixed bottom-12 right-6 z-50"
+            variants={statusMotion}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          >
+            <PomodoroTimer onClose={() => setPomodoroOpen(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* B4: 专注模式下隐藏状态栏 */}
+      {!focusMode && <StatusBar />}
       <ProviderSettingsPanel />
       {currentProjectId ? (
         <ExportDialog

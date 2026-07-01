@@ -5,6 +5,8 @@ import {
   ragSearchResearchNotes,
   ragSearchSampleChunks,
   ragSearchWorldEntries,
+  semanticSearch,
+  upsertEmbedding,
   type CharacterHit,
   type ResearchHit,
   type SampleChunkHit,
@@ -12,9 +14,13 @@ import {
 } from "@inkforge/storage";
 import { getAppContext } from "./app-state";
 
-const MAX_PER_ENTRY = 800;
-const MAX_TOTAL_CHARS = 2400;
-const MAX_HITS_PER_SOURCE = 5;
+// 修复：成倍提高 RAG 参考块字数限制，让 AI 能读到更完整的文风素材和世界观上下文
+const MAX_PER_ENTRY = 1600;       // 每条最多 1600 字（原 800）
+const MAX_TOTAL_CHARS = 5000;     // 总计 5000 字（原 2400）
+const MAX_HITS_PER_SOURCE = 7;    // 每源最多 7 条（原 5）
+// C1: 语义搜索增加额外候选数（keyword 5 + semantic 4）
+const SEMANTIC_TOP_K = 4;
+const SEMANTIC_MIN_SCORE = 0.08;
 const MAX_SAMPLE_REFERENCE_CHARS = 2200;
 const MAX_SAMPLE_REFERENCE_HITS = 3;
 
@@ -303,6 +309,9 @@ export function buildSampleReferenceBlock(
 /**
  * Build a 【参考资料】 block to be prepended to user prompt.
  * Returns "" when no hits in any enabled source (avoid noise).
+ *
+ * C1: Uses hybrid search (keyword LIKE + n-gram semantic similarity)
+ * so "主角的剑" matches "主角的武器" and similar concept drift.
  */
 export function buildRagBlock(
   projectId: string | undefined,
@@ -326,15 +335,15 @@ export function buildRagBlock(
   const sections: RenderedSection[] = [];
 
   if (enableWorld) {
-    const hits = ragSearchWorldEntries(ctx.db, projectId, queries, maxHits);
+    const hits = hybridSearchWorldEntries(projectId, query, queries, maxHits);
     if (hits.length) sections.push(renderWorld(hits, maxPer));
   }
   if (enableChar) {
-    const hits = ragSearchCharacters(ctx.db, projectId, queries, maxHits);
+    const hits = hybridSearchCharacters(projectId, query, queries, maxHits);
     if (hits.length) sections.push(renderCharacters(hits, maxPer));
   }
   if (enableResearch) {
-    const hits = ragSearchResearchNotes(ctx.db, projectId, queries, maxHits);
+    const hits = hybridSearchResearch(projectId, query, queries, maxHits);
     if (hits.length) sections.push(renderResearch(hits, maxPer));
   }
   if (enableSamples) {
@@ -363,4 +372,60 @@ export function buildRagBlock(
   }
   out.push("");
   return out.join("\n");
+}
+
+// ─── C1: 混合搜索 (keyword LIKE + n-gram semantic) ────────────
+
+function hybridSearchWorldEntries(pId: string, query: string, queries: string[], maxHits: number): WorldEntryHit[] {
+  const ctx = getAppContext();
+  const kwHits = ragSearchWorldEntries(ctx.db, pId, queries, maxHits);
+  const seen = new Set(kwHits.map((h: WorldEntryHit) => h.title));
+  try {
+    const sem = semanticSearch(ctx.db, { projectId: pId, query, entityTypes: ["world_entry"], topK: SEMANTIC_TOP_K, minScore: SEMANTIC_MIN_SCORE });
+    if (sem.length > 0) {
+      const ids = sem.map((s) => s.entityId);
+      const ph = ids.map(() => "?").join(",");
+      const rows = ctx.db.prepare('SELECT category, title, content FROM world_entries WHERE project_id = ? AND id IN (' + ph + ') LIMIT ?').all(pId, ...ids, SEMANTIC_TOP_K) as WorldEntryHit[];
+      for (const hit of rows) { if (!seen.has(hit.title)) { kwHits.push(hit); seen.add(hit.title); } }
+    }
+  } catch { /* fallback to keyword-only */ }
+  return kwHits.slice(0, maxHits + SEMANTIC_TOP_K);
+}
+
+function hybridSearchCharacters(pId: string, query: string, queries: string[], maxHits: number): CharacterHit[] {
+  const ctx = getAppContext();
+  const kwHits = ragSearchCharacters(ctx.db, pId, queries, maxHits);
+  const seen = new Set(kwHits.map((h: CharacterHit) => h.name));
+  try {
+    const sem = semanticSearch(ctx.db, { projectId: pId, query, entityTypes: ["character"], topK: SEMANTIC_TOP_K, minScore: SEMANTIC_MIN_SCORE });
+    if (sem.length > 0) {
+      const ids = sem.map((s) => s.entityId);
+      const ph = ids.map(() => "?").join(",");
+      const rows = ctx.db.prepare('SELECT name, COALESCE(persona, \'\') AS persona, backstory FROM characters WHERE project_id = ? AND id IN (' + ph + ') LIMIT ?').all(pId, ...ids, SEMANTIC_TOP_K) as CharacterHit[];
+      for (const hit of rows) { if (!seen.has(hit.name)) { kwHits.push(hit); seen.add(hit.name); } }
+    }
+  } catch { /* fallback */ }
+  return kwHits.slice(0, maxHits + SEMANTIC_TOP_K);
+}
+
+function hybridSearchResearch(pId: string, query: string, queries: string[], maxHits: number): ResearchHit[] {
+  const ctx = getAppContext();
+  const kwHits = ragSearchResearchNotes(ctx.db, pId, queries, maxHits);
+  const seen = new Set(kwHits.map((h: ResearchHit) => h.topic));
+  try {
+    const sem = semanticSearch(ctx.db, { projectId: pId, query, entityTypes: ["research_note"], topK: SEMANTIC_TOP_K, minScore: SEMANTIC_MIN_SCORE });
+    if (sem.length > 0) {
+      const ids = sem.map((s) => s.entityId);
+      const ph = ids.map(() => "?").join(",");
+      const rows = ctx.db.prepare('SELECT topic, excerpt, note FROM research_notes WHERE project_id = ? AND id IN (' + ph + ') LIMIT ?').all(pId, ...ids, SEMANTIC_TOP_K) as ResearchHit[];
+      for (const hit of rows) { if (!seen.has(hit.topic)) { kwHits.push(hit); seen.add(hit.topic); } }
+    }
+  } catch { /* fallback */ }
+  return kwHits.slice(0, maxHits + SEMANTIC_TOP_K);
+}
+
+/** C1: 实体更新时自动索引语义指纹。fire-and-forget，失败不影响主流程。 */
+export function maybeIndexEntity(projectId: string, entityType: "world_entry" | "character" | "research_note", entityId: string, sourceText: string): void {
+  if (!projectId || !entityId || !sourceText.trim()) return;
+  try { upsertEmbedding(getAppContext().db, { entityType, entityId, projectId, sourceText }); } catch { /* ignore */ }
 }

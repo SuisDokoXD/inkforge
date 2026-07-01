@@ -238,6 +238,16 @@
   worldInfoTraceListRecent: "world-info-trace:list-recent",
   worldInfoTraceGet: "world-info-trace:get",
   worldInfoTraceClear: "world-info-trace:clear",
+  // ===== C12: Timeline =====
+  timelineListEvents: "timeline:list-events",
+  timelineUpsertEvent: "timeline:upsert-event",
+  timelineDeleteEvent: "timeline:delete-event",
+  timelineReorderEvents: "timeline:reorder-events",
+  timelineGetView: "timeline:get-view",
+  // ===== C13: Image Generation =====
+  imageGenGenerate: "image-gen:generate",
+  imageGenGetSettings: "image-gen:get-settings",
+  imageGenSaveSettings: "image-gen:save-settings",
 } as const;
 
 export const ipcEventChannels = {
@@ -266,3 +276,4 @@ export const ipcEventChannels = {
   achievementUnlocked: "achievement:unlocked",
   letterArrived: "letter:arrived",
 } as const;
+

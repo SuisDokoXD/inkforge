@@ -24,6 +24,8 @@ const ResearchPage = lazy(() => import("./pages/ResearchPage").then((m) => ({ de
 const ReviewPage = lazy(() => import("./pages/ReviewPage").then((m) => ({ default: m.ReviewPage })));
 const AutoWriterPage = lazy(() => import("./pages/AutoWriterPage").then((m) => ({ default: m.AutoWriterPage })));
 const MaterialsPage = lazy(() => import("./pages/MaterialsPage").then((m) => ({ default: m.MaterialsPage })));
+const StatsPage = lazy(() => import("./pages/StatsPage").then((m) => ({ default: m.StatsPage })));  // C4
+const TimelinePage = lazy(() => import("./pages/TimelinePage").then((m) => ({ default: m.TimelinePage })));  // C12
 const AchievementHallPage = lazy(() => import("./pages/AchievementHallPage").then((m) => ({ default: m.AchievementHallPage })));
 const LetterInboxPage = lazy(() => import("./pages/LetterInboxPage").then((m) => ({ default: m.LetterInboxPage })));
 const BookshelfPage = lazy(() => import("./components/bookshelf").then((m) => ({ default: m.BookshelfPage })));
@@ -89,6 +91,10 @@ function renderPage(mainView: MainView): JSX.Element | null {
       return <AutoWriterPage />;
     case "materials":
       return <MaterialsPage />;
+    case "stats":  // C4
+      return <StatsPage />;
+    case "timeline":  // C12
+      return <TimelinePage />;
     default:
       return null;
   }
@@ -126,14 +132,33 @@ export function App(): JSX.Element {
   }, [settingsQuery.data, setSettings]);
 
   useEffect(() => {
-    const theme = settings.theme === "paper"
-      ? "theme-paper"
-      : settings.theme === "light"
-        ? "theme-light"
-        : "theme-dark";
-    document.documentElement.classList.remove("theme-light", "theme-dark", "theme-paper");
+    const theme = settings.theme === "paper" ? "theme-paper"
+      : settings.theme === "light" ? "theme-light"
+      : settings.theme === "sepia" ? "theme-sepia"
+      : settings.theme === "mint" ? "theme-mint"
+      : "theme-dark";
+    document.documentElement.classList.remove("theme-light", "theme-dark", "theme-paper", "theme-sepia", "theme-mint");
     document.documentElement.classList.add(theme);
   }, [settings.theme]);
+
+  // C9: 自定义强调色——覆盖 CSS --accent-500 为自选颜色。
+  // 用 HSL 派生其他色阶：50=极暗 900=极亮，中间线性插值。
+  useEffect(() => {
+    if (settings.customAccent && /^#[0-9a-fA-F]{6}$/.test(settings.customAccent)) {
+      // 将 hex 转为 RGB 数值用于 CSS 变量
+      const hex = settings.customAccent.replace("#", "");
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const root = document.documentElement.style;
+      root.setProperty("--accent-custom-r", String(r));
+      root.setProperty("--accent-custom-g", String(g));
+      root.setProperty("--accent-custom-b", String(b));
+      root.setProperty("--accent-custom-active", "1");
+    } else {
+      document.documentElement.style.removeProperty("--accent-custom-active");
+    }
+  }, [settings.customAccent]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const shortcutHandlers = useMemo(
@@ -160,7 +185,7 @@ export function App(): JSX.Element {
     if (!terminalEnabled) toggleTerminal(false);
   }, [terminalEnabled, toggleTerminal]);
 
-  // M9 Phase 3.1: command palette context. copyDiag uses preload api directly.
+  // A4: 命令面板上下文——扩展支持项目/写作级操作。
   const paletteCtx = useMemo(
     () => ({
       setMainView,
@@ -183,6 +208,9 @@ export function App(): JSX.Element {
           showDiagStatus({ kind: "error", text: "无法复制诊断信息，请稍后重试。" });
         }
       },
+      // 项目/写作级（在 App 层提供，具体逻辑由 WorkspacePage 注入）
+      hasProject: !!currentProjectId,
+      isWriting: mainView === "writing",
     }),
     [
       setMainView,
@@ -192,6 +220,8 @@ export function App(): JSX.Element {
       terminalEnabled,
       setSettings,
       showDiagStatus,
+      currentProjectId,
+      mainView,
     ],
   );
 

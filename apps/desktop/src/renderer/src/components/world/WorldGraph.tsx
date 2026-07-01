@@ -13,6 +13,7 @@ import {
 } from "@xyflow/react";
 import {
   ArrowRight,
+  Camera,
   Focus,
   Network,
   Route,
@@ -1260,6 +1261,8 @@ export function WorldGraph({ projectId }: WorldGraphProps): JSX.Element {
           edges={filteredGraph.edges}
           onNodesChange={onNodesChange}
           onNodeClick={onNodeClick}
+          // B7: 双击节点等同于单击+打开详情面板
+          onNodeDoubleClick={(_event, node) => onNodeClick(_event, node)}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
           onEdgeClick={onEdgeClick}

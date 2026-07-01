@@ -40,7 +40,8 @@ interface ReviewReportPanelProps {
   reportId: string;
   dimensions: ReviewDimensionRecord[];
   chapters: ChapterRecord[];
-  onJumpChapter: (chapterId: string) => void;
+  // A2: excerpt 参数用于滚动到编辑器中对应位置
+  onJumpChapter: (chapterId: string, excerpt?: string) => void;
   onDoneRunning: (reportId: string) => void;
 }
 
@@ -483,7 +484,8 @@ function FindingRow({
 }: {
   finding: ReviewFindingRecord;
   chapter?: ChapterRecord;
-  onJumpChapter: (chapterId: string) => void;
+  // A2: excerpt 参数用于滚动到编辑器中对应位置
+  onJumpChapter: (chapterId: string, excerpt?: string) => void;
   onToggleDismiss: () => void;
   onPreviewFix: () => void;
   fixing: boolean;
@@ -520,7 +522,8 @@ function FindingRow({
         {chapter ? (
           <motion.button
             type="button"
-            onClick={() => onJumpChapter(chapter.id)}
+            // A2: 点击跳转时附带摘录文本，EditorPane 会自动滚动定位
+            onClick={() => onJumpChapter(chapter.id, finding.excerpt)}
             className="inline-flex min-w-0 items-center gap-1 text-ink-300 hover:text-accent-200"
             aria-label={`跳转到章节：${chapter.title}`}
             title={`跳转到章节：${chapter.title}`}

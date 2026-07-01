@@ -4,10 +4,24 @@ import {
   getProject,
   listChapters,
   readChapterFile,
+  readCoverFile,
+  getBookCover,
 } from "@inkforge/storage";
 import type { ChapterRecord, ProjectRecord } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
 import { ZipWriter } from "./zip-writer";
+
+// C6: 封面图片 MIME 类型映射
+function coverMimeType(ext: string): string | null {
+  const map: Record<string, string> = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+  };
+  return map[ext.toLowerCase()] ?? null;
+}
 
 interface LoadedChapter {
   record: ChapterRecord;
@@ -239,9 +253,12 @@ export async function exportProjectDocx(
 // EPUB 3 (minimal: container + OPF + nav + ncx + per-chapter XHTML)
 // =====================================================================
 
-const EPUB_STYLES = `body { font-family: "Noto Serif CJK SC", "Source Han Serif SC", serif; line-height: 1.8; }
-h1 { font-size: 1.4em; margin-top: 2em; text-align: center; }
-p { text-indent: 2em; margin: 0.6em 0; }`;
+const EPUB_STYLES = `/* C6: e-reader CSS with CJK optimizations */
+body { font-family: "Noto Serif CJK SC", "Source Han Serif SC", serif; line-height: 1.8; margin: 1em; }
+h1 { font-size: 1.6em; margin-top: 1.5em; margin-bottom: 0.8em; text-align: center; }
+h2 { font-size: 1.3em; margin-top: 1.2em; margin-bottom: 0.5em; }
+p { text-indent: 2em; margin: 0.6em 0; orphans: 2; widows: 2; }
+img { max-width: 100%; height: auto; }`;
 
 const EPUB_CONTAINER = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -252,6 +269,7 @@ function buildOpf(
   project: ProjectRecord,
   chapters: LoadedChapter[],
   identifier: string,
+  hasCover: boolean,
 ): string {
   const manifest = chapters
     .map(
@@ -262,19 +280,30 @@ function buildOpf(
   const spine = chapters
     .map((_c, i) => `<itemref idref="ch${String(i + 1).padStart(3, "0")}"/>`)
     .join("\n");
+  // C6: Dublin Core metadata from project fields
+  const dcCreator = project.genre ? `<dc:creator>${escapeXml("InkForge 作者")}</dc:creator>` : "";
+  const dcSubject = project.tags?.length ? `<dc:subject>${escapeXml(project.tags.join(", "))}</dc:subject>` : "";
+  const dcDesc = project.synopsis ? `<dc:description>${escapeXml(project.synopsis.slice(0, 500))}</dc:description>` : "";
+  const coverManifest = hasCover
+    ? `<item id="cover-img" href="cover-image" media-type="image/jpeg" properties="cover-image"/>\n`
+    : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
 <dc:identifier id="bookid">urn:uuid:${identifier}</dc:identifier>
 <dc:title>${escapeXml(project.name)}</dc:title>
+${dcCreator}
+${dcSubject}
+${dcDesc}
 <dc:language>zh-CN</dc:language>
+<dc:date>${new Date().toISOString().split("T")[0]}</dc:date>
 <meta property="dcterms:modified">${new Date().toISOString().split(".")[0] + "Z"}</meta>
 </metadata>
 <manifest>
 <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
 <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
 <item id="css" href="styles.css" media-type="text/css"/>
-${manifest}
+${coverManifest}${manifest}
 </manifest>
 <spine toc="ncx">
 <itemref idref="nav"/>
@@ -339,12 +368,33 @@ export async function exportProjectEpub(
 ): Promise<{ byteCount: number; chapterCount: number }> {
   const { project, chapters } = await loadProjectAndChapters(projectId);
   const identifier = randomUUID();
+
+  // C6: 尝试读取封面图嵌入 EPUB
+  let coverBuf: Buffer | null = null;
+  let coverMime: string | null = null;
+  try {
+    const ctx = getAppContext();
+    const cover = getBookCover(ctx.db, projectId);
+    if (cover) {
+      const raw = readCoverFile(project.path, cover.filePath);
+      if (raw) {
+        coverBuf = raw;
+        coverMime = cover.mime ?? coverMimeType(cover.filePath) ?? "image/jpeg";
+      }
+    }
+  } catch {
+    // 无封面或读取失败→跳过，不影响导出
+  }
+
   const zip = new ZipWriter();
   // mimetype MUST be first and STORED per EPUB spec.
   await zip.addFile("mimetype", "application/epub+zip", 0);
   await zip.addFile("META-INF/container.xml", EPUB_CONTAINER);
   await zip.addFile("OEBPS/styles.css", EPUB_STYLES);
-  await zip.addFile("OEBPS/content.opf", buildOpf(project, chapters, identifier));
+  await zip.addFile("OEBPS/content.opf", buildOpf(project, chapters, identifier, !!coverBuf));
+  if (coverBuf && coverMime) {
+    await zip.addFile("OEBPS/cover-image", coverBuf);
+  }
   await zip.addFile("OEBPS/nav.xhtml", buildNav(chapters));
   await zip.addFile("OEBPS/toc.ncx", buildNcx(project, chapters, identifier));
   for (let i = 0; i < chapters.length; i += 1) {

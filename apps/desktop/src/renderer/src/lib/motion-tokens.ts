@@ -93,3 +93,20 @@ export const staggerItem: Variants = {
 // hover/tap 微交互的统一手感（卡片、图标按钮）。幅度保守，避免浮夸。
 export const hoverLift = { scale: 1.02 } as const;
 export const tapPress = { scale: 0.98 } as const;
+
+// B9: 删除项退出动画——轻微缩小+淡出，近似"噗"一下消失。
+export const deletePoof: Variants = {
+  initial: { opacity: 1, scale: 1 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.92, transition: { duration: DUR.fast, ease: EASE_STANDARD } },
+};
+
+// B9: 成功操作的绿色脉冲——保存成功/设置生效后短暂亮起再恢复。
+export const successPulse: Variants = {
+  initial: { opacity: 1 },
+  animate: {
+    opacity: [1, 0.7, 1],
+    transition: { duration: 0.5, ease: EASE_STANDARD, repeat: 0 },
+  },
+  exit: { opacity: 1 },
+};

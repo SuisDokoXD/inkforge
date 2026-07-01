@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { FileText } from "lucide-react";
+import { Clock, FileText } from "lucide-react";
 import { dailyApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
@@ -15,12 +15,18 @@ function formatNumber(n: number): string {
   return n >= 1000 ? n.toLocaleString() : String(n);
 }
 
+// C2: Session 计时——格式化秒为 H:MM 或 MMm
+function fmtSessionTime(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) return `${h}h ${m % 60}m`;
+  return `${m}m`;
+}
+
+// C2: 记录应用启动时的字数基线（用于计算 session 增量）
+let sessionBaselines: Record<string, number> = {};
+
 export function StatusBar(): JSX.Element {
-  // Return primitives, not a freshly-constructed object. useSyncExternalStore
-  // compares with Object.is; returning `{ status, error }` every call mints a
-  // new reference, is always ≠ previous snapshot, and schedules another render
-  // — which re-runs the selector forever. Pulling scalars directly lets the
-  // default equality actually hold.
   const analysisStatus = useAppStore((s) => s.analyses[0]?.status ?? null);
   const analysisError = useAppStore((s) => s.analyses[0]?.error);
   const projectId = useAppStore((s) => s.currentProjectId);
@@ -28,6 +34,27 @@ export function StatusBar(): JSX.Element {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const reduceMotion = useReducedMotion() === true;
   const t = useT();
+
+  // C2: Session 计时器（从组件挂载开始计时）
+  const [sessionSec, setSessionSec] = useState(0);
+  const sessionStartRef = useRef(Date.now());
+  useEffect(() => {
+    const handle = setInterval(() => {
+      setSessionSec(Math.floor((Date.now() - sessionStartRef.current) / 1000));
+    }, 30_000); // 每 30 秒刷新一次
+    return () => clearInterval(handle);
+  }, []);
+
+  // C2: session 字数增量（相对于应用启动时的基线）
+  const totalGraphemes = chapterStats?.graphemes ?? 0;
+  const sessionWords = useRef(0);
+  useEffect(() => {
+    if (!projectId) return;
+    if (!(projectId in sessionBaselines)) {
+      sessionBaselines[projectId] = totalGraphemes;
+    }
+    sessionWords.current = Math.max(0, totalGraphemes - (sessionBaselines[projectId] ?? totalGraphemes));
+  }, [projectId, totalGraphemes]);
 
   const progressQuery = useQuery({
     queryKey: ["daily-progress", projectId],
@@ -55,6 +82,16 @@ export function StatusBar(): JSX.Element {
     <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-ink-700 bg-ink-800/60 px-4 py-1.5 text-xs text-ink-400">
       <div className="flex min-w-0 items-center gap-3">
         <span>InkForge · 墨炉</span>
+        {/* C2: Session 计时 + 本轮字数 */}
+        <span className="text-ink-500" title={`已写作 ${fmtSessionTime(sessionSec)}`}>
+          <Clock className="mr-1 inline h-3 w-3" />
+          {fmtSessionTime(sessionSec)}
+        </span>
+        {projectId && (
+          <span className="text-ink-500" title="本轮写作字数">
+            +{sessionWords.current.toLocaleString()} 字
+          </span>
+        )}
         {progress && (
           <motion.div
             className="flex items-center gap-2"

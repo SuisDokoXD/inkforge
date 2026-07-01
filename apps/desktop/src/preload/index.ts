@@ -43,6 +43,11 @@ const api: InkforgeApi = {
     autosaveWrite: (input) => ipcRenderer.invoke(ipcChannels.chapterAutosaveWrite, input),
     autosavePeek: (input) => ipcRenderer.invoke(ipcChannels.chapterAutosavePeek, input),
     autosaveClear: (input) => ipcRenderer.invoke(ipcChannels.chapterAutosaveClear, input),
+    // A6: 回收站
+    trashList: (input: { projectId: string }) => ipcRenderer.invoke("chapter:trash-list", input),
+    trashRestore: (input: { id: string }) => ipcRenderer.invoke("chapter:trash-restore", input),
+    trashDestroy: (input: { id: string }) => ipcRenderer.invoke("chapter:trash-destroy", input),
+    trashEmpty: (input: { projectId: string }) => ipcRenderer.invoke("chapter:trash-empty", input),
   },
   provider: {
     save: (input) => ipcRenderer.invoke(ipcChannels.providerSave, input),
@@ -390,6 +395,20 @@ const api: InkforgeApi = {
       ipcRenderer.invoke(ipcChannels.worldInfoTraceListRecent, input),
     get: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceGet, input),
     clear: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceClear, input),
+  },
+  // ===== C12: Timeline =====
+  timeline: {
+    getView: (input: { projectId: string }) => ipcRenderer.invoke("timeline:get-view", input),
+    listEvents: (input: { projectId: string }) => ipcRenderer.invoke("timeline:list-events", input),
+    upsertEvent: (input: unknown) => ipcRenderer.invoke("timeline:upsert-event", input),
+    deleteEvent: (input: { id: string }) => ipcRenderer.invoke("timeline:delete-event", input),
+    reorderEvents: (input: { eventIds: string[] }) => ipcRenderer.invoke("timeline:reorder-events", input),
+  },
+  // ===== C13: Image Generation =====
+  imageGen: {
+    generate: (input: unknown) => ipcRenderer.invoke("image-gen:generate", input),
+    getSettings: () => ipcRenderer.invoke("image-gen:get-settings"),
+    saveSettings: (input: unknown) => ipcRenderer.invoke("image-gen:save-settings", input),
   },
 };
 

@@ -6,7 +6,9 @@ import {
   FileSearch,
   PenLine,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import { MotionSpinner } from "../MotionSpinner";
 import { Badge } from "../ui";
 import { getCardQuality, parseOutlineSections } from "./outline-metrics";
@@ -21,6 +23,7 @@ interface OutlineCardItemProps {
   onAutoWriteOutlineCard(card: OutlineCardRecord): void;
   onRefine(card: OutlineCardRecord): void;
   onUndo(card: OutlineCardRecord): void;
+  onDelete(card: OutlineCardRecord): void;
   onRefineIntentChange(cardId: string, value: string): void;
   onOpenChapter?(chapterId: string): void;
   onReviewChapter?(chapterId: string): void;
@@ -37,6 +40,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
   onAutoWriteOutlineCard,
   onRefine,
   onUndo,
+  onDelete,
   onRefineIntentChange,
   onOpenChapter,
   onReviewChapter,
@@ -48,6 +52,7 @@ export const OutlineCardItem = memo(function OutlineCardItem({
   const disabled = busy !== null;
   const hasLinkedChapter = !!linkedChapter;
   const hasWrittenText = (linkedChapter?.wordCount ?? 0) > 0;
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   return (
     <div
@@ -167,6 +172,31 @@ export const OutlineCardItem = memo(function OutlineCardItem({
               撤销
             </button>
           ) : null}
+          {deleteConfirm ? (
+            <span className="flex items-center gap-1">
+              <button
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-red-500/50 bg-red-500/15 px-2 py-1 text-[11px] text-red-200 transition-colors hover:bg-red-500/25"
+                onClick={() => { onDelete(card); setDeleteConfirm(false); }}
+              >
+                确认删除
+              </button>
+              <button
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-[11px] text-ink-400 transition-colors hover:bg-ink-700"
+                onClick={() => setDeleteConfirm(false)}
+              >
+                取消
+              </button>
+            </span>
+          ) : (
+            <button
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 py-1 text-[11px] text-ink-500 transition-colors hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-300"
+              disabled={disabled}
+              onClick={() => setDeleteConfirm(true)}
+              title="删除此大纲卡"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       ) : null}
     </div>

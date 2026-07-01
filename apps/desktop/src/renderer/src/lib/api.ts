@@ -121,6 +121,15 @@ export const chapterApi = {
   autosaveClear: (
     input: import("@inkforge/shared").ChapterAutosaveClearInput,
   ): Promise<{ ok: true }> => api().chapter.autosaveClear(input),
+  // A6: 回收站操作
+  trashList: (input: { projectId: string }): Promise<ChapterRecord[]> =>
+    api().chapter.trashList(input),
+  trashRestore: (input: { id: string }): Promise<ChapterRecord> =>
+    api().chapter.trashRestore(input),
+  trashDestroy: (input: { id: string }): Promise<{ id: string }> =>
+    api().chapter.trashDestroy(input),
+  trashEmpty: (input: { projectId: string }): Promise<{ count: number }> =>
+    api().chapter.trashEmpty(input),
 };
 
 export const providerApi = {
@@ -533,4 +542,28 @@ export const worldInfoTraceApi = {
     api().worldInfoTrace.get(input),
   clear: (input: import("@inkforge/shared").WorldInfoTraceClearInput) =>
     api().worldInfoTrace.clear(input),
+};
+
+// ===== C12: Timeline =====
+export const timelineApi = {
+  getView: (projectId: string): Promise<{ chapters: import("@inkforge/shared").TimelineChapterNode[]; events: import("@inkforge/shared").TimelineEventRecord[] }> =>
+    api().timeline.getView({ projectId }),
+  listEvents: (projectId: string): Promise<{ events: import("@inkforge/shared").TimelineEventRecord[] }> =>
+    api().timeline.listEvents({ projectId }),
+  upsertEvent: (input: import("@inkforge/shared").TimelineEventCreateInput): Promise<import("@inkforge/shared").TimelineEventRecord> =>
+    (api() as any).timeline.upsertEvent(input),
+  deleteEvent: (id: string): Promise<{ id: string }> =>
+    api().timeline.deleteEvent({ id }),
+  reorderEvents: (eventIds: string[]): Promise<{ ok: true }> =>
+    api().timeline.reorderEvents({ eventIds }),
+};
+
+// ===== C13: Image Generation =====
+export const imageGenApi = {
+  generate: (input: { prompt: string; negativePrompt?: string; width: number; height: number; projectId: string }): Promise<import("@inkforge/shared").ImageGenResult> =>
+    (api() as any).imageGen.generate(input),
+  getSettings: (): Promise<import("@inkforge/shared").ImageGenSettings> =>
+    api().imageGen.getSettings(),
+  saveSettings: (input: import("@inkforge/shared").ImageGenSettings): Promise<{ ok: true }> =>
+    (api() as any).imageGen.saveSettings(input),
 };

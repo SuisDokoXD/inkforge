@@ -14,6 +14,8 @@ import {
   Trophy,
   Bot,
   Archive,
+  BarChart3,
+  GitBranch,
   Command,
   Settings,
   type LucideIcon,
@@ -45,6 +47,8 @@ const VIEW_ICONS: Record<NavShortcut["view"], LucideIcon> = {
   achievement: Trophy,
   "auto-writer": Bot,
   materials: Archive,
+  stats: BarChart3,
+  timeline: GitBranch,
 };
 
 export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {

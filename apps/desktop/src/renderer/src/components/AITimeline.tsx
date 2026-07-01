@@ -160,7 +160,7 @@ export function AITimeline(): JSX.Element {
   });
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" role="feed" aria-label="写作建议时间线">
       {(historyCount > 0 || dismissedCount > 0) && (
         <div className="flex flex-wrap items-center justify-end gap-2 border-b border-ink-700 px-3 py-1.5 text-xs">
           {emptyHistoryCount > 0 && currentChapterId && (

@@ -37,6 +37,14 @@ export function SettingsDialog(): JSX.Element | null {
   const reduceMotion = useReducedMotion() === true;
 
   const [threshold, setThreshold] = useState<number>(settings.analysisThreshold);
+  // C9: 自定强调色草稿（本地 state，失焦/回车时提交）
+  const [customAccentDraft, setCustomAccentDraft] = useState<string>(
+    settings.customAccent ?? "#007AFF",
+  );
+  useEffect(() => {
+    setCustomAccentDraft(settings.customAccent ?? "#007AFF");
+  }, [settings.customAccent]);
+
   const [editorFontSizeDraft, setEditorFontSizeDraft] = useState<number>(
     settings.editorFontSize,
   );
@@ -258,6 +266,8 @@ export function SettingsDialog(): JSX.Element | null {
                 {([
                   ["light", t("settings.theme.light")],
                   ["paper", t("settings.theme.paper")],
+                  ["sepia", t("settings.theme.sepia")],
+                  ["mint", t("settings.theme.mint")],
                   ["dark", t("settings.theme.dark")],
                 ] as const).map(([theme, label]) => (
                   <motion.button
@@ -273,6 +283,49 @@ export function SettingsDialog(): JSX.Element | null {
                     {label}
                   </motion.button>
                 ))}
+              </div>
+            </div>
+            {/* C9: 自定强调色 */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-ink-300">强调色</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="自定强调色"
+                  value={customAccentDraft}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setCustomAccentDraft(v);
+                    settingsMutation.mutate({ customAccent: v });
+                  }}
+                  className="h-7 w-8 cursor-pointer rounded border border-ink-600 bg-ink-900 p-0"
+                />
+                <input
+                  type="text"
+                  aria-label="强调色十六进制"
+                  value={customAccentDraft}
+                  onChange={(e) => setCustomAccentDraft(e.target.value)}
+                  onBlur={() => {
+                    if (/^#[0-9a-fA-F]{6}$/.test(customAccentDraft)) {
+                      settingsMutation.mutate({ customAccent: customAccentDraft });
+                    } else {
+                      setCustomAccentDraft(settings.customAccent ?? "#007AFF");
+                    }
+                  }}
+                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                  className="h-7 w-20 rounded border border-ink-600 bg-ink-900 px-2 text-xs text-ink-100"
+                  placeholder="#007AFF"
+                />
+                {settings.customAccent ? (
+                  <motion.button
+                    type="button"
+                    className="rounded px-2 py-0.5 text-[10px] text-ink-500 hover:text-ink-300"
+                    onClick={() => settingsMutation.mutate({ customAccent: null })}
+                    {...buttonMotion}
+                  >
+                    重置
+                  </motion.button>
+                ) : null}
               </div>
             </div>
           </motion.section>

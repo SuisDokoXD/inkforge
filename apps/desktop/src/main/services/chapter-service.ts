@@ -5,15 +5,20 @@ import {
   clearAutosave,
   deleteChapter as deleteChapterRow,
   deleteChapterFile,
+  emptyTrash,
   getChapter,
   getDailyProgress,
   getProject,
   insertChapter,
   listChapters,
+  listTrashChapters,
   nextChapterFileName,
+  permanentDeleteChapter,
   readAutosave,
   readChapterFile,
   reorderChapters,
+  restoreChapter,
+  softDeleteChapter,
   updateChapter,
   writeAutosave,
   writeChapterFile,
@@ -145,13 +150,45 @@ export function readChapter(input: ChapterReadInput): ChapterReadResponse {
 }
 
 export function deleteChapter(input: ChapterDeleteInput): { id: string } {
+  // A6: soft-delete — 移到回收站而非物理删除
   const ctx = getAppContext();
-  const chapter = getChapter(ctx.db, input.id);
-  if (!chapter) return { id: input.id };
-  const project = resolveProject(chapter.projectId);
-  deleteChapterFile(project.path, chapter.filePath);
-  deleteChapterRow(ctx.db, input.id);
+  softDeleteChapter(ctx.db, input.id);
   return { id: input.id };
+}
+
+// A6: 回收站相关操作
+export function getTrashChapters(projectId: string): ChapterRecord[] {
+  const ctx = getAppContext();
+  return listTrashChapters(ctx.db, projectId);
+}
+
+export function restoreChapterFromTrash(chapterId: string): ChapterRecord {
+  const ctx = getAppContext();
+  const restored = restoreChapter(ctx.db, chapterId);
+  if (!restored) throw new Error(`Chapter not found in trash: ${chapterId}`);
+  return restored;
+}
+
+export function destroyChapter(chapterId: string): { id: string } {
+  const ctx = getAppContext();
+  const trash = listTrashChapters(ctx.db, "").find((c) => c.id === chapterId);
+  if (trash) {
+    const project = resolveProject(trash.projectId);
+    deleteChapterFile(project.path, trash.filePath);
+  }
+  permanentDeleteChapter(ctx.db, chapterId);
+  return { id: chapterId };
+}
+
+export function emptyChapterTrash(projectId: string): { count: number } {
+  const ctx = getAppContext();
+  const project = resolveProject(projectId);
+  const trashList = listTrashChapters(ctx.db, projectId);
+  for (const ch of trashList) {
+    deleteChapterFile(project.path, ch.filePath);
+  }
+  const count = emptyTrash(ctx.db, projectId);
+  return { count };
 }
 
 export function reorderChapterRecords(input: ChapterReorderInput): ChapterRecord[] {
@@ -235,4 +272,76 @@ export function clearChapterAutosave(input: ChapterAutosaveClearInput): { ok: tr
   const project = resolveProject(chapter.projectId);
   clearAutosave(project.path, chapter.id);
   return { ok: true };
+}
+
+// C8: Obsidian vault 导入——读取文件夹中所有 .md 文件，按文件名字母序导入为章节。
+// 支持 YAML frontmatter（提取 title 字段作为章节名），无 frontmatter 时用文件名。
+export async function importObsidianVault(
+  projectId: string,
+  vaultDir: string,
+): Promise<{ imported: number; chapters: ChapterRecord[] }> {
+  const ctx = getAppContext();
+  const project = resolveProject(projectId);
+  const { promises: fsp } = await import("node:fs");
+  const path = await import("node:path");
+
+  // 递归收集所有 .md 文件
+  const mdFiles: string[] = [];
+  async function walk(dir: string) {
+    const entries = await fsp.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.default.join(dir, entry.name);
+      if (entry.isDirectory() && !entry.name.startsWith(".")) {
+        await walk(full);
+      } else if (entry.isFile() && entry.name.endsWith(".md")) {
+        mdFiles.push(full);
+      }
+    }
+  }
+  await walk(vaultDir);
+
+  // 按路径排序保证导入顺序稳定
+  mdFiles.sort();
+
+  const existing = listChapters(ctx.db, projectId);
+  let order = existing.length;
+
+  const imported: ChapterRecord[] = [];
+  for (const filePath of mdFiles) {
+    const raw = await fsp.readFile(filePath, "utf-8");
+    let content = raw;
+    let title = "";
+
+    // 提取 YAML frontmatter 中的 title
+    const fmMatch = raw.match(/^---\s*\n([\s\S]*?)\n---\s*\n/);
+    if (fmMatch) {
+      const fm = fmMatch[1];
+      const titleMatch = fm.match(/^title:\s*(.+)$/m);
+      if (titleMatch) title = titleMatch[1].trim().replace(/^["']|["']$/g, "");
+      content = raw.slice(fmMatch[0].length);
+    }
+
+    if (!title) {
+      title = path.default.basename(filePath, ".md").replace(/^[\d\s._-]+/, "").slice(0, 80);
+    }
+    if (!title) title = `导入: ${path.default.basename(filePath, ".md")}`;
+
+    order += 1;
+    const outputPath = nextChapterFileName(project.path, title);
+    writeChapterFile(project.path, outputPath, content);
+
+    const record = insertChapter(ctx.db, {
+      id: randomUUID(),
+      projectId,
+      parentId: null,
+      title,
+      order,
+      wordCount: content.replace(/\s+/g, "").length,
+      filePath: outputPath,
+    });
+
+    imported.push(record);
+  }
+
+  return { imported: imported.length, chapters: imported };
 }

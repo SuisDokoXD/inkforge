@@ -23,6 +23,17 @@ module.exports = {
   darkMode: ["class", "html.theme-dark"],
   theme: {
     extend: {
+      // B3: indeterminate progress bar animation —— 来回扫光
+      animation: {
+        "indeterminate-progress": "indeterminate-progress 1.5s ease-in-out infinite",
+      },
+      keyframes: {
+        "indeterminate-progress": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(200%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+      },
       colors: {
         // 语义状态色：仅 100/200/300 走主题变量（见 styles.css 的 --c-* 定义）。
         rose: themed("rose"),

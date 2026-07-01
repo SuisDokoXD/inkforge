@@ -338,6 +338,7 @@ export interface ProjectUpdateMetaInput {
   genre?: string;
   subGenre?: string;
   tags?: string[];
+  masterOutline?: string;
   globalWorldview?: string;
 }
 

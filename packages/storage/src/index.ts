@@ -52,3 +52,8 @@ export * from "./repositories/character-card-import-repo";
 // ----- v26: Voice Profile + World Info Trace -----
 export * from "./repositories/voice-profile-repo";
 export * from "./repositories/world-info-trace-repo";
+// ----- C1: Semantic Search (embeddings + n-gram similarity) -----
+export * from "./repositories/embedding-repo";
+export * from "./semantic-search";
+// ----- C12: Timeline Events -----
+export * from "./repositories/timeline-event-repo";

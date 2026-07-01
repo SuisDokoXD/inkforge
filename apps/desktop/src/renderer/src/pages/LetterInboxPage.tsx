@@ -48,7 +48,8 @@ const TONE_LABEL: Record<CharacterLetterTone, { label: string; color: string }> 
   },
   neutral: {
     label: "日常",
-    color: "bg-ink-700/10 text-ink-700 ring-ink-500/35 dark:bg-ink-700/45 dark:text-ink-200 dark:ring-ink-600",
+    // B1: 用 ink token 替代 dark: hack，三主题自动适配。
+    color: "bg-ink-700/25 text-ink-100 ring-ink-500/40",
   },
 };
 

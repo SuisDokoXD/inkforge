@@ -26,7 +26,7 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { chapterApi, fsApi, llmApi, outlineApi, skillApi } from "../lib/api";
+import { chapterApi, fsApi, llmApi, outlineApi, skillApi, snapshotApi } from "../lib/api";
 import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
@@ -43,6 +43,7 @@ import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
 import { EditorFindBar } from "./editor/EditorFindBar";
 import { FocusDraftBoard } from "./editor/FocusDraftBoard";
 import { RecoveryPromptBanner } from "./editor/RecoveryPromptBanner";
+import { ReadAloud } from "./ReadAloud";  // C7: TTS 朗读
 import { IconButton, Divider } from "./ui";
 
 interface EditorPaneProps {
@@ -172,6 +173,8 @@ export function EditorPane({
   const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState("");
+  // A8: skill 写入编辑器后的段落高亮——存被修改的文本范围，3s 后自动清除。
+  const [skillHighlightKey, setSkillHighlightKey] = useState<number>(0);
   const [savePhase, setSavePhase] = useState<SavePhase>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -421,13 +424,23 @@ export function EditorPane({
         content: snapshot,
         wordCount: computeWordCount(snapshot).graphemes,
       }).catch(() => {});
-    }, 1200);
+    }, 500);  // 修复：降低防抖到 500ms，提升写作手感
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, queueSave]);
 
   const handleManualSave = useCallback(() => {
-    void flushCurrentContent().catch(() => {});
-  }, [flushCurrentContent]);
+    void flushCurrentContent().then(() => {
+      // C3: 手动保存后自动创建快照（fire-and-forget）
+      if (chapter) {
+        void snapshotApi.create({
+          chapterId: chapter.id,
+          projectId: chapter.projectId,
+          kind: "manual",
+          label: `保存 · ${new Date().toLocaleTimeString("zh-CN")}`,
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }, [flushCurrentContent, chapter]);
 
   const jumpEditorToText = useCallback((needles: Array<{ text: string; occurrence?: number }>): boolean => {
     if (!editorInstance) return false;
@@ -457,12 +470,39 @@ export function EditorPane({
         return false;
       });
       if (found) {
-        editorInstance.chain().focus().setTextSelection(found).scrollIntoView().run();
+        editorInstance.chain().focus().setTextSelection(found).run();
+        const { from } = found;
+        const posCoords = editorInstance.view.coordsAtPos(from);
+        if (posCoords) {
+          const scrollEl = editorInstance.view.dom.closest(".overflow-auto,.scrollbar-thin") as HTMLElement | null;
+          if (scrollEl) {
+            const targetTop = posCoords.top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - 120;
+            scrollEl.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+          }
+        }
         return true;
       }
     }
     return false;
   }, [editorInstance]);
+
+  // A2: Review→Editor 跳转——检测 reviewJumpExcerpt 文本变化，
+  // 用现有 jumpEditorToText 滚动到对应摘录位置。
+  const reviewJumpExcerpt = useAppStore((s) => s.reviewJumpExcerpt);
+  const setReviewJumpExcerpt = useAppStore((s) => s.setReviewJumpExcerpt);
+  useEffect(() => {
+    if (!chapter || !loaded || !editorInstance || !reviewJumpExcerpt) return;
+    // 延迟等编辑器完成内容同步后再跳转
+    const timer = window.setTimeout(() => {
+      // 取摘录的前 60 个字符作为搜索关键词（去掉首尾空白）
+      const needle = reviewJumpExcerpt.trim().slice(0, 60);
+      if (needle.length >= 4) {
+        jumpEditorToText([{ text: needle }]);
+      }
+      setReviewJumpExcerpt(null);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [reviewJumpExcerpt, chapter, loaded, editorInstance, jumpEditorToText, setReviewJumpExcerpt]);
 
   useEffect(() => {
     if (!chapter || !loaded || !editorInstance || !headingJumpTarget) return;
@@ -592,6 +632,26 @@ export function EditorPane({
     }, 5000);
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, writeAutosaveSidecar]);
+
+  // A1: 注册视图切换前的同步落盘钩子到全局 store。
+  // 当用户从写作页切到其他视图时，setMainView 在切换前会先调用此函数，
+  // 把当前内容写入磁盘 sidecar（同步发起 IPC，不阻塞但保证请求已发出）。
+  // 用 ref 持有最新函数引用，避免 chapter 变化导致反复注销/重注册。
+  const writeAutosaveSidecarRef = useRef(writeAutosaveSidecar);
+  writeAutosaveSidecarRef.current = writeAutosaveSidecar;
+  const flushCurrentContentRef = useRef(flushCurrentContent);
+  flushCurrentContentRef.current = flushCurrentContent;
+
+  const registerBeforeLeaveView = useAppStore((s) => s.registerBeforeLeaveView);
+  useEffect(() => {
+    registerBeforeLeaveView(() => {
+      writeAutosaveSidecarRef.current();
+      void flushCurrentContentRef.current().catch(() => {});
+    });
+    return () => registerBeforeLeaveView(null);
+    // 仅在挂载/卸载时注册，不依赖 chapter 等会频繁变化的引用
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 卸载兜底落盘：切换主视图（writing → world 等）会卸载本组件，此时 1.2s 防抖 DB 保存与
   // 5s 磁盘自动保存的计时器都会随 effect 清理被取消，而 beforeunload/visibilitychange 在
@@ -735,6 +795,9 @@ export function EditorPane({
           applySkillOutputToEditor(editorInstance, active.output, payload.text ?? "");
         if (applied) {
           showSkillStatus({ kind: "success", text: `「${active.skillName}」已写入正文` }, 3500);
+          // A8: 短暂高亮编辑器，指示正文被修改了（3s 后自动恢复）。
+          setSkillHighlightKey((k) => k + 1);
+          setTimeout(() => setSkillHighlightKey(0), 3000);
         } else {
           showSkillStatus({ kind: "success", text: `「${active.skillName}」已写入时间线` }, 3500);
           if (chapter) {
@@ -1032,6 +1095,9 @@ export function EditorPane({
               )}
             </AnimatePresence>
           </div>
+          {/* C7: TTS 朗读器 */}
+          <ReadAloud text={content} />
+          <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
           <SaveStatusIndicator
             phase={displayedStatusPhase}
             label={displayedStatusLabel}
@@ -1096,19 +1162,31 @@ export function EditorPane({
               </motion.div>
             )}
           </AnimatePresence>
-          <NovelEditor
-            key={chapter?.id ?? "empty"}
-            value={content}
-            onChange={(text) => setEditorContent(text, chapter.id)}
-            placeholder="在这里写下第一行……"
-            autofocus
-            onEditorReady={handleEditorReady}
-            autoIndent={settings.autoIndent}
-            typewriterMode={settings.typewriterMode}
-            fontSize={settings.editorFontSize}
-            lineHeight={settings.editorLineHeight}
-            spellcheck={settings.spellcheck}
-          />
+          {/* A8: skill 写入正文后短暂高亮编辑区（环形光晕+3s淡出） */}
+          <div
+            className={skillHighlightKey > 0 ? "skill-highlight-active" : ""}
+            style={
+              skillHighlightKey > 0
+                ? {
+                    animation: "skill-glow 3s ease-out forwards",
+                  }
+                : undefined
+            }
+          >
+            <NovelEditor
+              key={chapter?.id ?? "empty"}
+              value={content}
+              onChange={(text) => setEditorContent(text, chapter.id)}
+              placeholder="在这里写下第一行……"
+              autofocus
+              onEditorReady={handleEditorReady}
+              autoIndent={settings.autoIndent}
+              typewriterMode={settings.typewriterMode}
+              fontSize={settings.editorFontSize}
+              lineHeight={settings.editorLineHeight}
+              spellcheck={settings.spellcheck}
+            />
+          </div>
         </div>
       </div>
       <SelectionToolbar

@@ -1175,6 +1175,96 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    // A6: 章节软删除——章节移到回收站而非物理删除，支持恢复。
+    version: 29,
+    name: "chapter_trash",
+    up: (db) => {
+      db.exec(`
+        ALTER TABLE chapters ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE chapters ADD COLUMN deleted_at TEXT;
+        CREATE TABLE IF NOT EXISTS chapter_trash (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          "order" INTEGER NOT NULL DEFAULT 0,
+          word_count INTEGER NOT NULL DEFAULT 0,
+          file_path TEXT NOT NULL,
+          parent_id TEXT,
+          status TEXT NOT NULL DEFAULT 'draft',
+          deleted_at TEXT NOT NULL,
+          original_updated_at TEXT
+        );
+      `);
+    },
+  },
+  {
+    // C1: 语义搜索——embeddings 表存储文本向量（当前用于轻量 n-gram 指纹，
+    // 但也兼容未来接入 ONNX/llama.cpp 真实 embedding 模型）。
+    version: 30,
+    name: "semantic_search_embeddings",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS entity_embeddings (
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          project_id TEXT NOT NULL,
+          -- C1: 文本指纹（JSON 序列化的 n-gram → frequency map），
+          -- 用于轻量语义相似度计算。未来可扩展为 float32 向量 BLOB。
+          fingerprint_json TEXT NOT NULL,
+          source_text_hash TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (entity_type, entity_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_entity_embeddings_project
+          ON entity_embeddings(project_id, entity_type);
+      `);
+    },
+  },
+  {
+    // C11: Prompt 版本管理——每次编辑 skill prompt 时自动创建版本快照
+    version: 31,
+    name: "prompt_versions",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS prompt_versions (
+          id TEXT PRIMARY KEY,
+          skill_id TEXT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
+          version_number INTEGER NOT NULL,
+          prompt_text TEXT NOT NULL,
+          change_note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_prompt_versions_skill
+          ON prompt_versions(skill_id, version_number DESC);
+      `);
+    },
+  },
+  // ===== C12: Timeline Events =====
+  {
+    version: 32,
+    name: "timeline_events",
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS timeline_events (
+          id TEXT PRIMARY KEY,
+          project_id TEXT NOT NULL,
+          chapter_id TEXT,
+          title TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          event_order REAL NOT NULL DEFAULT 0,
+          color TEXT,
+          category TEXT NOT NULL DEFAULT 'custom',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+          FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_timeline_events_project
+          ON timeline_events(project_id, event_order);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {

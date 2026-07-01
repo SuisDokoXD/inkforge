@@ -34,6 +34,7 @@ import {
   FileText,
   Layers3,
   PenLine,
+  Plus,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -319,6 +320,66 @@ export function OutlinePage(): JSX.Element {
     }
   }, [flowActions, projectId, queryClient]);
 
+  // Fix 6: 手动创建空白大纲卡（不再要求先生成总大纲）
+  const createManualCard = useMutation({
+    mutationFn: async () => {
+      if (!projectId) throw new Error("no project");
+      const cards = outlineCards;
+      return outlineApi.create({
+        projectId,
+        title: `第 ${cards.length + 1} 章`,
+        content: "## 章节功能\n\n## 关键场景\n\n## 情绪层次\n\n## 结尾钩子\n",
+        order: cards.length + 1,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outline-cards", projectId] });
+    },
+    onError: (err) => {
+      setError(friendlyErrorMessage(err, "创建大纲卡失败，请稍后重试。"));
+    },
+  });
+
+  // 删除大纲卡
+  const deleteCard = useMutation({
+    mutationFn: (cardId: string) => outlineApi.delete({ id: cardId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["outline-cards", projectId] });
+    },
+    onError: (err) => {
+      setError(friendlyErrorMessage(err, "删除大纲卡失败。"));
+    },
+  });
+
+  // 手写总大纲——本地编辑状态
+  const [masterDraft, setMasterDraft] = useState(project?.masterOutline ?? "");
+  const [saveMasterStatus, setSaveMasterStatus] = useState<string | null>(null);
+
+  // 同步 project 变化
+  useEffect(() => {
+    setMasterDraft(project?.masterOutline ?? "");
+  }, [project?.id]);
+
+  const handleSaveMaster = async (text: string) => {
+    if (!projectId) return;
+    try {
+      await outlineGenApi.updateProjectMeta({
+        projectId,
+        synopsis: project?.synopsis ?? "",
+        genre: project?.genre ?? "",
+        subGenre: project?.subGenre ?? "",
+        tags: project?.tags ?? [],
+        globalWorldview: project?.globalWorldview ?? "",
+        masterOutline: text,
+      });
+      queryClient.invalidateQueries({ queryKey: ["projects-list-for-outline"] });
+      setSaveMasterStatus("已保存");
+      setTimeout(() => setSaveMasterStatus(null), 2000);
+    } catch {
+      setSaveMasterStatus("保存失败");
+    }
+  };
+
   if (!projectId) {
     return (
       <div className="flex h-full items-center justify-center bg-ink-900/60 text-ink-300">
@@ -428,21 +489,39 @@ export function OutlinePage(): JSX.Element {
             </Button>
           </div>
 
-          {project.masterOutline ? (
-            <pre className="max-h-[48vh] overflow-y-auto whitespace-pre-wrap rounded-md border border-ink-700 bg-ink-800/35 p-4 text-xs leading-6 text-ink-200 scrollbar-thin">
-              {project.masterOutline}
-            </pre>
-          ) : (
-            <div className="rounded-md border border-dashed border-ink-700 bg-ink-800/20 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                <div className="min-w-0 text-xs leading-6 text-ink-400">
-                  <div className="font-medium text-ink-200">总纲还没成形</div>
-                  <div>至少补一项可生成。散文和现实题材可以不填世界观；留空时默认按真实世界、当下社会或梗概里指向的年代处理。</div>
-                </div>
-              </div>
+          {/* 手写总大纲：始终显示可编辑 textarea，纯手写也可用 */}
+          <div className="relative">
+            <textarea
+              className="h-[40vh] w-full resize-y overflow-y-auto whitespace-pre-wrap rounded-md border border-ink-700 bg-ink-800/35 p-4 text-xs leading-6 text-ink-200 scrollbar-thin focus:border-accent-500/70 focus:outline-none"
+              placeholder="在这里手写总纲…可以写故事主线、角色弧光、世界观设定，完全自由编辑。也可以先点【生成总纲】让 AI 出一版再改。"
+              value={masterDraft}
+              onChange={(e) => setMasterDraft(e.target.value)}
+              onBlur={() => {
+                if (masterDraft !== (project?.masterOutline ?? "")) {
+                  handleSaveMaster(masterDraft);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && e.ctrlKey) {
+                  handleSaveMaster(masterDraft);
+                }
+              }}
+            />
+            <div className="absolute bottom-2 right-3 flex items-center gap-2">
+              {saveMasterStatus ? (
+                <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                  saveMasterStatus === "已保存"
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-red-500/15 text-red-300"
+                }`}>
+                  {saveMasterStatus}
+                </span>
+              ) : null}
+              <span className="rounded bg-ink-900/70 px-1.5 py-0.5 text-[10px] text-ink-500">
+                Ctrl+Enter 保存 · 失焦自动保存
+              </span>
             </div>
-          )}
+          </div>
 
           {project.masterOutline ? (
             <div className="mt-4 space-y-2 rounded-md border border-ink-700 bg-ink-800/25 p-3">
@@ -522,7 +601,18 @@ export function OutlinePage(): JSX.Element {
               title={!project.masterOutline ? "先生成总大纲" : undefined}
             >
               {busy === "chapters" ? <MotionSpinner /> : <Wand2 className="h-3.5 w-3.5" />}
-              {busy === "chapters" ? "拆分中" : "拆分章节"}
+              {busy === "chapters" ? "拆分中" : "AI 拆分"}
+            </Button>
+            {/* Fix 6: 手动新建大纲卡 */}
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy !== null}
+              onClick={() => createManualCard.mutate()}
+              title="手动创建空白大纲卡，自由撰写"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              手动新建
             </Button>
           </div>
 
@@ -581,6 +671,7 @@ export function OutlinePage(): JSX.Element {
                     onAutoWriteOutlineCard={handleAutoWriteOutlineCard}
                     onRefine={handleRefineCard}
                     onUndo={handleUndoCard}
+                    onDelete={() => deleteCard.mutate(card.id)}
                     onRefineIntentChange={handleCardRefineIntentChange}
                     onOpenChapter={flowActions.openChapter}
                     onReviewChapter={flowActions.reviewChapter}

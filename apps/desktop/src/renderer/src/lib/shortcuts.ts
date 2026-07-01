@@ -30,6 +30,8 @@ export const NAV_SHORTCUTS: readonly NavShortcut[] = [
   { combo: "Ctrl+Shift+L", key: "l", shift: true, view: "letters", labelKey: "nav.letters", icon: "L", group: "world" },
   { combo: "Ctrl+Shift+H", key: "h", shift: true, view: "achievement", labelKey: "nav.achievement", icon: "H", group: "world" },
   { combo: "Ctrl+Shift+M", key: "m", shift: true, view: "materials", labelKey: "nav.materials", icon: "M", group: "world" },
+  { combo: "Ctrl+Shift+S", key: "s", shift: true, view: "stats", labelKey: "nav.stats", icon: "S", group: "core" },
+  { combo: "Ctrl+Shift+T", key: "t", shift: true, view: "timeline", labelKey: "nav.timeline", icon: "T", group: "core" },
 ] as const;
 
 export interface ActionShortcut {

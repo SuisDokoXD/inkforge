@@ -24,6 +24,7 @@ interface Rect {
   left: number;
   width: number;
   height: number;
+  bottom: number;
 }
 
 interface ActionDef {
@@ -117,6 +118,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       left,
       width: Math.max(80, right - left),
       height: Math.max(16, bottom - top),
+      bottom,
     });
     setSelectionText(text);
   }, [editor]);
@@ -364,7 +366,8 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
           data-selection-toolbar
           className="fixed z-40 flex gap-1 rounded-lg border border-ink-600 bg-ink-800/95 px-1.5 py-1 text-xs text-ink-100 shadow-xl backdrop-blur"
           style={{
-            top: Math.max(8, rect.top - 42),
+            // 修复遮挡：工具条放在选区下方 4px，不再盖住文字
+            top: rect.bottom + 4,
             left: rect.left + rect.width / 2,
           }}
           // 工具条出现时轻微弹入。注意：motion 的内联 transform 会覆盖 Tailwind 的

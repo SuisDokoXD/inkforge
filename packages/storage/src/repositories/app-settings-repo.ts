@@ -18,6 +18,8 @@ const DEFAULTS: AppSettings = {
   autoIndent: true,
   spellcheck: true,
   focusMode: false,
+  // C9: 自定义强调色
+  customAccent: null,
 };
 
 type SettingRow = { key: string; value: string };
@@ -25,7 +27,7 @@ type SettingRow = { key: string; value: string };
 function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppSettings] {
   switch (key) {
     case "theme":
-      return raw === "light" || raw === "paper" ? raw : "dark";
+      return raw === "light" || raw === "paper" || raw === "sepia" || raw === "mint" ? raw : "dark";
     case "activeProviderId":
       return raw ? raw : null;
     case "analysisEnabled":
@@ -59,6 +61,9 @@ function parseValue(key: keyof AppSettings, raw: string): AppSettings[keyof AppS
       return coerceLang(raw, DEFAULTS.uiLanguage);
     case "sceneRoutingMode":
       return raw === "advanced" ? "advanced" : ("basic" as SceneRoutingMode);
+    // C9: custom accent — hex color string or null (empty = null)
+    case "customAccent":
+      return raw && /^#[0-9a-fA-F]{6}$/.test(raw) ? raw : null;
     default:
       return raw as AppSettings[keyof AppSettings];
   }

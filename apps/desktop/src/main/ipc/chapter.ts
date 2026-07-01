@@ -10,12 +10,17 @@ import {
   clearChapterAutosave,
   createChapter,
   deleteChapter,
+  destroyChapter,
+  emptyChapterTrash,
   exportMarkdownChapter,
+  getTrashChapters,
   importMarkdownChapter,
+  importObsidianVault,
   listChapterRecords,
   peekChapterAutosave,
   readChapter,
   reorderChapterRecords,
+  restoreChapterFromTrash,
   updateChapterRecord,
   writeChapterAutosave,
 } from "../services/chapter-service";
@@ -110,4 +115,40 @@ export function registerChapterHandlers(): void {
       return clearChapterAutosave(parseChapterAutosaveClearInput(input));
     },
   );
+
+  // A6: 回收站 IPC
+  ipcMain.handle("chapter:trash-list", async (_event, input: unknown) => {
+    const parsed = input as { projectId: string };
+    return getTrashChapters(parsed.projectId);
+  });
+
+  ipcMain.handle("chapter:trash-restore", async (_event, input: unknown) => {
+    const parsed = input as { id: string };
+    return restoreChapterFromTrash(parsed.id);
+  });
+
+  ipcMain.handle("chapter:trash-destroy", async (_event, input: unknown) => {
+    const parsed = input as { id: string };
+    return destroyChapter(parsed.id);
+  });
+
+  ipcMain.handle("chapter:trash-empty", async (_event, input: unknown) => {
+    const parsed = input as { projectId: string };
+    return emptyChapterTrash(parsed.projectId);
+  });
+
+  // C8: Obsidian vault 批量导入
+  ipcMain.handle("chapter:import-obsidian", async (_event, input: unknown) => {
+    const parsed = input as { projectId: string };
+    // 弹出文件夹选择对话框
+    const { dialog } = await import("electron");
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+      title: "选择 Obsidian Vault 文件夹",
+    });
+    if (result.canceled || result.filePaths.length === 0) {
+      return { imported: 0, chapters: [] };
+    }
+    return importObsidianVault(parsed.projectId, result.filePaths[0]);
+  });
 }

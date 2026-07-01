@@ -3,6 +3,8 @@ import { registerAchievementHandlers } from "./achievement";
 import { registerAutoWriterHandlers } from "./auto-writer";
 import { registerLetterHandlers } from "./letter";
 import { registerBookCoverHandlers } from "./book-cover";
+import { registerTimelineHandlers } from "./timeline";
+import { registerImageGenHandlers } from "./image-gen";
 import { registerBookshelfHandlers } from "./bookshelf";
 import { registerCharacterHandlers } from "./character";
 import { registerChapterHandlers } from "./chapter";
@@ -96,4 +98,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerAuthorNoteHandlers();
   // ----- v25/v26: Character Card 导入导出 + Voice Profile + World Info Trace -----
   registerCharacterCardHandlers();
+  // ----- C12 + C13: Timeline & Image Gen -----
+  registerTimelineHandlers();
+  registerImageGenHandlers();
 }

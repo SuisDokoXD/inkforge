@@ -223,13 +223,29 @@ export function AchievementHallPage(): JSX.Element {
                 return (
                   <motion.div
                     key={def.id}
-                    className={`flex items-start gap-3 rounded-lg border p-3 transition-colors ${
+                    className={`group relative flex items-start gap-3 rounded-lg border p-3 transition-all duration-300 ${
                       unlocked
-                        ? `${c.bg} ring-1 ${c.ring}`
-                        : "border-ink-700 bg-ink-900/40 opacity-70"
+                        ? `${c.bg} ring-1 ${c.ring} ${
+                            def.rarity === "legendary"
+                              ? "shadow-[0_0_18px_rgba(250,204,21,0.15)]"
+                              : def.rarity === "epic"
+                                ? "shadow-[0_0_12px_rgba(168,85,247,0.12)]"
+                                : ""
+                          }`
+                        : "border-ink-700 bg-ink-900/40 opacity-70 hover:opacity-85"
                     }`}
                     variants={itemMotion}
+                    whileHover={unlocked && !reduceMotion ? { scale: 1.03 } : undefined}
                   >
+                    {/* B6: 传说稀有度光晕 */}
+                    {unlocked && def.rarity === "legendary" && !reduceMotion ? (
+                      <motion.div
+                        className="pointer-events-none absolute inset-0 rounded-lg"
+                        animate={{ opacity: [0.08, 0.18, 0.08] }}
+                        transition={{ duration: 2.5, ease: "easeInOut", repeat: Infinity }}
+                        style={{ background: "radial-gradient(circle at 50% 50%, rgba(250,204,21,0.3), transparent 70%)" }}
+                      />
+                    ) : null}
                     <span
                       className={`text-3xl ${unlocked ? "" : "opacity-40"}`}
                     >
@@ -246,10 +262,11 @@ export function AchievementHallPage(): JSX.Element {
                       <div className="line-clamp-2 text-[11px] text-ink-400">
                         {def.description}
                       </div>
-                      <div className="mt-1 text-[10px] text-ink-500">
+                      {/* B6: 解锁时间戳改进 */}
+                      <div className={`mt-1 text-[10px] ${unlocked ? "text-ink-300" : "text-ink-500"}`}>
                         {unlocked
-                          ? `已解锁 · ${new Date(unlockedMap.get(def.id)!.unlockedAt).toLocaleDateString()}`
-                          : `未解锁 · ${def.hint}`}
+                          ? `✦ 已解锁 · ${new Date(unlockedMap.get(def.id)!.unlockedAt).toLocaleDateString("zh-CN", { year: "numeric", month: "short", day: "numeric" })}`
+                          : `🔒 ${def.hint}`}
                       </div>
                     </div>
                   </motion.div>
