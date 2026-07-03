@@ -2,43 +2,28 @@ import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import type { Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import {
+  getFullWidthIndentDeleteCount,
+  getNextEditorLineIndent,
+  normalizeEditorText,
+  normalizePastedText,
+  plainTextToEditorHtml,
+} from "../editor-text";
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function normalizeEditorText(text: string): string {
-  return text
-    .replace(/\r\n?/g, "\n")
-    .replace(/[\u00A0\u3000]/g, " ")
-    .replace(/[\u200B-\u200D\uFEFF]/g, "");
-}
-
-function normalizePastedText(text: string): string {
-  return normalizeEditorText(text)
-    .replace(/\t/g, "  ")
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+$/g, ""))
-    .join("\n");
-}
-
-function plainTextToHtml(text: string): string {
-  if (!text) return "<p></p>";
-  return normalizeEditorText(text)
-    .split(/\n\n+/)
-    .map((para) => {
-      const escaped = escapeHtml(para);
-      const lines = escaped.split("\n").map((line) =>
-        line.replace(/^( +)/, (m) => "\u3000".repeat(m.length)),
-      );
-      return `<p>${lines.join("<br>")}</p>`;
-    })
-    .join("");
-}
-
+const plainTextStarterKit = StarterKit.configure({
+  blockquote: false,
+  bold: false,
+  bulletList: false,
+  code: false,
+  codeBlock: false,
+  heading: false,
+  horizontalRule: false,
+  italic: false,
+  listItem: false,
+  orderedList: false,
+  strike: false,
+  history: { depth: 200 },
+});
 function scrollCursorToCenter(editor: Editor): void {
   try {
     const { view } = editor;
@@ -87,8 +72,8 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
   const lastEmittedRef = useRef<string>(normalizeEditorText(value));
 
   const editor = useEditor({
-    extensions: [StarterKit.configure({ history: { depth: 200 } })],
-    content: plainTextToHtml(value),
+    extensions: [plainTextStarterKit],
+    content: plainTextToEditorHtml(value),
     autofocus: autofocus ?? false,
     editorProps: {
       attributes: {
@@ -117,12 +102,23 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
         return false;
       },
       handleKeyDown(view, event) {
+        const { state } = view;
+        if (event.key === "Backspace" && state.selection.empty) {
+          const selectionFrom = state.selection.$from;
+          const lineStart = selectionFrom.start();
+          const before = state.doc.textBetween(lineStart, state.selection.from);
+          const deleteCount = getFullWidthIndentDeleteCount(before);
+          if (deleteCount > 0) {
+            view.dispatch(state.tr.delete(state.selection.from - deleteCount, state.selection.from));
+            return true;
+          }
+        }
         if (event.key !== "Enter" || !autoIndent) return false;
         if (event.shiftKey || event.ctrlKey || event.metaKey) return false;
-        const { state } = view;
-        const { $from } = state.selection;
-        const tr = state.tr.split($from.pos);
-        tr.insertText("\u3000\u3000");
+        const selectionFrom = state.selection.$from;
+        const indent = getNextEditorLineIndent(selectionFrom.parent.textContent);
+        const tr = state.tr.split(selectionFrom.pos);
+        if (indent) tr.insertText(indent);
         view.dispatch(tr);
         return true;
       },
@@ -150,7 +146,7 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
     const currentText = normalizeEditorText(editor.getText());
     if (normalizedValue === currentText) return;
     // 走到这里才是真正的外部变更（切章 / 还原快照 / 技能写入 / 恢复草稿），需要回灌。
-    editor.commands.setContent(plainTextToHtml(value), false);
+    editor.commands.setContent(plainTextToEditorHtml(value), false);
     lastEmittedRef.current = normalizedValue;
     syncEditorDomState(editor);
   }, [editor, value]);
@@ -164,6 +160,40 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
     dom.setAttribute("data-placeholder", placeholder ?? "");
     dom.setAttribute("aria-label", placeholder ?? "Novel editor");
   }, [editor, fontSize, lineHeight, placeholder, spellcheck]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const clearActiveParagraphs = () => {
+      dom.querySelectorAll('[data-typewriter-active="true"]').forEach((node) => {
+        (node as HTMLElement).removeAttribute("data-typewriter-active");
+      });
+    };
+    const markActiveParagraph = () => {
+      clearActiveParagraphs();
+      if (!typewriterMode) {
+        dom.removeAttribute("data-typewriter");
+        return;
+      }
+      dom.setAttribute("data-typewriter", "true");
+      const node = editor.view.domAtPos(editor.state.selection.from).node;
+      const element = node instanceof HTMLElement
+        ? node
+        : node.parentElement instanceof HTMLElement
+          ? node.parentElement
+          : null;
+      element?.closest("p,h1,h2,h3")?.setAttribute("data-typewriter-active", "true");
+    };
+    markActiveParagraph();
+    editor.on("selectionUpdate", markActiveParagraph);
+    editor.on("update", markActiveParagraph);
+    return () => {
+      editor.off("selectionUpdate", markActiveParagraph);
+      editor.off("update", markActiveParagraph);
+      dom.removeAttribute("data-typewriter");
+      clearActiveParagraphs();
+    };
+  }, [editor, typewriterMode]);
 
   useEffect(() => {
     onEditorReady?.(editor ?? null);

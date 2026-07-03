@@ -405,11 +405,17 @@ html.theme-paper .ProseMirror {
  * 通过 ProseMirror 的 :has() + 伪类无法精确定位当前行，故提供 CSS 变量钩子。
  * 实现方式：NovelEditor 在 typewriterMode 时给当前段加 data-typewriter-active 属性。
  */
-.ProseMirror[data-typewriter="true"] p {
-  transition: opacity 0.3s ease;
-  opacity: 0.38;
+.ProseMirror[data-typewriter="true"] p,
+.ProseMirror[data-typewriter="true"] h1,
+.ProseMirror[data-typewriter="true"] h2,
+.ProseMirror[data-typewriter="true"] h3 {
+  transition: opacity 0.18s ease;
+  opacity: 0.64;
 }
-.ProseMirror[data-typewriter="true"] p[data-typewriter-active="true"] {
+.ProseMirror[data-typewriter="true"] p[data-typewriter-active="true"],
+.ProseMirror[data-typewriter="true"] h1[data-typewriter-active="true"],
+.ProseMirror[data-typewriter="true"] h2[data-typewriter-active="true"],
+.ProseMirror[data-typewriter="true"] h3[data-typewriter-active="true"] {
   opacity: 1;
 }
 

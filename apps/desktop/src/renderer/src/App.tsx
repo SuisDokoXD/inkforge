@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } fro
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import { dailyApi, providerApi, projectApi, settingsApi } from "./lib/api";
+import type { AppSettings } from "@inkforge/shared";
 import { useAppStore } from "./stores/app-store";
 import type { MainView } from "./stores/app-store";
 import { useT } from "./lib/i18n";
@@ -110,6 +111,9 @@ export function App(): JSX.Element {
   const openSettings = useAppStore((s) => s.openSettings);
   const openProviderPanel = useAppStore((s) => s.openProviderPanel);
   const toggleTerminal = useAppStore((s) => s.toggleTerminal);
+  const patchSettings = useAppStore((s) => s.patchSettings);
+  const rightPanel = useAppStore((s) => s.rightPanel);
+  const setRightPanel = useAppStore((s) => s.setRightPanel);
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const lang = settings.uiLanguage;
   const terminalEnabled = settings.devModeEnabled;
@@ -185,6 +189,14 @@ export function App(): JSX.Element {
     if (!terminalEnabled) toggleTerminal(false);
   }, [terminalEnabled, toggleTerminal]);
 
+  const persistSettings = useCallback(
+    (updates: Partial<AppSettings>) => {
+      patchSettings(updates);
+      void settingsApi.set({ updates }).then(setSettings).catch(() => {});
+    },
+    [patchSettings, setSettings],
+  );
+
   // A4: 命令面板上下文——扩展支持项目/写作级操作。
   const paletteCtx = useMemo(
     () => ({
@@ -209,6 +221,18 @@ export function App(): JSX.Element {
         }
       },
       // 项目/写作级（在 App 层提供，具体逻辑由 WorkspacePage 注入）
+      createChapter: () => window.dispatchEvent(new Event("inkforge:create-chapter")),
+      openExport: () => window.dispatchEvent(new Event("inkforge:open-export")),
+      toggleFocusMode: () => persistSettings({ focusMode: !settings.focusMode }),
+      toggleTypewriterMode: () => persistSettings({ typewriterMode: !settings.typewriterMode }),
+      runManualAnalyze: () => window.dispatchEvent(new Event("inkforge:manual-analyze")),
+      toggleRightPanel: () => setRightPanel(rightPanel === "timeline" ? "chat" : "timeline"),
+      setEditorWidth: (width: "narrow" | "medium" | "wide") => persistSettings({ editorWidth: width }),
+      adjustFontSize: (delta: number) => persistSettings({ editorFontSize: Math.max(14, Math.min(24, settings.editorFontSize + delta)) }),
+      insertHeading: (level: 1 | 2) => window.dispatchEvent(new CustomEvent("inkforge:editor-command", { detail: { action: "insert-heading", level } })),
+      insertSceneBreak: () => window.dispatchEvent(new CustomEvent("inkforge:editor-command", { detail: { action: "insert-scene-break" } })),
+      insertFullWidthIndent: () => window.dispatchEvent(new CustomEvent("inkforge:editor-command", { detail: { action: "insert-indent" } })),
+      jumpHeading: (direction: "previous" | "next") => window.dispatchEvent(new CustomEvent("inkforge:editor-command", { detail: { action: "jump-heading", direction } })),
       hasProject: !!currentProjectId,
       isWriting: mainView === "writing",
     }),
@@ -217,11 +241,17 @@ export function App(): JSX.Element {
       openSettings,
       openProviderPanel,
       toggleTerminal,
+      persistSettings,
       terminalEnabled,
       setSettings,
       showDiagStatus,
       currentProjectId,
       mainView,
+      rightPanel,
+      setRightPanel,
+      settings.editorFontSize,
+      settings.focusMode,
+      settings.typewriterMode,
     ],
   );
 

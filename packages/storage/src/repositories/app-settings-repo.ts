@@ -12,7 +12,7 @@ const DEFAULTS: AppSettings = {
   onboardingCompleted: false,
   sceneRoutingMode: "basic",
   editorFontSize: 16,
-  editorLineHeight: 2.0,
+  editorLineHeight: 1.8,
   editorWidth: "medium",
   typewriterMode: false,
   autoIndent: true,

@@ -35,7 +35,7 @@ export function EditorTabBar({ chapters, focusMode }: EditorTabBarProps): JSX.El
   return (
     <div
       className={`flex items-center border-b border-ink-700 bg-ink-800/50 ${
-        focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300" : ""
+        focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""
       }`}
       role="tablist"
       aria-label="编辑器标签页"

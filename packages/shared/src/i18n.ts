@@ -469,6 +469,12 @@ export const i18nResources: Resources = {
   "cmd.editorWidthWide":       { zh: "编辑器宽度：宽", en: "Editor Width: Wide", ja: "エディタ幅：広" },
   "cmd.fontLarger":            { zh: "放大字号", en: "Increase Font Size", ja: "フォント拡大" },
   "cmd.fontSmaller":           { zh: "缩小字号", en: "Decrease Font Size", ja: "フォント縮小" },
+  "cmd.insertHeading1":        { zh: "\u63d2\u5165\u4e00\u7ea7\u6807\u9898", en: "Insert H1", ja: "H1\u3092\u633f\u5165" },
+  "cmd.insertHeading2":        { zh: "\u63d2\u5165\u4e8c\u7ea7\u6807\u9898", en: "Insert H2", ja: "H2\u3092\u633f\u5165" },
+  "cmd.insertSceneBreak":      { zh: "\u63d2\u5165\u573a\u666f\u5206\u9694", en: "Insert Scene Break", ja: "\u30b7\u30fc\u30f3\u533a\u5207\u308a\u3092\u633f\u5165" },
+  "cmd.insertFullWidthIndent":  { zh: "\u63d2\u5165\u5168\u89d2\u7f29\u8fdb", en: "Insert Full-width Indent", ja: "\u5168\u89d2\u30a4\u30f3\u30c7\u30f3\u30c8\u3092\u633f\u5165" },
+  "cmd.previousHeading":       { zh: "\u8df3\u5230\u4e0a\u4e00\u4e2a\u6807\u9898", en: "Previous Heading", ja: "\u524d\u306e\u898b\u51fa\u3057\u3078" },
+  "cmd.nextHeading":           { zh: "\u8df3\u5230\u4e0b\u4e00\u4e2a\u6807\u9898", en: "Next Heading", ja: "\u6b21\u306e\u898b\u51fa\u3057\u3078" },
   // M9 Phase 4.3: HelpMenu + ShortcutCheatSheet
   "help.menu.title":            { zh: "帮助", en: "Help", ja: "ヘルプ" },
   "help.menu.replayOnboarding": { zh: "重看新手引导", en: "Replay onboarding", ja: "オンボーディングをもう一度" },

@@ -36,6 +36,10 @@ export interface CommandContext {
   toggleRightPanel?: () => void;
   setEditorWidth?: (width: "narrow" | "medium" | "wide") => void;
   adjustFontSize?: (delta: number) => void;
+  insertHeading?: (level: 1 | 2) => void;
+  insertSceneBreak?: () => void;
+  insertFullWidthIndent?: () => void;
+  jumpHeading?: (direction: "previous" | "next") => void;
 }
 
 export interface CommandBuildOptions {
@@ -86,6 +90,12 @@ export function buildCommands(options: CommandBuildOptions = {}): Command[] {
   cmds.push(cmd("writer:editor-wide", "cmd.editorWidthWide", ["wide", "width", "layout"], "writer", (ctx) => ctx.setEditorWidth?.("wide"), { requiresProject: true }));
   cmds.push(cmd("writer:font-larger", "cmd.fontLarger", ["font", "bigger", "increase", "zoom"], "writer", (ctx) => ctx.adjustFontSize?.(1), { requiresProject: true }));
   cmds.push(cmd("writer:font-smaller", "cmd.fontSmaller", ["font", "smaller", "decrease", "zoom"], "writer", (ctx) => ctx.adjustFontSize?.(-1), { requiresProject: true }));
+  cmds.push(cmd("writer:insert-heading-1", "cmd.insertHeading1", ["heading", "title", "h1", "chapter"], "writer", (ctx) => ctx.insertHeading?.(1), { requiresProject: true }));
+  cmds.push(cmd("writer:insert-heading-2", "cmd.insertHeading2", ["heading", "title", "h2", "section"], "writer", (ctx) => ctx.insertHeading?.(2), { requiresProject: true }));
+  cmds.push(cmd("writer:insert-scene-break", "cmd.insertSceneBreak", ["scene", "break", "divider", "separator"], "writer", (ctx) => ctx.insertSceneBreak?.(), { requiresProject: true }));
+  cmds.push(cmd("writer:insert-indent", "cmd.insertFullWidthIndent", ["indent", "fullwidth", "paragraph"], "writer", (ctx) => ctx.insertFullWidthIndent?.(), { requiresProject: true }));
+  cmds.push(cmd("writer:jump-prev-heading", "cmd.previousHeading", ["previous", "heading", "outline"], "writer", (ctx) => ctx.jumpHeading?.("previous"), { requiresProject: true }));
+  cmds.push(cmd("writer:jump-next-heading", "cmd.nextHeading", ["next", "heading", "outline"], "writer", (ctx) => ctx.jumpHeading?.("next"), { requiresProject: true }));
 
   // ── Tool ──
   cmds.push(cmd("tool:replay-onboarding", "settings.replayOnboarding", ["onboarding", "replay", "tour", "guide"], "tool", (ctx) => ctx.replayOnboarding()));

@@ -86,7 +86,8 @@ export type AppSettingKey =
   | "typewriterMode"
   | "autoIndent"
   | "spellcheck"
-  | "focusMode";
+  | "focusMode"
+  | "customAccent";
 
 export interface AppSettings {
   theme: "dark" | "light" | "paper" | "sepia" | "mint";

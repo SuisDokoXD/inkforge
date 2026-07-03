@@ -6,6 +6,7 @@ import { chapterApi, fsApi, llmApi, outlineApi, projectApi, providerApi, setting
 import { useAppStore } from "../stores/app-store";
 import { useChapterShortcuts } from "../lib/use-app-shortcuts";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { extractChapterHeadings, type ChapterHeadingItem } from "../lib/chapter-headings";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
@@ -21,45 +22,9 @@ import { PomodoroTimer } from "../components/PomodoroTimer";
 import { Timer } from "lucide-react";
 import { Button, Tabs } from "../components/ui";
 
-interface ChapterHeadingItem {
-  id: string;
-  title: string;
-  line: number;
-  // Fix 3: 标题级别 (1-4)，用于 ChapterTree 视觉缩进
-  level?: number;
-}
-
 interface HeadingJumpTarget extends ChapterHeadingItem {
   chapterId: string;
   nonce: number;
-}
-
-// Fix 3: 改进标题提取——支持 H1-H4，记录级别用于树形缩进
-function extractChapterHeadings(chapterId: string, content: string): ChapterHeadingItem[] {
-  const headings: ChapterHeadingItem[] = [];
-  const lines = content.split(/\r?\n/);
-  // 匹配 H1-H4：捕获 # 数量(1-4) + 空格 + 标题文字
-  const headingPattern = /^\s{0,3}(#{1,4})\s+(.+?)\s*#*\s*$/;
-  lines.forEach((line, index) => {
-    const match = line.match(headingPattern);
-    if (!match) return;
-    const level = match[1].length; // H1=1, H2=2, H3=3, H4=4
-    const title = match[2].trim();
-    if (!title) return;
-    const previous = headings[headings.length - 1];
-    if (previous?.title === title) {
-      const between = lines.slice(previous.line, index);
-      const hasBodyBetween = between.some((item) => item.trim() && !headingPattern.test(item));
-      if (!hasBodyBetween) return;
-    }
-    headings.push({
-      id: `${chapterId}:${index}`,
-      title,
-      line: index + 1,
-      level,
-    });
-  });
-  return headings.slice(0, 30);
 }
 
 export function WorkspacePage(): JSX.Element {
@@ -131,7 +96,7 @@ export function WorkspacePage(): JSX.Element {
   );
   const headingQueries = useQueries({
     queries: chapters.map((chapter) => ({
-      queryKey: ["chapter-heading-outline", chapter.id, chapter.updatedAt, chapter.wordCount],
+      queryKey: ["chapter-heading-outline", chapter.id],
       queryFn: async () => {
         const res = await chapterApi.read({ id: chapter.id });
         return extractChapterHeadings(chapter.id, res.content);
@@ -140,6 +105,17 @@ export function WorkspacePage(): JSX.Element {
       staleTime: 30_000,
     })),
   });
+  const headingVersionRef = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    chapters.forEach((chapter) => {
+      const version = `${chapter.updatedAt ?? ""}:${chapter.wordCount}`;
+      const previous = headingVersionRef.current.get(chapter.id);
+      headingVersionRef.current.set(chapter.id, version);
+      if (previous !== undefined && previous !== version) {
+        void queryClient.invalidateQueries({ queryKey: ["chapter-heading-outline", chapter.id] });
+      }
+    });
+  }, [chapters, queryClient]);
   const chapterHeadings = useMemo(() => {
     const map: Record<string, ChapterHeadingItem[]> = {};
     chapters.forEach((chapter, index) => {
@@ -329,12 +305,28 @@ export function WorkspacePage(): JSX.Element {
     onNewChapter: () => createChapter.mutate(),
   });
 
+  useEffect(() => {
+    const handleCreateChapter = () => {
+      if (!resolvedProjectId || createChapter.isPending) return;
+      createChapter.mutate();
+    };
+    const handleOpenExport = () => {
+      if (currentProjectId) setExportOpen(true);
+    };
+    window.addEventListener("inkforge:create-chapter", handleCreateChapter);
+    window.addEventListener("inkforge:open-export", handleOpenExport);
+    return () => {
+      window.removeEventListener("inkforge:create-chapter", handleCreateChapter);
+      window.removeEventListener("inkforge:open-export", handleOpenExport);
+    };
+  }, [createChapter, currentProjectId, resolvedProjectId]);
+
   const resolvedProject = projectsQuery.data?.find((p) => p.id === resolvedProjectId) ?? null;
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col bg-ink-900 text-ink-100">
       {/* B4: 专注模式下标题栏淡出（hover/focus-within 时显示） */}
-      <header className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-300" : ""}`}>
+      <header className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-accent-300">墨炉</span>
           <label htmlFor="workspace-project-select" className="sr-only">

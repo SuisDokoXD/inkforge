@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type {
+  AppSettings,
   ChapterRecord,
   ChapterReadResponse,
   OutlineCardRecord,
@@ -11,10 +12,21 @@ import type {
   SnapshotRestoreResponse,
 } from "@inkforge/shared";
 import { computeWordStats } from "@inkforge/shared";
-import { NovelEditor, computeWordCount, useAnalysisTrigger } from "@inkforge/editor";
+import {
+  NovelEditor,
+  countGraphemes,
+  computeWordCount,
+  findTextMatches,
+  normalizeManualSelection,
+  plainTextToEditorHtml,
+  useAnalysisTrigger,
+  type TextFindOptions,
+} from "@inkforge/editor";
 import type { Editor } from "@tiptap/react";
 import {
   Archive,
+  ChevronDown,
+  ChevronUp,
   Download,
   Focus,
   PenLine,
@@ -26,22 +38,39 @@ import {
   Search,
   Sparkles,
 } from "lucide-react";
-import { chapterApi, fsApi, llmApi, outlineApi, skillApi, snapshotApi } from "../lib/api";
+import { chapterApi, fsApi, llmApi, outlineApi, settingsApi, skillApi, snapshotApi } from "../lib/api";
 import { applySkillOutputToEditor } from "../lib/skill-output";
 import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
+import { extractChapterHeadings } from "../lib/chapter-headings";
+import { extractManualChapterMap, type ManualChapterMapItem } from "../lib/manual-chapter-map";
 import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { useDebouncedValue } from "../lib/use-debounced-value";
+import {
+  MANUAL_RHYTHM_ACTIVE_WINDOW_MS,
+  buildManualWritingResumeCue,
+  createDefaultManualWritingRhythmState,
+  manualWritingRhythmStorageKey,
+  normalizeNextBeat,
+  normalizeRhythmSnippet,
+  parseManualWritingRhythmState,
+  serializeManualWritingRhythmState,
+  type ManualWritingRhythmState,
+} from "../lib/manual-writing-rhythm";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
 import { EmptyState } from "./EmptyState";
 import { SnapshotMenu } from "./snapshot";
 import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
+import { ManualChapterMapMenu } from "./editor/ManualChapterMapMenu";
+import { ManualWritingRhythmBar } from "./editor/ManualWritingRhythmBar";
 import { EditorFindBar } from "./editor/EditorFindBar";
 import { FocusDraftBoard } from "./editor/FocusDraftBoard";
+import { EditorAppearanceMenu } from "./editor/EditorAppearanceMenu";
+import { EditorInsertMenu } from "./editor/EditorInsertMenu";
 import { RecoveryPromptBanner } from "./editor/RecoveryPromptBanner";
 import { ReadAloud } from "./ReadAloud";  // C7: TTS 朗读
 import { IconButton, Divider } from "./ui";
@@ -76,6 +105,32 @@ interface SaveRequest {
   content: string;
   wordCount: number;
 }
+
+interface EditorFindMatch {
+  from: number;
+  to: number;
+  text: string;
+}
+
+interface EditorCursorState {
+  lineNumber: number;
+  paragraphGraphemes: number;
+  selectedGraphemes: number;
+}
+
+interface StoredEditorPosition {
+  pos: number;
+  scrollTop: number;
+  updatedAt: string;
+  savedAt: number;
+}
+
+type EditorCommandDetail =
+  | { action: "insert-heading"; level: 1 | 2 }
+  | { action: "insert-scene-break" }
+  | { action: "insert-indent" }
+  | { action: "insert-todo" }
+  | { action: "jump-heading"; direction: "previous" | "next" };
 
 interface SaveStatusIndicatorProps {
   phase: SavePhase;
@@ -147,6 +202,69 @@ function SaveStatusIndicator({
   );
 }
 
+const DEFAULT_CURSOR_STATE: EditorCursorState = {
+  lineNumber: 1,
+  paragraphGraphemes: 0,
+  selectedGraphemes: 0,
+};
+
+function editorPositionStorageKey(projectId: string, chapterId: string): string {
+  return `inkforge:editor-position:${projectId}:${chapterId}`;
+}
+
+function getEditorScrollElement(editor: Editor): HTMLElement | null {
+  return editor.view.dom.closest(".overflow-auto,.scrollbar-thin") as HTMLElement | null;
+}
+
+function clampEditorPosition(editor: Editor, pos: number): number {
+  return Math.max(1, Math.min(pos, Math.max(1, editor.state.doc.content.size)));
+}
+
+function readStoredEditorPosition(raw: string | null): StoredEditorPosition | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredEditorPosition>;
+    if (
+      typeof parsed.pos === "number" &&
+      typeof parsed.scrollTop === "number" &&
+      typeof parsed.savedAt === "number"
+    ) {
+      return {
+        pos: parsed.pos,
+        scrollTop: parsed.scrollTop,
+        updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : "",
+        savedAt: parsed.savedAt,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function readEditorCursorState(editor: Editor): EditorCursorState {
+  const { state } = editor;
+  const { selection } = state;
+  const lineText = state.doc.textBetween(0, selection.from, "\n", "\n");
+  const selectedText = selection.empty ? "" : state.doc.textBetween(selection.from, selection.to, "\n", "\n");
+  return {
+    lineNumber: lineText.split(/\r?\n/).length,
+    paragraphGraphemes: computeWordCount(selection.$from.parent.textContent).graphemes,
+    selectedGraphemes: computeWordCount(selectedText).graphemes,
+  };
+}
+
+function readManualRhythmCue(content: string, lineNumber: number): { line: number; text: string } {
+  const lines = content.split(/\r?\n/);
+  const safeLine = Math.max(1, Math.min(lines.length || 1, Math.round(lineNumber) || 1));
+  const currentLineText = normalizeRhythmSnippet(lines[safeLine - 1] ?? "");
+  if (currentLineText) return { line: safeLine, text: currentLineText };
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const text = normalizeRhythmSnippet(lines[index] ?? "");
+    if (text) return { line: index + 1, text };
+  }
+  return { line: safeLine, text: "" };
+}
 export function EditorPane({
   chapter,
   headingJumpTarget,
@@ -173,11 +291,27 @@ export function EditorPane({
   const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [findOptions, setFindOptions] = useState<TextFindOptions>({
+    caseSensitive: false,
+    wholeWord: false,
+  });
+  const [activeFindIndex, setActiveFindIndex] = useState(0);
+  const [findStatus, setFindStatus] = useState<string | null>(null);
+  const [replaceConfirm, setReplaceConfirm] = useState(false);
+  const [cursorState, setCursorState] = useState<EditorCursorState>(DEFAULT_CURSOR_STATE);
+  const [rhythmState, setRhythmState] = useState<ManualWritingRhythmState>(() =>
+    createDefaultManualWritingRhythmState(),
+  );
+  const [sessionBaseGraphemes, setSessionBaseGraphemes] = useState(0);
+  const [activeWritingMs, setActiveWritingMs] = useState(0);
+  const [rhythmNow, setRhythmNow] = useState(() => Date.now());
   // A8: skill 写入编辑器后的段落高亮——存被修改的文本范围，3s 后自动清除。
   const [skillHighlightKey, setSkillHighlightKey] = useState<number>(0);
   const [savePhase, setSavePhase] = useState<SavePhase>("saved");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveStatusNow, setSaveStatusNow] = useState(() => Date.now());
   const [recoveryPrompt, setRecoveryPrompt] = useState<
     { content: string; savedAt: number } | null
   >(null);
@@ -194,6 +328,12 @@ export function EditorPane({
   const saveLoopPromiseRef = useRef<Promise<void> | null>(null);
   const activeSkillRunRef = useRef<{ runId: string; skillName: string; output: SkillOutputTarget } | null>(null);
   const lastHeadingJumpNonceRef = useRef<number | null>(null);
+  const dailyProgressInvalidatedAtRef = useRef<Map<string, number>>(new Map());
+  const positionSaveFrameRef = useRef<number | null>(null);
+  const lastRestoredPositionChapterRef = useRef<string | null>(null);
+  const rhythmLoadedChapterIdRef = useRef<string | null>(null);
+  const previousContentForRhythmRef = useRef<string>("");
+  const lastWritingTickRef = useRef<number | null>(null);
   const setEditorContent = useCallback((nextContent: string, chapterId?: string | null) => {
     contentRef.current = nextContent;
     if (chapterId) {
@@ -203,6 +343,15 @@ export function EditorPane({
   }, []);
   const handleEditorReady = useCallback((editor: Editor | null) => {
     setEditorInstance(editor);
+    if (editor) setCursorState(readEditorCursorState(editor));
+  }, []);
+  const resetManualRhythmSession = useCallback((nextContent: string, chapterId: string | null) => {
+    previousContentForRhythmRef.current = nextContent;
+    rhythmLoadedChapterIdRef.current = chapterId;
+    lastWritingTickRef.current = null;
+    setSessionBaseGraphemes(chapterId ? countGraphemes(nextContent) : 0);
+    setActiveWritingMs(0);
+    setRhythmNow(Date.now());
   }, []);
 
   const slimDropIn = useMemo(
@@ -244,6 +393,10 @@ export function EditorPane({
       setSavePhase("saved");
       setSaveError(null);
       setLastSavedAt(null);
+      setCursorState(DEFAULT_CURSOR_STATE);
+      lastRestoredPositionChapterRef.current = null;
+      setRhythmState(createDefaultManualWritingRhythmState());
+      resetManualRhythmSession("", null);
       return;
     }
     // Only (re)seed content when we actually switch chapters. Without this guard
@@ -264,6 +417,16 @@ export function EditorPane({
       const cached = contentCacheRef.current.get(chapter.id);
       const initialContent = cached ?? readQuery.data.content;
       setEditorContent(initialContent, chapter.id);
+      let storedRhythmState = createDefaultManualWritingRhythmState();
+      try {
+        storedRhythmState = parseManualWritingRhythmState(
+          window.localStorage.getItem(manualWritingRhythmStorageKey(chapter.projectId, chapter.id)),
+        );
+      } catch {
+        storedRhythmState = createDefaultManualWritingRhythmState();
+      }
+      setRhythmState(storedRhythmState);
+      resetManualRhythmSession(initialContent, chapter.id);
       lastSavedRef.current = readQuery.data.content;
       lastAutosavedRef.current = readQuery.data.content;
       setSavePhase(initialContent === readQuery.data.content ? "saved" : "queued");
@@ -285,7 +448,7 @@ export function EditorPane({
         })
         .catch(() => setRecoveryPrompt(null));
     }
-  }, [readQuery.data, chapter, setEditorContent]);
+  }, [readQuery.data, chapter, resetManualRhythmSession, setEditorContent]);
 
   useEffect(() => {
     if (!chapter || !loaded || !readQuery.data) return;
@@ -300,15 +463,69 @@ export function EditorPane({
     lastSavedRef.current = nextContent;
     lastAutosavedRef.current = nextContent;
     setEditorContent(nextContent, chapter.id);
+    resetManualRhythmSession(nextContent, chapter.id);
     setSavePhase("saved");
     setSaveError(null);
     setLastSavedAt(
       readQuery.data.chapter.updatedAt ? new Date(readQuery.data.chapter.updatedAt).getTime() : Date.now(),
     );
     setRecoveryPrompt(null);
-  }, [chapter, loaded, readQuery.data, setEditorContent]);
+  }, [chapter, loaded, readQuery.data, resetManualRhythmSession, setEditorContent]);
 
   useEffect(() => { contentRef.current = content; }, [content]);
+
+  const persistManualRhythmState = useCallback(
+    (nextState: ManualWritingRhythmState) => {
+      const normalized = createDefaultManualWritingRhythmState(nextState);
+      setRhythmState(normalized);
+      if (!chapter || rhythmLoadedChapterIdRef.current !== chapter.id) return;
+      try {
+        window.localStorage.setItem(
+          manualWritingRhythmStorageKey(chapter.projectId, chapter.id),
+          serializeManualWritingRhythmState(normalized),
+        );
+      } catch {
+        // localStorage can be unavailable in restricted renderer contexts.
+      }
+    },
+    [chapter],
+  );
+
+  useEffect(() => {
+    if (!chapter || !loaded || rhythmLoadedChapterIdRef.current !== chapter.id) return;
+    if (content === previousContentForRhythmRef.current) return;
+
+    const now = Date.now();
+    const lastTick = lastWritingTickRef.current;
+    if (lastTick !== null) {
+      const gap = now - lastTick;
+      if (gap > 0 && gap <= MANUAL_RHYTHM_ACTIVE_WINDOW_MS) {
+        setActiveWritingMs((current) => current + gap);
+      }
+    }
+    lastWritingTickRef.current = now;
+    setRhythmNow(now);
+    previousContentForRhythmRef.current = content;
+
+    const line = editorInstance ? readEditorCursorState(editorInstance).lineNumber : cursorState.lineNumber;
+    const cue = readManualRhythmCue(content, line);
+    if (!cue.text) return;
+
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        lastCueText: cue.text,
+        lastLine: cue.line,
+        lastUpdatedAt: now,
+      }),
+    );
+  }, [chapter, content, cursorState.lineNumber, editorInstance, loaded, persistManualRhythmState, rhythmState]);
+
+  useEffect(() => {
+    if (!chapter || !loaded || !rhythmState.lastUpdatedAt) return;
+    const handle = window.setInterval(() => setRhythmNow(Date.now()), 30_000);
+    return () => window.clearInterval(handle);
+  }, [chapter, loaded, rhythmState.lastUpdatedAt]);
 
   // 字数统计仅用于显示（编辑器工具栏 / 状态栏 / 工作流栏阈值），不参与保存时的真实字数
   // 计算（保存路径在落盘时另算 computeWordCount）。computeWordCount + computeWordStats 会
@@ -316,6 +533,9 @@ export function EditorPane({
   // 统计去抖到停顿 250ms 之后再算，让按键热路径保持轻量，显示值停顿后刷新。
   const statsText = useDebouncedValue(content, 250);
   const stats = useMemo(() => computeWordCount(statsText), [statsText]);
+  const currentGraphemes = useMemo(() => countGraphemes(content), [content]);
+  const sessionAddedGraphemes = Math.max(0, currentGraphemes - sessionBaseGraphemes);
+  const resumeCue = useMemo(() => buildManualWritingResumeCue(rhythmState, rhythmNow), [rhythmNow, rhythmState]);
   const setCurrentChapterStats = useAppStore((s) => s.setCurrentChapterStats);
 
   useEffect(() => {
@@ -333,6 +553,17 @@ export function EditorPane({
   }, [statsText, chapter, stats.graphemes, setCurrentChapterStats]);
 
   useEffect(() => () => setCurrentChapterStats(null), [setCurrentChapterStats]);
+
+  const invalidateDailyProgress = useCallback(
+    (projectId: string) => {
+      const now = Date.now();
+      const last = dailyProgressInvalidatedAtRef.current.get(projectId) ?? 0;
+      if (now - last < 5_000) return;
+      dailyProgressInvalidatedAtRef.current.set(projectId, now);
+      void queryClient.invalidateQueries({ queryKey: ["daily-progress", projectId] });
+    },
+    [queryClient],
+  );
 
   const drainSaveQueue = useCallback((): Promise<void> => {
     if (saveLoopPromiseRef.current) return saveLoopPromiseRef.current;
@@ -353,6 +584,10 @@ export function EditorPane({
             ["chapter-content", request.chapterId],
             (current) => (current ? { chapter: updatedChapter, content: request.content } : current),
           );
+          queryClient.setQueryData(
+            ["chapter-heading-outline", request.chapterId],
+            extractChapterHeadings(request.chapterId, request.content),
+          );
           if (loadedChapterIdRef.current === request.chapterId) {
             lastSavedRef.current = request.content;
             setLastSavedAt(Date.now());
@@ -364,8 +599,7 @@ export function EditorPane({
               setSavePhase("queued");
             }
           }
-          void queryClient.invalidateQueries({ queryKey: ["chapters", request.projectId] });
-          void queryClient.invalidateQueries({ queryKey: ["daily-progress", request.projectId] });
+          invalidateDailyProgress(request.projectId);
         } catch (err) {
           if (!saveQueueRef.current) {
             saveQueueRef.current = request;
@@ -382,7 +616,7 @@ export function EditorPane({
     });
     saveLoopPromiseRef.current = promise;
     return promise;
-  }, [queryClient]);
+  }, [invalidateDailyProgress, queryClient]);
 
   const queueSave = useCallback(
     (request: SaveRequest): Promise<void> => {
@@ -430,17 +664,22 @@ export function EditorPane({
 
   const handleManualSave = useCallback(() => {
     void flushCurrentContent().then(() => {
-      // C3: 手动保存后自动创建快照（fire-and-forget）
-      if (chapter) {
-        void snapshotApi.create({
-          chapterId: chapter.id,
-          projectId: chapter.projectId,
-          kind: "manual",
-          label: `保存 · ${new Date().toLocaleTimeString("zh-CN")}`,
-        }).catch(() => {});
+      if (!chapter) {
+        showExportStatus({ kind: "success", text: "已保存" }, 2500);
+        return;
       }
+      void snapshotApi.create({
+        chapterId: chapter.id,
+        projectId: chapter.projectId,
+        kind: "manual",
+        label: `保存 · ${new Date().toLocaleTimeString("zh-CN")}`,
+      }).then(() => {
+        showExportStatus({ kind: "success", text: "已保存并创建版本备份" }, 3000);
+      }).catch(() => {
+        showExportStatus({ kind: "success", text: "已保存" }, 2500);
+      });
     }).catch(() => {});
-  }, [flushCurrentContent, chapter]);
+  }, [flushCurrentContent, chapter, showExportStatus]);
 
   const jumpEditorToText = useCallback((needles: Array<{ text: string; occurrence?: number }>): boolean => {
     if (!editorInstance) return false;
@@ -499,6 +738,7 @@ export function EditorPane({
       if (needle.length >= 4) {
         jumpEditorToText([{ text: needle }]);
       }
+      lastRestoredPositionChapterRef.current = chapter.id;
       setReviewJumpExcerpt(null);
     }, 150);
     return () => window.clearTimeout(timer);
@@ -542,30 +782,426 @@ export function EditorPane({
         }).find;
         finder?.(headingLine || headingJumpTarget.title, false, false, true, false, false, false);
       }
+      lastRestoredPositionChapterRef.current = chapter.id;
     }, 80);
     return () => window.clearTimeout(timer);
   }, [chapter, editorInstance, headingJumpTarget, jumpEditorToText, loaded]);
 
+  const updateCursorState = useCallback(() => {
+    if (!editorInstance) {
+      setCursorState(DEFAULT_CURSOR_STATE);
+      return;
+    }
+    const next = readEditorCursorState(editorInstance);
+    setCursorState((current) =>
+      current.lineNumber === next.lineNumber &&
+      current.paragraphGraphemes === next.paragraphGraphemes &&
+      current.selectedGraphemes === next.selectedGraphemes
+        ? current
+        : next,
+    );
+  }, [editorInstance]);
+
+  const persistEditorPosition = useCallback(() => {
+    if (!chapter || !editorInstance) return;
+    try {
+      const scrollEl = getEditorScrollElement(editorInstance);
+      const chapterUpdatedAt = "updatedAt" in chapter && typeof chapter.updatedAt === "string" ? chapter.updatedAt : "";
+      const position: StoredEditorPosition = {
+        pos: editorInstance.state.selection.from,
+        scrollTop: scrollEl?.scrollTop ?? 0,
+        updatedAt: chapterUpdatedAt,
+        savedAt: Date.now(),
+      };
+      window.localStorage.setItem(
+        editorPositionStorageKey(chapter.projectId, chapter.id),
+        JSON.stringify(position),
+      );
+    } catch {
+      // localStorage can be unavailable in restricted renderer contexts.
+    }
+  }, [chapter, editorInstance]);
+
+  const schedulePersistEditorPosition = useCallback(() => {
+    if (positionSaveFrameRef.current !== null) return;
+    positionSaveFrameRef.current = window.requestAnimationFrame(() => {
+      positionSaveFrameRef.current = null;
+      persistEditorPosition();
+    });
+  }, [persistEditorPosition]);
+
+  useEffect(() => {
+    if (!editorInstance || !chapter || !loaded) return;
+    const syncPosition = () => {
+      updateCursorState();
+      schedulePersistEditorPosition();
+    };
+    const scrollEl = getEditorScrollElement(editorInstance);
+    syncPosition();
+    editorInstance.on("selectionUpdate", syncPosition);
+    editorInstance.on("update", syncPosition);
+    scrollEl?.addEventListener("scroll", schedulePersistEditorPosition, { passive: true });
+    return () => {
+      persistEditorPosition();
+      editorInstance.off("selectionUpdate", syncPosition);
+      editorInstance.off("update", syncPosition);
+      scrollEl?.removeEventListener("scroll", schedulePersistEditorPosition);
+      if (positionSaveFrameRef.current !== null) {
+        window.cancelAnimationFrame(positionSaveFrameRef.current);
+        positionSaveFrameRef.current = null;
+      }
+    };
+  }, [chapter, editorInstance, loaded, persistEditorPosition, schedulePersistEditorPosition, updateCursorState]);
+
+  useEffect(() => {
+    if (!chapter || !loaded || !editorInstance) return;
+    if (lastRestoredPositionChapterRef.current === chapter.id) return;
+    const pendingHeadingJump =
+      headingJumpTarget?.chapterId === chapter.id && lastHeadingJumpNonceRef.current !== headingJumpTarget.nonce;
+    if (reviewJumpExcerpt || pendingHeadingJump) return;
+    let stored: StoredEditorPosition | null = null;
+    try {
+      stored = readStoredEditorPosition(
+        window.localStorage.getItem(editorPositionStorageKey(chapter.projectId, chapter.id)),
+      );
+    } catch {
+      stored = null;
+    }
+    if (!stored) {
+      lastRestoredPositionChapterRef.current = chapter.id;
+      updateCursorState();
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const pos = clampEditorPosition(editorInstance, stored.pos);
+      editorInstance.commands.setTextSelection(pos);
+      const scrollEl = getEditorScrollElement(editorInstance);
+      if (scrollEl) scrollEl.scrollTop = Math.max(0, stored.scrollTop);
+      updateCursorState();
+      lastRestoredPositionChapterRef.current = chapter.id;
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [chapter, editorInstance, headingJumpTarget, loaded, reviewJumpExcerpt, updateCursorState]);
+
+  const insertParagraphText = useCallback((paragraphText: string) => {
+    if (!editorInstance) return;
+    editorInstance.chain().focus().insertContent({
+      type: "paragraph",
+      content: paragraphText ? [{ type: "text", text: paragraphText }] : [],
+    }).run();
+  }, [editorInstance]);
+
+  const insertInlineText = useCallback((value: string) => {
+    if (!editorInstance) return;
+    const { state, view } = editorInstance;
+    view.dispatch(state.tr.insertText(value, state.selection.from, state.selection.to).scrollIntoView());
+    editorInstance.commands.focus();
+  }, [editorInstance]);
+
+  const insertHeading = useCallback((level: 1 | 2) => {
+    insertParagraphText(`${"#".repeat(level)} `);
+  }, [insertParagraphText]);
+
+  const insertSceneBreak = useCallback(() => {
+    if (!editorInstance) return;
+    editorInstance.chain().focus().insertContent([
+      { type: "paragraph", content: [{ type: "text", text: "---" }] },
+      { type: "paragraph" },
+    ]).run();
+  }, [editorInstance]);
+
+  const insertFullWidthIndent = useCallback(() => {
+    insertInlineText("\u3000\u3000");
+  }, [insertInlineText]);
+
+  const insertTodoMarker = useCallback(() => {
+    insertInlineText("\u3010\u5f85\u8865\uff1a\u3011");
+  }, [insertInlineText]);
+
+  const handleNextBeatChange = useCallback((value: string) => {
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        nextBeat: normalizeNextBeat(value),
+      }),
+    );
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleClearNextBeat = useCallback(() => {
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        nextBeat: "",
+      }),
+    );
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleSessionGoalChange = useCallback((value: number) => {
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        sessionGoal: value,
+      }),
+    );
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleInsertNextBeatTodo = useCallback(() => {
+    const beat = normalizeNextBeat(rhythmState.nextBeat);
+    if (!beat || !editorInstance) return;
+    insertInlineText(`\u3010\u5f85\u8865\uff1a${beat}\u3011`);
+    showExportStatus({ kind: "success", text: "\u5df2\u63d2\u5165\u5f85\u8865" }, 1800);
+  }, [editorInstance, insertInlineText, rhythmState.nextBeat, showExportStatus]);
+
+  const handleJumpToResumeCue = useCallback(() => {
+    if (!resumeCue) return;
+    const jumped = jumpEditorToText([{ text: resumeCue.text }]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: "\u5df2\u56de\u5230\u4e0a\u6b21\u505c\u7b14\u5904" }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "\u672a\u627e\u5230\u4e0a\u6b21\u505c\u7b14\u7247\u6bb5" }, 2600);
+  }, [jumpEditorToText, resumeCue, showExportStatus]);
+
+  const chapterHeadings = useMemo(() => (chapter ? extractChapterHeadings(chapter.id, content) : []), [chapter, content]);
+  const chapterMapItems = useMemo(
+    () => (chapter ? extractManualChapterMap(chapter.id, content) : []),
+    [chapter, content],
+  );
+
+  const currentEditorLine = useCallback((): number => {
+    if (!editorInstance) return 1;
+    const before = editorInstance.state.doc.textBetween(0, editorInstance.state.selection.from, "\n", "\n");
+    return before.split(/\r?\n/).length;
+  }, [editorInstance]);
+
+  const currentHeading = useMemo(() => {
+    if (chapterHeadings.length === 0) return null;
+    const line = cursorState.lineNumber || currentEditorLine();
+    return [...chapterHeadings].reverse().find((heading) => heading.line <= line) ?? chapterHeadings[0];
+  }, [chapterHeadings, currentEditorLine, cursorState.lineNumber]);
+
+  const jumpToHeadingItem = useCallback((heading: { title: string; level?: number }) => {
+    const level = Math.max(1, Math.min(4, heading.level ?? 1));
+    const marker = `${"#".repeat(level)} ${heading.title}`;
+    const jumped = jumpEditorToText([
+      { text: marker },
+      { text: `# ${heading.title}` },
+      { text: `## ${heading.title}` },
+      { text: `### ${heading.title}` },
+      { text: `#### ${heading.title}` },
+      { text: heading.title },
+    ]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: `\u5df2\u8df3\u5230\u300c${heading.title}\u300d` }, 1800);
+    }
+  }, [jumpEditorToText, showExportStatus]);
+
+  const jumpToChapterMapItem = useCallback((item: ManualChapterMapItem): boolean => {
+    if (item.kind === "heading") {
+      const level = Math.max(1, Math.min(4, item.level ?? 1));
+      const marker = `${"#".repeat(level)} ${item.label}`;
+      const jumped = jumpEditorToText([
+        { text: item.raw, occurrence: item.occurrence },
+        { text: marker, occurrence: item.occurrence },
+        { text: `# ${item.label}` },
+        { text: `## ${item.label}` },
+        { text: `### ${item.label}` },
+        { text: `#### ${item.label}` },
+        { text: item.label },
+      ]);
+      if (jumped) {
+        showExportStatus({ kind: "success", text: `已跳到「${item.label}」` }, 1800);
+      } else {
+        showExportStatus({ kind: "error", text: "未找到对应标题" }, 2200);
+      }
+      return jumped;
+    }
+
+    if (item.kind === "scene") {
+      const jumped = jumpEditorToText([{ text: item.raw, occurrence: item.occurrence }]);
+      if (jumped) {
+        showExportStatus({ kind: "success", text: `已跳到${item.label}` }, 1800);
+      } else {
+        showExportStatus({ kind: "error", text: "未找到对应场景" }, 2200);
+      }
+      return jumped;
+    }
+
+    const jumped = jumpEditorToText([{ text: item.raw, occurrence: item.occurrence }]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: `已跳到「${item.label}」` }, 1800);
+    } else {
+      showExportStatus({ kind: "error", text: "未找到对应待补" }, 2200);
+    }
+    return jumped;
+  }, [jumpEditorToText, showExportStatus]);
+
+  const normalizeCurrentSelection = useCallback(() => {
+    if (!editorInstance) return;
+    const { state } = editorInstance;
+    const { selection } = state;
+    const from = selection.empty ? selection.$from.start() : selection.from;
+    const to = selection.empty ? selection.$from.end() : selection.to;
+    const source = selection.empty
+      ? selection.$from.parent.textContent
+      : state.doc.textBetween(from, to, "\n", "\n");
+    const normalized = normalizeManualSelection(source);
+    if (normalized === source) {
+      showExportStatus({ kind: "success", text: "当前段落已整洁" }, 1600);
+      return;
+    }
+    if (normalized.includes("\n")) {
+      editorInstance
+        .chain()
+        .focus()
+        .setTextSelection({ from, to })
+        .insertContent(plainTextToEditorHtml(normalized))
+        .run();
+    } else {
+      editorInstance.view.dispatch(state.tr.insertText(normalized, from, to).scrollIntoView());
+      editorInstance.commands.focus();
+    }
+    showExportStatus({ kind: "success", text: "已整理当前段/选区" }, 1800);
+  }, [editorInstance, showExportStatus]);
+
+  const insertParagraphBreak = useCallback((placement: "before" | "after") => {
+    if (!editorInstance) return;
+    const { state } = editorInstance;
+    const depth = state.selection.$from.depth;
+    if (depth <= 0) return;
+    const insertPos = placement === "before" ? state.selection.$from.before(depth) : state.selection.$from.after(depth);
+    const targetPos = insertPos + 1;
+    editorInstance
+      .chain()
+      .focus()
+      .insertContentAt(insertPos, { type: "paragraph" })
+      .setTextSelection(targetPos)
+      .run();
+  }, [editorInstance]);
+
+  const moveCurrentParagraph = useCallback((direction: "up" | "down") => {
+    if (!editorInstance) return;
+    const { state, view } = editorInstance;
+    const selectionFrom = state.selection.from;
+    const blocks: Array<{ from: number; to: number; nodeSize: number; node: unknown }> = [];
+    state.doc.forEach((node, offset) => {
+      blocks.push({ from: offset, to: offset + node.nodeSize, nodeSize: node.nodeSize, node });
+    });
+    const currentIndex = blocks.findIndex((block) => selectionFrom >= block.from && selectionFrom <= block.to);
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const current = blocks[currentIndex];
+    const target = blocks[targetIndex];
+    if (!current || !target) return;
+
+    const offsetInsideBlock = Math.max(1, Math.min(selectionFrom - current.from, current.nodeSize - 1));
+    const node = current.node as Parameters<typeof state.tr.insert>[1];
+    const insertPos = direction === "up" ? target.from : target.to - current.nodeSize;
+    const nextSelection = clampEditorPosition(editorInstance, insertPos + offsetInsideBlock);
+    const tr = state.tr.delete(current.from, current.to).insert(insertPos, node).scrollIntoView();
+    view.dispatch(tr);
+    editorInstance.commands.setTextSelection(nextSelection);
+    editorInstance.commands.focus();
+  }, [editorInstance]);
+
+  const jumpHeading = useCallback((direction: "previous" | "next") => {
+    if (chapterHeadings.length === 0) {
+      showExportStatus({ kind: "error", text: "\u5f53\u524d\u7ae0\u8282\u6ca1\u6709\u6807\u9898" }, 2200);
+      return;
+    }
+    const line = currentEditorLine();
+    const target = direction === "next"
+      ? chapterHeadings.find((heading) => heading.line > line) ?? chapterHeadings[0]
+      : [...chapterHeadings].reverse().find((heading) => heading.line < line) ?? chapterHeadings[chapterHeadings.length - 1];
+    jumpToHeadingItem(target);
+  }, [chapterHeadings, currentEditorLine, jumpToHeadingItem, showExportStatus]);
+
+  const findQuery = findText.trim();
+  const findMatches = useMemo<EditorFindMatch[]>(() => {
+    if (!findOpen || !editorInstance || !findQuery) return [];
+    const matches: EditorFindMatch[] = [];
+    editorInstance.state.doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return true;
+      for (const match of findTextMatches(node.text, findQuery, findOptions)) {
+        matches.push({
+          from: pos + match.index,
+          to: pos + match.index + match.length,
+          text: match.text,
+        });
+      }
+      return true;
+    });
+    return matches;
+  }, [content, editorInstance, findOpen, findOptions, findQuery]);
+
+  const selectFindMatch = useCallback((index: number) => {
+    if (!editorInstance || findMatches.length === 0) return;
+    const nextIndex = ((index % findMatches.length) + findMatches.length) % findMatches.length;
+    const match = findMatches[nextIndex];
+    editorInstance.chain().focus().setTextSelection({ from: match.from, to: match.to }).run();
+    setActiveFindIndex(nextIndex);
+    setReplaceConfirm(false);
+    setFindStatus(null);
+    try {
+      const coords = editorInstance.view.coordsAtPos(match.from);
+      const scrollEl = editorInstance.view.dom.closest(".overflow-auto,.scrollbar-thin") as HTMLElement | null;
+      if (scrollEl) {
+        const targetTop = coords.top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - 120;
+        scrollEl.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+      }
+    } catch {
+      // Ignore stale coordinates while the editor is updating.
+    }
+  }, [editorInstance, findMatches]);
+
   const runFind = useCallback(
     (backwards = false) => {
-      const term = findText.trim();
-      if (!term) return;
-      editorInstance?.commands.focus();
-      const finder = (window as unknown as {
-        find?: (
-          searchString: string,
-          caseSensitive?: boolean,
-          backwards?: boolean,
-          wrapAround?: boolean,
-          wholeWord?: boolean,
-          searchInFrames?: boolean,
-          showDialog?: boolean,
-        ) => boolean;
-      }).find;
-      finder?.(term, false, backwards, true, false, false, false);
+      if (!findQuery) return;
+      if (findMatches.length === 0) {
+        setFindStatus("未找到");
+        return;
+      }
+      const selection = editorInstance?.state.selection;
+      const selectedIndex = selection
+        ? findMatches.findIndex((match) => match.from === selection.from && match.to === selection.to)
+        : -1;
+      const baseIndex = selectedIndex >= 0 ? selectedIndex : activeFindIndex;
+      selectFindMatch(selectedIndex >= 0 ? baseIndex + (backwards ? -1 : 1) : (backwards ? findMatches.length - 1 : 0));
     },
-    [editorInstance, findText],
+    [activeFindIndex, editorInstance, findMatches, findQuery, selectFindMatch],
   );
+
+  const replaceCurrentMatch = useCallback(() => {
+    if (!editorInstance || findMatches.length === 0) {
+      setFindStatus("没有可替换内容");
+      return;
+    }
+    const match = findMatches[Math.min(activeFindIndex, findMatches.length - 1)];
+    editorInstance.view.dispatch(editorInstance.state.tr.insertText(replaceText, match.from, match.to));
+    editorInstance.commands.focus();
+    setReplaceConfirm(false);
+    setFindStatus("已替换 1 处");
+  }, [activeFindIndex, editorInstance, findMatches, replaceText]);
+
+  const replaceAllMatches = useCallback(() => {
+    if (!editorInstance || findMatches.length === 0) {
+      setFindStatus("没有可替换内容");
+      return;
+    }
+    if (findMatches.length > 1 && !replaceConfirm) {
+      setReplaceConfirm(true);
+      setFindStatus(`将替换 ${findMatches.length} 处`);
+      return;
+    }
+    let tr = editorInstance.state.tr;
+    for (const match of [...findMatches].reverse()) {
+      tr = tr.insertText(replaceText, match.from, match.to);
+    }
+    editorInstance.view.dispatch(tr);
+    editorInstance.commands.focus();
+    setActiveFindIndex(0);
+    setReplaceConfirm(false);
+    setFindStatus(`已替换 ${findMatches.length} 处`);
+  }, [editorInstance, findMatches, replaceConfirm, replaceText]);
 
   useEffect(() => {
     if (!findOpen) return;
@@ -576,8 +1212,28 @@ export function EditorPane({
   }, [findOpen]);
 
   useEffect(() => {
+    setReplaceConfirm(false);
+    if (!findOpen || !findQuery) {
+      setFindStatus(null);
+      setActiveFindIndex(0);
+      return;
+    }
+    if (findMatches.length === 0) {
+      setFindStatus("未找到");
+      setActiveFindIndex(0);
+      return;
+    }
+    setActiveFindIndex((index) => Math.min(index, findMatches.length - 1));
+    setFindStatus(null);
+  }, [findMatches.length, findOpen, findOptions, findQuery]);
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setFindOpen(true);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "h") {
         e.preventDefault();
         setFindOpen(true);
       }
@@ -711,10 +1367,9 @@ export function EditorPane({
     }
   };
 
-  const handleManualAnalyze = () => {
+  const handleManualAnalyze = useCallback(() => {
     if (!chapter) return;
-    // 手动分析：仅对齐基线（不要再调 forceTrigger，否则会和下面的 manual 调用
-    // 重复放一炮）；随后直接发一次 trigger:"manual" 的分析。
+    // Manual analysis should use the existing chapter analysis contract.
     rebaseline();
     activeAnalysisChapterRef.current = chapter.id;
     void llmApi.analyze({
@@ -724,7 +1379,95 @@ export function EditorPane({
       providerId: resolvedProviderId,
       trigger: "manual",
     });
-  };
+  }, [chapter, content, rebaseline, resolvedProviderId]);
+
+  useEffect(() => {
+    const handler = () => handleManualAnalyze();
+    window.addEventListener("inkforge:manual-analyze", handler);
+    return () => window.removeEventListener("inkforge:manual-analyze", handler);
+  }, [handleManualAnalyze]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<EditorCommandDetail>).detail;
+      if (!detail || typeof detail !== "object") return;
+      if (detail.action === "insert-heading") insertHeading(detail.level);
+      if (detail.action === "insert-scene-break") insertSceneBreak();
+      if (detail.action === "insert-indent") insertFullWidthIndent();
+      if (detail.action === "insert-todo") insertTodoMarker();
+      if (detail.action === "jump-heading") jumpHeading(detail.direction);
+    };
+    window.addEventListener("inkforge:editor-command", handler);
+    return () => window.removeEventListener("inkforge:editor-command", handler);
+  }, [insertFullWidthIndent, insertHeading, insertSceneBreak, insertTodoMarker, jumpHeading]);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!editorInstance) return;
+      const target = e.target;
+      const editorHasFocus =
+        editorInstance.view.hasFocus() ||
+        (target instanceof Node && editorInstance.view.dom.contains(target));
+      if (!editorHasFocus) return;
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === "Enter") {
+        e.preventDefault();
+        insertParagraphBreak(e.shiftKey ? "before" : "after");
+        return;
+      }
+
+      if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowUp") {
+        e.preventDefault();
+        moveCurrentParagraph("up");
+        return;
+      }
+      if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowDown") {
+        e.preventDefault();
+        moveCurrentParagraph("down");
+        return;
+      }
+
+      const ctrlAlt = e.altKey && (e.ctrlKey || e.metaKey);
+      if (ctrlAlt) {
+        if (e.code === "Digit1") {
+          e.preventDefault();
+          insertHeading(1);
+          return;
+        }
+        if (e.code === "Digit2") {
+          e.preventDefault();
+          insertHeading(2);
+          return;
+        }
+        if (e.code === "Minus" || e.key === "-") {
+          e.preventDefault();
+          insertSceneBreak();
+          return;
+        }
+        if (e.code === "BracketRight" || e.key === "]") {
+          e.preventDefault();
+          insertFullWidthIndent();
+          return;
+        }
+        if (e.code === "KeyT" || e.key.toLowerCase() === "t") {
+          e.preventDefault();
+          insertTodoMarker();
+          return;
+        }
+      }
+
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowUp") {
+        e.preventDefault();
+        jumpHeading("previous");
+        return;
+      }
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowDown") {
+        e.preventDefault();
+        jumpHeading("next");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editorInstance, insertFullWidthIndent, insertHeading, insertParagraphBreak, insertSceneBreak, insertTodoMarker, jumpHeading, moveCurrentParagraph]);
 
   const manualSkillsQuery = useQuery({
     queryKey: ["skills", "manual", chapter?.projectId ?? null],
@@ -850,31 +1593,44 @@ export function EditorPane({
   const editorWidthClass = settings.editorWidth === "narrow" ? "max-w-2xl" : settings.editorWidth === "wide" ? "max-w-5xl" : "max-w-3xl";
   const focusMode = settings.focusMode;
   const patchSettings = useAppStore((s) => s.patchSettings);
+  const setSettings = useAppStore((s) => s.setSettings);
+  const persistEditorSettings = useCallback(
+    (updates: Partial<AppSettings>) => {
+      patchSettings(updates);
+      void settingsApi.set({ updates }).then(setSettings).catch(() => {});
+    },
+    [patchSettings, setSettings],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "F11") {
         e.preventDefault();
-        patchSettings({ focusMode: !focusMode });
+        persistEditorSettings({ focusMode: !focusMode });
       }
       if (e.key === "Escape" && focusMode) {
-        patchSettings({ focusMode: false });
+        persistEditorSettings({ focusMode: false });
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [focusMode, patchSettings]);
+  }, [focusMode, persistEditorSettings]);
 
+  useEffect(() => {
+    if (!lastSavedAt || savePhase !== "saved") return;
+    const timer = window.setInterval(() => setSaveStatusNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, [lastSavedAt, savePhase]);
   const saveStatusLabel = useMemo(() => {
     if (savePhase === "saving") return "保存中…";
     if (savePhase === "queued") return "等待保存";
     if (savePhase === "error") return `保存失败${saveError ? `：${saveError}` : ""}`;
     if (!lastSavedAt) return "已保存";
-    const seconds = Math.max(0, Math.round((Date.now() - lastSavedAt) / 1000));
+    const seconds = Math.max(0, Math.round((saveStatusNow - lastSavedAt) / 1000));
     if (seconds < 5) return "刚刚保存";
     if (seconds < 60) return `${seconds} 秒前保存`;
     return `${Math.floor(seconds / 60)} 分钟前保存`;
-  }, [lastSavedAt, saveError, savePhase]);
+  }, [lastSavedAt, saveError, savePhase, saveStatusNow]);
 
   const displayedTransientStatus = skillStatus ?? exportStatus;
   const displayedStatusTone: StatusTone =
@@ -895,6 +1651,9 @@ export function EditorPane({
         ? "text-accent-300"
         : "text-ink-500";
   const displayedStatusLabel = displayedTransientStatus?.text ?? saveStatusLabel;
+  const cursorStatusLabel = cursorState.selectedGraphemes > 0
+    ? `已选 ${cursorState.selectedGraphemes} 字`
+    : `第 ${cursorState.lineNumber} 行 · 本段 ${cursorState.paragraphGraphemes} 字`;
 
   const handleSnapshotRestored = useCallback(
     (response: SnapshotRestoreResponse) => {
@@ -903,6 +1662,10 @@ export function EditorPane({
       queryClient.setQueryData<ChapterReadResponse | null>(
         ["chapter-content", chapter.id],
         (current) => (current ? { ...current, content: response.chapterContent } : current),
+      );
+      queryClient.setQueryData(
+        ["chapter-heading-outline", chapter.id],
+        extractChapterHeadings(chapter.id, response.chapterContent),
       );
       lastSavedRef.current = response.chapterContent;
       lastAutosavedRef.current = response.chapterContent;
@@ -940,12 +1703,13 @@ export function EditorPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex min-h-12 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm transition-opacity duration-300 ${focusMode ? "opacity-0 hover:opacity-100 focus-within:opacity-100" : ""}`}>
+      <div className={`flex min-h-12 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm transition-opacity duration-200 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
           <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-ink-300">
           <span className="hidden text-ink-400 lg:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
+          <span className="hidden max-w-40 truncate text-ink-500 xl:inline" title={cursorStatusLabel}>{cursorStatusLabel}</span>
           {/* 工具栏改纯图标 + 原生悬浮提示(title)，按功能分组用竖线分隔：整体更轻、窄窗也放得下。 */}
           {/* v20: 显式撤回/重做（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
           <div className="flex items-center gap-0.5">
@@ -981,6 +1745,21 @@ export function EditorPane({
             </IconButton>
           </div>
           <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
+          <EditorInsertMenu
+            disabled={!editorInstance}
+            onInsertHeading={insertHeading}
+            onInsertSceneBreak={insertSceneBreak}
+            onInsertIndent={insertFullWidthIndent}
+            onInsertTodo={insertTodoMarker}
+            onNormalizeSelection={normalizeCurrentSelection}
+          />
+          <EditorAppearanceMenu settings={settings} onChange={persistEditorSettings} />
+          <ManualChapterMapMenu
+            items={chapterMapItems}
+            currentLine={cursorState.lineNumber || currentEditorLine()}
+            focusMode={focusMode}
+            onJumpItem={jumpToChapterMapItem}
+          />
           <IconButton
             size="sm"
             variant={findOpen ? "accentSoft" : "ghost"}
@@ -1097,6 +1876,31 @@ export function EditorPane({
           </div>
           {/* C7: TTS 朗读器 */}
           <ReadAloud text={content} />
+          {focusMode && chapterHeadings.length > 0 ? (
+            <div className="hidden items-center gap-1 rounded-md border border-ink-700/70 bg-ink-900/70 px-1 py-0.5 xl:flex">
+              <IconButton
+                size="xs"
+                variant="ghost"
+                aria-label={"\u8df3\u5230\u4e0a\u4e00\u4e2a\u6807\u9898"}
+                title={"\u4e0a\u4e00\u4e2a\u6807\u9898"}
+                onClick={() => jumpHeading("previous")}
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+              </IconButton>
+              <span className="max-w-32 truncate text-[11px] text-ink-400" title={currentHeading?.title ?? ""}>
+                {currentHeading?.title ?? "\u6807\u9898"}
+              </span>
+              <IconButton
+                size="xs"
+                variant="ghost"
+                aria-label={"\u8df3\u5230\u4e0b\u4e00\u4e2a\u6807\u9898"}
+                title={"\u4e0b\u4e00\u4e2a\u6807\u9898"}
+                onClick={() => jumpHeading("next")}
+              >
+                <ChevronDown className="h-3.5 w-3.5" />
+              </IconButton>
+            </div>
+          ) : null}
           <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
           <SaveStatusIndicator
             phase={displayedStatusPhase}
@@ -1113,7 +1917,7 @@ export function EditorPane({
             aria-label={focusMode ? "退出专注模式（F11）" : "进入专注模式（F11）"}
             title="专注模式 · F11"
             aria-pressed={focusMode}
-            onClick={() => patchSettings({ focusMode: !focusMode })}
+            onClick={() => persistEditorSettings({ focusMode: !focusMode })}
           >
             <Focus className="h-4 w-4" />
           </IconButton>
@@ -1130,6 +1934,19 @@ export function EditorPane({
           if (linkedOutlineCard) flowActions.openOutline(linkedOutlineCard.id);
         }}
       />
+      <ManualWritingRhythmBar
+        focusMode={focusMode}
+        sessionAddedGraphemes={sessionAddedGraphemes}
+        activeDurationMs={activeWritingMs}
+        sessionGoal={rhythmState.sessionGoal}
+        nextBeat={rhythmState.nextBeat}
+        resumeCue={resumeCue}
+        onNextBeatChange={handleNextBeatChange}
+        onSessionGoalChange={handleSessionGoalChange}
+        onInsertNextBeatTodo={handleInsertNextBeatTodo}
+        onClearNextBeat={handleClearNextBeat}
+        onJumpToResumeCue={handleJumpToResumeCue}
+      />
       <AnimatePresence initial={false}>
         {findOpen && (
           <motion.div {...slimDropIn}>
@@ -1137,8 +1954,22 @@ export function EditorPane({
               inputRef={findInputRef}
               findText={findText}
               setFindText={setFindText}
+              replaceText={replaceText}
+              setReplaceText={setReplaceText}
+              options={findOptions}
+              onOptionsChange={setFindOptions}
+              matchCount={findMatches.length}
+              activeIndex={Math.min(activeFindIndex, Math.max(0, findMatches.length - 1))}
+              status={findStatus}
+              replaceConfirm={replaceConfirm}
               runFind={runFind}
-              onClose={() => setFindOpen(false)}
+              onReplaceCurrent={replaceCurrentMatch}
+              onReplaceAll={replaceAllMatches}
+              onClose={() => {
+                setFindOpen(false);
+                setReplaceConfirm(false);
+                setFindStatus(null);
+              }}
             />
           </motion.div>
         )}
@@ -1152,6 +1983,8 @@ export function EditorPane({
                   recoveryPrompt={recoveryPrompt}
                   onRestore={(text) => {
                     setEditorContent(text, chapter.id);
+                    setSavePhase("queued");
+                    showExportStatus({ kind: "success", text: "已恢复自动备份，等待保存" }, 3500);
                     setRecoveryPrompt(null);
                   }}
                   onDiscard={() => {

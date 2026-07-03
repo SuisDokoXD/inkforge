@@ -22,6 +22,7 @@ const APP_SETTING_KEYS = [
   "autoIndent",
   "spellcheck",
   "focusMode",
+  "customAccent",
 ] as const satisfies readonly (keyof AppSettings)[];
 
 const APP_SETTING_KEY_SET = new Set<string>(APP_SETTING_KEYS);
@@ -41,8 +42,8 @@ function optionalSettingsUpdates(
     if (!APP_SETTING_KEY_SET.has(key)) continue;
     switch (key as keyof AppSettings) {
       case "theme":
-        if (entry !== "dark" && entry !== "light" && entry !== "paper") {
-          fail(channel, key, "dark, light, or paper");
+        if (entry !== "dark" && entry !== "light" && entry !== "paper" && entry !== "sepia" && entry !== "mint") {
+          fail(channel, key, "dark, light, paper, sepia, or mint");
         }
         parsed.theme = entry;
         break;
@@ -87,6 +88,12 @@ function optionalSettingsUpdates(
           fail(channel, key, "narrow, medium, or wide");
         }
         parsed.editorWidth = entry;
+        break;
+      case "customAccent":
+        if (entry !== null && (typeof entry !== "string" || !/^#[0-9a-fA-F]{6}$/.test(entry))) {
+          fail(channel, key, "a hex color or null");
+        }
+        parsed.customAccent = entry;
         break;
     }
   }
