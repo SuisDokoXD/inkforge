@@ -8,6 +8,7 @@ import { useChapterShortcuts } from "../lib/use-app-shortcuts";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { extractChapterHeadings, type ChapterHeadingItem } from "../lib/chapter-headings";
 import { fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
+import { selectStableChapterList } from "../lib/stable-chapter-list";
 import { EditorPane } from "../components/EditorPane";
 import { ChapterTree } from "../components/ChapterTree";
 import { EditorTabBar } from "../components/editor/EditorTabBar";  // A7
@@ -81,7 +82,23 @@ export function WorkspacePage(): JSX.Element {
     enabled: !!resolvedProjectId,
   });
 
-  const chapters = useMemo(() => chaptersQuery.data ?? [], [chaptersQuery.data]);
+  const lastStableChaptersRef = useRef<ChapterRecord[]>([]);
+  const lastStableChaptersProjectRef = useRef<string | null>(null);
+  const chapters = useMemo(() => selectStableChapterList(
+    chaptersQuery.data,
+    resolvedProjectId,
+    chaptersQuery.isFetching,
+    {
+      projectId: lastStableChaptersProjectRef.current,
+      chapters: lastStableChaptersRef.current,
+    },
+  ), [chaptersQuery.data, chaptersQuery.isFetching, resolvedProjectId]);
+  useEffect(() => {
+    if (chaptersQuery.data && chaptersQuery.data.length > 0) {
+      lastStableChaptersRef.current = chaptersQuery.data;
+      lastStableChaptersProjectRef.current = resolvedProjectId;
+    }
+  }, [chaptersQuery.data, resolvedProjectId]);
 
   // A3: 大纲关联章节 ID 集合——用于 ChapterTree 显示大纲徽章
   const outlineCardsQuery = useQuery({
@@ -106,6 +123,7 @@ export function WorkspacePage(): JSX.Element {
     })),
   });
   const headingVersionRef = useRef<Map<string, string>>(new Map());
+  const headingCacheRef = useRef<Record<string, ChapterHeadingItem[]>>({});
   useEffect(() => {
     chapters.forEach((chapter) => {
       const version = `${chapter.updatedAt ?? ""}:${chapter.wordCount}`;
@@ -119,10 +137,18 @@ export function WorkspacePage(): JSX.Element {
   const chapterHeadings = useMemo(() => {
     const map: Record<string, ChapterHeadingItem[]> = {};
     chapters.forEach((chapter, index) => {
-      map[chapter.id] = headingQueries[index]?.data ?? [];
+      const nextHeadings = headingQueries[index]?.data;
+      if (nextHeadings) headingCacheRef.current[chapter.id] = nextHeadings;
+      map[chapter.id] = nextHeadings ?? headingCacheRef.current[chapter.id] ?? [];
     });
     return map;
   }, [chapters, headingQueries]);
+  useEffect(() => {
+    const liveIds = new Set(chapters.map((chapter) => chapter.id));
+    for (const cachedId of Object.keys(headingCacheRef.current)) {
+      if (!liveIds.has(cachedId)) delete headingCacheRef.current[cachedId];
+    }
+  }, [chapters]);
   const currentChapter = useMemo(
     () => chapters.find((c) => c.id === currentChapterId) ?? null,
     [chapters, currentChapterId],

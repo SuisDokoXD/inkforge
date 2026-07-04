@@ -44,28 +44,41 @@ import { useAppStore } from "../stores/app-store";
 import { useWritingFlowActions } from "../lib/use-writing-flow-actions";
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { extractChapterHeadings } from "../lib/chapter-headings";
+import { buildManualChapterHealthReport, type ManualChapterHealthIssue } from "../lib/manual-chapter-health";
 import { extractManualChapterMap, type ManualChapterMapItem } from "../lib/manual-chapter-map";
+import { matchManualWritingShortcut, type ManualWritingCommandId } from "../lib/manual-writing-commands";
 import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { useDebouncedValue } from "../lib/use-debounced-value";
 import {
   MANUAL_RHYTHM_ACTIVE_WINDOW_MS,
+  addManualWritingBeat,
   buildManualWritingResumeCue,
+  completeManualWritingBeat,
   createDefaultManualWritingRhythmState,
   manualWritingRhythmStorageKey,
-  normalizeNextBeat,
+  manualWritingOpenBeatCount,
+  moveManualWritingBeat,
+  normalizeHandoffNote,
   normalizeRhythmSnippet,
   parseManualWritingRhythmState,
+  removeManualWritingBeat,
+  reopenManualWritingBeat,
   serializeManualWritingRhythmState,
+  upsertManualWritingBeat,
   type ManualWritingRhythmState,
 } from "../lib/manual-writing-rhythm";
+import { buildManualRevisionQueueItems, type ManualRevisionQueueItem } from "../lib/manual-revision-queue";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { InspirationBubble } from "./InspirationBubble";
 import { ChapterFromOutlineDialog } from "./ChapterFromOutlineDialog";
 import { EmptyState } from "./EmptyState";
 import { SnapshotMenu } from "./snapshot";
 import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
+import { ManualChapterHealthMenu } from "./editor/ManualChapterHealthMenu";
 import { ManualChapterMapMenu } from "./editor/ManualChapterMapMenu";
+import { ManualRevisionQueueMenu } from "./editor/ManualRevisionQueueMenu";
+import { ManualWritingCommandMenu } from "./editor/ManualWritingCommandMenu";
 import { ManualWritingRhythmBar } from "./editor/ManualWritingRhythmBar";
 import { EditorFindBar } from "./editor/EditorFindBar";
 import { FocusDraftBoard } from "./editor/FocusDraftBoard";
@@ -289,6 +302,10 @@ export function EditorPane({
   const { status: skillStatus, showStatus: showSkillStatus } = useTimedStatus<EditorTransientStatus>();
   const [outlineDialogOpen, setOutlineDialogOpen] = useState(false);
   const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
+  const [manualCommandMenuOpen, setManualCommandMenuOpen] = useState(false);
+  const [chapterMapMenuOpen, setChapterMapMenuOpen] = useState(false);
+  const [revisionQueueMenuOpen, setRevisionQueueMenuOpen] = useState(false);
+  const [chapterHealthMenuOpen, setChapterHealthMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -725,6 +742,39 @@ export function EditorPane({
     return false;
   }, [editorInstance]);
 
+  const replaceEditorTextOccurrence = useCallback((
+    needle: string,
+    occurrence: number,
+    replacement: string,
+  ): boolean => {
+    if (!editorInstance || !needle) return false;
+    let found: { from: number; to: number } | null = null;
+    let remaining = Math.max(0, Math.round(occurrence) || 0);
+    editorInstance.state.doc.descendants((node, pos) => {
+      if (found || !node.isText || !node.text) return !found;
+      let startIndex = 0;
+      while (startIndex <= node.text.length) {
+        const index = node.text.indexOf(needle, startIndex);
+        if (index < 0) return true;
+        if (remaining > 0) {
+          remaining -= 1;
+          startIndex = index + needle.length;
+          continue;
+        }
+        found = { from: pos + index, to: pos + index + needle.length };
+        return false;
+      }
+      return false;
+    });
+    const range = found as { from: number; to: number } | null;
+    if (!range) return false;
+    editorInstance.view.dispatch(
+      editorInstance.state.tr.insertText(replacement, range.from, range.to).scrollIntoView(),
+    );
+    editorInstance.commands.focus();
+    return true;
+  }, [editorInstance]);
+
   // A2: Review→Editor 跳转——检测 reviewJumpExcerpt 文本变化，
   // 用现有 jumpEditorToText 滚动到对应摘录位置。
   const reviewJumpExcerpt = useAppStore((s) => s.reviewJumpExcerpt);
@@ -918,20 +968,35 @@ export function EditorPane({
     insertInlineText("\u3010\u5f85\u8865\uff1a\u3011");
   }, [insertInlineText]);
 
-  const handleNextBeatChange = useCallback((value: string) => {
-    persistManualRhythmState(
-      createDefaultManualWritingRhythmState({
-        ...rhythmState,
-        nextBeat: normalizeNextBeat(value),
-      }),
-    );
+  const handleAddBeat = useCallback((text: string) => {
+    persistManualRhythmState(addManualWritingBeat(rhythmState, text));
   }, [persistManualRhythmState, rhythmState]);
 
-  const handleClearNextBeat = useCallback(() => {
+  const handleUpdateBeat = useCallback((id: string, text: string) => {
+    persistManualRhythmState(upsertManualWritingBeat(rhythmState, id, text));
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleCompleteBeat = useCallback((id: string) => {
+    persistManualRhythmState(completeManualWritingBeat(rhythmState, id));
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleReopenBeat = useCallback((id: string) => {
+    persistManualRhythmState(reopenManualWritingBeat(rhythmState, id));
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleDeleteBeat = useCallback((id: string) => {
+    persistManualRhythmState(removeManualWritingBeat(rhythmState, id));
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleMoveBeat = useCallback((id: string, direction: "up" | "down") => {
+    persistManualRhythmState(moveManualWritingBeat(rhythmState, id, direction));
+  }, [persistManualRhythmState, rhythmState]);
+
+  const handleHandoffNoteChange = useCallback((value: string) => {
     persistManualRhythmState(
       createDefaultManualWritingRhythmState({
         ...rhythmState,
-        nextBeat: "",
+        handoffNote: normalizeHandoffNote(value),
       }),
     );
   }, [persistManualRhythmState, rhythmState]);
@@ -945,12 +1010,16 @@ export function EditorPane({
     );
   }, [persistManualRhythmState, rhythmState]);
 
-  const handleInsertNextBeatTodo = useCallback(() => {
-    const beat = normalizeNextBeat(rhythmState.nextBeat);
-    if (!beat || !editorInstance) return;
-    insertInlineText(`\u3010\u5f85\u8865\uff1a${beat}\u3011`);
-    showExportStatus({ kind: "success", text: "\u5df2\u63d2\u5165\u5f85\u8865" }, 1800);
-  }, [editorInstance, insertInlineText, rhythmState.nextBeat, showExportStatus]);
+  const handleInsertBeatTodo = useCallback((id: string) => {
+    const beat = rhythmState.beatQueue.find((item) => item.id === id && item.status === "open");
+    if (!beat) {
+      showExportStatus({ kind: "error", text: "未找到接力" }, 2200);
+      return;
+    }
+    if (!editorInstance) return;
+    insertInlineText(`【待补：${beat.text}】`);
+    showExportStatus({ kind: "success", text: "已插入待补" }, 1800);
+  }, [editorInstance, insertInlineText, rhythmState.beatQueue, showExportStatus]);
 
   const handleJumpToResumeCue = useCallback(() => {
     if (!resumeCue) return;
@@ -966,6 +1035,14 @@ export function EditorPane({
   const chapterMapItems = useMemo(
     () => (chapter ? extractManualChapterMap(chapter.id, content) : []),
     [chapter, content],
+  );
+  const revisionQueueItems = useMemo(
+    () => (chapter ? buildManualRevisionQueueItems(chapter.id, content) : []),
+    [chapter, content],
+  );
+  const chapterHealthReport = useMemo(
+    () => buildManualChapterHealthReport(chapter?.id ?? "", content),
+    [chapter?.id, content],
   );
 
   const currentEditorLine = useCallback((): number => {
@@ -1034,6 +1111,49 @@ export function EditorPane({
       showExportStatus({ kind: "error", text: "未找到对应待补" }, 2200);
     }
     return jumped;
+  }, [jumpEditorToText, showExportStatus]);
+
+  const jumpToRevisionQueueItem = useCallback((item: ManualRevisionQueueItem) => {
+    const jumped = jumpEditorToText([{ text: item.raw, occurrence: item.occurrence }]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: `已跳到「${item.title}」` }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "未找到对应待补" }, 2200);
+  }, [jumpEditorToText, showExportStatus]);
+
+  const resolveRevisionQueueItem = useCallback((item: ManualRevisionQueueItem) => {
+    const replaced = replaceEditorTextOccurrence(item.raw, item.occurrence, "");
+    if (replaced) {
+      showExportStatus({ kind: "success", text: "已完成待补" }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "未找到对应待补" }, 2200);
+  }, [replaceEditorTextOccurrence, showExportStatus]);
+
+  const createBeatFromRevisionQueueItem = useCallback((item: ManualRevisionQueueItem) => {
+    const before = manualWritingOpenBeatCount(rhythmState);
+    const next = addManualWritingBeat(rhythmState, item.title);
+    const after = manualWritingOpenBeatCount(next);
+    persistManualRhythmState(next);
+    if (after > before) {
+      showExportStatus({ kind: "success", text: "已加入接力" }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "接力已满" }, 2200);
+  }, [persistManualRhythmState, rhythmState, showExportStatus]);
+
+  const jumpToChapterHealthIssue = useCallback((issue: ManualChapterHealthIssue) => {
+    if (!issue.jumpText) {
+      showExportStatus({ kind: "error", text: "该提醒没有可跳转位置" }, 2200);
+      return;
+    }
+    const jumped = jumpEditorToText([{ text: issue.jumpText }]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: `已跳到${issue.title}` }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "未找到对应片段" }, 2200);
   }, [jumpEditorToText, showExportStatus]);
 
   const normalizeCurrentSelection = useCallback(() => {
@@ -1115,6 +1235,106 @@ export function EditorPane({
     jumpToHeadingItem(target);
   }, [chapterHeadings, currentEditorLine, jumpToHeadingItem, showExportStatus]);
 
+  const jumpToNextRevisionQueueItem = useCallback(() => {
+    if (revisionQueueItems.length === 0) {
+      showExportStatus({ kind: "error", text: "暂无待补" }, 2200);
+      return;
+    }
+    const line = currentEditorLine();
+    const target = revisionQueueItems.find((item) => item.line > line) ?? revisionQueueItems[0];
+    jumpToRevisionQueueItem(target);
+  }, [currentEditorLine, jumpToRevisionQueueItem, revisionQueueItems, showExportStatus]);
+
+  const jumpToFirstChapterHealthIssue = useCallback(() => {
+    const target = chapterHealthReport.issues.find((issue) => issue.jumpText);
+    if (!target) {
+      showExportStatus({ kind: "error", text: "暂无可跳转提醒" }, 2200);
+      return;
+    }
+    jumpToChapterHealthIssue(target);
+  }, [chapterHealthReport.issues, jumpToChapterHealthIssue, showExportStatus]);
+
+  const executeManualWritingCommand = useCallback((id: ManualWritingCommandId) => {
+    const openPanel = (panel: "map" | "revision" | "health" | null) => {
+      setManualCommandMenuOpen(false);
+      setChapterMapMenuOpen(panel === "map");
+      setRevisionQueueMenuOpen(panel === "revision");
+      setChapterHealthMenuOpen(panel === "health");
+    };
+
+    if (id === "open-command-menu") {
+      openPanel(null);
+      setManualCommandMenuOpen(true);
+      return;
+    }
+    if (id === "insert-heading-1") {
+      insertHeading(1);
+      return;
+    }
+    if (id === "insert-heading-2") {
+      insertHeading(2);
+      return;
+    }
+    if (id === "insert-scene-break") {
+      insertSceneBreak();
+      return;
+    }
+    if (id === "insert-indent") {
+      insertFullWidthIndent();
+      return;
+    }
+    if (id === "insert-todo") {
+      insertTodoMarker();
+      return;
+    }
+    if (id === "normalize-selection") {
+      normalizeCurrentSelection();
+      return;
+    }
+    if (id === "open-chapter-map") {
+      if (chapterMapItems.length === 0) {
+        showExportStatus({ kind: "error", text: "暂无导航标记" }, 2200);
+        return;
+      }
+      openPanel("map");
+      return;
+    }
+    if (id === "open-revision-queue") {
+      if (revisionQueueItems.length === 0) {
+        showExportStatus({ kind: "error", text: "暂无待补" }, 2200);
+        return;
+      }
+      openPanel("revision");
+      return;
+    }
+    if (id === "open-chapter-health") {
+      openPanel("health");
+      return;
+    }
+    if (id === "jump-next-todo") {
+      jumpToNextRevisionQueueItem();
+      return;
+    }
+    if (id === "jump-first-health-issue") {
+      jumpToFirstChapterHealthIssue();
+      return;
+    }
+    if (id === "open-find") {
+      openPanel(null);
+      setFindOpen(true);
+    }
+  }, [
+    chapterMapItems.length,
+    insertFullWidthIndent,
+    insertHeading,
+    insertSceneBreak,
+    insertTodoMarker,
+    jumpToFirstChapterHealthIssue,
+    jumpToNextRevisionQueueItem,
+    normalizeCurrentSelection,
+    revisionQueueItems.length,
+    showExportStatus,
+  ]);
   const findQuery = findText.trim();
   const findMatches = useMemo<EditorFindMatch[]>(() => {
     if (!findOpen || !editorInstance || !findQuery) return [];
@@ -1426,33 +1646,11 @@ export function EditorPane({
         return;
       }
 
-      const ctrlAlt = e.altKey && (e.ctrlKey || e.metaKey);
-      if (ctrlAlt) {
-        if (e.code === "Digit1") {
-          e.preventDefault();
-          insertHeading(1);
-          return;
-        }
-        if (e.code === "Digit2") {
-          e.preventDefault();
-          insertHeading(2);
-          return;
-        }
-        if (e.code === "Minus" || e.key === "-") {
-          e.preventDefault();
-          insertSceneBreak();
-          return;
-        }
-        if (e.code === "BracketRight" || e.key === "]") {
-          e.preventDefault();
-          insertFullWidthIndent();
-          return;
-        }
-        if (e.code === "KeyT" || e.key.toLowerCase() === "t") {
-          e.preventDefault();
-          insertTodoMarker();
-          return;
-        }
+      const manualShortcut = matchManualWritingShortcut(e);
+      if (manualShortcut) {
+        e.preventDefault();
+        executeManualWritingCommand(manualShortcut);
+        return;
       }
 
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === "ArrowUp") {
@@ -1467,7 +1665,7 @@ export function EditorPane({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editorInstance, insertFullWidthIndent, insertHeading, insertParagraphBreak, insertSceneBreak, insertTodoMarker, jumpHeading, moveCurrentParagraph]);
+  }, [editorInstance, executeManualWritingCommand, insertParagraphBreak, jumpHeading, moveCurrentParagraph]);
 
   const manualSkillsQuery = useQuery({
     queryKey: ["skills", "manual", chapter?.projectId ?? null],
@@ -1655,6 +1853,12 @@ export function EditorPane({
     ? `已选 ${cursorState.selectedGraphemes} 字`
     : `第 ${cursorState.lineNumber} 行 · 本段 ${cursorState.paragraphGraphemes} 字`;
 
+  const manualWritingCommandAvailability = useMemo(() => ({
+    hasEditor: editorInstance !== null,
+    chapterMapCount: chapterMapItems.length,
+    revisionCount: revisionQueueItems.length,
+    healthIssueCount: chapterHealthReport.issues.length,
+  }), [chapterHealthReport.issues.length, chapterMapItems.length, editorInstance, revisionQueueItems.length]);
   const handleSnapshotRestored = useCallback(
     (response: SnapshotRestoreResponse) => {
       if (!chapter) return;
@@ -1745,6 +1949,14 @@ export function EditorPane({
             </IconButton>
           </div>
           <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
+          <ManualWritingCommandMenu
+            open={manualCommandMenuOpen}
+            disabled={!editorInstance}
+            focusMode={focusMode}
+            availability={manualWritingCommandAvailability}
+            onOpenChange={setManualCommandMenuOpen}
+            onRunCommand={executeManualWritingCommand}
+          />
           <EditorInsertMenu
             disabled={!editorInstance}
             onInsertHeading={insertHeading}
@@ -1758,7 +1970,25 @@ export function EditorPane({
             items={chapterMapItems}
             currentLine={cursorState.lineNumber || currentEditorLine()}
             focusMode={focusMode}
+            open={chapterMapMenuOpen}
+            onOpenChange={setChapterMapMenuOpen}
             onJumpItem={jumpToChapterMapItem}
+          />
+          <ManualRevisionQueueMenu
+            items={revisionQueueItems}
+            focusMode={focusMode}
+            open={revisionQueueMenuOpen}
+            onOpenChange={setRevisionQueueMenuOpen}
+            onJumpItem={jumpToRevisionQueueItem}
+            onResolveItem={resolveRevisionQueueItem}
+            onCreateBeat={createBeatFromRevisionQueueItem}
+          />
+          <ManualChapterHealthMenu
+            report={chapterHealthReport}
+            focusMode={focusMode}
+            open={chapterHealthMenuOpen}
+            onOpenChange={setChapterHealthMenuOpen}
+            onJumpIssue={jumpToChapterHealthIssue}
           />
           <IconButton
             size="sm"
@@ -1939,12 +2169,18 @@ export function EditorPane({
         sessionAddedGraphemes={sessionAddedGraphemes}
         activeDurationMs={activeWritingMs}
         sessionGoal={rhythmState.sessionGoal}
-        nextBeat={rhythmState.nextBeat}
+        beatQueue={rhythmState.beatQueue}
+        handoffNote={rhythmState.handoffNote}
         resumeCue={resumeCue}
-        onNextBeatChange={handleNextBeatChange}
+        onAddBeat={handleAddBeat}
+        onUpdateBeat={handleUpdateBeat}
+        onCompleteBeat={handleCompleteBeat}
+        onReopenBeat={handleReopenBeat}
+        onDeleteBeat={handleDeleteBeat}
+        onMoveBeat={handleMoveBeat}
+        onInsertBeatTodo={handleInsertBeatTodo}
+        onHandoffNoteChange={handleHandoffNoteChange}
         onSessionGoalChange={handleSessionGoalChange}
-        onInsertNextBeatTodo={handleInsertNextBeatTodo}
-        onClearNextBeat={handleClearNextBeat}
         onJumpToResumeCue={handleJumpToResumeCue}
       />
       <AnimatePresence initial={false}>

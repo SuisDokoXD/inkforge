@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { FileText, Heading1, ListTree, Minus, Pilcrow, X } from "lucide-react";
 import { fadeOnly, fadeSlideUp } from "../../lib/motion-tokens";
@@ -15,6 +15,8 @@ interface ManualChapterMapMenuProps {
   items: ManualChapterMapItem[];
   currentLine: number;
   focusMode: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onJumpItem: (item: ManualChapterMapItem) => boolean;
 }
 
@@ -41,9 +43,17 @@ export function ManualChapterMapMenu({
   items,
   currentLine,
   focusMode,
+  open: controlledOpen,
+  onOpenChange,
   onJumpItem,
 }: ManualChapterMapMenuProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
+  const setOpen = useCallback((nextOpen: boolean | ((value: boolean) => boolean)) => {
+    const resolvedOpen = typeof nextOpen === "function" ? nextOpen(controlledOpen ?? localOpen) : nextOpen;
+    if (controlledOpen === undefined) setLocalOpen(resolvedOpen);
+    onOpenChange?.(resolvedOpen);
+  }, [controlledOpen, localOpen, onOpenChange]);
   const [filter, setFilter] = useState<ManualChapterMapFilter>("all");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion() === true;
@@ -72,11 +82,11 @@ export function ManualChapterMapMenu({
       window.removeEventListener("mousedown", handlePointer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   useEffect(() => {
     if (disabled) setOpen(false);
-  }, [disabled]);
+  }, [disabled, setOpen]);
 
   return (
     <div ref={rootRef} className="relative">

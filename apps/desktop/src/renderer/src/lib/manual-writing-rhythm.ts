@@ -5,9 +5,24 @@ export const MANUAL_RHYTHM_ACTIVE_WINDOW_MS = 10_000;
 export const MANUAL_RHYTHM_RESUME_THRESHOLD_MS = 10 * 60 * 1000;
 export const MANUAL_RHYTHM_CUE_MAX_LENGTH = 80;
 export const MANUAL_RHYTHM_NEXT_BEAT_MAX_LENGTH = 120;
+export const MANUAL_RHYTHM_HANDOFF_NOTE_MAX_LENGTH = 160;
+export const MANUAL_RHYTHM_MAX_OPEN_BEATS = 8;
+export const MANUAL_RHYTHM_MAX_TOTAL_BEATS = 20;
+
+export type ManualWritingBeatStatus = "open" | "done";
+
+export interface ManualWritingBeatItem {
+  id: string;
+  text: string;
+  status: ManualWritingBeatStatus;
+  createdAt: number;
+  updatedAt: number;
+}
 
 export interface ManualWritingRhythmState {
   nextBeat: string;
+  handoffNote: string;
+  beatQueue: ManualWritingBeatItem[];
   lastCueText: string;
   lastLine: number;
   lastUpdatedAt: number;
@@ -47,11 +62,130 @@ export function normalizeNextBeat(text: unknown): string {
   return normalizeRhythmSnippet(text, MANUAL_RHYTHM_NEXT_BEAT_MAX_LENGTH);
 }
 
+export function normalizeHandoffNote(text: unknown): string {
+  return normalizeRhythmSnippet(text, MANUAL_RHYTHM_HANDOFF_NOTE_MAX_LENGTH);
+}
+
+function normalizeBeatTimestamp(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.round(value))
+    : fallback;
+}
+
+function createManualWritingBeatId(now: number): string {
+  return `beat:${now}:${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createManualWritingBeat(
+  text: string,
+  now = Date.now(),
+  id = createManualWritingBeatId(now),
+): ManualWritingBeatItem | null {
+  const normalizedText = normalizeNextBeat(text);
+  if (!normalizedText) return null;
+  const timestamp = normalizeBeatTimestamp(now, Date.now());
+  return {
+    id,
+    text: normalizedText,
+    status: "open",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function trimManualWritingBeatQueue(queue: ManualWritingBeatItem[]): ManualWritingBeatItem[] {
+  const open: ManualWritingBeatItem[] = [];
+  const done: ManualWritingBeatItem[] = [];
+  for (const item of queue) {
+    if (item.status === "open") {
+      if (open.length < MANUAL_RHYTHM_MAX_OPEN_BEATS) open.push(item);
+    } else {
+      done.push(item);
+    }
+  }
+
+  const allowedOpenIds = new Set(open.map((item) => item.id));
+  const remainingDoneSlots = Math.max(0, MANUAL_RHYTHM_MAX_TOTAL_BEATS - open.length);
+  const keptDoneIds = new Set(
+    [...done]
+      .sort((left, right) => right.updatedAt - left.updatedAt)
+      .slice(0, remainingDoneSlots)
+      .map((item) => item.id),
+  );
+
+  return queue.filter((item) => (
+    item.status === "open" ? allowedOpenIds.has(item.id) : keptDoneIds.has(item.id)
+  ));
+}
+
+export function normalizeManualWritingBeatQueue(
+  value: unknown,
+  fallbackNextBeat = "",
+  now = Date.now(),
+): ManualWritingBeatItem[] {
+  const queue: ManualWritingBeatItem[] = [];
+  const seenIds = new Set<string>();
+
+  if (Array.isArray(value)) {
+    for (const rawItem of value) {
+      if (!rawItem || typeof rawItem !== "object") continue;
+      const candidate = rawItem as Partial<ManualWritingBeatItem>;
+      const text = normalizeNextBeat(candidate.text);
+      if (!text) continue;
+      const baseId = typeof candidate.id === "string" && candidate.id.trim()
+        ? candidate.id.trim()
+        : createManualWritingBeatId(now);
+      let id = baseId;
+      let duplicateIndex = 1;
+      while (seenIds.has(id)) {
+        duplicateIndex += 1;
+        id = `${baseId}:${duplicateIndex}`;
+      }
+      seenIds.add(id);
+      const createdAt = normalizeBeatTimestamp(candidate.createdAt, now);
+      const updatedAt = normalizeBeatTimestamp(candidate.updatedAt, createdAt);
+      queue.push({
+        id,
+        text,
+        status: candidate.status === "done" ? "done" : "open",
+        createdAt,
+        updatedAt,
+      });
+    }
+  }
+
+  if (queue.length === 0) {
+    const migratedBeat = createManualWritingBeat(fallbackNextBeat, now);
+    if (migratedBeat) queue.push(migratedBeat);
+  }
+
+  return trimManualWritingBeatQueue(queue);
+}
+
+export function openManualWritingBeats(state: ManualWritingRhythmState): ManualWritingBeatItem[] {
+  return createDefaultManualWritingRhythmState(state).beatQueue.filter((item) => item.status === "open");
+}
+
+export function firstOpenManualWritingBeat(state: ManualWritingRhythmState): ManualWritingBeatItem | null {
+  return openManualWritingBeats(state)[0] ?? null;
+}
+
+export function manualWritingOpenBeatCount(state: ManualWritingRhythmState): number {
+  return openManualWritingBeats(state).length;
+}
+
 export function createDefaultManualWritingRhythmState(
   overrides: Partial<ManualWritingRhythmState> = {},
 ): ManualWritingRhythmState {
+  const beatQueue = normalizeManualWritingBeatQueue(
+    overrides.beatQueue,
+    overrides.nextBeat ?? "",
+  );
+  const firstOpenBeat = beatQueue.find((item) => item.status === "open") ?? null;
   return {
-    nextBeat: normalizeNextBeat(overrides.nextBeat ?? ""),
+    nextBeat: firstOpenBeat?.text ?? "",
+    handoffNote: normalizeHandoffNote(overrides.handoffNote ?? ""),
+    beatQueue,
     lastCueText: normalizeRhythmSnippet(overrides.lastCueText ?? ""),
     lastLine: typeof overrides.lastLine === "number" && Number.isFinite(overrides.lastLine)
       ? Math.max(1, Math.round(overrides.lastLine))
@@ -61,6 +195,104 @@ export function createDefaultManualWritingRhythmState(
       : 0,
     sessionGoal: clampManualWritingGoal(overrides.sessionGoal),
   };
+}
+
+export function addManualWritingBeat(
+  state: ManualWritingRhythmState,
+  text: string,
+  now = Date.now(),
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  if (manualWritingOpenBeatCount(normalized) >= MANUAL_RHYTHM_MAX_OPEN_BEATS) return normalized;
+  const beat = createManualWritingBeat(text, now);
+  if (!beat) return normalized;
+  return createDefaultManualWritingRhythmState({
+    ...normalized,
+    beatQueue: [...normalized.beatQueue, beat],
+  });
+}
+
+export function upsertManualWritingBeat(
+  state: ManualWritingRhythmState,
+  id: string,
+  text: string,
+  now = Date.now(),
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  const nextText = normalizeNextBeat(text);
+  if (!nextText) return removeManualWritingBeat(normalized, id);
+  return createDefaultManualWritingRhythmState({
+    ...normalized,
+    beatQueue: normalized.beatQueue.map((item) =>
+      item.id === id
+        ? { ...item, text: nextText, updatedAt: normalizeBeatTimestamp(now, Date.now()) }
+        : item,
+    ),
+  });
+}
+
+export function removeManualWritingBeat(
+  state: ManualWritingRhythmState,
+  id: string,
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  return createDefaultManualWritingRhythmState({
+    ...normalized,
+    nextBeat: "",
+    beatQueue: normalized.beatQueue.filter((item) => item.id !== id),
+  });
+}
+
+export function completeManualWritingBeat(
+  state: ManualWritingRhythmState,
+  id: string,
+  now = Date.now(),
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  return createDefaultManualWritingRhythmState({
+    ...normalized,
+    beatQueue: normalized.beatQueue.map((item) =>
+      item.id === id
+        ? { ...item, status: "done", updatedAt: normalizeBeatTimestamp(now, Date.now()) }
+        : item,
+    ),
+  });
+}
+
+export function reopenManualWritingBeat(
+  state: ManualWritingRhythmState,
+  id: string,
+  now = Date.now(),
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  if (manualWritingOpenBeatCount(normalized) >= MANUAL_RHYTHM_MAX_OPEN_BEATS) return normalized;
+  return createDefaultManualWritingRhythmState({
+    ...normalized,
+    beatQueue: normalized.beatQueue.map((item) =>
+      item.id === id
+        ? { ...item, status: "open", updatedAt: normalizeBeatTimestamp(now, Date.now()) }
+        : item,
+    ),
+  });
+}
+
+export function moveManualWritingBeat(
+  state: ManualWritingRhythmState,
+  id: string,
+  direction: "up" | "down",
+): ManualWritingRhythmState {
+  const normalized = createDefaultManualWritingRhythmState(state);
+  const index = normalized.beatQueue.findIndex((item) => item.id === id);
+  if (index < 0) return normalized;
+  const nextIndex = direction === "up" ? index - 1 : index + 1;
+  if (nextIndex < 0 || nextIndex >= normalized.beatQueue.length) return normalized;
+  const beatQueue = [...normalized.beatQueue];
+  const current = beatQueue[index];
+  const next = beatQueue[nextIndex];
+  if (!current || !next) return normalized;
+  beatQueue[index] = next;
+  beatQueue[nextIndex] = current;
+  return createDefaultManualWritingRhythmState({ ...normalized, beatQueue });
 }
 
 export function parseManualWritingRhythmState(raw: string | null): ManualWritingRhythmState {
