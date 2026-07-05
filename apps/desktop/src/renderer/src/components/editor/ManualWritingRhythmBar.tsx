@@ -44,6 +44,7 @@ interface ManualWritingRhythmBarProps {
   onMoveBeat: (id: string, direction: "up" | "down") => void;
   onInsertBeatTodo: (id: string) => void;
   onHandoffNoteChange: (value: string) => void;
+  onCaptureHandoff: () => void;
   onSessionGoalChange: (value: number) => void;
   onJumpToResumeCue: () => void;
 }
@@ -64,6 +65,7 @@ export function ManualWritingRhythmBar({
   onMoveBeat,
   onInsertBeatTodo,
   onHandoffNoteChange,
+  onCaptureHandoff,
   onSessionGoalChange,
   onJumpToResumeCue,
 }: ManualWritingRhythmBarProps): JSX.Element {
@@ -283,6 +285,17 @@ export function ManualWritingRhythmBar({
         ) : null}
       </div>
 
+      <button
+        type="button"
+        className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-ink-700 bg-ink-950/20 px-2 text-xs text-ink-300 hover:bg-ink-800 hover:text-ink-100"
+        onClick={onCaptureHandoff}
+        aria-label="收工：记下下次继续的位置"
+        title="收工：记下下次继续的位置"
+      >
+        <MapPin className="h-3.5 w-3.5 shrink-0" />
+        <span>收工</span>
+      </button>
+
       <div ref={rootRef} className="relative shrink-0">
         <button
           type="button"
@@ -329,15 +342,27 @@ export function ManualWritingRhythmBar({
                     </div>
                   ) : null}
                 </div>
-                <button
-                  type="button"
-                  className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
-                  onClick={() => setBeatOpen(false)}
-                  title="关闭"
-                  aria-label="关闭写作接力"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-ink-300 hover:bg-ink-800 hover:text-ink-100"
+                    onClick={onCaptureHandoff}
+                    title="记下下次继续的位置"
+                    aria-label="收工：记下下次继续的位置"
+                  >
+                    <MapPin className="h-3.5 w-3.5" />
+                    收工
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded p-1 text-ink-400 hover:bg-ink-800 hover:text-ink-100"
+                    onClick={() => setBeatOpen(false)}
+                    title="关闭"
+                    aria-label="关闭写作接力"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
               {resumeCue || normalizedHandoffNote ? (

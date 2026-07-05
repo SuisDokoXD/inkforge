@@ -34,6 +34,13 @@ export interface ManualWritingResumeCue {
   text: string;
 }
 
+export interface ManualWritingHandoffCapture {
+  line: number;
+  cueText: string;
+  handoffNote: string;
+  capturedAt: number;
+}
+
 export function manualWritingRhythmStorageKey(projectId: string, chapterId: string): string {
   return `inkforge:manual-rhythm:${projectId}:${chapterId}`;
 }
@@ -64,6 +71,34 @@ export function normalizeNextBeat(text: unknown): string {
 
 export function normalizeHandoffNote(text: unknown): string {
   return normalizeRhythmSnippet(text, MANUAL_RHYTHM_HANDOFF_NOTE_MAX_LENGTH);
+}
+
+export function readManualWritingCue(content: string, lineNumber: number): ManualWritingResumeCue {
+  const lines = content.split(/\r?\n/);
+  const safeLine = Math.max(1, Math.min(lines.length || 1, Math.round(lineNumber) || 1));
+  const currentLineText = normalizeRhythmSnippet(lines[safeLine - 1] ?? "");
+  if (currentLineText) return { line: safeLine, text: currentLineText };
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const text = normalizeRhythmSnippet(lines[index] ?? "");
+    if (text) return { line: index + 1, text };
+  }
+  return { line: safeLine, text: "" };
+}
+
+export function buildManualWritingHandoffCapture(
+  content: string,
+  lineNumber: number,
+  now = Date.now(),
+): ManualWritingHandoffCapture | null {
+  const cue = readManualWritingCue(content, lineNumber);
+  if (!cue.text) return null;
+  const safeNow = normalizeBeatTimestamp(now, Date.now());
+  return {
+    line: cue.line,
+    cueText: cue.text,
+    handoffNote: normalizeHandoffNote(`第 ${cue.line} 行：${cue.text}`),
+    capturedAt: safeNow,
+  };
 }
 
 function normalizeBeatTimestamp(value: unknown, fallback: number): number {

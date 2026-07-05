@@ -5,6 +5,7 @@ import {
   MANUAL_RHYTHM_MAX_OPEN_BEATS,
   MANUAL_RHYTHM_MAX_TOTAL_BEATS,
   addManualWritingBeat,
+  buildManualWritingHandoffCapture,
   buildManualWritingResumeCue,
   clampManualWritingGoal,
   completeManualWritingBeat,
@@ -20,6 +21,7 @@ import {
   normalizeRhythmSnippet,
   openManualWritingBeats,
   parseManualWritingRhythmState,
+  readManualWritingCue,
   removeManualWritingBeat,
   reopenManualWritingBeat,
   upsertManualWritingBeat,
@@ -62,6 +64,26 @@ describe("manual writing rhythm helpers", () => {
       line: 42,
       text: "他推开门，看见雨线后的灯。",
     });
+  });
+
+  it("reads a handoff cue from the current line or nearest previous prose", () => {
+    const content = "第一段\n\n  第二段继续推进冲突  \n";
+
+    expect(readManualWritingCue(content, 3)).toEqual({ line: 3, text: "第二段继续推进冲突" });
+    expect(readManualWritingCue(content, 4)).toEqual({ line: 3, text: "第二段继续推进冲突" });
+    expect(readManualWritingCue("\n\n", 2)).toEqual({ line: 2, text: "" });
+  });
+
+  it("builds a capture payload for closing a writing session", () => {
+    const capture = buildManualWritingHandoffCapture("第一段\n雨停之后，她终于开口。", 2, 12_345);
+
+    expect(capture).toEqual({
+      line: 2,
+      cueText: "雨停之后，她终于开口。",
+      handoffNote: "第 2 行：雨停之后，她终于开口。",
+      capturedAt: 12_345,
+    });
+    expect(buildManualWritingHandoffCapture("\n", 1, 12_345)).toBeNull();
   });
 
   it("computes bounded progress against the session goal", () => {

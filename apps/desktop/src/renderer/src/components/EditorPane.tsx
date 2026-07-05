@@ -46,6 +46,13 @@ import { friendlyErrorMessage } from "../lib/friendly-error";
 import { extractChapterHeadings } from "../lib/chapter-headings";
 import { buildManualChapterHealthReport, type ManualChapterHealthIssue } from "../lib/manual-chapter-health";
 import { extractManualChapterMap, type ManualChapterMapItem } from "../lib/manual-chapter-map";
+import { buildManualParagraphFocusOverview } from "../lib/manual-paragraph-focus";
+import {
+  buildManualSubmissionCheckReport,
+  manualSubmissionCheckStorageKey,
+  type ManualSubmissionCheckIssue,
+} from "../lib/manual-submission-check";
+import { buildManualChapterStructureOverview } from "../lib/manual-chapter-structure";
 import { matchManualWritingShortcut, type ManualWritingCommandId } from "../lib/manual-writing-commands";
 import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
@@ -53,6 +60,7 @@ import { useDebouncedValue } from "../lib/use-debounced-value";
 import {
   MANUAL_RHYTHM_ACTIVE_WINDOW_MS,
   addManualWritingBeat,
+  buildManualWritingHandoffCapture,
   buildManualWritingResumeCue,
   completeManualWritingBeat,
   createDefaultManualWritingRhythmState,
@@ -60,8 +68,8 @@ import {
   manualWritingOpenBeatCount,
   moveManualWritingBeat,
   normalizeHandoffNote,
-  normalizeRhythmSnippet,
   parseManualWritingRhythmState,
+  readManualWritingCue,
   removeManualWritingBeat,
   reopenManualWritingBeat,
   serializeManualWritingRhythmState,
@@ -77,6 +85,9 @@ import { SnapshotMenu } from "./snapshot";
 import { ChapterWorkflowBar } from "./editor/ChapterWorkflowBar";
 import { ManualChapterHealthMenu } from "./editor/ManualChapterHealthMenu";
 import { ManualChapterMapMenu } from "./editor/ManualChapterMapMenu";
+import { ManualChapterStructureMenu } from "./editor/ManualChapterStructureMenu";
+import { ManualParagraphFocusMenu } from "./editor/ManualParagraphFocusMenu";
+import { ManualSubmissionCheckMenu } from "./editor/ManualSubmissionCheckMenu";
 import { ManualRevisionQueueMenu } from "./editor/ManualRevisionQueueMenu";
 import { ManualWritingCommandMenu } from "./editor/ManualWritingCommandMenu";
 import { ManualWritingRhythmBar } from "./editor/ManualWritingRhythmBar";
@@ -267,17 +278,7 @@ function readEditorCursorState(editor: Editor): EditorCursorState {
   };
 }
 
-function readManualRhythmCue(content: string, lineNumber: number): { line: number; text: string } {
-  const lines = content.split(/\r?\n/);
-  const safeLine = Math.max(1, Math.min(lines.length || 1, Math.round(lineNumber) || 1));
-  const currentLineText = normalizeRhythmSnippet(lines[safeLine - 1] ?? "");
-  if (currentLineText) return { line: safeLine, text: currentLineText };
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    const text = normalizeRhythmSnippet(lines[index] ?? "");
-    if (text) return { line: index + 1, text };
-  }
-  return { line: safeLine, text: "" };
-}
+
 export function EditorPane({
   chapter,
   headingJumpTarget,
@@ -304,6 +305,9 @@ export function EditorPane({
   const [snapshotMenuOpen, setSnapshotMenuOpen] = useState(false);
   const [manualCommandMenuOpen, setManualCommandMenuOpen] = useState(false);
   const [chapterMapMenuOpen, setChapterMapMenuOpen] = useState(false);
+  const [chapterStructureMenuOpen, setChapterStructureMenuOpen] = useState(false);
+  const [paragraphFocusMenuOpen, setParagraphFocusMenuOpen] = useState(false);
+  const [submissionCheckMenuOpen, setSubmissionCheckMenuOpen] = useState(false);
   const [revisionQueueMenuOpen, setRevisionQueueMenuOpen] = useState(false);
   const [chapterHealthMenuOpen, setChapterHealthMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -320,6 +324,7 @@ export function EditorPane({
   const [rhythmState, setRhythmState] = useState<ManualWritingRhythmState>(() =>
     createDefaultManualWritingRhythmState(),
   );
+  const [submissionCheckVersion, setSubmissionCheckVersion] = useState<string | null>(null);
   const [sessionBaseGraphemes, setSessionBaseGraphemes] = useState(0);
   const [activeWritingMs, setActiveWritingMs] = useState(0);
   const [rhythmNow, setRhythmNow] = useState(() => Date.now());
@@ -491,6 +496,18 @@ export function EditorPane({
 
   useEffect(() => { contentRef.current = content; }, [content]);
 
+  useEffect(() => {
+    if (!chapter) {
+      setSubmissionCheckVersion(null);
+      return;
+    }
+    try {
+      setSubmissionCheckVersion(window.localStorage.getItem(manualSubmissionCheckStorageKey(chapter.projectId, chapter.id)));
+    } catch {
+      setSubmissionCheckVersion(null);
+    }
+  }, [chapter]);
+
   const persistManualRhythmState = useCallback(
     (nextState: ManualWritingRhythmState) => {
       const normalized = createDefaultManualWritingRhythmState(nextState);
@@ -525,7 +542,7 @@ export function EditorPane({
     previousContentForRhythmRef.current = content;
 
     const line = editorInstance ? readEditorCursorState(editorInstance).lineNumber : cursorState.lineNumber;
-    const cue = readManualRhythmCue(content, line);
+    const cue = readManualWritingCue(content, line);
     if (!cue.text) return;
 
     persistManualRhythmState(
@@ -551,6 +568,10 @@ export function EditorPane({
   const statsText = useDebouncedValue(content, 250);
   const stats = useMemo(() => computeWordCount(statsText), [statsText]);
   const currentGraphemes = useMemo(() => countGraphemes(content), [content]);
+  const submissionCheckContentVersion = useMemo(
+    () => `${content.length}:${currentGraphemes}:${content.slice(0, 64)}:${content.slice(-64)}`,
+    [content, currentGraphemes],
+  );
   const sessionAddedGraphemes = Math.max(0, currentGraphemes - sessionBaseGraphemes);
   const resumeCue = useMemo(() => buildManualWritingResumeCue(rhythmState, rhythmNow), [rhythmNow, rhythmState]);
   const setCurrentChapterStats = useAppStore((s) => s.setCurrentChapterStats);
@@ -1001,6 +1022,41 @@ export function EditorPane({
     );
   }, [persistManualRhythmState, rhythmState]);
 
+  const handleCaptureHandoff = useCallback(() => {
+    const line = editorInstance ? readEditorCursorState(editorInstance).lineNumber : cursorState.lineNumber;
+    const capture = buildManualWritingHandoffCapture(contentRef.current, line);
+    if (!capture) {
+      showExportStatus({ kind: "error", text: "正文还没有可记录的位置" }, 2200);
+      return;
+    }
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        handoffNote: capture.handoffNote,
+        lastCueText: capture.cueText,
+        lastLine: capture.line,
+        lastUpdatedAt: capture.capturedAt,
+      }),
+    );
+    setRhythmNow(capture.capturedAt);
+    showExportStatus({ kind: "success", text: "已记下下次继续的位置" }, 2200);
+  }, [cursorState.lineNumber, editorInstance, persistManualRhythmState, rhythmState, showExportStatus]);
+
+  const handleUseParagraphHandoff = useCallback((value: string) => {
+    const note = normalizeHandoffNote(value);
+    if (!note) {
+      showExportStatus({ kind: "error", text: "当前段落还没有可记录内容" }, 2200);
+      return;
+    }
+    persistManualRhythmState(
+      createDefaultManualWritingRhythmState({
+        ...rhythmState,
+        handoffNote: note,
+      }),
+    );
+    showExportStatus({ kind: "success", text: "已整理为收工备注" }, 1800);
+  }, [persistManualRhythmState, rhythmState, showExportStatus]);
+
   const handleSessionGoalChange = useCallback((value: number) => {
     persistManualRhythmState(
       createDefaultManualWritingRhythmState({
@@ -1036,6 +1092,14 @@ export function EditorPane({
     () => (chapter ? extractManualChapterMap(chapter.id, content) : []),
     [chapter, content],
   );
+  const chapterStructureOverview = useMemo(
+    () => buildManualChapterStructureOverview(chapterMapItems, cursorState.lineNumber || 1),
+    [chapterMapItems, cursorState.lineNumber],
+  );
+  const paragraphFocusOverview = useMemo(
+    () => buildManualParagraphFocusOverview(content, cursorState.lineNumber || 1),
+    [content, cursorState.lineNumber],
+  );
   const revisionQueueItems = useMemo(
     () => (chapter ? buildManualRevisionQueueItems(chapter.id, content) : []),
     [chapter, content],
@@ -1043,6 +1107,10 @@ export function EditorPane({
   const chapterHealthReport = useMemo(
     () => buildManualChapterHealthReport(chapter?.id ?? "", content),
     [chapter?.id, content],
+  );
+  const submissionCheckReport = useMemo(
+    () => buildManualSubmissionCheckReport(chapterHealthReport, paragraphFocusOverview),
+    [chapterHealthReport, paragraphFocusOverview],
   );
 
   const currentEditorLine = useCallback((): number => {
@@ -1143,6 +1211,18 @@ export function EditorPane({
     showExportStatus({ kind: "error", text: "接力已满" }, 2200);
   }, [persistManualRhythmState, rhythmState, showExportStatus]);
 
+  const createBeatFromStructureSuggestion = useCallback((text: string) => {
+    const before = manualWritingOpenBeatCount(rhythmState);
+    const next = addManualWritingBeat(rhythmState, text);
+    const after = manualWritingOpenBeatCount(next);
+    persistManualRhythmState(next);
+    if (after > before) {
+      showExportStatus({ kind: "success", text: "已加入接力" }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "接力已满" }, 2200);
+  }, [persistManualRhythmState, rhythmState, showExportStatus]);
+
   const jumpToChapterHealthIssue = useCallback((issue: ManualChapterHealthIssue) => {
     if (!issue.jumpText) {
       showExportStatus({ kind: "error", text: "该提醒没有可跳转位置" }, 2200);
@@ -1155,6 +1235,37 @@ export function EditorPane({
     }
     showExportStatus({ kind: "error", text: "未找到对应片段" }, 2200);
   }, [jumpEditorToText, showExportStatus]);
+
+  const jumpToSubmissionCheckIssue = useCallback((issue: ManualSubmissionCheckIssue) => {
+    if (issue.healthIssue) {
+      jumpToChapterHealthIssue(issue.healthIssue);
+      return;
+    }
+    if (!issue.jumpText) {
+      showExportStatus({ kind: "error", text: "该检查项没有可跳转位置" }, 2200);
+      return;
+    }
+    const jumped = jumpEditorToText([{ text: issue.jumpText }]);
+    if (jumped) {
+      showExportStatus({ kind: "success", text: `已跳到${issue.title}` }, 1800);
+      return;
+    }
+    showExportStatus({ kind: "error", text: "未找到对应片段" }, 2200);
+  }, [jumpEditorToText, jumpToChapterHealthIssue, showExportStatus]);
+
+  const markSubmissionCheckDone = useCallback(() => {
+    if (!chapter) return;
+    try {
+      window.localStorage.setItem(
+        manualSubmissionCheckStorageKey(chapter.projectId, chapter.id),
+        submissionCheckContentVersion,
+      );
+    } catch {
+      // localStorage can be unavailable in restricted renderer contexts.
+    }
+    setSubmissionCheckVersion(submissionCheckContentVersion);
+    showExportStatus({ kind: "success", text: "已标记本轮检查" }, 1800);
+  }, [chapter, showExportStatus, submissionCheckContentVersion]);
 
   const normalizeCurrentSelection = useCallback(() => {
     if (!editorInstance) return;
@@ -1974,6 +2085,60 @@ export function EditorPane({
             onOpenChange={setChapterMapMenuOpen}
             onJumpItem={jumpToChapterMapItem}
           />
+          <ManualChapterStructureMenu
+            overview={chapterStructureOverview}
+            focusMode={focusMode}
+            open={chapterStructureMenuOpen}
+            onOpenChange={(open) => {
+              setChapterStructureMenuOpen(open);
+              if (open) {
+                setChapterMapMenuOpen(false);
+                setParagraphFocusMenuOpen(false);
+                setRevisionQueueMenuOpen(false);
+                setChapterHealthMenuOpen(false);
+                setSubmissionCheckMenuOpen(false);
+              }
+            }}
+            onJumpItem={jumpToChapterMapItem}
+            onCreateBeat={createBeatFromStructureSuggestion}
+          />
+          <ManualParagraphFocusMenu
+            overview={paragraphFocusOverview}
+            focusMode={focusMode}
+            open={paragraphFocusMenuOpen}
+            onOpenChange={(open) => {
+              setParagraphFocusMenuOpen(open);
+              if (open) {
+                setChapterMapMenuOpen(false);
+                setChapterStructureMenuOpen(false);
+                setRevisionQueueMenuOpen(false);
+                setChapterHealthMenuOpen(false);
+                setSubmissionCheckMenuOpen(false);
+              }
+            }}
+            onCreateBeat={createBeatFromStructureSuggestion}
+            onUseHandoff={handleUseParagraphHandoff}
+          />
+          <ManualSubmissionCheckMenu
+            report={submissionCheckReport}
+            checkedVersion={submissionCheckVersion}
+            contentVersion={submissionCheckContentVersion}
+            focusMode={focusMode}
+            open={submissionCheckMenuOpen}
+            onOpenChange={(open) => {
+              setSubmissionCheckMenuOpen(open);
+              if (open) {
+                setChapterMapMenuOpen(false);
+                setChapterStructureMenuOpen(false);
+                setParagraphFocusMenuOpen(false);
+                setRevisionQueueMenuOpen(false);
+                setChapterHealthMenuOpen(false);
+              }
+            }}
+            onJumpIssue={jumpToSubmissionCheckIssue}
+            onCreateBeat={createBeatFromStructureSuggestion}
+            onMarkChecked={markSubmissionCheckDone}
+          />
           <ManualRevisionQueueMenu
             items={revisionQueueItems}
             focusMode={focusMode}
@@ -2180,6 +2345,7 @@ export function EditorPane({
         onMoveBeat={handleMoveBeat}
         onInsertBeatTodo={handleInsertBeatTodo}
         onHandoffNoteChange={handleHandoffNoteChange}
+        onCaptureHandoff={handleCaptureHandoff}
         onSessionGoalChange={handleSessionGoalChange}
         onJumpToResumeCue={handleJumpToResumeCue}
       />
