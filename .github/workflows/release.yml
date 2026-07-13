@@ -334,7 +334,7 @@ jobs:
           cat release-assets/SHA256SUMS.txt
 
       - name: Create / update GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           draft: ${{ steps.meta.outputs.draft == 'true' }}
