@@ -1,5 +1,14 @@
 # M5-H · 发布候选流程
 
+## beta.24 发布约束
+
+- 原生模块构建统一使用 Node.js 20、pnpm 9 和 Python 3.11。
+- 根包版本、桌面包版本和 Git 标签必须完全一致。
+- 测试和打包前运行 `pnpm verify:release-version v0.1.0-beta.24`。
+- Windows、macOS、Linux 三个平台必须全部构建成功才允许发布。
+- beta.24 保持未签名，不设置 `INKFORGE_ENABLE_SIGNED_AUTO_UPDATE`；用户只从官方 GitHub Release 手动升级并校验 `SHA256SUMS.txt`。
+- 禁止通过重命名旧安装包发布新版本，所有产物必须从对应标签提交重新构建。
+
 > 版本：0.1.0-beta.0 · 2026-04-21
 > 目标读者：第一次打 Release 的维护者
 

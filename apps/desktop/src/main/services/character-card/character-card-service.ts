@@ -40,6 +40,8 @@ import {
 import { ZipReader, looksLikeZip } from "../zip-reader";
 import { ZipWriter } from "../zip-writer";
 
+const MAX_CARD_FILE_BYTES = 50 * 1024 * 1024;
+
 // --------------------------------------------------------------------------
 // 类型
 // --------------------------------------------------------------------------
@@ -81,8 +83,16 @@ export async function importCardFromFile(
   input: CardImportInput,
 ): Promise<CardImportResult> {
   const sourcePath = input.sourcePath;
-  const fileBytes =
-    input.fileBytes ?? (await fs.readFile(sourcePath));
+  if (!input.fileBytes) {
+    const stat = await fs.stat(sourcePath);
+    if (!stat.isFile() || stat.size > MAX_CARD_FILE_BYTES) {
+      throw new CardImportError("CARD_FILE_TOO_LARGE", "Character card must be a file no larger than 50 MB");
+    }
+  }
+  const fileBytes = input.fileBytes ?? (await fs.readFile(sourcePath));
+  if (fileBytes.length > MAX_CARD_FILE_BYTES) {
+    throw new CardImportError("CARD_FILE_TOO_LARGE", "Character card must be no larger than 50 MB");
+  }
 
   // 指纹用于查重 + 持久化到 character_card_imports
   const contentHash = sha256Hex(fileBytes);

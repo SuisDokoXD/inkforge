@@ -10,11 +10,13 @@ import {
   readSnapshotFile,
   relCoverPath,
   relSnapshotPath,
+  removeProjectTree,
   sanitizeFileSegment,
   sanitizeProjectName,
   writeAutosave,
   writeChapterFile,
   writeSnapshotFile,
+  writeProjectMarker,
 } from "../fs-layout";
 
 function withTempProject(run: (projectPath: string) => void): void {
@@ -76,5 +78,31 @@ describe("fs layout helpers", () => {
     expect(relCoverPath("PNG")).toBe(".bookshelf/cover.png");
     expect(relCoverPath("j.pg?")).toBe(".bookshelf/cover.jpg");
     expect(relCoverPath("")).toBe(".bookshelf/cover.png");
+  });
+
+  it("only removes marked projects below the configured projects root", () => {
+    const root = mkdtempSync(join(tmpdir(), "inkforge-delete-"));
+    const projectsRoot = join(root, "projects");
+    const projectPath = join(projectsRoot, "novel");
+    const externalPath = join(root, "external");
+    try {
+      mkdirSync(projectPath, { recursive: true });
+      mkdirSync(externalPath, { recursive: true });
+      writeProjectMarker(projectPath, "project-1");
+      writeProjectMarker(externalPath, "project-2");
+
+      expect(() =>
+        removeProjectTree(externalPath, { projectsRoot, projectId: "project-2" }),
+      ).toThrow(/outside/);
+      expect(existsSync(externalPath)).toBe(true);
+      expect(() =>
+        removeProjectTree(projectPath, { projectsRoot, projectId: "wrong-id" }),
+      ).toThrow(/marker/);
+
+      removeProjectTree(projectPath, { projectsRoot, projectId: "project-1" });
+      expect(existsSync(projectPath)).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

@@ -10,6 +10,7 @@ import {
   sanitizeProjectName,
   touchProject,
   updateProject,
+  writeProjectMarker,
 } from "@inkforge/storage";
 import type {
   ProjectCreateInput,
@@ -28,9 +29,11 @@ export function createProject(input: ProjectCreateInput): ProjectRecord {
   const projectPath = input.path?.trim()
     ? path.resolve(input.path)
     : path.join(ctx.workspaceDir, "projects", safeName);
+  const projectId = randomUUID();
   ensureProjectLayout(projectPath, name);
+  writeProjectMarker(projectPath, projectId);
   const record = insertProject(ctx.db, {
-    id: randomUUID(),
+    id: projectId,
     name,
     path: projectPath,
     dailyGoal: input.dailyGoal,
@@ -55,8 +58,13 @@ export function updateProjectRecord(input: ProjectUpdateInput): ProjectRecord {
 export function deleteProject(input: ProjectDeleteInput): { id: string } {
   const ctx = getAppContext();
   const project = getProject(ctx.db, input.id);
+  if (project && input.removeFiles) {
+    removeProjectTree(project.path, {
+      projectsRoot: path.join(ctx.workspaceDir, "projects"),
+      projectId: project.id,
+    });
+  }
   deleteProjectRow(ctx.db, input.id);
-  if (project && input.removeFiles) removeProjectTree(project.path);
   return { id: input.id };
 }
 
@@ -64,6 +72,7 @@ export function openProject(input: ProjectOpenInput): ProjectRecord {
   const ctx = getAppContext();
   const project = getProject(ctx.db, input.id);
   if (!project) throw new Error(`Project not found: ${input.id}`);
+  writeProjectMarker(project.path, project.id);
   touchProject(ctx.db, input.id);
   return { ...project, lastOpened: new Date().toISOString() };
 }

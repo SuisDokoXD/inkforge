@@ -1,6 +1,13 @@
 import type { DB } from "../db";
 import type { EncryptedSecret } from "../keystore";
 
+export interface ResearchCredentialPersistenceRecord {
+  provider: string;
+  encrypted: EncryptedSecret | null;
+  storedInKeychain: boolean;
+  updatedAt: string;
+}
+
 type Row = {
   provider: string;
   api_key_enc: string | null;
@@ -11,7 +18,7 @@ type Row = {
 };
 
 function rowToEncrypted(row: Row): EncryptedSecret | null {
-  if (row.api_key_enc && row.api_key_iv && row.api_key_tag) {
+  if (row.api_key_enc && row.api_key_iv && row.api_key_tag !== null) {
     return {
       ciphertext: row.api_key_enc,
       iv: row.api_key_iv,
@@ -64,6 +71,20 @@ export function getResearchCredentialEncrypted(
     .prepare(`SELECT * FROM research_credentials WHERE provider = ?`)
     .get(provider) as Row | undefined;
   return row ? rowToEncrypted(row) : null;
+}
+
+export function listResearchCredentialPersistenceRecords(
+  db: DB,
+): ResearchCredentialPersistenceRecord[] {
+  const rows = db
+    .prepare(`SELECT * FROM research_credentials ORDER BY provider ASC`)
+    .all() as Row[];
+  return rows.map((row) => ({
+    provider: row.provider,
+    encrypted: rowToEncrypted(row),
+    storedInKeychain: row.stored_in_keychain === 1,
+    updatedAt: row.updated_at,
+  }));
 }
 
 /**

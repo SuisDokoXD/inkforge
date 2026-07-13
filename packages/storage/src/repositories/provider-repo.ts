@@ -49,7 +49,7 @@ function rowToPersistenceRecord(row: ProviderRow): ProviderPersistenceRecord {
     tags = [];
   }
   const encrypted: EncryptedSecret | null =
-    row.api_key_enc && row.api_key_iv && row.api_key_tag
+    row.api_key_enc && row.api_key_iv && row.api_key_tag !== null
       ? {
           ciphertext: row.api_key_enc,
           iv: row.api_key_iv,

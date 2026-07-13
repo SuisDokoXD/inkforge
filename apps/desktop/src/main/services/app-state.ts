@@ -1,4 +1,4 @@
-import { app } from "electron";
+import { app, safeStorage } from "electron";
 import * as path from "path";
 import * as fs from "fs";
 import {
@@ -43,7 +43,11 @@ export function getAppContext(): AppContext {
   const db = openDatabase({ workspaceDir });
   const applied = runMigrations(db);
   if (applied > 0) logger.info(`Applied ${applied} database migration(s).`);
-  const keystore = createKeystore(workspaceDir);
+  const keystore = createKeystore(workspaceDir, {
+    isAvailable: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plaintext) => safeStorage.encryptString(plaintext),
+    decrypt: (ciphertext) => safeStorage.decryptString(ciphertext),
+  });
   context = { userDataDir, workspaceDir, config, db, keystore };
   return context;
 }

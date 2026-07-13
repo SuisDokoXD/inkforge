@@ -78,9 +78,38 @@ export interface Keystore {
   deleteKey(providerId: string, fallback?: EncryptedSecret | null): Promise<void>;
 }
 
-export function createKeystore(workspaceDir: string): Keystore {
+export interface OsSecretProtector {
+  isAvailable(): boolean;
+  encrypt(plaintext: string): Buffer;
+  decrypt(ciphertext: Buffer): string;
+}
+
+export const OS_PROTECTED_IV = "electron-safe-storage";
+
+export function isOsProtectedSecret(secret: EncryptedSecret | null | undefined): boolean {
+  return secret?.iv === OS_PROTECTED_IV;
+}
+
+export function createKeystore(
+  workspaceDir: string,
+  osProtector?: OsSecretProtector,
+): Keystore {
   return {
     async setKey(providerId, apiKey) {
+      if (osProtector?.isAvailable()) {
+        try {
+          return {
+            storedInKeychain: true,
+            encrypted: {
+              ciphertext: osProtector.encrypt(apiKey).toString("base64"),
+              iv: OS_PROTECTED_IV,
+              tag: OS_PROTECTED_IV,
+            },
+          };
+        } catch {
+          // Fall through to legacy keytar or workspace encryption.
+        }
+      }
       const keytar = await loadKeytar();
       if (keytar) {
         try {
@@ -94,6 +123,13 @@ export function createKeystore(workspaceDir: string): Keystore {
       return { storedInKeychain: false, encrypted };
     },
     async getKey(providerId, fallback) {
+      if (fallback && isOsProtectedSecret(fallback) && osProtector?.isAvailable()) {
+        try {
+          return osProtector.decrypt(Buffer.from(fallback.ciphertext, "base64"));
+        } catch {
+          return null;
+        }
+      }
       const keytar = await loadKeytar();
       if (keytar) {
         try {

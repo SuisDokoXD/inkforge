@@ -10,6 +10,14 @@ export interface ProjectLayout {
   bookJson: string;
 }
 
+const PROJECT_MARKER_DIR = ".inkforge";
+const PROJECT_MARKER_FILE = "project.json";
+
+interface ProjectMarker {
+  format: "inkforge.project";
+  projectId: string;
+}
+
 export function resolveProjectLayout(projectPath: string): ProjectLayout {
   return {
     root: projectPath,
@@ -36,6 +44,30 @@ export function ensureProjectLayout(projectPath: string, projectName: string): P
     );
   }
   return layout;
+}
+
+export function writeProjectMarker(projectPath: string, projectId: string): void {
+  const markerDir = path.join(projectPath, PROJECT_MARKER_DIR);
+  fs.mkdirSync(markerDir, { recursive: true });
+  const marker: ProjectMarker = { format: "inkforge.project", projectId };
+  fs.writeFileSync(
+    path.join(markerDir, PROJECT_MARKER_FILE),
+    JSON.stringify(marker, null, 2),
+    { encoding: "utf-8", mode: 0o600 },
+  );
+}
+
+export function hasProjectMarker(projectPath: string, projectId: string): boolean {
+  try {
+    const raw = fs.readFileSync(
+      path.join(projectPath, PROJECT_MARKER_DIR, PROJECT_MARKER_FILE),
+      "utf-8",
+    );
+    const marker = JSON.parse(raw) as Partial<ProjectMarker>;
+    return marker.format === "inkforge.project" && marker.projectId === projectId;
+  } catch {
+    return false;
+  }
 }
 
 export function sanitizeProjectName(name: string): string {
@@ -77,10 +109,21 @@ export function nextChapterFileName(projectPath: string, baseTitle: string): str
   return candidate;
 }
 
-export function removeProjectTree(projectPath: string): void {
-  if (!projectPath) return;
-  if (!fs.existsSync(projectPath)) return;
-  fs.rmSync(projectPath, { recursive: true, force: true });
+export function removeProjectTree(
+  projectPath: string,
+  options: { projectsRoot: string; projectId: string },
+): void {
+  if (!projectPath || !fs.existsSync(projectPath)) return;
+  const projectsRoot = fs.realpathSync(options.projectsRoot);
+  const resolvedProject = fs.realpathSync(projectPath);
+  const relative = path.relative(projectsRoot, resolvedProject);
+  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Refusing to delete a project outside the workspace projects directory");
+  }
+  if (!hasProjectMarker(resolvedProject, options.projectId)) {
+    throw new Error("Refusing to delete a directory without a matching InkForge project marker");
+  }
+  fs.rmSync(resolvedProject, { recursive: true, force: true });
 }
 
 /**

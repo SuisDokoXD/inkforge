@@ -88,11 +88,11 @@ export function UpdateIndicator(): JSX.Element | null {
         <motion.button
           type="button"
           className="inline-flex items-center gap-1 rounded border border-accent-600/50 bg-accent-900/30 px-2 py-0.5 text-[11px] text-accent-200 hover:bg-accent-800/40"
-          onClick={() => runUpdateAction(() => window.inkforge.update.download(), "下载更新失败，请稍后重试。")}
+          onClick={() => runUpdateAction(() => window.inkforge.update.openDownloadPage(), "打开下载页失败，请稍后重试。")}
           {...buttonMotion}
         >
-          <Download className="h-3.5 w-3.5" aria-hidden />
-          下载
+          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          打开下载页
         </motion.button>
         <motion.button
           type="button"

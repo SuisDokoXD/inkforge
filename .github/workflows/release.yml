@@ -42,6 +42,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify release tag matches desktop version
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || github.ref_name }}
+        run: pnpm verify:release-version "$RELEASE_TAG"
+
       - name: Ensure SQLite ABI for Node checks
         run: pnpm --filter @inkforge/desktop run sqlite:node
 
@@ -274,11 +279,6 @@ jobs:
   publish:
     name: Publish Release
     needs: [build-win, build-mac, build-linux]
-    # Tolerant publish: as long as Windows + Linux succeed, ship the release.
-    # If macOS also succeeds its artifacts will be included automatically;
-    # if macOS fails, is cancelled, or times out, we still publish Win+Linux
-    # instead of leaving the Releases page empty.
-    if: ${{ always() && needs.build-win.result == 'success' && needs.build-linux.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

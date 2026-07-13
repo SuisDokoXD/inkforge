@@ -25,9 +25,9 @@ function readTail(filePath: string, maxLines: number): string {
 }
 
 function detectKeystoreMode(workspace: string): string {
-  const keystoreFile = path.join(workspace, "keystore.json");
-  if (fs.existsSync(keystoreFile)) return "file (AES-GCM fallback)";
-  return "OS keychain (keytar)";
+  const masterFile = path.join(workspace, "keystore.master");
+  if (fs.existsSync(masterFile)) return "mixed or legacy workspace AES-GCM fallback";
+  return "OS-protected storage (Electron safeStorage)";
 }
 
 interface SchemaMigrationRow {

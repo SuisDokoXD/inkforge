@@ -34,11 +34,32 @@ export interface ZipReadEntry {
   localHeaderOffset: number;
 }
 
+export interface ZipReaderLimits {
+  maxArchiveBytes: number;
+  maxEntries: number;
+  maxEntryBytes: number;
+  maxTotalUncompressedBytes: number;
+  maxCompressionRatio: number;
+}
+
+const DEFAULT_LIMITS: ZipReaderLimits = {
+  maxArchiveBytes: 50 * 1024 * 1024,
+  maxEntries: 1000,
+  maxEntryBytes: 20 * 1024 * 1024,
+  maxTotalUncompressedBytes: 50 * 1024 * 1024,
+  maxCompressionRatio: 200,
+};
+
 // 读取整个 ZIP，返回 entries map（按 filename）。data 字段是惰性的 — 调用 read() 才解压。
 export class ZipReader {
   private entries = new Map<string, ZipReadEntry>();
+  private readonly limits: ZipReaderLimits;
 
-  constructor(private readonly buf: Buffer) {
+  constructor(private readonly buf: Buffer, limits?: Partial<ZipReaderLimits>) {
+    this.limits = { ...DEFAULT_LIMITS, ...limits };
+    if (buf.length > this.limits.maxArchiveBytes) {
+      throw new Error("zip: archive is too large");
+    }
     this.parseCentralDirectory();
   }
 
@@ -85,11 +106,17 @@ export class ZipReader {
     const totalEntries = buf.readUInt16LE(eocdOffset + 10);
     const cdSize = buf.readUInt32LE(eocdOffset + 12);
     const cdOffset = buf.readUInt32LE(eocdOffset + 16);
+    if (totalEntries > this.limits.maxEntries) throw new Error("zip: too many entries");
+    if (cdOffset + cdSize > buf.length) throw new Error("zip: invalid central directory bounds");
 
     let cursor = cdOffset;
     const cdEnd = cdOffset + cdSize;
     let parsed = 0;
+    let totalUncompressed = 0;
     while (cursor < cdEnd && parsed < totalEntries) {
+      if (cursor + 46 > cdEnd || cursor + 46 > buf.length) {
+        throw new Error("zip: truncated central directory entry");
+      }
       const sig = buf.readUInt32LE(cursor);
       if (sig !== SIG_CD) {
         throw new Error(
@@ -104,9 +131,26 @@ export class ZipReader {
       const extraLen = buf.readUInt16LE(cursor + 30);
       const commentLen = buf.readUInt16LE(cursor + 32);
       const localHeaderOffset = buf.readUInt32LE(cursor + 42);
+      if (cursor + 46 + nameLen + extraLen + commentLen > cdEnd) {
+        throw new Error("zip: invalid central directory entry bounds");
+      }
       const filename = buf
         .subarray(cursor + 46, cursor + 46 + nameLen)
         .toString("utf-8");
+      if (uncompressedSize > this.limits.maxEntryBytes) {
+        throw new Error(`zip: entry is too large: ${filename}`);
+      }
+      totalUncompressed += uncompressedSize;
+      if (totalUncompressed > this.limits.maxTotalUncompressedBytes) {
+        throw new Error("zip: total uncompressed size is too large");
+      }
+      if (
+        compressedSize > 0 &&
+        uncompressedSize / compressedSize > this.limits.maxCompressionRatio
+      ) {
+        throw new Error(`zip: suspicious compression ratio: ${filename}`);
+      }
+      if (this.entries.has(filename)) throw new Error(`zip: duplicate entry: ${filename}`);
       this.entries.set(filename, {
         filename,
         method,
@@ -118,11 +162,15 @@ export class ZipReader {
       cursor += 46 + nameLen + extraLen + commentLen;
       parsed += 1;
     }
+    if (parsed !== totalEntries || cursor !== cdEnd) {
+      throw new Error("zip: central directory entry count mismatch");
+    }
   }
 
   private readEntry(entry: ZipReadEntry): Buffer {
     const buf = this.buf;
     const off = entry.localHeaderOffset;
+    if (off + 30 > buf.length) throw new Error(`zip: invalid local header: ${entry.filename}`);
     if (buf.readUInt32LE(off) !== SIG_LOCAL) {
       throw new Error(`zip: bad local file header for ${entry.filename}`);
     }
@@ -130,14 +178,24 @@ export class ZipReader {
     const extraLen = buf.readUInt16LE(off + 28);
     const dataStart = off + 30 + nameLen + extraLen;
     const dataEnd = dataStart + entry.compressedSize;
+    if (dataStart < 0 || dataEnd > buf.length) {
+      throw new Error(`zip: invalid entry data bounds: ${entry.filename}`);
+    }
     const slice = buf.subarray(dataStart, dataEnd);
     if (entry.method === 0) {
       // STORED：直接返回拷贝（subarray 与父 buf 共享内存，拷贝避免被外部改）
+      if (slice.length !== entry.uncompressedSize) {
+        throw new Error(`zip: uncompressed size mismatch: ${entry.filename}`);
+      }
       return Buffer.from(slice);
     }
     if (entry.method === 8) {
       // DEFLATE：raw deflate（无 zlib 头）
-      return inflateRawSync(slice);
+      const output = inflateRawSync(slice, { maxOutputLength: this.limits.maxEntryBytes });
+      if (output.length !== entry.uncompressedSize) {
+        throw new Error(`zip: uncompressed size mismatch: ${entry.filename}`);
+      }
+      return output;
     }
     throw new Error(
       `zip: unsupported compression method ${entry.method} for ${entry.filename}`,

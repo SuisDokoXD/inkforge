@@ -1,6 +1,6 @@
 {
   "name": "@inkforge/root",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.24",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@9.0.0",
@@ -10,6 +10,7 @@
     "test": "turbo run test",
     "dev": "pnpm --filter @inkforge/desktop dev",
     "icons": "node scripts/build-icons.cjs",
+    "verify:release-version": "node scripts/verify-release-version.cjs",
     "clean": "turbo run clean"
   },
   "devDependencies": {

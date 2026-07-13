@@ -14,6 +14,11 @@ export type UpdateStatus =
 
 const listeners = new Set<(status: UpdateStatus) => void>();
 let latest: UpdateStatus = { state: "idle" };
+const OFFICIAL_RELEASE_URL = "https://github.com/SuisDokoXD/inkforge/releases/latest";
+
+function automaticInstallEnabled(): boolean {
+  return process.env.INKFORGE_ENABLE_SIGNED_AUTO_UPDATE === "1";
+}
 
 function emit(next: UpdateStatus): void {
   latest = next;
@@ -87,6 +92,9 @@ export async function checkForUpdatesManual(): Promise<UpdateStatus> {
 }
 
 export async function downloadUpdate(): Promise<void> {
+  if (!automaticInstallEnabled()) {
+    throw new Error("Automatic update installation is disabled for unsigned builds");
+  }
   try {
     await autoUpdater.downloadUpdate();
   } catch (err) {
@@ -95,6 +103,9 @@ export async function downloadUpdate(): Promise<void> {
 }
 
 export function quitAndInstall(): void {
+  if (!automaticInstallEnabled()) {
+    throw new Error("Automatic update installation is disabled for unsigned builds");
+  }
   try {
     autoUpdater.quitAndInstall(false, true);
   } catch (err) {
@@ -103,5 +114,5 @@ export function quitAndInstall(): void {
 }
 
 export async function openDownloadPage(): Promise<void> {
-  await openExternalHttpUrl("https://github.com/tompignofind123-cyber/inkforge/releases/latest");
+  await openExternalHttpUrl(OFFICIAL_RELEASE_URL);
 }
