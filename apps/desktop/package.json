@@ -81,7 +81,7 @@
     "@inkforge/storage": "workspace:*",
     "@inkforge/tavern-engine": "workspace:*",
     "@playwright/test": "^1.48.0",
-    "@tanstack/react-query": "^5.62.0",
+    "@tanstack/react-query": "^5.100.9",
     "@tiptap/core": "^2.10.0",
     "@tiptap/react": "^2.10.0",
     "@tiptap/starter-kit": "^2.10.0",
