@@ -352,7 +352,7 @@ export function WorkspacePage(): JSX.Element {
   return (
     <div className="flex h-full w-full min-w-0 flex-col bg-ink-900 text-ink-100">
       {/* B4: 专注模式下标题栏淡出（hover/focus-within 时显示） */}
-      <header className={`flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""}`}>
+      <header className={`relative z-30 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="text-accent-300">墨炉</span>
           <label htmlFor="workspace-project-select" className="sr-only">

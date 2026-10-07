@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "@tanstack/react-query";
 import type { Editor } from "@tiptap/react";
@@ -16,16 +17,9 @@ import { applySkillOutputToEditor, type SkillApplyRange } from "../lib/skill-out
 import { friendlyErrorMessage } from "../lib/friendly-error";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { Button, Select } from "./ui";
+import { calculateToolbarPosition, filterVisibleRects, type RectLike, type ToolbarPosition } from "../lib/selection-toolbar-position";
 
 const CONTEXT_WINDOW = 400;
-
-interface Rect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-  bottom: number;
-}
 
 interface ActionDef {
   kind: LLMQuickActionKind;
@@ -64,13 +58,14 @@ interface QuickResult {
 export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | null {
   const { editor, projectId, chapterId, chapterTitle, providerId, onPushFeedback, onAfterApply } = props;
   const reduce = useReducedMotion();
-  const [rect, setRect] = useState<Rect | null>(null);
+  const [position, setPosition] = useState<ToolbarPosition | null>(null);
   const [selectionText, setSelectionText] = useState<string>("");
   const [result, setResult] = useState<QuickResult | null>(null);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
   const { status: skillStatus, showStatus: showSkillStatus } = useTimedStatus();
   const [candidateCount, setCandidateCount] = useState<1 | 2 | 3>(1);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
   const activeSkillRunRef = useRef<{
     runId: string;
     skillName: string;
@@ -90,36 +85,36 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
 
   const updatePosition = useCallback(() => {
     if (!editor) {
-      setRect(null);
+      setPosition(null);
       setSelectionText("");
       return;
     }
     const { state, view } = editor;
     const { from, to, empty } = state.selection;
     if (empty || from === to) {
-      setRect(null);
+      setPosition(null);
       setSelectionText("");
       return;
     }
     const text = state.doc.textBetween(from, to, "\n", "\n").trim();
     if (!text) {
-      setRect(null);
+      setPosition(null);
       setSelectionText("");
       return;
     }
-    const start = view.coordsAtPos(from);
-    const end = view.coordsAtPos(to);
-    const top = Math.min(start.top, end.top);
-    const left = Math.min(start.left, end.left);
-    const right = Math.max(start.right, end.right);
-    const bottom = Math.max(start.bottom, end.bottom);
-    setRect({
-      top,
-      left,
-      width: Math.max(80, right - left),
-      height: Math.max(16, bottom - top),
-      bottom,
-    });
+    const editorDom = view.dom;
+    const range = window.getSelection()?.rangeCount ? window.getSelection()?.getRangeAt(0) : null;
+    const editorBounds = editorDom.getBoundingClientRect();
+    const domRects = range && editorDom.contains(range.commonAncestorContainer) ? Array.from(range.getClientRects()) : [];
+    const bounds: RectLike = { top: editorBounds.top, left: editorBounds.left, right: editorBounds.right, bottom: editorBounds.bottom, width: editorBounds.width, height: editorBounds.height };
+    const rects = filterVisibleRects(domRects.map((item) => ({ top: item.top, left: item.left, right: item.right, bottom: item.bottom, width: item.width, height: item.height })), bounds).sort((a, b) => a.top - b.top || a.left - b.left);
+    if (rects.length === 0) {
+      const start = view.coordsAtPos(from);
+      const end = view.coordsAtPos(to);
+      rects.push({ top: Math.min(start.top, end.top), left: Math.min(start.left, end.left), right: Math.max(start.right, end.right), bottom: Math.max(start.bottom, end.bottom), width: Math.max(1, Math.abs(end.right - start.left)), height: Math.max(1, Math.max(start.bottom, end.bottom) - Math.min(start.top, end.top)) });
+    }
+    const measured = toolbarRef.current?.getBoundingClientRect();
+    setPosition(calculateToolbarPosition(rects, measured?.width ?? 320, measured?.height ?? 34, bounds));
     setSelectionText(text);
   }, [editor]);
 
@@ -132,7 +127,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
       // Delay so clicking toolbar doesn't kill it.
       blurTimer = window.setTimeout(() => {
         if (!editor.isFocused && !document.activeElement?.closest("[data-selection-toolbar]")) {
-          setRect(null);
+          setPosition(null);
         }
       }, 150);
     };
@@ -151,6 +146,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
     const onResize = () => scheduleUpdate();
     window.addEventListener("scroll", onScroll, true);
     window.addEventListener("resize", onResize);
+    updatePosition();
     return () => {
       editor.off("selectionUpdate", handleUpdate);
       editor.off("blur", handleBlur);
@@ -161,19 +157,26 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
     };
   }, [editor, updatePosition]);
 
+  useEffect(() => {
+    if (!position || !toolbarRef.current || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => updatePosition());
+    observer.observe(toolbarRef.current);
+    return () => observer.disconnect();
+  }, [position, updatePosition]);
+
   const contextBefore = useMemo(() => {
     if (!editor) return "";
     const { from } = editor.state.selection;
     const start = Math.max(0, from - CONTEXT_WINDOW);
     return editor.state.doc.textBetween(start, from, "\n", "\n");
-  }, [editor, rect]);
+  }, [editor, position]);
 
   const contextAfter = useMemo(() => {
     if (!editor) return "";
     const { to } = editor.state.selection;
     const end = Math.min(editor.state.doc.content.size, to + CONTEXT_WINDOW);
     return editor.state.doc.textBetween(to, end, "\n", "\n");
-  }, [editor, rect]);
+  }, [editor, position]);
 
   const runAction = async (action: ActionDef) => {
     if (!editor) return;
@@ -357,24 +360,25 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
     }
   };
 
-  if (!rect && !result && !skillStatus) return null;
+  if (!position && !result && !skillStatus) return null;
 
-  return (
+  return createPortal((
     <>
-      {rect && (
+      {position && (
         <motion.div
+          ref={toolbarRef}
           data-selection-toolbar
-          className="fixed z-40 flex gap-1 rounded-lg border border-ink-600 bg-ink-800/95 px-1.5 py-1 text-xs text-ink-100 shadow-xl backdrop-blur"
+          className="fixed z-[5] flex max-w-[calc(100vw-16px)] gap-1 rounded-lg border border-ink-600 bg-ink-800/95 px-1.5 py-1 text-xs text-ink-100 shadow-xl backdrop-blur"
           style={{
             // 修复遮挡：工具条放在选区下方 4px，不再盖住文字
-            top: rect.bottom + 4,
-            left: rect.left + rect.width / 2,
+            top: position.top,
+            left: position.left,
           }}
           // 工具条出现时轻微弹入。注意：motion 的内联 transform 会覆盖 Tailwind 的
           // -translate-x-1/2，所以这里改由 motion 的 x:"-50%" 负责水平居中。
-          initial={reduce ? { opacity: 0, x: "-50%" } : { opacity: 0, scale: 0.92, x: "-50%" }}
-          animate={{ opacity: 1, scale: 1, x: "-50%" }}
-          transition={SPRING_SNAPPY}
+          initial={{ opacity: 0, x: "-50%", y: reduce ? 0 : position.placement === "above" ? 4 : -4 }}
+          animate={{ opacity: 1, x: "-50%", y: 0 }}
+          transition={reduce ? { duration: 0.15 } : SPRING_SNAPPY}
         >
           {ACTIONS.map((action) => (
             <Button
@@ -443,7 +447,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         </motion.div>
       )}
       <AnimatePresence initial={false}>
-        {skillStatus && !rect ? (
+        {skillStatus && !position ? (
           <motion.div
             key={skillStatus}
             data-selection-toolbar
@@ -462,7 +466,7 @@ export function SelectionToolbar(props: SelectionToolbarProps): JSX.Element | nu
         <ResultPopover result={result} onApply={apply} onClose={() => setResult(null)} />
       )}
     </>
-  );
+  ), document.body);
 }
 
 interface ResultPopoverProps {
@@ -483,7 +487,7 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
           : "代入改写";
   const options = response?.options ?? (response?.text ? [response.text] : []);
 
-  return (
+  return createPortal((
     <AnimatedDialog
       open
       onClose={onClose}
@@ -548,5 +552,5 @@ function ResultPopover({ result, onApply, onClose }: ResultPopoverProps): JSX.El
         </ul>
       )}
     </AnimatedDialog>
-  );
+  ), document.body);
 }
