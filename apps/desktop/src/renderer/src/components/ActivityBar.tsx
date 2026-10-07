@@ -2,6 +2,7 @@
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import {
   Feather,
+  PenLine,
   ListTree,
   Puzzle,
   Users,
@@ -31,10 +32,15 @@ interface ActivityBarProps {
 }
 
 const GROUP_ORDER: ReadonlyArray<NavShortcut["group"]> = ["core", "ai", "world"];
+const GROUP_LABELS: Record<NavShortcut["group"], string> = {
+  core: "写作",
+  ai: "AI 工具",
+  world: "世界",
+};
 
 // 各视图的单色线性图标（lucide）。取代原先的彩色 emoji，与系统蓝/灰阶主题协调。
 const VIEW_ICONS: Record<NavShortcut["view"], LucideIcon> = {
-  writing: Feather,
+  writing: PenLine,
   outline: ListTree,
   skill: Puzzle,
   character: Users,
@@ -64,14 +70,20 @@ export function ActivityBar({ onOpenPalette }: ActivityBarProps): JSX.Element {
 
   return (
     <nav
-      className="relative z-10 flex w-14 shrink-0 flex-col items-center gap-2 border-r border-ink-700 bg-ink-900 py-3"
+      className="activity-rail relative z-10 flex w-[4.25rem] shrink-0 flex-col items-center gap-2 border-r border-ink-700 bg-ink-900 py-3"
       role="tablist"
       aria-label={t("nav.aria.label")}
     >
+      <div className="mb-1 flex h-8 w-8 items-center justify-center rounded-md border border-accent-500/25 bg-accent-500/10 text-accent-300" aria-label="InkForge">
+        <Feather className="h-4 w-4" strokeWidth={1.8} aria-hidden="true" />
+      </div>
       <LayoutGroup id="activity-main-nav">
         {groupedItems.map((items, idx) => (
           <div key={idx} className="flex flex-col items-center gap-1">
-            {idx > 0 && <Divider short />}
+            {idx > 0 && <Divider short className="my-1" />}
+            <span className="w-full text-center text-[9px] font-medium tracking-wide text-ink-500" aria-hidden="true">
+              {GROUP_LABELS[GROUP_ORDER[idx]]}
+            </span>
             {items.map((item) => {
               const active = mainView === item.view;
               const label = t(item.labelKey);

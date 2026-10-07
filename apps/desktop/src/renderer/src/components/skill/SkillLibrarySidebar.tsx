@@ -34,18 +34,18 @@ export function SkillLibrarySidebar({
   onFilterScopeChange,
 }: SkillLibrarySidebarProps): JSX.Element {
   return (
-    <aside className="flex w-72 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40">
-      <div className="flex shrink-0 items-center justify-between border-b border-ink-700 px-3 py-2 text-sm">
+    <aside className="feature-sidebar flex w-[22rem] shrink-0 flex-col border-r border-ink-700 bg-ink-800/35">
+      <div className="flex min-h-[4.5rem] shrink-0 items-center justify-between border-b border-ink-700 px-4 py-3 text-sm">
         <div className="min-w-0">
-          <span className="flex items-center gap-2 font-medium text-accent-300">
+          <span className="flex items-center gap-2 font-semibold text-accent-300">
             <Library size={16} />
             写作指令库
           </span>
-          <p className="mt-0.5 truncate text-[11px] text-ink-500">
-            复用润色、审校、续写等写作任务
+          <p className="mt-1 truncate text-[11px] text-ink-500">
+            复用润色、审校、续写等写作要求
           </p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1.5">
           <button
             className="flex h-8 items-center gap-1 rounded-md border border-ink-600 px-2 text-xs hover:bg-ink-700"
             onClick={onCreateNew}
@@ -71,7 +71,7 @@ export function SkillLibrarySidebar({
           </button>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1 border-b border-ink-700 px-3 py-2 text-xs">
+      <div className="flex shrink-0 items-center gap-1 border-b border-ink-700 bg-ink-900/35 px-3 py-2.5 text-xs">
         {(["all", "global", "project", "community"] as const).map((scope) => (
           <button
             key={scope}
@@ -93,8 +93,8 @@ export function SkillLibrarySidebar({
         {skills.map((skill) => (
           <button
             key={skill.id}
-            className={`flex w-full flex-col items-start gap-0.5 border-b border-ink-700/40 px-3 py-2 text-left transition-colors ${
-              activeSkillId === skill.id ? "bg-ink-700/40" : "hover:bg-ink-700/20"
+            className={`flex w-full flex-col items-start gap-0.5 border-b border-ink-700/40 px-4 py-3 text-left transition-colors ${
+              activeSkillId === skill.id ? "border-l-2 border-l-accent-500 bg-accent-500/10" : "border-l-2 border-l-transparent hover:bg-ink-700/20"
             }`}
             onClick={() => onSelectSkill(skill.id)}
           >

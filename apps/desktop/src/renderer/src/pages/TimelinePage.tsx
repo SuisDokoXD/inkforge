@@ -9,6 +9,7 @@ import { useAppStore } from "../stores/app-store";
 import { useT } from "../lib/i18n";
 import { fadeOnly, staggerContainer, staggerItem } from "../lib/motion-tokens";
 import { Badge, Button } from "../components/ui";
+import { ToolPageShell } from "../components/layout/ToolPageShell";
 
 const ORIGIN_LABEL: Record<TimelineChapterNode["origin"], { zh: string; cls: string }> = {
   ai: { zh: "模型", cls: "bg-violet-500/15 text-violet-300 ring-violet-500/25" },
@@ -148,7 +149,8 @@ export function TimelinePage(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-ink-950">
+    <ToolPageShell title="时间线" description="按章节整理情节事件、人物登场和时间顺序" action={<Button size="sm" variant="accentSoft" onClick={() => setShowAddEvent((value) => !value)}><Plus className="h-3.5 w-3.5" />{showAddEvent ? "取消" : "添加事件"}</Button>}>
+    <div className="page-surface flex h-full flex-col overflow-hidden bg-ink-950">
       <header className="flex shrink-0 items-center gap-3 border-b border-ink-700 px-4 py-3">
         <GitBranch className="h-5 w-5 text-accent-300" aria-hidden="true" />
         <h1 className="text-sm font-semibold text-ink-100">
@@ -367,6 +369,7 @@ export function TimelinePage(): JSX.Element {
         )}
       </main>
     </div>
+    </ToolPageShell>
   );
 }
 

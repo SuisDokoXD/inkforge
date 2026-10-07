@@ -143,7 +143,7 @@ export function MaterialsPage(): JSX.Element {
   const currentProject = projects.find((p) => p.id === projectId) ?? null;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-ink-950/20">
+    <div className="page-surface feature-workspace flex h-full min-h-0 flex-col bg-ink-950/20">
       <header className="flex flex-wrap items-center gap-3 border-b border-ink-700 bg-ink-900/40 px-4 py-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold text-ink-100">
           <Layers3 className="h-4 w-4 text-accent-300" />

@@ -20,7 +20,7 @@ import { ProviderSwitcher } from "../components/ProviderSwitcher";
 import { ProviderSettingsPanel } from "../components/ProviderSettingsPanel";
 import { ExportDialog } from "../components/ExportDialog";
 import { PomodoroTimer } from "../components/PomodoroTimer";
-import { Timer } from "lucide-react";
+import { BookOpen, ChevronDown, PanelRight, Timer } from "lucide-react";
 import { Button, Tabs } from "../components/ui";
 
 interface HeadingJumpTarget extends ChapterHeadingItem {
@@ -352,15 +352,17 @@ export function WorkspacePage(): JSX.Element {
   return (
     <div className="flex h-full w-full min-w-0 flex-col bg-ink-900 text-ink-100">
       {/* B4: 专注模式下标题栏淡出（hover/focus-within 时显示） */}
-      <header className={`relative z-30 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-2 xl:px-4 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""}`}>
+      <header className={`workspace-context-bar relative z-30 flex min-h-11 min-w-0 flex-wrap items-center justify-between gap-2 border-b border-ink-700 bg-ink-800/70 px-3 py-1.5 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100 transition-opacity duration-200" : ""}`}>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-accent-300">墨炉</span>
+          <BookOpen className="h-4 w-4 shrink-0 text-accent-300" aria-hidden="true" />
+          <span className="hidden text-[11px] font-medium uppercase tracking-[0.12em] text-ink-500 sm:inline">写作</span>
+          <span className="text-ink-600" aria-hidden="true">/</span>
           <label htmlFor="workspace-project-select" className="sr-only">
             选择书籍
           </label>
           <select
             id="workspace-project-select"
-            className="min-w-0 max-w-[15rem] flex-1 rounded-lg border border-ink-600 bg-ink-800 px-2.5 py-1.5 text-sm text-ink-200 focus:border-accent-500 focus:outline-none"
+            className="min-w-0 max-w-[18rem] flex-1 rounded-md border border-ink-600 bg-ink-900/50 px-2 py-1 text-[13px] text-ink-100 focus:border-accent-500 focus:outline-none"
             value={resolvedProjectId ?? ""}
             onChange={(e) => switchProject.mutate(e.target.value)}
           >
@@ -371,8 +373,9 @@ export function WorkspacePage(): JSX.Element {
             ))}
           </select>
           {resolvedProject && (
-            <span className="hidden whitespace-nowrap text-xs text-ink-400 md:inline">
-              目标 {resolvedProject.dailyGoal} 字/日
+            <span className="hidden items-center gap-1 whitespace-nowrap text-xs text-ink-500 md:flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+              每日目标 {resolvedProject.dailyGoal} 字
             </span>
           )}
         </div>
@@ -412,6 +415,26 @@ export function WorkspacePage(): JSX.Element {
         </div>
       </header>
 
+      <nav className="page-subnav flex min-h-8 shrink-0 items-center gap-1 overflow-x-auto border-b border-ink-700/80 bg-ink-900/70 px-3 scrollbar-thin" aria-label="写作功能">
+        <span className="mr-2 hidden text-[11px] text-ink-500 md:inline">正文、结构和情节</span>
+        <span className="mr-1 hidden h-4 w-px bg-ink-700 md:inline" aria-hidden="true" />
+        {[
+          ["writing", "正文"],
+          ["outline", "大纲"],
+          ["timeline", "时间线"],
+        ].map(([view, label]) => (
+          <button
+            key={view}
+            type="button"
+            onClick={() => setMainView(view as "writing" | "outline" | "timeline")}
+            className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] transition-colors ${view === "writing" ? "bg-accent-500/15 text-accent-200" : "text-ink-400 hover:bg-ink-800 hover:text-ink-100"}`}
+            aria-current={view === "writing" ? "page" : undefined}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
       <AnimatePresence initial={false}>
         {chapterActionError ? (
           <motion.div
@@ -438,7 +461,11 @@ export function WorkspacePage(): JSX.Element {
 
       <main className="flex min-h-0 flex-1">
         {!focusMode && (
-        <aside className="flex w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-800/40 2xl:w-64">
+        <aside className="workspace-sidebar flex w-56 shrink-0 flex-col border-r border-ink-700 bg-ink-800/35 2xl:w-64">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-ink-700 px-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500">章节</span>
+            <span className="text-[10px] tabular-nums text-ink-500">{chapters.length} 章</span>
+          </div>
           <ChapterTree
             chapters={chapters}
             chapterHeadings={chapterHeadings}
@@ -470,7 +497,7 @@ export function WorkspacePage(): JSX.Element {
         )}
 
         {/* A7+B4: 编辑器区——多标签栏 + 可选分屏 */}
-        <section className={`flex min-w-0 flex-1 flex-col ${focusMode ? "editor-focus-vignette" : ""}`}>
+        <section className={`workspace-editor flex min-w-0 flex-1 flex-col ${focusMode ? "editor-focus-vignette" : ""}`}>
           <EditorTabBar chapters={chapters} focusMode={focusMode} />
           {splitMode ? (
             /* 分屏模式：2-3 列并排 */
@@ -504,15 +531,21 @@ export function WorkspacePage(): JSX.Element {
         </section>
 
         {!focusMode && (
-        <aside className="hidden w-72 shrink-0 flex-col border-l border-ink-700 bg-ink-800/40 xl:flex 2xl:w-80">
+        <aside className="workspace-inspector hidden w-72 shrink-0 flex-col border-l border-ink-700 bg-ink-800/35 xl:flex 2xl:w-80">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-ink-700 px-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-500">
+              <PanelRight className="h-3.5 w-3.5" aria-hidden="true" /> 辅助
+            </span>
+            <span className="text-ink-600" aria-hidden="true"><ChevronDown className="h-3.5 w-3.5" /></span>
+          </div>
           <Tabs
-            className="shrink-0"
+            className="shrink-0 px-2"
             variant="underline"
             value={rightPanel}
             onChange={(k) => setRightPanel(k as "timeline" | "chat")}
             items={[
-              { key: "timeline", label: "写作建议" },
-              { key: "chat", label: "聊天助手" },
+              { key: "timeline", label: "顾问" },
+              { key: "chat", label: "聊天" },
             ]}
           />
           <div className="min-h-0 flex-1">

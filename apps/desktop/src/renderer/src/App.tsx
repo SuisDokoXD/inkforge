@@ -44,6 +44,7 @@ import { CommandPalette } from "./components/CommandPalette";
 import { AnimatedPage } from "./components/AnimatedPage";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { LetterArrivalToast } from "./components/LetterArrivalToast";
+import { PageFrame } from "./components/layout/PageFrame";
 
 const MAIN_VIEW_ORDER = new Map<MainView, number>(
   NAV_SHORTCUTS.map((item, index) => [item.view, index]),
@@ -165,6 +166,11 @@ export function App(): JSX.Element {
   }, [settings.customAccent]);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const open = () => setPaletteOpen(true);
+    window.addEventListener("inkforge:open-command-palette", open);
+    return () => window.removeEventListener("inkforge:open-command-palette", open);
+  }, []);
   const shortcutHandlers = useMemo(
     () => ({
       onSwitchMainView: setMainView,
@@ -365,7 +371,11 @@ export function App(): JSX.Element {
               <AnimatePresence mode="wait" initial={false}>
                 <AnimatedPage key={mainView} direction={pageTransitionDirection}>
                   <Suspense fallback={<PageSkeleton label={t("app.loading")} />}>
-                    {renderPage(mainView)}
+                    {mainView === "writing" ? renderPage(mainView) : (
+                      <PageFrame view={mainView as Exclude<MainView, "writing">}>
+                        {renderPage(mainView)}
+                      </PageFrame>
+                    )}
                   </Suspense>
                 </AnimatedPage>
               </AnimatePresence>

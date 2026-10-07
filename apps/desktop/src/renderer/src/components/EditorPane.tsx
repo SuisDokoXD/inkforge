@@ -2018,12 +2018,11 @@ export function EditorPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`flex min-h-12 items-center justify-between gap-3 border-b border-ink-700 bg-ink-800/70 px-4 py-2.5 text-sm transition-opacity duration-200 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100" : ""}`}>
-        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+      <div className={`editor-command-bar flex min-h-10 flex-nowrap items-center gap-3 border-b border-ink-700 bg-ink-800/70 px-3 py-1.5 text-sm transition-opacity duration-200 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100" : ""}`}>
+        <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-hidden">
           <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5 text-xs text-ink-300">
-          <span className="hidden text-ink-400 lg:inline">汉字 {stats.chinese} · 词 {stats.words}</span>
+        <div className="editor-command-actions flex min-w-0 flex-1 flex-nowrap items-center justify-start gap-1 text-xs text-ink-300">
           <span className="hidden max-w-40 truncate text-ink-500 xl:inline" title={cursorStatusLabel}>{cursorStatusLabel}</span>
           {/* 工具栏改纯图标 + 原生悬浮提示(title)，按功能分组用竖线分隔：整体更轻、窄窗也放得下。 */}
           {/* v20: 显式撤回/重做（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
@@ -2269,6 +2268,7 @@ export function EditorPane({
               )}
             </AnimatePresence>
           </div>
+          <div className="editor-command-trailing">
           {/* C7: TTS 朗读器 */}
           <ReadAloud text={content} />
           {focusMode && chapterHeadings.length > 0 ? (
@@ -2316,6 +2316,7 @@ export function EditorPane({
           >
             <Focus className="h-4 w-4" />
           </IconButton>
+          </div>
         </div>
       </div>
       <ChapterWorkflowBar

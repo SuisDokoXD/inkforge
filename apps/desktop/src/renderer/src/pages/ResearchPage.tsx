@@ -270,7 +270,7 @@ export function ResearchPage(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full bg-ink-950/20">
+    <div className="page-surface feature-workspace flex h-full min-h-0 w-full bg-ink-950/20">
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="border-b border-ink-700 bg-ink-900/55 px-5 py-4">
           <div className="flex flex-wrap items-start justify-between gap-4">

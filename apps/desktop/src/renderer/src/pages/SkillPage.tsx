@@ -325,7 +325,7 @@ export function SkillPage(): JSX.Element {
   };
 
   return (
-    <div className="flex h-full w-full bg-ink-900 text-ink-100">
+    <div className="page-surface flex h-full w-full bg-ink-900 text-ink-100">
       <SkillLibrarySidebar
         skills={skillsQuery.data ?? []}
         isLoading={skillsQuery.isLoading}
@@ -346,8 +346,8 @@ export function SkillPage(): JSX.Element {
         onFilterScopeChange={setFilterScope}
       />
 
-      <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ink-700 bg-ink-800/60 px-4 py-2 text-sm">
+      <section className="feature-workspace flex min-w-0 flex-1 flex-col">
+        <div className="feature-toolbar flex min-h-[4.5rem] shrink-0 items-center justify-between gap-4 border-b border-ink-700 bg-ink-800/55 px-5 py-3 text-sm">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <TextField
               className="h-9 w-72 bg-ink-900 font-medium"
@@ -488,8 +488,8 @@ export function SkillPage(): JSX.Element {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-          <div className="flex flex-col gap-4 p-4">
-            <section className="rounded-xl border border-ink-700 bg-ink-800/30 p-4">
+          <div className="feature-content flex max-w-[1120px] flex-col gap-4 p-5">
+            <section className="feature-section rounded-lg border border-ink-700 bg-ink-800/30 p-5">
               <div className="mb-3 flex items-start justify-between gap-4">
                 <div>
                   <h1 className="text-base font-semibold text-ink-100">
@@ -538,7 +538,7 @@ export function SkillPage(): JSX.Element {
               </div>
             </section>
 
-            <section className="rounded-xl border border-ink-700/70 bg-ink-800/35 p-4 shadow-sm">
+            <section className="feature-section rounded-lg border border-ink-700/70 bg-ink-800/35 p-5 shadow-sm">
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-ink-100">指令内容</h2>
@@ -727,7 +727,7 @@ export function SkillPage(): JSX.Element {
               </div>
             </details>
 
-            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
+            <section className="feature-section rounded-lg border border-ink-700/70 bg-ink-800/25 p-5">
               <div className="mb-3">
                 <h2 className="text-sm font-semibold text-ink-100">触发方式</h2>
                 <p className="mt-1 text-xs text-ink-400">
@@ -822,7 +822,7 @@ export function SkillPage(): JSX.Element {
               </div>
             </section>
 
-            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
+            <section className="feature-section rounded-lg border border-ink-700/70 bg-ink-800/25 p-5">
               <div className="mb-3">
                 <h2 className="text-sm font-semibold text-ink-100">结果怎么处理</h2>
                 <p className="mt-1 text-xs text-ink-400">
@@ -881,7 +881,7 @@ export function SkillPage(): JSX.Element {
               </div>
             </section>
 
-            <section className="rounded-xl border border-ink-700/70 bg-ink-800/25 p-4">
+            <section className="feature-section rounded-lg border border-ink-700/70 bg-ink-800/25 p-5">
               <div className="mb-2 flex items-center justify-between text-xs text-ink-400">
                 <span className="flex items-center gap-2">
                   <FlaskConical size={14} />

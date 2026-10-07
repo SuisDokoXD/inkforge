@@ -434,6 +434,159 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* 全局工作台层级：页面壳、上下文栏和写作三栏共享同一条视觉基线。 */
+.page-frame-content > * {
+  min-height: 0;
+}
+
+/* 所有功能页共用的内容基线。页面保留自己的业务布局，但共享背景、边界和密度。 */
+.page-surface {
+  color: rgb(var(--ink-100));
+  background-color: rgb(var(--ink-900));
+}
+
+.page-surface :where(.rounded-xl) {
+  border-radius: 0.5rem;
+}
+
+.page-surface :where(.shadow-2xl, .shadow-xl) {
+  box-shadow: 0 16px 34px -28px rgb(0 0 0 / 0.55);
+}
+
+.page-surface :where(input, textarea, select) {
+  border-radius: 0.375rem;
+}
+
+.page-surface :where(button):focus-visible,
+.page-surface :where(a):focus-visible,
+.page-surface :where(input, textarea, select):focus-visible {
+  outline: 2px solid rgb(var(--accent-500) / 0.5);
+  outline-offset: 2px;
+}
+
+.page-context-bar,
+.workspace-context-bar {
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgb(var(--ink-50) / 0.025);
+}
+
+.activity-rail {
+  background: linear-gradient(180deg, rgb(var(--ink-900)), rgb(var(--ink-800) / 0.72));
+}
+
+.workspace-sidebar,
+.workspace-inspector {
+  box-shadow: inset 0 1px 0 rgb(var(--ink-50) / 0.018);
+}
+
+.workspace-editor {
+  background: rgb(var(--ink-900));
+}
+
+.workspace-context-bar select { min-height: 2rem; }
+
+.editor-command-bar { min-height: 2.5rem; }
+.editor-command-bar { overflow: visible; }
+.editor-command-actions { overflow: visible; scrollbar-width: none; }
+.editor-command-actions::-webkit-scrollbar { display: none; }
+.editor-command-bar .icon-button,
+.editor-command-bar button { min-height: 1.875rem; }
+.editor-command-trailing {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 0.5rem;
+  border-left: 1px solid rgb(var(--ink-700));
+}
+
+/* 资源编辑型页面：左侧资源栏、顶部对象工具栏、中央纵向分段内容。 */
+.feature-sidebar {
+  background: linear-gradient(180deg, rgb(var(--ink-800) / 0.52), rgb(var(--ink-900) / 0.86));
+}
+
+.tool-page-shell { color: rgb(var(--ink-100)); }
+.tool-page-rail { width: clamp(15rem, 20vw, 22rem); }
+.tool-page-toolbar { box-shadow: 0 1px 0 rgb(var(--ink-50) / 0.025); }
+.tool-page-content-inner { width: min(100%, 1180px); padding: 1.25rem; }
+.tool-page-content-inner > :where(section, article) {
+  border-radius: 0.5rem;
+}
+.tool-page-content-inner > :where(section, article) + :where(section, article) { margin-top: 1rem; }
+
+/* 资源型工具页的三段式骨架：列表栏更窄、主编辑区有稳定内边距、辅助栏保持弱层级。 */
+.feature-workspace > aside:first-child {
+  background: linear-gradient(180deg, rgb(var(--ink-800) / 0.46), rgb(var(--ink-900) / 0.9));
+}
+.feature-workspace > main,
+.feature-workspace > section {
+  min-width: 0;
+  background: rgb(var(--ink-900));
+}
+.feature-workspace > main > header,
+.feature-workspace > section > header {
+  min-height: 3.75rem;
+  border-bottom: 1px solid rgb(var(--ink-700));
+  background: rgb(var(--ink-800) / 0.45);
+}
+.feature-workspace :where(h1, h2, h3) {
+  letter-spacing: 0;
+}
+.feature-workspace :where(textarea) {
+  border-radius: 0.5rem;
+  border-color: rgb(var(--ink-700));
+  background: rgb(var(--ink-950) / 0.55);
+}
+.feature-workspace :where(.border-dashed) {
+  background: rgb(var(--ink-800) / 0.18);
+}
+@media (max-width: 760px) {
+  .tool-page-rail { width: 15rem; }
+  .tool-page-content-inner { padding: 0.875rem; }
+  .tool-page-toolbar { min-height: 3.75rem; padding-inline: 1rem; }
+}
+
+.feature-toolbar {
+  box-shadow: 0 1px 0 rgb(var(--ink-50) / 0.025);
+}
+
+.feature-content {
+  width: min(100%, 1120px);
+}
+
+.feature-section > h1,
+.feature-section > h2,
+.feature-section > details > summary {
+  letter-spacing: 0;
+}
+
+.feature-section textarea {
+  min-height: 13rem;
+  resize: vertical;
+}
+
+@media (max-width: 900px) {
+  .feature-sidebar { width: 17rem; }
+  .feature-content { padding: 1rem; }
+}
+
+@media (max-width: 700px) {
+  .feature-sidebar { width: 14rem; }
+  .feature-toolbar { flex-wrap: wrap; }
+}
+
+@media (max-width: 1100px) {
+  .activity-rail { width: 3.75rem; }
+  .workspace-sidebar { width: 13rem; }
+}
+
+@media (max-width: 840px) {
+  .activity-rail { width: 3.25rem; }
+  .workspace-sidebar { display: none; }
+  .page-context-bar { padding-inline: 0.75rem; }
+}
+
 .dialog-surface {
   background-color: rgb(var(--dialog-bg)) !important;
   border-color: rgb(var(--dialog-border)) !important;

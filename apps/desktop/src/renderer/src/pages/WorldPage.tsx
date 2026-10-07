@@ -235,7 +235,7 @@ export function WorldPage(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full w-full flex-col bg-ink-900">
+    <div className="page-surface flex h-full w-full flex-col bg-ink-900">
       <div className="flex shrink-0 items-center gap-1 border-b border-ink-700 px-3 py-1.5 text-xs">
         <button
           className={`rounded-md px-3 py-1 ${tab === "entries" ? "bg-accent-500 text-ink-900" : "text-ink-300 hover:bg-ink-800"}`}

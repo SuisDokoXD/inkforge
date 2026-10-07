@@ -20,6 +20,7 @@ import {
 } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { Badge, Button } from "../components/ui";
+import { ToolPageShell } from "../components/layout/ToolPageShell";
 
 /**
  * 作家档案 + 成就大厅。
@@ -77,7 +78,8 @@ export function AchievementHallPage(): JSX.Element {
   const statusIsError = status !== null && /失败|无法|异常/.test(status);
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-ink-950 p-6">
+    <ToolPageShell title="成就" description="回看持续写作留下的里程碑" action={<Button size="sm" variant="accentSoft" onClick={() => checkMut.mutate()} disabled={checkMut.isPending}><RefreshCw className="h-3.5 w-3.5" />扫描成就</Button>}>
+    <div className="page-surface flex h-full flex-col overflow-y-auto bg-ink-950 p-6">
       <div className="mx-auto w-full max-w-4xl">
         {/* 作家档案 */}
         <motion.div
@@ -277,6 +279,7 @@ export function AchievementHallPage(): JSX.Element {
         ))}
       </div>
     </div>
+    </ToolPageShell>
   );
 }
 

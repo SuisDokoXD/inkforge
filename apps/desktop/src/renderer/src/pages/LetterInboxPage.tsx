@@ -190,7 +190,7 @@ export function LetterInboxPage(): JSX.Element {
   };
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-ink-950/20">
+    <div className="page-surface flex h-full min-h-0 overflow-hidden bg-ink-950/20">
       <aside className="flex w-[320px] shrink-0 flex-col border-r border-ink-700 bg-ink-900/55">
         <div className="border-b border-ink-700 p-4">
           <div className="flex items-start justify-between gap-3">

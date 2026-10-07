@@ -106,8 +106,8 @@ export function BookListGrid({
           )}
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(300px,420px)_minmax(0,1fr)] overflow-hidden">
-        <div className="min-h-0 overflow-y-auto border-r border-ink-700/70 p-4 scrollbar-thin">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,340px)] overflow-hidden">
+        <div className="min-h-0 overflow-y-auto border-r border-ink-700/70 p-5 scrollbar-thin">
         {books.length === 0 ? (
           <div className="flex min-h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-ink-700 bg-ink-800/30 px-6 py-10 text-center">
             <BookOpen size={36} className="text-ink-500" />
@@ -130,7 +130,7 @@ export function BookListGrid({
           </div>
         ) : (
           <motion.div
-            className="grid grid-cols-1 gap-3"
+            className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3"
             variants={staggerContainer}
             initial="initial"
             animate="animate"
@@ -151,16 +151,16 @@ export function BookListGrid({
                       setActiveActionBookId(null);
                     }
                   }}
-                  className={`group relative flex gap-3 rounded-lg border p-3 text-left transition-colors ${
+                  className={`group relative flex min-h-[154px] gap-3 rounded-lg border p-3.5 text-left transition-colors ${
                     opened
-                      ? "border-accent-500/40 bg-accent-500/10"
-                      : "border-ink-700 bg-ink-900/40 hover:border-accent-500/30 hover:bg-ink-800/60"
+                      ? "border-accent-500/50 bg-accent-500/10 shadow-[inset_3px_0_0_rgb(var(--accent-500))]"
+                      : "border-ink-700 bg-ink-800/25 hover:border-ink-500 hover:bg-ink-800/55"
                   }`}
                 >
                   <motion.button
                     type="button"
                     onClick={() => onPickBook(book.project.id)}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
                     whileTap={reduceMotion ? undefined : tapPress}
                     transition={SPRING_SNAPPY}
                   >
@@ -170,13 +170,19 @@ export function BookListGrid({
                       editable={false}
                       fallbackName={book.project.name}
                     />
-                    <div className="w-full">
-                      <div className="truncate text-sm font-medium text-ink-100">
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="truncate pr-7 text-sm font-semibold text-ink-100">
                         {book.project.name}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap gap-1 text-[11px] text-ink-400">
+                      <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-ink-400">
                         <span>{book.chapterCount} 章</span>
                         <span>· {fmtNum(book.totalWords)} 字</span>
+                      </div>
+                      <div className="mt-3 h-1 overflow-hidden rounded-full bg-ink-700/80" aria-label={`今日新增 ${fmtNum(book.todayWords)} 字`}>
+                        <div className="h-full rounded-full bg-accent-500/75" style={{ width: `${Math.min(100, Math.max(4, book.todayWords > 0 ? (book.todayWords / Math.max(1, book.project.dailyGoal)) * 100 : 4))}%` }} />
+                      </div>
+                      <div className="mt-1 text-[10px] text-ink-500">
+                        {book.todayWords > 0 ? `今日新增 ${fmtNum(book.todayWords)} 字` : `最近编辑：${fmtDate(book.lastChapterUpdatedAt ?? book.project.lastOpened)}`}
                       </div>
                       <div className="mt-1 flex gap-1 text-[10px]">
                         {book.originCounts["ai-auto"] > 0 && (
@@ -209,7 +215,7 @@ export function BookListGrid({
                           tone="accent"
                           className="mt-1 flex w-fit rounded bg-accent-500/15 px-1.5 py-0 font-normal text-accent-300 ring-accent-500/25"
                         >
-                          已打开为标签页
+                          当前打开
                         </Badge>
                       )}
                     </div>
@@ -291,7 +297,7 @@ export function BookListGrid({
                 <div>
                   <h3 className="text-lg font-semibold text-ink-100">书房概览</h3>
                   <p className="mt-1 text-sm leading-6 text-ink-400">
-                    从左侧打开一本书后，会进入它的章节列表；也可以在这里新建书籍，先把项目架起来。
+                    选择一本书继续写作，或创建一个新的项目。
                   </p>
                 </div>
                 {onCreateBook && (
@@ -352,12 +358,14 @@ export function BookListGrid({
             </section>
 
             <section className="rounded-xl border border-ink-700 bg-ink-800/20 p-5">
-              <h3 className="text-sm font-semibold text-ink-100">这里可以做什么</h3>
-              <div className="mt-3 grid gap-2 text-xs leading-6 text-ink-400 md:grid-cols-2">
-                <p className="rounded-md bg-ink-950/45 p-3">打开一本书，管理它的章节、来源标签、版本备份和章节日志。</p>
-                <p className="rounded-md bg-ink-950/45 p-3">给书籍补充设定和世界观，后续模型写作会读取这些资料。</p>
-                <p className="rounded-md bg-ink-950/45 p-3">把不同作品同时打开成标签页，在多本书之间快速切换。</p>
-                <p className="rounded-md bg-ink-950/45 p-3">从这里新建书籍，再去写作页继续正文创作。</p>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-ink-100">项目状态</h3>
+                <span className="text-[10px] uppercase tracking-[0.12em] text-ink-500">local</span>
+              </div>
+              <div className="mt-3 space-y-2 text-xs text-ink-400">
+                <div className="flex items-center justify-between border-b border-ink-700/70 pb-2"><span>数据位置</span><span className="text-ink-200">本机</span></div>
+                <div className="flex items-center justify-between border-b border-ink-700/70 pb-2"><span>打开标签</span><span className="text-ink-200">{openIds.size}</span></div>
+                <div className="flex items-center justify-between"><span>今日新增</span><span className="text-emerald-300">{fmtNum(todayWords)} 字</span></div>
               </div>
             </section>
           </div>

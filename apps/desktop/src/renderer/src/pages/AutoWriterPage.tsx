@@ -68,7 +68,7 @@ export function AutoWriterPage(): JSX.Element {
   const activeChapter = chapters.find((c) => c.id === activeChapterId) ?? null;
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-[300px_minmax(0,1fr)_300px] bg-ink-950 text-ink-100">
+    <div className="page-surface feature-workspace grid h-full min-h-0 grid-cols-[300px_minmax(0,1fr)_300px] bg-ink-950 text-ink-100">
       <aside className="flex min-h-0 flex-col border-r border-ink-700 bg-ink-900/55">
         <header className="border-b border-ink-700 px-4 py-3">
           <div className="flex items-center gap-2">

@@ -396,7 +396,7 @@ export function OutlinePage(): JSX.Element {
   if (!project) return <div className="p-6 text-ink-400">加载项目元数据…</div>;
 
   return (
-    <div className="flex h-full w-full flex-col bg-ink-900 text-ink-100">
+    <div className="page-surface flex h-full w-full flex-col bg-ink-900 text-ink-100">
       <header className="flex shrink-0 items-center gap-3 border-b border-ink-700 bg-ink-900/95 px-4 py-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-500/15 text-accent-300 ring-1 ring-accent-500/25">
           <ClipboardList className="h-5 w-5" />

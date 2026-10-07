@@ -263,7 +263,7 @@ export function ReviewPage(): JSX.Element {
     (rangeKind === "book" || selectedChapterIds.length > 0);
 
   return (
-    <div className="grid h-full w-full grid-cols-[360px_320px_minmax(0,1fr)] bg-ink-950 text-ink-100">
+    <div className="page-surface feature-workspace grid h-full w-full grid-cols-[360px_320px_minmax(0,1fr)] bg-ink-950 text-ink-100">
       <aside className="flex min-h-0 flex-col border-r border-ink-700 bg-ink-900/55">
         <header className="border-b border-ink-700 px-4 py-3">
           <div className="flex items-center gap-2">

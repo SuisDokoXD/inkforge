@@ -6,6 +6,7 @@ import { BarChart3, TrendingUp, Flame, Target, Clock, FileText } from "lucide-re
 import { chapterApi, projectApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { fadeOnly, fadeSlideUp, staggerContainer, staggerItem } from "../lib/motion-tokens";
+import { ToolPageShell } from "../components/layout/ToolPageShell";
 
 // C4: 纯 CSS 柱状图（无外部依赖）
 function MiniBarChart({ data, maxHeight = 80 }: { data: { label: string; value: number }[]; maxHeight?: number }) {
@@ -92,7 +93,8 @@ export function StatsPage(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-ink-950 p-6">
+    <ToolPageShell title="数据统计" description={`查看《${project?.name ?? "当前作品"}》的进度和写作节奏`}>
+    <div className="page-surface flex h-full flex-col overflow-y-auto bg-ink-950 p-6">
       <div className="mx-auto w-full max-w-4xl">
         <motion.div variants={motionV} initial="initial" animate="animate">
           <h1 className="flex items-center gap-2 text-lg font-semibold text-ink-100 mb-6">
@@ -197,5 +199,6 @@ export function StatsPage(): JSX.Element {
         </motion.div>
       </div>
     </div>
+    </ToolPageShell>
   );
 }
