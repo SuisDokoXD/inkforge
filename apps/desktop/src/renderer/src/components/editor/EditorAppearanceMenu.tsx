@@ -32,7 +32,12 @@ export function EditorAppearanceMenu({
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     window.addEventListener("mousedown", handler);
-    return () => window.removeEventListener("mousedown", handler);
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("mousedown", handler);
+      window.removeEventListener("keydown", escape);
+    };
   }, [open]);
 
   const adjustFontSize = (delta: number) => {

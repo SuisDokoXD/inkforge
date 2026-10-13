@@ -27,6 +27,7 @@ interface BookListGridProps {
   onDeleteBook?: (book: BookSummary) => void;
   /** 触发"书籍设定 / 全局世界观"对话框（v20） */
   onOpenSettings?: (book: BookSummary) => void;
+  persistentActions?: boolean;
 }
 
 function fmtNum(n: number): string {
@@ -52,6 +53,7 @@ export function BookListGrid({
   onRenameBook,
   onDeleteBook,
   onOpenSettings,
+  persistentActions = false,
 }: BookListGridProps): JSX.Element {
   const reduceMotion = useReducedMotion() === true;
   const [activeActionBookId, setActiveActionBookId] = useState<string | null>(null);
@@ -106,7 +108,7 @@ export function BookListGrid({
           )}
         </div>
       </div>
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,340px)] overflow-hidden">
+      <div className="book-library-layout grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(280px,340px)] overflow-hidden">
         <div className="min-h-0 overflow-y-auto border-r border-ink-700/70 p-5 scrollbar-thin">
         {books.length === 0 ? (
           <div className="flex min-h-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-ink-700 bg-ink-800/30 px-6 py-10 text-center">
@@ -222,7 +224,7 @@ export function BookListGrid({
                   </motion.button>
                   {(onRenameBook || onDeleteBook || onOpenSettings) && (
                     <AnimatePresence initial={false}>
-                      {activeActionBookId === book.project.id ? (
+                      {persistentActions || activeActionBookId === book.project.id ? (
                         <motion.div
                           key="book-actions"
                           className="absolute right-2 top-2 flex gap-1"

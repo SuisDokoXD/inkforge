@@ -70,12 +70,14 @@ interface NewBookDialogProps {
   open: boolean;
   onClose: () => void;
   onCreated?: (projectId: string) => void;
+  showStoragePaths?: boolean;
 }
 
 export function NewBookDialog({
   open,
   onClose,
   onCreated,
+  showStoragePaths = true,
 }: NewBookDialogProps): JSX.Element | null {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
@@ -189,11 +191,11 @@ export function NewBookDialog({
           ) : null}
         </motion.label>
 
-        <motion.div className="text-[11px] text-ink-500" variants={reduceMotion ? fadeOnly : staggerItem}>
+        {showStoragePaths && <motion.div className="text-[11px] text-ink-500" variants={reduceMotion ? fadeOnly : staggerItem}>
           创建后会在工作目录下生成 <code className="text-ink-300">projects/{name.trim() || "<书名>"}</code>，
           含 <code className="text-ink-300">chapters/</code>、<code className="text-ink-300">characters/</code>、
           <code className="text-ink-300">world/</code> 等子目录。
-        </motion.div>
+        </motion.div>}
 
         <AnimatePresence initial={false}>
           {error && (

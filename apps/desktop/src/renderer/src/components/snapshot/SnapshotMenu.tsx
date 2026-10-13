@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BookOpen, Trash2, X } from "lucide-react";
@@ -32,6 +32,8 @@ export interface SnapshotMenuProps {
   onBeforeSnapshotAction?: () => Promise<void> | void;
   /** 关闭菜单。父组件控制打开状态。 */
   onClose?: () => void;
+  /** Let a containing dialog defer dismissal while a data operation is pending. */
+  onBusyChange?: (busy: boolean) => void;
   /** 列表上限，默认 50。 */
   limit?: number;
   /** 仅显示某些 kind。默认全部。 */
@@ -92,6 +94,7 @@ export function SnapshotMenu({
   onRestored,
   onBeforeSnapshotAction,
   onClose,
+  onBusyChange,
   limit = 50,
   kinds,
 }: SnapshotMenuProps): JSX.Element {
@@ -174,6 +177,8 @@ export function SnapshotMenu({
   });
 
   const items = useMemo(() => listQuery.data ?? [], [listQuery.data]);
+  const busy = preparing || createMut.isPending || restoreMut.isPending || deleteMut.isPending;
+  useEffect(() => { onBusyChange?.(busy); }, [busy, onBusyChange]);
 
   const runBeforeSnapshotAction = async (): Promise<boolean> => {
     if (!onBeforeSnapshotAction) return true;
@@ -234,6 +239,7 @@ export function SnapshotMenu({
           <motion.button
             type="button"
             onClick={onClose}
+            disabled={busy}
             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-300 hover:bg-ink-700"
             aria-label="关闭章节版本备份"
             title="关闭"

@@ -84,13 +84,33 @@ import type {
   TerminalResizePayload,
   TerminalSpawnInput,
   TerminalSpawnResponse,
+  InkforgeApi,
 } from "@inkforge/shared";
 
-function api() {
-  if (typeof window === "undefined" || !window.inkforge) {
-    throw new Error("window.inkforge is not available. Running outside Electron preload?");
+let configuredApi: InkforgeApi | null = null;
+
+/**
+ * Renderer platform boundary. Electron configures this with its preload API;
+ * Capacitor can provide the same contract without changing page components.
+ */
+export function configurePlatformApi(nextApi: InkforgeApi): void {
+  configuredApi = nextApi;
+}
+
+export function getConfiguredPlatformApi(): InkforgeApi {
+  if (configuredApi) return configuredApi;
+  const desktopWindow = typeof window === "undefined"
+    ? null
+    : window as Window & { inkforge?: InkforgeApi };
+  if (desktopWindow?.inkforge) {
+    configuredApi = desktopWindow.inkforge;
+    return desktopWindow.inkforge;
   }
-  return window.inkforge;
+  throw new Error("InkForge platform API is not configured.");
+}
+
+function api() {
+  return getConfiguredPlatformApi();
 }
 
 export const projectApi = {

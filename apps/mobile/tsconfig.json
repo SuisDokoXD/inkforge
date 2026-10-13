@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@inkforge/shared": ["../../packages/shared/src/index.ts"],
+      "@renderer/*": ["../desktop/src/renderer/src/*"]
+    },
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true,
+    "declaration": false
+  },
+  "include": ["src", "capacitor.config.ts", "vite.config.ts", "../desktop/src/renderer/src/lib/api.ts"]
+}

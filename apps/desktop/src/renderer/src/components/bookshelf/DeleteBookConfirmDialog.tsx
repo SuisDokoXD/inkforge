@@ -14,6 +14,7 @@ interface DeleteBookConfirmDialogProps {
   project: ProjectRecord | null;
   onClose: () => void;
   onDeleted?: (id: string) => void;
+  localDatabaseOnly?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export function DeleteBookConfirmDialog({
   project,
   onClose,
   onDeleted,
+  localDatabaseOnly = false,
 }: DeleteBookConfirmDialogProps): JSX.Element | null {
   const queryClient = useQueryClient();
   const closeTab = useBookshelfStore((s) => s.closeBookTab);
@@ -76,7 +78,7 @@ export function DeleteBookConfirmDialog({
           即将删除《<span className="text-ink-100">{project.name}</span>》。该操作不可撤销。
         </p>
 
-        <label className="mb-3 flex items-start gap-2 text-xs text-ink-300" htmlFor="delete-book-remove-files">
+        {localDatabaseOnly ? <p className="mb-3 text-xs text-ink-300">将删除本机保存的作品、正文和封面，请先备份需要保留的内容。</p> : <label className="mb-3 flex items-start gap-2 text-xs text-ink-300" htmlFor="delete-book-remove-files">
           <input
             id="delete-book-remove-files"
             type="checkbox"
@@ -92,7 +94,7 @@ export function DeleteBookConfirmDialog({
               不勾选则仅清理数据库行，磁盘文件保留以便日后手动恢复。
             </span>
           </span>
-        </label>
+        </label>}
 
         <label className="mb-3 block" htmlFor="delete-book-confirm-text">
           <span className="mb-1 block text-[11px] text-ink-400">
