@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "baseUrl": ".",
     "paths": {
+      "@inkforge/editor": ["../../packages/editor/src/index.ts"],
       "@inkforge/shared": ["../../packages/shared/src/index.ts"],
       "@renderer/*": ["../desktop/src/renderer/src/*"]
     },
