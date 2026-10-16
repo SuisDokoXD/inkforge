@@ -134,7 +134,7 @@ test("character page chapter import entry renders", async () => {
     );
   }, ids);
   await win.reload({ waitUntil: "domcontentloaded" });
-  await expect(win.getByText("酒馆会话")).toBeVisible();
+  await expect(win.getByRole("banner").getByRole("heading", { name: "酒馆会话", exact: true })).toBeVisible();
   await win.getByRole("button", { name: "+ 新建" }).click();
   await expect(win.getByText("玩法模板")).toBeVisible();
   await expect(win.getByText("冲突圆桌")).toBeVisible();
