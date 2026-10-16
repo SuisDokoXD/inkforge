@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { CapacitorSQLite, SQLiteConnection } from '@capacitor-community/sqlite';
-import { createStorage, type DraftStorage } from './platform';
+import { createStorage, type Draft, type DraftStorage } from './platform';
+import { createRecoveryJournal, mergeRecoveryDrafts, type RecoveryJournal } from './recovery-journal';
 import { addDailyWords, createWorkspaceApi, emptyWorkspace, runWorkspaceOperation, type WorkspacePersistence, type WorkspaceState } from './workspace-api';
 
 const key = 'inkforge.mobile.workspace.v1';
@@ -80,36 +81,13 @@ export async function openWorkspaceDraftStorage(): Promise<DraftStorage> {
   return workspaceDraftStorage(storage);
 }
 
-export function workspaceDraftStorage(storage: WorkspacePersistence): DraftStorage {
+export function workspaceDraftStorage(
+  storage: WorkspacePersistence,
+  journal: RecoveryJournal = createRecoveryJournal(),
+): DraftStorage {
   const api = createWorkspaceApi(storage);
-  const repository: DraftStorage = {
-    async loadBooks() {
-      return (await api.project.list()).map(project => ({
-        id: project.id, title: project.name, updatedAt: Date.parse(project.lastOpened ?? project.createdAt),
-      }));
-    },
-    async loadDrafts(bookId) {
-      const records = await api.chapter.list({ projectId: bookId });
-      return Promise.all(records.map(async record => ({
-        id: record.id, bookId: record.projectId, title: record.title,
-        text: (await api.chapter.read({ id: record.id })).content,
-        updatedAt: Date.parse(record.updatedAt ?? new Date(0).toISOString()),
-      })));
-    },
-    async saveBook(book) {
-      // Prototype IDs must survive migration and recovery-journal replay.
-      await runWorkspaceOperation(storage, state => {
-      const existing = state.projects.find(item => item.id === book.id);
-      if (existing) { existing.name = book.title; return; }
-      state.projects.push({
-        id: book.id, name: book.title, path: '', createdAt: new Date(book.updatedAt).toISOString(),
-        dailyGoal: 2000, lastOpened: null, synopsis: '', genre: '', subGenre: '', tags: [],
-        masterOutline: '', preRefineMasterOutline: null, globalWorldview: '',
-      });
-      }, true);
-    },
-    async save(draft) {
-      await runWorkspaceOperation(storage, state => {
+  const saveDraft = async (draft: Draft) => {
+    await runWorkspaceOperation(storage, state => {
       const existing = state.chapters.find(item => item.record.id === draft.id);
       if (!state.projects.some(item => item.id === draft.bookId)) throw new Error('作品不存在');
       const wordCount = Array.from(draft.text.replace(/\s/g, '')).length;
@@ -127,8 +105,37 @@ export function workspaceDraftStorage(storage: WorkspacePersistence): DraftStora
           filePath: '', updatedAt: new Date(draft.updatedAt).toISOString(),
         }, content: draft.text, deleted: false });
       }
+    }, true);
+  };
+  return {
+    async loadBooks() {
+      return (await api.project.list()).map(project => ({
+        id: project.id, title: project.name, updatedAt: Date.parse(project.lastOpened ?? project.createdAt),
+      }));
+    },
+    async loadDrafts(bookId) {
+      const records = await api.chapter.list({ projectId: bookId });
+      const persisted = await Promise.all(records.map(async record => ({
+        id: record.id, bookId: record.projectId, title: record.title,
+        text: (await api.chapter.read({ id: record.id })).content,
+        updatedAt: Date.parse(record.updatedAt ?? new Date(0).toISOString()),
+      })));
+      const recovered = journal.read().drafts.filter(draft => draft.bookId === bookId);
+      const result = await mergeRecoveryDrafts(persisted, recovered, saveDraft, journal.clear);
+      return result.drafts;
+    },
+    async saveBook(book) {
+      // Prototype IDs must survive migration and recovery-journal replay.
+      await runWorkspaceOperation(storage, state => {
+        const existing = state.projects.find(item => item.id === book.id);
+        if (existing) { existing.name = book.title; return; }
+        state.projects.push({
+          id: book.id, name: book.title, path: '', createdAt: new Date(book.updatedAt).toISOString(),
+          dailyGoal: 2000, lastOpened: null, synopsis: '', genre: '', subGenre: '', tags: [],
+          masterOutline: '', preRefineMasterOutline: null, globalWorldview: '',
+        });
       }, true);
     },
+    save: saveDraft,
   };
-  return repository;
 }

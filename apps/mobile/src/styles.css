@@ -95,3 +95,13 @@ input, textarea, select { min-height: 44px; }
   .chapter-row { min-height: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.trash-toggle { align-self: stretch; justify-content: flex-start !important; margin: 8px; background: transparent !important; }
+.trash-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; color: #666d72; font-size: 12px; }
+.trash-row { display: flex; align-items: center; gap: 4px; margin: 0 0 4px; padding: 2px; }
+.trash-row-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 8px 4px; font-size: 13px; }
+.trash-row > button { flex: 0 0 auto; padding-inline: 8px; }
+.trash-row > .trash-delete { color: #a23d34; }
+.trash-empty-state { margin: auto 0; padding: 24px 12px; text-align: center; color: #666d72; font-size: 13px; }
+@media (max-width: 760px) { .trash-row { gap: 2px; } }
+@media (max-width: 760px) { .shared-bookshelf .book-library-layout .group > div:last-child { position: static !important; flex-shrink: 0; align-self: flex-start; } }
+@media (max-width: 760px) { .shared-editor-toolbar .editor-appearance-menu { order: 1; } }

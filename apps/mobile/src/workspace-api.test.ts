@@ -95,4 +95,20 @@ describe('shared renderer mobile workspace API', () => {
     expect(summary.todayWords).toBe(218);
     expect((await reopened.cover.get({ projectId: book.id })).base64).toBe('aW1hZ2U=');
   });
+  it('empties only the selected project trash and removes related recovery data', async () => {
+    const store = persistence();
+    const api = createWorkspaceApi(store);
+    const first = await api.project.create({ name: '书一' });
+    const second = await api.project.create({ name: '书二' });
+    const a = await api.chapter.create({ projectId: first.id, title: '待清理', filePath: '' });
+    const b = await api.chapter.create({ projectId: second.id, title: '保留', filePath: '' });
+    await api.chapter.autosaveWrite({ id: a.id, content: '恢复稿' });
+    await api.chapter.delete({ id: a.id });
+    await api.chapter.delete({ id: b.id });
+
+    expect(await api.chapter.trashEmpty({ projectId: first.id })).toEqual({ count: 1 });
+    expect(await api.chapter.trashList({ projectId: first.id })).toEqual([]);
+    expect((await api.chapter.trashList({ projectId: second.id })).map(item => item.id)).toEqual([b.id]);
+    expect((await store.read()).recovery).toEqual({});
+  });
 });

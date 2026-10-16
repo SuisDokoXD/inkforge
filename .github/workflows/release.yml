@@ -55,6 +55,10 @@ jobs:
 
       - name: Test
         run: pnpm test
+      - name: Mobile tests and typecheck
+        run: |
+          pnpm --filter @inkforge/mobile test
+          pnpm --filter @inkforge/mobile typecheck
 
       - name: Verify desktop checks
         run: pnpm --filter @inkforge/desktop run verify:all
@@ -276,9 +280,60 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  build-android:
+    name: Build Android debug APK
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 9.0.0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK platform and build tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web assets and sync Capacitor Android project
+        run: pnpm --filter @inkforge/mobile run android:sync
+
+      - name: Build debug-signed APK
+        run: bash ./gradlew --no-daemon assembleDebug
+        working-directory: apps/mobile/android
+
+      - name: Stage versioned test APK
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./apps/mobile/package.json').version")"
+          cp apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk "InkForge-${VERSION}-android-debug.apk"
+
+      - name: Upload Android test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: InkForge-*-android-debug.apk
+          if-no-files-found: error
+          retention-days: 30
   publish:
     name: Publish Release
-    needs: [build-win, build-mac, build-linux]
+    needs: [build-win, build-mac, build-linux, build-android]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -312,7 +367,7 @@ jobs:
         shell: bash
         run: |
           COUNT_ALL=$(find release-assets -type f | wc -l)
-          COUNT_INSTALLERS=$(find release-assets -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" \) | wc -l)
+          COUNT_INSTALLERS=$(find release-assets -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" -o -name "*.apk" \) | wc -l)
           echo "all_files=$COUNT_ALL"
           echo "installer_files=$COUNT_INSTALLERS"
           if [ "$COUNT_ALL" -eq 0 ]; then
@@ -328,7 +383,7 @@ jobs:
       - name: Generate SHA256 checksums
         shell: bash
         run: |
-          find release-assets -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" \) -print0 \
+          find release-assets -type f \( -name "*.exe" -o -name "*.dmg" -o -name "*.zip" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.tar.gz" -o -name "*.apk" \) -print0 \
             | sort -z \
             | xargs -0 sha256sum > release-assets/SHA256SUMS.txt
           cat release-assets/SHA256SUMS.txt
@@ -345,6 +400,7 @@ jobs:
             release-assets/**/*.dmg
             release-assets/**/*.zip
             release-assets/**/*.AppImage
+            release-assets/**/*.apk
             release-assets/**/*.deb
             release-assets/**/*.tar.gz
             release-assets/**/*.yml

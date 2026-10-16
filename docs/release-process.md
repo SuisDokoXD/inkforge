@@ -1,13 +1,13 @@
 # M5-H · 发布候选流程
 
-## beta.25 发布约束
+## beta.26 发布约束
 
-- 原生模块构建统一使用 Node.js 20、pnpm 9 和 Python 3.11。
-- 根包版本、桌面包版本和 Git 标签必须完全一致。
-- 测试和打包前运行 `pnpm verify:release-version v0.1.0-beta.25`。
-- Windows、macOS、Linux 三个平台必须全部构建成功才允许发布。
-- beta.25 保持未签名，不设置 `INKFORGE_ENABLE_SIGNED_AUTO_UPDATE`；用户只从官方 GitHub Release 手动升级并校验 `SHA256SUMS.txt`。
-- 禁止通过重命名旧安装包发布新版本，所有产物必须从对应标签提交重新构建。
+- 原生模块构建统一使用 Node.js 20、pnpm 9 和 Python 3.11；Android CI 使用 Java 21 与 Android Gradle Plugin 8.7.2。
+- 根包、桌面包、移动包及 Android `versionName` 必须与 Git 标签版本一致；Android `versionCode` 每次递增。
+- 测试和打包前运行 `pnpm verify:release-version v0.1.0-beta.26`。
+- Windows、macOS、Linux 桌面包与 Android debug APK 四个构建任务全部成功才允许发布。
+- 桌面版保持未签名；Android 附带 debug 签名 APK，仅供侧载测试，不是 Play Store 正式签名。CI debug keystore 不持久化，后续测试版升级可能需要先卸载旧 APK。
+- 所有产物必须从对应标签提交重新构建，并由 Release 上传 `SHA256SUMS.txt`；禁止重命名旧安装包发布新版本。
 
 > 版本：0.1.0-beta.0 · 2026-04-21
 > 目标读者：第一次打 Release 的维护者
@@ -18,42 +18,48 @@
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm --filter @inkforge/desktop rebuild electron
 pnpm --filter @inkforge/desktop exec electron-builder install-app-deps
-pnpm typecheck                                              # 17/17
-pnpm --filter @inkforge/desktop run verify:all              # 60 断言
-pnpm --filter @inkforge/desktop run build                   # Electron Vite
-pnpm --filter @inkforge/desktop run dist:dir                # 本机试打包（不生成安装器）
+pnpm typecheck
+pnpm --filter @inkforge/desktop run verify:all
+pnpm --filter @inkforge/desktop run build
+pnpm --filter @inkforge/desktop run dist:dir
+pnpm --filter @inkforge/mobile test
+pnpm --filter @inkforge/mobile typecheck
+pnpm --filter @inkforge/mobile build
+pnpm --filter @inkforge/mobile android:sync
 ```
 
 全部通过后再继续。
 
 ## Step 2. 同步版本号
 
-- `apps/desktop/package.json` `version` → `0.1.0-beta.0`（或后续升）
-- `CHANGELOG.md` 顶部复制模板，填空
+- 根包、桌面包、移动包与 Android `versionName` 均为 `0.1.0-beta.26`；Git tag 使用 `v0.1.0-beta.26`，Android `versionCode` 从 1 递增至 2。
+- `CHANGELOG.md` 记录 beta.26 的功能与验收摘要。
+- Android 本地 Gradle 安装器构建需 Java 21 与 Android SDK；Release workflow 在 Ubuntu runner 构建 debug 测试 APK。
 
 ## Step 3. 打标签触发 CI
 
 ```bash
-git commit -am "chore(release): 0.1.0-beta.0"
-git tag v0.1.0-beta.0
-git push origin main v0.1.0-beta.0
+git add <本次发布文件>
+git commit -m "chore(release): 0.1.0-beta.26"
+git tag v0.1.0-beta.26
+git push origin main
+git push origin v0.1.0-beta.26
 ```
 
 推标签会触发 `.github/workflows/release.yml`：
 
-- 先在 ubuntu runner 上跑 `pnpm typecheck`、`pnpm test` 和 desktop `verify:all`
-- 再在 windows / macos / ubuntu runner 上分别运行 `electron-builder`
-- Windows 产物会额外跑 packaged UI smoke：系统启动 `win-unpacked/InkForge.exe`，通过 CDP 检查真实 packaged renderer、preload API 和 workspace 数据库
-- 生成 `apps/desktop/release/` 下的产物（当前 CI 默认：Windows `.exe`、macOS `.zip`、Linux `.AppImage`，以及 `latest*.yml` / `.blockmap` 更新元数据）
-- publish job 会为下载产物生成 `SHA256SUMS.txt`，再创建正式 GitHub Release 并上传产物
-- publish 对 macOS 宽容：Windows + Linux 成功即可发布；macOS 成功时会自动包含 macOS 产物
+- Ubuntu verify job 校验版本标签，并运行 typecheck、全仓库 test、移动端测试/typecheck 和 desktop `verify:all`
+- Windows / macOS / Ubuntu 分别构建桌面安装包；Windows 额外跑 packaged UI smoke
+- Ubuntu Android job 运行 `android:sync`，再以 Java 21 / Gradle 8.11.1 构建 debug 签名 APK
+- publish 等待四个平台 job 全部成功，收集合并资产并生成 `SHA256SUMS.txt`
+- GitHub Release 附件包括桌面 `.exe` / `.zip` / `.AppImage`、Android `*-android-debug.apk` 及自动更新元数据
 
 ## Step 4. 人工检查 + 发布
 
-- 打开 GitHub Releases，确认三平台产物齐全
+- 打开 GitHub Releases，确认 Windows / macOS / Linux / Android 测试 APK 产物齐全
 - 对照 `SHA256SUMS.txt` 抽查至少一个安装包的 SHA256
-- 下载 Windows / Mac 各至少一个产物，跑一遍欢迎向导 + 写 200 字 + 生成日报
-- 填写 Release Notes（`docs/release-notes.md` 模板）
+- 下载 Windows / Mac 产物运行桌面冒烟；Android APK 仅用于侧载测试（首次安装，之后若 debug 签名变化需卸载旧版）
+- 填写 Release Notes（GitHub tag 发布自动生成变更说明，`CHANGELOG.md` 保留详细项目日志）
 - 如果是手动触发且选择了 draft，先点击 "Publish release"；tag 推送则会直接发布
 
 ## Step 5. 发布后观察

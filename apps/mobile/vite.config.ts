@@ -15,5 +15,10 @@ export default defineConfig({
     },
   },
   css: { postcss: resolve(__dirname, 'postcss.config.cjs') },
+  build: {
+    // Avoid esbuild's Windows large-input temp-file cleanup path; Terser keeps the production bundle minified.
+    target: 'esnext',
+    minify: 'terser',
+  },
   server: { port: 5174, strictPort: true },
 });

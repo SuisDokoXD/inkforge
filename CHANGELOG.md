@@ -6,6 +6,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), adhering to [S
 
 ---
 
+## [0.1.0-beta.26] — 2026-10-16
+
+### ✨ 新功能
+
+- **Android 本地移动写作**：支持本机书架、章节编辑、SQLite 保存、自动保存恢复、版本备份与背景顾问。
+- **移动端章节回收站**：可恢复章节，也可二次确认后永久删除单章或清空回收站。
+- **Android 测试 APK**：GitHub Release 工作流发布 debug 签名 APK，供侧载验收；不是 Play 商店正式签名版本。
+
+### 🔧 改进
+
+- **保存恢复可靠性**：崩溃恢复稿在持久化成功前保留；保存队列丢弃尚未落盘的旧快照，避免覆盖较新内容。
+- **Android 生产构建**：绕过 Windows esbuild 大型临时文件清理故障，使用 Terser 保持发布包压缩。
+- **移动触控布局**：修正书架操作遮挡、外观菜单边缘裁切，并适配 360px 视口。
+
+### ✅ 验收
+
+- 移动端测试：23/23 通过；typecheck、production build、Capacitor Android sync 全部通过。
+- Playwright 360px 冒烟：书稿/章节/回收站流程、撤销/重做、外观调整、手动备份与启动失败提示通过。
+- Android APK 使用临时 runner 的 debug 签名，仅适用于测试侧载；不同 Release 的 debug 密钥可能不同，升级时可能需先卸载旧测试 APK。
+
+---
+
 ## [Unreleased] — M9 · 体验打磨与社区生态
 
 聚焦三大用户痛点：性能慢 / 找不到功能 / 新用户上手难。无破坏性数据层变更。

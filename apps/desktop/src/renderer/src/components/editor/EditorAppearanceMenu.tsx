@@ -49,7 +49,7 @@ export function EditorAppearanceMenu({
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative editor-appearance-menu">
       <IconButton
         size="sm"
         variant={open ? "accentSoft" : "ghost"}

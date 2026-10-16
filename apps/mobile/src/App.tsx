@@ -8,10 +8,10 @@ import { capabilities, clearApiKey, loadSavedApiKey, saveApiKey, type Book, type
 import { openWorkspaceDraftStorage, openWorkspaceStorage } from './workspace-storage';
 import { advisorContext, createAdvisorMemoryApi, emptyAdvisorMemory, type AdvisorMemory } from './advisor-memory';
 import { SaveQueue } from './save-queue';
+import { createRecoveryJournal } from './recovery-journal';
 import { SharedBookshelf } from './SharedBookshelf';
 import { SharedWritingEditor } from './SharedWritingEditor';
 
-const recoveryKey = 'inkforge.mobile.validation.recovery';
 
 type AdvisorChunk =
   | { type: 'delta'; text: string }
@@ -128,6 +128,15 @@ export function App() {
   const [clearMemoryConfirm, setClearMemoryConfirm] = useState(false);
   const [deleteChapterId, setDeleteChapterId] = useState<string | null>(null);
   const [deletingChapter, setDeletingChapter] = useState(false);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashChapters, setTrashChapters] = useState<Awaited<ReturnType<typeof chapterApi.trashList>>>([]);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashBusyId, setTrashBusyId] = useState<string | null>(null);
+  const [permanentDeleteId, setPermanentDeleteId] = useState<string | null>(null);
+  const [emptyTrashConfirm, setEmptyTrashConfirm] = useState(false);
+  const [emptyingTrash, setEmptyingTrash] = useState(false);
+  const recoveryJournal = useRef<ReturnType<typeof createRecoveryJournal> | null>(null);
+  if (!recoveryJournal.current) recoveryJournal.current = createRecoveryJournal();
   const queue = useRef<SaveQueue | null>(null);
   const storageRef = useRef<DraftStorage | null>(null);
   const latest = useRef<Draft | null>(null);
@@ -162,9 +171,15 @@ export function App() {
     await queue.current.save(draft);
     if (!mounted.current) return;
     if (latest.current?.id === draft.id && latest.current.updatedAt === draft.updatedAt) {
-      localStorage.removeItem(`${recoveryKey}:${draft.id}`);
+      let warning = '';
+      try {
+        recoveryJournal.current?.clear(draft.id);
+        const remaining = recoveryJournal.current?.read();
+        if (remaining?.invalidIds.length) warning = '检测到无法解析的本机恢复日志，原记录未删除；请先备份应用数据。';
+        else if (remaining?.drafts.length) warning = `有 ${remaining.drafts.length} 条恢复稿尚未写入本机数据库；最新内容仍保留在恢复日志中。`;
+      } catch { warning = '正文已保存，但本机恢复记录未能清理或读取。'; }
       setStatus('已保存');
-      setError('');
+      setError(warning);
     }
   }
 
@@ -182,35 +197,34 @@ export function App() {
         storageRef.current = storage;
         queue.current = new SaveQueue(storage);
         let loadedBooks = await storage.loadBooks();
-        let saved = (await Promise.all(loadedBooks.map(book => storage.loadDrafts(book.id)))).flat();
-        const keys = Object.keys(localStorage).filter(key => key.startsWith(`${recoveryKey}:`));
-        for (const key of keys) {
-          const recovery = localStorage.getItem(key);
-          if (!recovery) continue;
-          const parsed = JSON.parse(recovery) as Partial<Draft> & Pick<Draft, 'id' | 'title' | 'text' | 'updatedAt'>;
-          const draft: Draft = { ...parsed, bookId: parsed.bookId ?? 'book-local' };
+        const journal = recoveryJournal.current ?? createRecoveryJournal();
+        for (const draft of journal.read().drafts) {
           if (!loadedBooks.some(book => book.id === draft.bookId)) {
-            const fallback: Book = { id: draft.bookId, title: '我的书稿', updatedAt: Date.now() };
-            await storage.saveBook(fallback);
-            loadedBooks = [...loadedBooks, fallback];
+            const fallback: Book = { id: draft.bookId, title: '我的书稿', updatedAt: draft.updatedAt };
+            try {
+              await storage.saveBook(fallback);
+              loadedBooks = [...loadedBooks, fallback];
+            } catch {
+              // Keep the recovery journal intact; a later launch can retry once storage is available.
+            }
           }
-          const previous = saved.find(item => item.id === draft.id);
-          if (!previous || draft.updatedAt > previous.updatedAt) {
-            await storage.save(draft);
-            saved = [...saved.filter(item => item.id !== draft.id), draft];
-          }
-          localStorage.removeItem(key);
         }
+        const saved = (await Promise.all(loadedBooks.map(book => storage.loadDrafts(book.id)))).flat();
+        const remainingRecovery = journal.read();
         if (mounted.current) {
-          const firstBookDrafts: Draft[] = [];
+          if (remainingRecovery.invalidIds.length) {
+            setError('检测到无法解析的本机恢复日志，原记录未删除；请先备份应用数据。');
+          } else if (remainingRecovery.drafts.length) {
+            setError(`有 ${remainingRecovery.drafts.length} 条恢复稿尚未写入本机数据库；最新内容仍保留在恢复日志中。`);
+          }
           setBooks(loadedBooks);
           setChapterCounts(Object.fromEntries(loadedBooks.map(book => [book.id, saved.filter(draft => draft.bookId === book.id).length])));
           setActiveBookId(null);
-          setDrafts(firstBookDrafts);
-          setActiveId(firstBookDrafts[0]?.id ?? null);
-          latest.current = firstBookDrafts[0] ?? null;
+          setDrafts([]);
+          setActiveId(null);
+          latest.current = null;
           setReady(true);
-          setStatus('已保存');
+          setStatus(remainingRecovery.drafts.length ? '恢复稿待保存' : '已保存');
         }
       } catch { setError('无法打开本地存储，请保留应用数据后重试。'); setStatus('加载失败'); }
     })();
@@ -253,6 +267,8 @@ export function App() {
     const nextDrafts = await storageRef.current?.loadDrafts(book.id) ?? [];
     setChapterCounts(counts => ({ ...counts, [book.id]: nextDrafts.length }));
     setActiveBookId(book.id);
+    setTrashOpen(false);
+    setTrashChapters([]);
     setDrafts(nextDrafts);
     setActiveId(nextDrafts[0]?.id ?? null);
     latest.current = nextDrafts[0] ?? null;
@@ -279,9 +295,17 @@ export function App() {
       updatedAt: Math.max(draft.updatedAt, (drafts.find(item => item.id === draft.id)?.updatedAt ?? 0) + 1),
     };
     latest.current = nextDraft;
-    try { localStorage.setItem(`${recoveryKey}:${nextDraft.id}`, JSON.stringify(nextDraft)); }
+    try { recoveryJournal.current?.write(nextDraft); }
     catch { setError('恢复草稿写入失败，请立即保存或导出正文。'); }
-    setDrafts(items => [...items.filter(item => item.id !== nextDraft.id), nextDraft]);
+    setDrafts(items => {
+      let found = false;
+      const next = items.map(item => {
+        if (item.id !== nextDraft.id) return item;
+        found = true;
+        return nextDraft;
+      });
+      return found ? next : [...next, nextDraft];
+    });
     setStatus('保存中');
     void persist(nextDraft).catch(() => { setError('保存失败，恢复草稿仍在本机，请重试。'); setStatus('保存失败'); });
   }
@@ -302,7 +326,7 @@ export function App() {
         await queue.current?.flush();
       }
       await chapterApi.delete({ id: targetId });
-      localStorage.removeItem(`${recoveryKey}:${targetId}`);
+      recoveryJournal.current?.clear(targetId);
       const remaining = await storageRef.current?.loadDrafts(bookId) ?? [];
       setDrafts(remaining);
       setChapterCounts(counts => ({ ...counts, [bookId]: remaining.length }));
@@ -318,6 +342,70 @@ export function App() {
     } finally {
       setDeletingChapter(false);
     }
+  }
+
+  async function openTrash() {
+    if (!activeBookId) return;
+    setTrashOpen(true);
+    setTrashLoading(true);
+    setError('');
+    try { setTrashChapters(await chapterApi.trashList({ projectId: activeBookId })); }
+    catch { setError('无法读取回收站，请重试。'); }
+    finally { setTrashLoading(false); }
+  }
+
+  async function restoreTrashChapter(id: string) {
+    const projectId = activeBookId;
+    if (!projectId || trashBusyId || running) return;
+    setTrashBusyId(id);
+    setError('');
+    try {
+      await chapterApi.trashRestore({ id });
+      const [remaining, trashed] = await Promise.all([
+        storageRef.current?.loadDrafts(projectId) ?? Promise.resolve([]),
+        chapterApi.trashList({ projectId }),
+      ]);
+      setDrafts(remaining);
+      setChapterCounts(counts => ({ ...counts, [projectId]: remaining.length }));
+      setTrashChapters(trashed);
+    } catch {
+      setError('恢复章节失败；章节仍保留在回收站中，请重试。');
+    } finally { setTrashBusyId(null); }
+  }
+
+  async function permanentlyDeleteTrashChapter() {
+    const id = permanentDeleteId;
+    if (!id || !activeBookId || trashBusyId) return;
+    setTrashBusyId(id);
+    setError('');
+    try {
+      await chapterApi.trashDestroy({ id });
+      recoveryJournal.current?.clear(id);
+      setTrashChapters(items => items.filter(item => item.id !== id));
+      setPermanentDeleteId(null);
+    } catch {
+      setError('永久删除失败，章节仍保留在回收站中，请重试。');
+    } finally { setTrashBusyId(null); }
+  }
+
+  async function emptyTrash() {
+    const projectId = activeBookId;
+    if (!projectId || emptyingTrash) return;
+    setEmptyingTrash(true);
+    setError('');
+    try {
+      await chapterApi.trashEmpty({ projectId });
+      let cleanupFailed = false;
+      for (const draft of recoveryJournal.current?.read().drafts.filter(item => item.bookId === projectId) ?? []) {
+        try { recoveryJournal.current?.clear(draft.id); }
+        catch { cleanupFailed = true; }
+      }
+      setTrashChapters([]);
+      setEmptyTrashConfirm(false);
+      setError(cleanupFailed ? '回收站已清空，但本机恢复日志未能完全清理。' : '');
+    } catch {
+      setError('清空回收站失败，章节仍保留，请重试。');
+    } finally { setEmptyingTrash(false); }
   }
 
   async function ask() {
@@ -373,8 +461,8 @@ export function App() {
   return <div className="mobile-workspace">
     <header className="app-toolbar">
       {activeBook && <button disabled={running || memoryBusy} aria-label="返回书架" onClick={() => {
-        if (latest.current) void persist(latest.current).then(() => { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); }).catch(() => setError('当前章节保存失败，暂不能返回书架。'));
-        else { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); }
+        if (latest.current) void persist(latest.current).then(() => { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); setTrashOpen(false); setTrashChapters([]); }).catch(() => setError('当前章节保存失败，暂不能返回书架。'));
+        else { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); setTrashOpen(false); setTrashChapters([]); }
       }}><ArrowLeft size={20} /></button>}
       {activeBook && <button aria-label="打开章节列表" onClick={() => setSidebar(!sidebar)}><Menu size={20} /></button>}
       <BookOpen size={20} /><strong>{activeBook?.title ?? 'InkForge 书架'}</strong>
@@ -385,17 +473,42 @@ export function App() {
     <div className="workspace-body">
       {sidebar && <button className="drawer-backdrop" aria-label="关闭章节列表" onClick={() => setSidebar(false)} />}
       {activeBook && <aside className={`chapter-sidebar ${sidebar ? 'open' : ''}`}>
-        <div className="section-heading"><strong>章节</strong><button disabled={!ready || running} aria-label="新建章节" onClick={createChapter}><Plus size={20} /></button></div>
-        <nav aria-label="章节">{drafts.map(draft => <div className={`chapter-row ${draft.id === activeId ? 'selected' : ''}`} key={draft.id}>
-          <button disabled={running} className="chapter-select" onClick={() => select(draft)}>{draft.title}</button>
-          {draft.id === activeId && <button className="chapter-delete" disabled={running} aria-label={`将${draft.title}移入回收站`} title="移入回收站" onClick={() => setDeleteChapterId(draft.id)}><Trash2 size={17} /></button>}
-        </div>)}</nav>
-        <p className="sidebar-status">{drafts.length} 章 · 自动保存</p>
+        <div className="section-heading">
+          <strong>{trashOpen ? '回收站' : '章节'}</strong>
+          {trashOpen
+            ? <button type="button" aria-label="返回章节列表" onClick={() => setTrashOpen(false)}><ArrowLeft size={20} /></button>
+            : <button type="button" disabled={!ready || running} aria-label="新建章节" onClick={createChapter}><Plus size={20} /></button>}
+        </div>
+        {!trashOpen ? <>
+          <nav aria-label="章节">{drafts.map(draft => <div className={`chapter-row ${draft.id === activeId ? 'selected' : ''}`} key={draft.id}>
+            <button type="button" disabled={running} className="chapter-select" onClick={() => select(draft)}>{draft.title}</button>
+            {draft.id === activeId && <button type="button" className="chapter-delete" disabled={running} aria-label={`将${draft.title}移入回收站`} title="移入回收站" onClick={() => setDeleteChapterId(draft.id)}><Trash2 size={17} /></button>}
+          </div>)}</nav>
+          <button type="button" className="trash-toggle" onClick={() => void openTrash()}><Trash2 size={16} /><span>回收站</span></button>
+          <p className="sidebar-status">{drafts.length} 章 · 自动保存</p>
+        </> : <>
+          {trashChapters.length > 0 && <div className="trash-actions">
+            <span>{trashChapters.length} 章</span>
+            <button type="button" disabled={emptyingTrash || !!trashBusyId} onClick={() => setEmptyTrashConfirm(true)}>清空</button>
+          </div>}
+          {trashLoading
+            ? <p className="trash-empty-state" role="status">正在读取回收站…</p>
+            : trashChapters.length === 0
+              ? <p className="trash-empty-state" role="status">回收站为空。</p>
+              : <nav aria-label="回收站章节">{trashChapters.map(chapter => <div className="trash-row" key={chapter.id}>
+                <span className="trash-row-title" title={chapter.title}>{chapter.title}</span>
+                <button type="button" disabled={!!trashBusyId || running} onClick={() => void restoreTrashChapter(chapter.id)}>恢复</button>
+                <button type="button" className="trash-delete" disabled={!!trashBusyId || running} aria-label={`永久删除${chapter.title}`} onClick={() => setPermanentDeleteId(chapter.id)}>删除</button>
+              </div>)}</nav>}
+        </>}
       </aside>}
       {activeBook ? <main className="writing-pane">
         {active ? <>
           <SharedWritingEditor key={active.id} draft={active} status={status} onChange={update}
-            onSave={() => void persist(active).catch(() => setError('保存失败，请重试。'))}
+            onSave={() => {
+              const current = latest.current?.id === active.id ? latest.current : active;
+              void persist(current).catch(() => setError('保存失败，请重试。'));
+            }}
             onBeforeSnapshot={async () => {
               if (!latest.current || latest.current.id !== active.id) throw new Error('章节已切换');
               await persist(latest.current);
@@ -405,7 +518,7 @@ export function App() {
               const restored = { ...active, text: response.chapterContent, updatedAt: Date.now() };
               latest.current = restored;
               setDrafts(items => items.map(item => item.id === restored.id ? restored : item));
-              localStorage.removeItem(`${recoveryKey}:${active.id}`);
+              recoveryJournal.current?.clear(active.id);
               setStatus('已保存');
             }} />
         </> : <div className="empty-state"><BookOpen size={32} /><h1>{ready ? '开始第一章' : '正在打开本地书稿'}</h1><p>为《{activeBook.title}》新建章节。</p><button disabled={!ready} onClick={createChapter}><Plus size={18} />新建章节</button></div>}
@@ -443,6 +556,28 @@ export function App() {
         <div>
           <button disabled={deletingChapter} onClick={() => setDeleteChapterId(null)}>取消</button>
           <button className="danger-action" disabled={deletingChapter} onClick={() => void moveChapterToTrash()}>{deletingChapter ? '正在处理…' : '移入回收站'}</button>
+        </div>
+      </div>
+    </AnimatedDialog>
+    <AnimatedDialog open={permanentDeleteId !== null} onClose={() => { if (!trashBusyId) setPermanentDeleteId(null); }} ariaLabel="确认永久删除章节"
+      panelClassName="max-h-[calc(100dvh-32px)] w-full max-w-[420px] overflow-auto">
+      <div className="chapter-delete-dialog">
+        <h2>永久删除章节？</h2>
+        <p>将永久删除《{trashChapters.find(item => item.id === permanentDeleteId)?.title ?? '此章节'}》及其正文、版本备份与顾问记忆，无法恢复。</p>
+        <div>
+          <button type="button" disabled={!!trashBusyId} onClick={() => setPermanentDeleteId(null)}>取消</button>
+          <button type="button" className="danger-action" disabled={!!trashBusyId} onClick={() => void permanentlyDeleteTrashChapter()}>{trashBusyId === permanentDeleteId ? '正在删除…' : '永久删除'}</button>
+        </div>
+      </div>
+    </AnimatedDialog>
+    <AnimatedDialog open={emptyTrashConfirm} onClose={() => { if (!emptyingTrash) setEmptyTrashConfirm(false); }} ariaLabel="确认清空回收站"
+      panelClassName="max-h-[calc(100dvh-32px)] w-full max-w-[420px] overflow-auto">
+      <div className="chapter-delete-dialog">
+        <h2>清空回收站？</h2>
+        <p>将永久删除本作品回收站中的 {trashChapters.length} 个章节及其正文、版本备份和顾问记忆，无法恢复。</p>
+        <div>
+          <button type="button" disabled={emptyingTrash} onClick={() => setEmptyTrashConfirm(false)}>取消</button>
+          <button type="button" className="danger-action" disabled={emptyingTrash} onClick={() => void emptyTrash()}>{emptyingTrash ? '正在清空…' : '清空回收站'}</button>
         </div>
       </div>
     </AnimatedDialog>
