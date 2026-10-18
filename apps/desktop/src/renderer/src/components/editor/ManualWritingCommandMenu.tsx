@@ -17,6 +17,7 @@ interface ManualWritingCommandMenuProps {
   disabled?: boolean;
   focusMode: boolean;
   availability: ManualWritingCommandAvailability;
+  supportedCommands?: readonly ManualWritingCommandId[];
   onOpenChange: (open: boolean) => void;
   onRunCommand: (id: ManualWritingCommandId) => void;
 }
@@ -49,19 +50,20 @@ export function ManualWritingCommandMenu({
   disabled = false,
   focusMode,
   availability,
+  supportedCommands,
   onOpenChange,
   onRunCommand,
 }: ManualWritingCommandMenuProps): JSX.Element {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion() === true;
   const panelMotion = reduceMotion ? fadeOnly : fadeSlideUp;
-  const groupedCommands = useMemo(
-    () => GROUPS.map((group) => ({
-      group,
-      commands: MANUAL_WRITING_COMMANDS.filter((command) => command.group === group),
-    })),
-    [],
-  );
+  const groupedCommands = useMemo(() => {
+    const commands = supportedCommands
+      ? MANUAL_WRITING_COMMANDS.filter(command => supportedCommands.includes(command.id))
+      : MANUAL_WRITING_COMMANDS;
+    return GROUPS.map(group => ({ group, commands: commands.filter(command => command.group === group) }))
+      .filter(group => group.commands.length > 0);
+  }, [supportedCommands]);
 
   useEffect(() => {
     if (!open) return;

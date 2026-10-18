@@ -13,6 +13,7 @@ import { createMainWindow } from "./window";
 import { buildAppMenu } from "./menu";
 import { registerIpcHandlers } from "./ipc/register";
 import { migrateLegacyCredentials } from "./services/credential-migration-service";
+import { startMobileSyncServer, stopMobileSyncServer } from "./services/mobile-sync-host";
 
 // Windows 11 + Chromium paint regression: DWM reports occlusion wrongly,
 // Chromium stops drawing until user interaction (select/hover). See Electron #25344.
@@ -22,6 +23,7 @@ if (process.platform === "win32") {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let finishingQuit = false;
 
 function getWindow(): BrowserWindow | null {
   return mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
@@ -39,6 +41,20 @@ async function bootstrap(): Promise<void> {
     // (skill triggers, builtin preset seeding, vacuum scheduler) to setImmediate so
     // the renderer paints before they run.
     mainWindow = createMainWindow();
+    if (ctx.config.mobileSyncAutoStart) {
+      void startMobileSyncServer()
+        .then(() => logger.info("Tailnet mobile sync auto-started"))
+        .catch((error) => {
+          logger.warn("Tailnet mobile sync auto-start failed", error);
+          if (ctx.config.mobileSyncServeOwned) {
+            void stopMobileSyncServer().catch((cleanupError) => logger.warn("Stale InkForge Serve cleanup failed", cleanupError));
+          }
+        });
+    } else if (ctx.config.mobileSyncServeOwned) {
+      void stopMobileSyncServer()
+        .then(() => logger.info("Stale InkForge Tailnet Serve route cleaned up"))
+        .catch((error) => logger.warn("Stale InkForge Tailnet Serve route cleanup failed", error));
+    }
     setImmediate(() => {
       void (async () => {
         try {
@@ -93,10 +109,19 @@ app.on("activate", () => {
   }
 });
 
-app.on("before-quit", () => {
-  disposeSkillTriggerService();
-  disposeTerminals();
-  disposeVacuumScheduler();
-  disposeAppContext();
-  clearCrashMarker();
+
+app.on("before-quit", (event) => {
+  if (finishingQuit) return;
+  event.preventDefault();
+  finishingQuit = true;
+  void stopMobileSyncServer()
+    .catch((error) => logger.warn("Tailnet sync shutdown failed", error))
+    .finally(() => {
+      disposeSkillTriggerService();
+      disposeTerminals();
+      disposeVacuumScheduler();
+      disposeAppContext();
+      clearCrashMarker();
+      app.quit();
+    });
 });

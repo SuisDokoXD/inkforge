@@ -1,6 +1,13 @@
 import type { BookCoverGetResponse, ChapterRecord, ChapterSnapshotRecord, InkforgeApi, ProjectRecord } from '@inkforge/shared';
 import type { AdvisorMemory } from './advisor-memory';
 
+export interface MobileSyncPreferences {
+  endpoint: string;
+  deviceId: string;
+  baseVersions: Record<string, string>;
+  lastSyncedAt: number | null;
+}
+
 export interface WorkspaceState {
   prototypeImported?: boolean;
   covers?: Record<string, BookCoverGetResponse>;
@@ -10,6 +17,7 @@ export interface WorkspaceState {
   projects: ProjectRecord[];
   chapters: Array<{ record: ChapterRecord; content: string; deleted: boolean }>;
   recovery: Record<string, { content: string; savedAt: number }>;
+  sync?: MobileSyncPreferences;
 }
 
 export interface WorkspacePersistence {

@@ -6,3 +6,4 @@ export * from "./ipc/types-achievement-letter";
 export * from "./ipc/types-scene-sample-export";
 export * from "./ipc/types-worldpack-author-card";
 export * from "./ipc/types-review-apply";
+export * from "./ipc/types-mobile-sync";

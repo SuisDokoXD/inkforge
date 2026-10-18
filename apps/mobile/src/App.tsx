@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { App as NativeApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { ArrowLeft, BookOpen, Menu, Plus, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Menu, Plus, RefreshCw, Sparkles, Trash2, X } from 'lucide-react';
 import { chapterApi } from '@renderer/lib/api';
 import { AnimatedDialog } from '@renderer/components/AnimatedDialog';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Button, IconButton } from '@renderer/components/ui';
+import { fadeOnly, fadeSlideUp } from '@renderer/lib/motion-tokens';
 import { capabilities, clearApiKey, loadSavedApiKey, saveApiKey, type Book, type Draft, type DraftStorage } from './platform';
 import { openWorkspaceDraftStorage, openWorkspaceStorage } from './workspace-storage';
 import { advisorContext, createAdvisorMemoryApi, emptyAdvisorMemory, type AdvisorMemory } from './advisor-memory';
@@ -11,6 +14,7 @@ import { SaveQueue } from './save-queue';
 import { createRecoveryJournal } from './recovery-journal';
 import { SharedBookshelf } from './SharedBookshelf';
 import { SharedWritingEditor } from './SharedWritingEditor';
+import { MobileSyncDialog } from './MobileSyncDialog';
 
 
 type AdvisorChunk =
@@ -112,6 +116,9 @@ export function App() {
   const [status, setStatus] = useState('正在加载');
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
+  const [mobileSyncOpen, setMobileSyncOpen] = useState(false);
+  const reduceMotion = useReducedMotion() === true;
+  const pageMotion = reduceMotion ? fadeOnly : fadeSlideUp;
   const [sidebar, setSidebar] = useState(false);
   const [advisor, setAdvisor] = useState(false);
   const [baseUrl, setBaseUrl] = useState('https://api.openai.com/v1');
@@ -458,38 +465,52 @@ export function App() {
     setRunning(false);
   }
 
+  async function reloadBookshelfAfterSync() {
+    const storage = storageRef.current ?? await openWorkspaceDraftStorage();
+    const nextBooks = await storage.loadBooks();
+    const booksWithChapters = await Promise.all(nextBooks.map(async book => ({
+      book,
+      chapters: await storage.loadDrafts(book.id),
+    })));
+    setBooks(nextBooks);
+    setChapterCounts(Object.fromEntries(booksWithChapters.map(item => [item.book.id, item.chapters.length])));
+  }
+
   return <div className="mobile-workspace">
     <header className="app-toolbar">
-      {activeBook && <button disabled={running || memoryBusy} aria-label="返回书架" onClick={() => {
+      {activeBook && <IconButton disabled={running || memoryBusy} aria-label="返回书架" title="返回书架" variant="ghost" onClick={() => {
         if (latest.current) void persist(latest.current).then(() => { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); setTrashOpen(false); setTrashChapters([]); }).catch(() => setError('当前章节保存失败，暂不能返回书架。'));
         else { setActiveBookId(null); setDrafts([]); setActiveId(null); setSidebar(false); setAdvisor(false); setTrashOpen(false); setTrashChapters([]); }
-      }}><ArrowLeft size={20} /></button>}
-      {activeBook && <button aria-label="打开章节列表" onClick={() => setSidebar(!sidebar)}><Menu size={20} /></button>}
+      }}><ArrowLeft size={20} /></IconButton>}
+      {activeBook && <IconButton aria-label="打开章节列表" title="章节列表" aria-pressed={sidebar} variant={sidebar ? 'accentSoft' : 'ghost'} onClick={() => setSidebar(!sidebar)}><Menu size={20} /></IconButton>}
       <BookOpen size={20} /><strong>{activeBook?.title ?? 'InkForge 书架'}</strong>
       <span className="environment">{capabilities.nativeSQLite ? '本机 SQLite' : '浏览器预览 · 本地存储'}</span>
-      {activeBook && <button className="advisor-toggle" aria-pressed={advisor} onClick={() => setAdvisor(!advisor)}><Sparkles size={18} />顾问</button>}
+      {capabilities.lanSync && !activeBook && <Button type="button" className="sync-toggle" aria-label="跨设备同步" title="跨设备同步" variant="secondary" size="sm" disabled={!ready} onClick={() => setMobileSyncOpen(true)}><RefreshCw size={17} /><span>同步</span></Button>}
+      {activeBook && <Button className="advisor-toggle" aria-pressed={advisor} variant={advisor ? 'accentSoft' : 'secondary'} size="sm" onClick={() => setAdvisor(!advisor)}><Sparkles size={17} />顾问</Button>}
     </header>
-    {error && <div className="error" role="alert">{error}<button aria-label="关闭提示" onClick={() => setError('')}><X size={18} /></button></div>}
+    <AnimatePresence initial={false}>
+      {error && <motion.div key="app-error" className="error" role="alert" variants={pageMotion} initial="initial" animate="animate" exit="exit">{error}<IconButton aria-label="关闭提示" title="关闭提示" variant="ghost" size="sm" onClick={() => setError('')}><X size={18} /></IconButton></motion.div>}
+    </AnimatePresence>
     <div className="workspace-body">
       {sidebar && <button className="drawer-backdrop" aria-label="关闭章节列表" onClick={() => setSidebar(false)} />}
       {activeBook && <aside className={`chapter-sidebar ${sidebar ? 'open' : ''}`}>
         <div className="section-heading">
           <strong>{trashOpen ? '回收站' : '章节'}</strong>
           {trashOpen
-            ? <button type="button" aria-label="返回章节列表" onClick={() => setTrashOpen(false)}><ArrowLeft size={20} /></button>
-            : <button type="button" disabled={!ready || running} aria-label="新建章节" onClick={createChapter}><Plus size={20} /></button>}
+            ? <IconButton type="button" variant="ghost" aria-label="返回章节列表" title="返回章节列表" onClick={() => setTrashOpen(false)}><ArrowLeft size={20} /></IconButton>
+            : <IconButton type="button" variant="ghost" disabled={!ready || running} aria-label="新建章节" title="新建章节" onClick={createChapter}><Plus size={20} /></IconButton>}
         </div>
         {!trashOpen ? <>
           <nav aria-label="章节">{drafts.map(draft => <div className={`chapter-row ${draft.id === activeId ? 'selected' : ''}`} key={draft.id}>
-            <button type="button" disabled={running} className="chapter-select" onClick={() => select(draft)}>{draft.title}</button>
-            {draft.id === activeId && <button type="button" className="chapter-delete" disabled={running} aria-label={`将${draft.title}移入回收站`} title="移入回收站" onClick={() => setDeleteChapterId(draft.id)}><Trash2 size={17} /></button>}
+            <Button type="button" variant="ghost" disabled={running} aria-pressed={draft.id === activeId} className="chapter-select" onClick={() => select(draft)}>{draft.title}</Button>
+            {draft.id === activeId && <IconButton type="button" variant="ghost" className="chapter-delete" disabled={running} aria-label={`将${draft.title}移入回收站`} title="移入回收站" onClick={() => setDeleteChapterId(draft.id)}><Trash2 size={17} /></IconButton>}
           </div>)}</nav>
-          <button type="button" className="trash-toggle" onClick={() => void openTrash()}><Trash2 size={16} /><span>回收站</span></button>
+          <Button type="button" variant="ghost" className="trash-toggle" onClick={() => void openTrash()}><Trash2 size={16} /><span>回收站</span></Button>
           <p className="sidebar-status">{drafts.length} 章 · 自动保存</p>
         </> : <>
           {trashChapters.length > 0 && <div className="trash-actions">
             <span>{trashChapters.length} 章</span>
-            <button type="button" disabled={emptyingTrash || !!trashBusyId} onClick={() => setEmptyTrashConfirm(true)}>清空</button>
+            <Button type="button" variant="danger" size="sm" disabled={emptyingTrash || !!trashBusyId} onClick={() => setEmptyTrashConfirm(true)}>清空</Button>
           </div>}
           {trashLoading
             ? <p className="trash-empty-state" role="status">正在读取回收站…</p>
@@ -497,14 +518,14 @@ export function App() {
               ? <p className="trash-empty-state" role="status">回收站为空。</p>
               : <nav aria-label="回收站章节">{trashChapters.map(chapter => <div className="trash-row" key={chapter.id}>
                 <span className="trash-row-title" title={chapter.title}>{chapter.title}</span>
-                <button type="button" disabled={!!trashBusyId || running} onClick={() => void restoreTrashChapter(chapter.id)}>恢复</button>
-                <button type="button" className="trash-delete" disabled={!!trashBusyId || running} aria-label={`永久删除${chapter.title}`} onClick={() => setPermanentDeleteId(chapter.id)}>删除</button>
+                <Button type="button" variant="secondary" size="sm" disabled={!!trashBusyId || running} onClick={() => void restoreTrashChapter(chapter.id)}>恢复</Button>
+                <Button type="button" variant="danger" size="sm" className="trash-delete" disabled={!!trashBusyId || running} aria-label={`永久删除${chapter.title}`} onClick={() => setPermanentDeleteId(chapter.id)}>删除</Button>
               </div>)}</nav>}
         </>}
       </aside>}
-      {activeBook ? <main className="writing-pane">
-        {active ? <>
-          <SharedWritingEditor key={active.id} draft={active} status={status} onChange={update}
+      <AnimatePresence mode="wait" initial={false}>
+        {activeBook ? <motion.main key={`writing-${activeBook.id}`} className="writing-pane" variants={pageMotion} initial="initial" animate="animate" exit="exit">
+          {active ? <SharedWritingEditor key={active.id} draft={active} status={status} onChange={update}
             onSave={() => {
               const current = latest.current?.id === active.id ? latest.current : active;
               void persist(current).catch(() => setError('保存失败，请重试。'));
@@ -520,13 +541,15 @@ export function App() {
               setDrafts(items => items.map(item => item.id === restored.id ? restored : item));
               recoveryJournal.current?.clear(active.id);
               setStatus('已保存');
-            }} />
-        </> : <div className="empty-state"><BookOpen size={32} /><h1>{ready ? '开始第一章' : '正在打开本地书稿'}</h1><p>为《{activeBook.title}》新建章节。</p><button disabled={!ready} onClick={createChapter}><Plus size={18} />新建章节</button></div>}
-      </main> : <SharedBookshelf onOpen={async project => {
-        const book: Book = { id: project.id, title: project.name, updatedAt: Date.now() };
-        setBooks(items => [...items.filter(item => item.id !== book.id), book]);
-        await openBook(book);
-      }} />}
+            }} /> : <div className="empty-state"><BookOpen size={32} /><h1>{ready ? '开始第一章' : '正在打开本地书稿'}</h1><p>为《{activeBook.title}》新建章节。</p><Button variant="primary" disabled={!ready} onClick={createChapter}><Plus size={18} />新建章节</Button></div>}
+        </motion.main> : <motion.div key="bookshelf" className="flex min-h-0 min-w-0 flex-1" variants={pageMotion} initial="initial" animate="animate" exit="exit">
+          <SharedBookshelf onOpen={async project => {
+            const book: Book = { id: project.id, title: project.name, updatedAt: Date.now() };
+            setBooks(items => [...items.filter(item => item.id !== book.id), book]);
+            await openBook(book);
+          }} />
+        </motion.div>}
+      </AnimatePresence>
       {advisor && activeBook && <aside className="advisor-pane" aria-label="背景顾问">
         <div className="section-heading"><strong>背景顾问</strong><button aria-label="关闭顾问" onClick={() => setAdvisor(false)}><X size={20} /></button></div>
         <p className="note">请求会发送本章末尾最多 3000 字。浏览器预览不会保存密钥。</p>
@@ -554,8 +577,8 @@ export function App() {
         <h2>将章节移入回收站？</h2>
         <p>章节正文和顾问记忆会保留在回收站中，可之后恢复。</p>
         <div>
-          <button disabled={deletingChapter} onClick={() => setDeleteChapterId(null)}>取消</button>
-          <button className="danger-action" disabled={deletingChapter} onClick={() => void moveChapterToTrash()}>{deletingChapter ? '正在处理…' : '移入回收站'}</button>
+          <Button type="button" variant="secondary" disabled={deletingChapter} onClick={() => setDeleteChapterId(null)}>取消</Button>
+          <Button type="button" variant="danger" className="danger-action" disabled={deletingChapter} onClick={() => void moveChapterToTrash()}>{deletingChapter ? '正在处理…' : '移入回收站'}</Button>
         </div>
       </div>
     </AnimatedDialog>
@@ -565,8 +588,8 @@ export function App() {
         <h2>永久删除章节？</h2>
         <p>将永久删除《{trashChapters.find(item => item.id === permanentDeleteId)?.title ?? '此章节'}》及其正文、版本备份与顾问记忆，无法恢复。</p>
         <div>
-          <button type="button" disabled={!!trashBusyId} onClick={() => setPermanentDeleteId(null)}>取消</button>
-          <button type="button" className="danger-action" disabled={!!trashBusyId} onClick={() => void permanentlyDeleteTrashChapter()}>{trashBusyId === permanentDeleteId ? '正在删除…' : '永久删除'}</button>
+          <Button type="button" variant="secondary" disabled={!!trashBusyId} onClick={() => setPermanentDeleteId(null)}>取消</Button>
+          <Button type="button" variant="danger" className="danger-action" disabled={!!trashBusyId} onClick={() => void permanentlyDeleteTrashChapter()}>{trashBusyId === permanentDeleteId ? '正在删除…' : '永久删除'}</Button>
         </div>
       </div>
     </AnimatedDialog>
@@ -576,10 +599,11 @@ export function App() {
         <h2>清空回收站？</h2>
         <p>将永久删除本作品回收站中的 {trashChapters.length} 个章节及其正文、版本备份和顾问记忆，无法恢复。</p>
         <div>
-          <button type="button" disabled={emptyingTrash} onClick={() => setEmptyTrashConfirm(false)}>取消</button>
-          <button type="button" className="danger-action" disabled={emptyingTrash} onClick={() => void emptyTrash()}>{emptyingTrash ? '正在清空…' : '清空回收站'}</button>
+          <Button type="button" variant="secondary" disabled={emptyingTrash} onClick={() => setEmptyTrashConfirm(false)}>取消</Button>
+          <Button type="button" variant="danger" className="danger-action" disabled={emptyingTrash} onClick={() => void emptyTrash()}>{emptyingTrash ? '正在清空…' : '清空回收站'}</Button>
         </div>
       </div>
     </AnimatedDialog>
+    {capabilities.lanSync && <MobileSyncDialog open={mobileSyncOpen} onClose={() => setMobileSyncOpen(false)} onSynced={reloadBookshelfAfterSync} />}
   </div>;
 }

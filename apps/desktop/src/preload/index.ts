@@ -83,6 +83,15 @@ const api: InkforgeApi = {
     get: (input) => ipcRenderer.invoke(ipcChannels.settingsGet, input),
     set: (input) => ipcRenderer.invoke(ipcChannels.settingsSet, input),
   },
+  mobileSync: {
+    status: () => ipcRenderer.invoke(ipcChannels.mobileSyncStatus),
+    start: () => ipcRenderer.invoke(ipcChannels.mobileSyncStart),
+    stop: () => ipcRenderer.invoke(ipcChannels.mobileSyncStop),
+    refreshPairingCode: () => ipcRenderer.invoke(ipcChannels.mobileSyncRefreshCode),
+    setAutoStart: (input) => ipcRenderer.invoke(ipcChannels.mobileSyncSetAutoStart, input),
+    revokeDevice: (input) => ipcRenderer.invoke(ipcChannels.mobileSyncRevokeDevice, input),
+    onCompleted: (listener) => subscribe(ipcEventChannels.mobileSyncCompleted, listener),
+  },
   diag: {
     snapshot: (input) => ipcRenderer.invoke(ipcChannels.diagSnapshot, input ?? {}),
     crashStatus: () => ipcRenderer.invoke(ipcChannels.diagCrashStatus),

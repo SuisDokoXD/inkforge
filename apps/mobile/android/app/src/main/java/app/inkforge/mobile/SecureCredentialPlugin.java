@@ -24,6 +24,8 @@ public class SecureCredentialPlugin extends Plugin {
     private static final String PREFS = "inkforge_secure_credentials";
     private static final String IV = "api_key_iv";
     private static final String CIPHERTEXT = "api_key_ciphertext";
+    private static final String SYNC_IV = "mobile_sync_token_iv";
+    private static final String SYNC_CIPHERTEXT = "mobile_sync_token_ciphertext";
 
     @PluginMethod
     public void get(PluginCall call) {
@@ -78,6 +80,60 @@ public class SecureCredentialPlugin extends Plugin {
         }
         call.resolve();
     }
+    @PluginMethod
+    public void getSyncToken(PluginCall call) {
+        try {
+            SharedPreferences prefs = preferences();
+            String encodedIv = prefs.getString(SYNC_IV, null);
+            String encodedCiphertext = prefs.getString(SYNC_CIPHERTEXT, null);
+            if (encodedIv == null || encodedCiphertext == null) {
+                call.resolve(new JSObject().put("value", ""));
+                return;
+            }
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, getKey(), new GCMParameterSpec(128, Base64.decode(encodedIv, Base64.NO_WRAP)));
+            byte[] cleartext = cipher.doFinal(Base64.decode(encodedCiphertext, Base64.NO_WRAP));
+            call.resolve(new JSObject().put("value", new String(cleartext, StandardCharsets.UTF_8)));
+        } catch (Exception error) {
+            call.reject("Saved sync token could not be decrypted. Pair the device again.");
+        }
+    }
+
+    @PluginMethod
+    public void saveSyncToken(PluginCall call) {
+        String value = call.getString("value");
+        if (value == null || value.isEmpty()) {
+            call.reject("Sync token cannot be empty.");
+            return;
+        }
+        try {
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, getKey());
+            byte[] ciphertext = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            boolean saved = preferences().edit()
+                .putString(SYNC_IV, Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
+                .putString(SYNC_CIPHERTEXT, Base64.encodeToString(ciphertext, Base64.NO_WRAP))
+                .commit();
+            if (!saved) {
+                call.reject("Sync token could not be saved to secure storage.");
+                return;
+            }
+            call.resolve();
+        } catch (Exception error) {
+            call.reject("Sync token could not be encrypted for secure storage.");
+        }
+    }
+
+    @PluginMethod
+    public void clearSyncToken(PluginCall call) {
+        boolean cleared = preferences().edit().remove(SYNC_IV).remove(SYNC_CIPHERTEXT).commit();
+        if (!cleared) {
+            call.reject("Saved sync token could not be removed.");
+            return;
+        }
+        call.resolve();
+    }
+
 
     private SharedPreferences preferences() {
         return getContext().getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE);

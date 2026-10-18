@@ -42,6 +42,7 @@ import { registerMaterialHandlers } from "./material";
 import { registerWorldPackHandlers } from "./world-pack";
 import { registerAuthorNoteHandlers } from "./author-note";
 import { registerCharacterCardHandlers } from "./character-card";
+import { registerMobileSyncHandlers } from "./mobile-sync";
 import { startDailyReminder } from "../services/chapter-log-service";
 
 export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
@@ -54,6 +55,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerOutlineHandlers();
   registerDailyHandlers();
   registerSettingsHandlers();
+  registerMobileSyncHandlers(getWindow);
   registerSkillHandlers(getWindow);
   registerCharacterHandlers();
   registerTavernHandlers(getWindow);

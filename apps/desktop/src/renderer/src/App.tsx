@@ -1,7 +1,7 @@
 // M9 Phase 1+2.1: global shortcuts unified + 12 lazy pages + Suspense skeleton.
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { dailyApi, providerApi, projectApi, settingsApi } from "./lib/api";
 import type { AppSettings } from "@inkforge/shared";
 import { useAppStore } from "./stores/app-store";
@@ -104,6 +104,7 @@ function renderPage(mainView: MainView): JSX.Element | null {
 
 export function App(): JSX.Element {
   const t = useT();
+  const queryClient = useQueryClient();
   const setSettings = useAppStore((s) => s.setSettings);
   const settings = useAppStore((s) => s.settings);
   const settingsLoaded = useAppStore((s) => s.settingsLoaded);
@@ -135,6 +136,27 @@ export function App(): JSX.Element {
   useEffect(() => {
     if (settingsQuery.data) setSettings(settingsQuery.data);
   }, [settingsQuery.data, setSettings]);
+
+  useEffect(() => window.inkforge.mobileSync.onCompleted((event) => {
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      queryClient.invalidateQueries({ queryKey: ["projects-list-for-outline"] }),
+      queryClient.invalidateQueries({ queryKey: ["bookshelf-books"] }),
+      queryClient.invalidateQueries({ queryKey: ["chapters"] }),
+      queryClient.invalidateQueries({ queryKey: ["chapter-content"] }),
+      queryClient.invalidateQueries({ queryKey: ["chapter-trash"] }),
+      queryClient.invalidateQueries({ queryKey: ["daily-progress"] }),
+    ]);
+    showDiagStatus({
+      kind: "success",
+      text: t("settings.mobileSync.completed", {
+        device: event.deviceName,
+        projects: event.projectCount,
+        chapters: event.chapterCount,
+        conflicts: event.conflictCount,
+      }),
+    }, 8_000);
+  }), [queryClient, showDiagStatus, t]);
 
   useEffect(() => {
     const theme = settings.theme === "paper" ? "theme-paper"

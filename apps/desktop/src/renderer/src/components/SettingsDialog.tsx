@@ -21,6 +21,7 @@ import { SampleLibPanel } from "./SampleLibPanel";
 import { AnimatedDialog } from "./AnimatedDialog";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { Button, IconButton, Select, TextField } from "./ui";
+import { MobileSyncPanel } from "./MobileSyncPanel";
 
 type CopyDiagStatus = {
   kind: "success" | "error";
@@ -466,6 +467,10 @@ export function SettingsDialog(): JSX.Element | null {
               参考小说库
             </h3>
             <SampleLibPanel />
+          </motion.section>
+
+          <motion.section variants={sectionMotion}>
+            <MobileSyncPanel />
           </motion.section>
 
           <motion.section variants={sectionMotion}>

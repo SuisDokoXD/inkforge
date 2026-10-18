@@ -26,6 +26,9 @@ interface NativeCredentialPlugin {
   get(): Promise<{ value: string }>;
   save(options: { value: string }): Promise<void>;
   clear(): Promise<void>;
+  getSyncToken(): Promise<{ value: string }>;
+  saveSyncToken(options: { value: string }): Promise<void>;
+  clearSyncToken(): Promise<void>;
 }
 
 const nativeCredentialPlugin = registerPlugin<NativeCredentialPlugin>('SecureCredential');
@@ -33,7 +36,7 @@ const nativeCredentialPlugin = registerPlugin<NativeCredentialPlugin>('SecureCre
 export const capabilities = Object.freeze({
   nativeSQLite: Capacitor.getPlatform() === 'android',
   terminal: false,
-  lanSync: false,
+  lanSync: Capacitor.getPlatform() === 'android',
   persistentCredentials: false,
 });
 
@@ -51,6 +54,21 @@ export async function clearApiKey(): Promise<void> {
   if (!capabilities.nativeSQLite) return;
   await nativeCredentialPlugin.clear();
 }
+export async function loadSyncToken(): Promise<string> {
+  if (!capabilities.lanSync) return '';
+  return (await nativeCredentialPlugin.getSyncToken()).value;
+}
+
+export async function saveSyncToken(value: string): Promise<void> {
+  if (!capabilities.lanSync) throw new Error('安全同步凭据仅在 Android 原生版本可用');
+  await nativeCredentialPlugin.saveSyncToken({ value });
+}
+
+export async function clearSyncToken(): Promise<void> {
+  if (!capabilities.lanSync) return;
+  await nativeCredentialPlugin.clearSyncToken();
+}
+
 
 // Web preview is explicitly separate from the Android SQLite implementation.
 export function browserStorage(storage: Storage): DraftStorage {

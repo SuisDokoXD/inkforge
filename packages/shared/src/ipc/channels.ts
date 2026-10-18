@@ -248,6 +248,12 @@
   imageGenGenerate: "image-gen:generate",
   imageGenGetSettings: "image-gen:get-settings",
   imageGenSaveSettings: "image-gen:save-settings",
+  mobileSyncStatus: "mobile-sync:status",
+  mobileSyncStart: "mobile-sync:start",
+  mobileSyncStop: "mobile-sync:stop",
+  mobileSyncRefreshCode: "mobile-sync:refresh-code",
+  mobileSyncSetAutoStart: "mobile-sync:set-auto-start",
+  mobileSyncRevokeDevice: "mobile-sync:revoke-device",
 } as const;
 
 export const ipcEventChannels = {
@@ -265,6 +271,7 @@ export const ipcEventChannels = {
   dailySummaryChunk: "daily:summary-chunk",
   dailySummaryDone: "daily:summary-done",
   updateStatus: "update:status",
+  mobileSyncCompleted: "mobile-sync:completed",
   // ===== M7 · Bookshelf =====
   autoWriterChunk: "auto-writer:chunk",
   autoWriterPhase: "auto-writer:phase",

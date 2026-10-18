@@ -170,6 +170,7 @@ import type {
   TavernSessionRecord,
   WorldEntryRecord,
 } from "./domain";
+import type { MobileSyncCompletedEvent, MobileSyncStatus } from "./mobile-sync";
 
 export type Unsubscribe = () => void;
 
@@ -232,6 +233,15 @@ export interface InkforgeApi {
   settings: {
     get(input: SettingsGetInput): Promise<AppSettings>;
     set(input: SettingsSetInput): Promise<AppSettings>;
+  };
+  mobileSync: {
+    status(): Promise<MobileSyncStatus>;
+    start(): Promise<MobileSyncStatus>;
+    stop(): Promise<MobileSyncStatus>;
+    refreshPairingCode(): Promise<MobileSyncStatus>;
+    setAutoStart(input: { enabled: boolean }): Promise<{ enabled: boolean }>;
+    revokeDevice(input: { deviceId: string }): Promise<MobileSyncStatus>;
+    onCompleted(listener: (event: MobileSyncCompletedEvent) => void): Unsubscribe;
   };
   diag: {
     snapshot(input?: DiagSnapshotInput): Promise<DiagSnapshotResponse>;
