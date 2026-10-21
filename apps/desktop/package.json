@@ -51,7 +51,8 @@
     "verify:typing-path": "node scripts/verify-typing-path.cjs",
     "proof:real-model": "node scripts/run-real-model-proof-suite.cjs",
     "proof:report": "node scripts/summarize-real-model-proof.cjs",
-    "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs"
+    "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs",
+    "bench:fps": "node scripts/bench-fps.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",

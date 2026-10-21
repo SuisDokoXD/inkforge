@@ -123,7 +123,8 @@ type StatusTone = "neutral" | "busy" | "success" | "error";
 const MANUAL_RHYTHM_FLUSH_INTERVAL_MS = 1_000;
 
 interface EditorTransientStatus {
-  kind: Exclude<StatusTone, "neutral">;
+  /** neutral 用于「只是说明，不是结果」的提示（例如位置兜底定位）。 */
+  kind: StatusTone;
   text: string;
 }
 
@@ -246,6 +247,25 @@ function getEditorScrollElement(editor: Editor): HTMLElement | null {
 
 function clampEditorPosition(editor: Editor, pos: number): number {
   return Math.max(1, Math.min(pos, Math.max(1, editor.state.doc.content.size)));
+}
+
+/**
+ * 章节切换的兜底定位。
+ *
+ * 正常路径是恢复 localStorage 里记下的光标 + 滚动位置；但当用户换过机器、清过
+ * 站点数据、或那一章从未写过时，记录是不存在的。以前这种情况会把光标丢回文档
+ * 开头且不作声，等于每次都要重新滚一遍。这里改成：停在最后一个有内容的段落末尾，
+ * 那通常就是「上次写到哪」，并由调用方给出一条提示。
+ */
+function resolveLastContentPosition(editor: Editor): number | null {
+  let target: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true;
+    if (!node.textContent.trim()) return true;
+    target = pos + node.nodeSize - 1;
+    return true;
+  });
+  return target;
 }
 
 function readStoredEditorPosition(raw: string | null): StoredEditorPosition | null {
@@ -579,8 +599,9 @@ export function EditorPane({
   // 字数统计与所有展示用派生值都只用于显示（工具栏 / 状态栏 / 菜单）。
   // computeWordCount / countGraphemes 会对全文做多趟 Intl.Segmenter + 正则扫描，
   // 实测 30k 字章节单次约 2.7ms、80k 字约 9.7ms —— 挂在逐键变化的 content 上会直接
-  // 吃掉一帧预算。这里统一去抖到停顿 250ms：按键热路径只剩 setContent，显示值稍后刷新。
-  const statsText = useDebouncedValue(content, 250);
+  // 吃掉一帧预算。这里去抖到停顿 120ms（够短，停笔几乎立刻见字数；又足够长，能把
+  // 连续按键合并成一次计算），按键热路径只剩 setContent，显示值稍后刷新。
+  const statsText = useDebouncedValue(content, 120);
   const stats = useMemo(() => computeWordCount(statsText), [statsText]);
   const currentGraphemes = stats.graphemes;
   const submissionCheckContentVersion = useMemo(
@@ -955,8 +976,20 @@ export function EditorPane({
     }
     if (!stored) {
       lastRestoredPositionChapterRef.current = chapter.id;
-      updateCursorState();
-      return;
+      // 兜底：没有历史位置时停在最后一个有内容的段落，并说明一句。
+      // 只在文档确实有内容时提示，新开的白纸章节不值得打扰。
+      const fallbackPos = resolveLastContentPosition(editorInstance);
+      if (fallbackPos === null) {
+        updateCursorState();
+        return;
+      }
+      const fallbackTimer = window.setTimeout(() => {
+        editorInstance.commands.setTextSelection(clampEditorPosition(editorInstance, fallbackPos));
+        editorInstance.commands.scrollIntoView();
+        updateCursorState();
+      }, 120);
+      showExportStatus({ kind: "neutral", text: "未找到上次停笔位置，已停在本章末尾段落" }, 3200);
+      return () => window.clearTimeout(fallbackTimer);
     }
     const timer = window.setTimeout(() => {
       const pos = clampEditorPosition(editorInstance, stored.pos);
@@ -967,7 +1000,7 @@ export function EditorPane({
       lastRestoredPositionChapterRef.current = chapter.id;
     }, 120);
     return () => window.clearTimeout(timer);
-  }, [chapter, editorInstance, headingJumpTarget, loaded, reviewJumpExcerpt, updateCursorState]);
+  }, [chapter, editorInstance, headingJumpTarget, loaded, reviewJumpExcerpt, showExportStatus, updateCursorState]);
 
   const insertParagraphText = useCallback((paragraphText: string) => {
     if (!editorInstance) return;
@@ -1104,7 +1137,7 @@ export function EditorPane({
 
   // 下面五个派生值只服务于菜单/工具栏的展示，不参与保存与判定阈值。
   // 它们都是全文扫描（实测 30k 字章节合计约 20ms），所以统一跑在 statsText 这个
-  // 250ms 去抖快照上：按键热路径只付 setContent + 一次渲染，停顿后显示值再刷新。
+  // 120ms 去抖快照上：按键热路径只付 setContent + 一次渲染，停顿后显示值再刷新。
   const chapterHeadings = useMemo(
     () => (chapter ? extractChapterHeadings(chapter.id, statsText) : []),
     [chapter, statsText],
@@ -2026,7 +2059,7 @@ export function EditorPane({
 
   return (
     <div className="flex h-full flex-col">
-      <div className={`editor-command-bar flex min-h-10 flex-nowrap items-center gap-3 border-b border-ink-700 bg-ink-800/70 px-3 py-1.5 text-sm transition-opacity duration-200 ${focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100" : ""}`}>
+      <div className={`editor-command-bar flex min-h-10 flex-nowrap items-center gap-3 border-b border-ink-700 bg-ink-800/70 px-3 py-1.5 text-sm ${focusMode ? "hidden" : ""}`}>
         <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-hidden">
           <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>

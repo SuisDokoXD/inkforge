@@ -105,6 +105,8 @@ export function App(): JSX.Element {
   const currentProjectId = useAppStore((s) => s.currentProjectId);
   const lang = settings.uiLanguage;
   const terminalEnabled = settings.devModeEnabled;
+  // 专注模式只在正文页生效：其他页面仍需要侧栏导航指路。
+  const focusWriting = settings.focusMode && mainView === "writing";
   const previousMainViewRef = useRef(mainView);
   const reduceMotion = useReducedMotion() === true;
   const statusMotion = reduceMotion ? fadeOnly : fadeSlideUp;
@@ -344,7 +346,22 @@ export function App(): JSX.Element {
   return (
     <ErrorBoundary label="InkForge" lang={lang}>
       <div className="flex h-full w-full flex-col">
-        <TitleBar />
+        {focusWriting ? (
+          /* 专注模式：titlebar 变成顶部悬浮层，不占布局高度。
+             鼠标移到最顶部 8px 才显形，平时完全不挡正文；Esc / F11 退出。 */
+          <div className="group fixed inset-x-0 top-0 z-40">
+            <div className="h-2 w-full" aria-hidden="true" />
+            <div className="pointer-events-none relative -mt-2 opacity-0 transition-opacity duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+              <TitleBar />
+              {/* 退出方式的提示：只在 titlebar 显形时出现，平时不影响正文。 */}
+              <div className="absolute right-3 top-full mt-1 rounded-md border border-ink-700 bg-ink-900/95 px-2 py-1 text-[11px] text-ink-400 shadow-lg">
+                按 Esc 或 F11 退出专注模式
+              </div>
+            </div>
+          </div>
+        ) : (
+          <TitleBar />
+        )}
         <CrashRecoveryBanner />
         <ReminderToast />
         <LetterArrivalToast />
@@ -368,9 +385,11 @@ export function App(): JSX.Element {
           ) : null}
         </AnimatePresence>
         <div className="flex min-h-0 flex-1">
-          <ErrorBoundary label="ActivityBar" lang={lang}>
-            <ActivityBar onOpenPalette={() => setPaletteOpen(true)} />
-          </ErrorBoundary>
+          {focusWriting ? null : (
+            <ErrorBoundary label="ActivityBar" lang={lang}>
+              <ActivityBar onOpenPalette={() => setPaletteOpen(true)} />
+            </ErrorBoundary>
+          )}
           <div className="flex min-w-0 flex-1 flex-col">
             <ErrorBoundary label={mainView} lang={lang}>
               {/* mode="wait"：旧页退场完成后新页再进场，贴近 macOS 单窗口切换的清晰感。

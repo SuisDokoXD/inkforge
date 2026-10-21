@@ -235,8 +235,8 @@ export function ManualWritingRhythmBar({
 
   return (
     <div
-      className={`flex min-h-10 flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-900/35 px-4 py-2 text-xs text-ink-300 transition-opacity duration-200 ${
-        focusMode ? "opacity-40 hover:opacity-100 focus-within:opacity-100" : ""
+      className={`flex min-h-10 flex-wrap items-center gap-2 border-b border-ink-700 bg-ink-900/35 px-4 py-2 text-xs text-ink-300 ${
+        focusMode ? "hidden" : ""
       }`}
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
