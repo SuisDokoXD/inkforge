@@ -3,14 +3,12 @@ import {
   BarChart3,
   BookOpen,
   ClipboardCheck,
-  GitBranch,
   Globe2,
   LibraryBig,
   ListTree,
   Mail,
   Puzzle,
   Sparkles,
-  Trophy,
   Users,
 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
@@ -26,18 +24,16 @@ const PAGE_META: Record<Exclude<MainView, "writing">, { title: string; descripti
   character: { title: "人物", description: "维护人物卡、关系和出场信息。", section: "世界", Icon: Users },
   world: { title: "世界观", description: "整理地点、规则、组织和关系网络。", section: "世界", Icon: Globe2 },
   letters: { title: "来信", description: "查看来自角色和世界的写作提示。", section: "项目", Icon: Mail },
-  achievement: { title: "成就", description: "回看持续写作留下的里程碑。", section: "统计", Icon: Trophy },
   materials: { title: "素材库", description: "保存可复用的片段、灵感和参考。", section: "项目", Icon: LibraryBig },
   stats: { title: "数据统计", description: "了解作品进度和个人写作节奏。", section: "统计", Icon: BarChart3 },
-  timeline: { title: "时间线", description: "按章节查看情节事件和时间顺序。", section: "写作", Icon: GitBranch },
 };
 
 const SECTION_ITEMS: Record<string, Array<{ view: MainView; label: string }>> = {
-  写作: [{ view: "writing", label: "正文" }, { view: "outline", label: "大纲" }, { view: "timeline", label: "时间线" }],
+  写作: [{ view: "writing", label: "正文" }, { view: "outline", label: "大纲" }],
   世界: [{ view: "character", label: "人物" }, { view: "world", label: "世界观" }],
   "AI 工具": [{ view: "skill", label: "写作技能" }, { view: "review", label: "正文审查" }, { view: "auto-writer", label: "续写精修" }],
   项目: [{ view: "bookshelf", label: "书架" }, { view: "materials", label: "素材库" }, { view: "letters", label: "来信" }],
-  统计: [{ view: "stats", label: "数据统计" }, { view: "achievement", label: "成就" }],
+  统计: [{ view: "stats", label: "数据统计" }],
 };
 
 export function PageFrame({ view, children }: { view: Exclude<MainView, "writing">; children: ReactNode }): JSX.Element {

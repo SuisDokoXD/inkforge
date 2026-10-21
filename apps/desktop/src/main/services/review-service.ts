@@ -65,7 +65,6 @@ import {
 } from "./llm-runtime";
 import { resolveSceneBinding } from "./scene-binding-service";
 import { buildRagBlock } from "./rag-service";
-import { checkAchievementsAndNotify } from "./achievement-service";
 
 const PROGRESS_CHANNEL: typeof ipcEventChannels.reviewProgress = "review:progress";
 const DONE_CHANNEL: typeof ipcEventChannels.reviewDone = "review:done";
@@ -374,11 +373,6 @@ async function runReview(params: RunReviewParams): Promise<void> {
       summary,
       finishedAt: new Date().toISOString(),
     } satisfies ReviewDoneEvent);
-    try {
-      checkAchievementsAndNotify(report.projectId, "review-done");
-    } catch (error) {
-      logger.warn("review achievement check failed", error);
-    }
   } catch (error) {
     finalize(
       report.id,

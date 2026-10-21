@@ -17,13 +17,12 @@ export type MainView =
   | "world"
   | "review"
   | "bookshelf"
-  | "achievement"
   | "letters"
   | "outline"
   | "auto-writer"
   | "materials"
   | "stats"  // C4: 写作统计仪表盘
-  | "timeline";  // C12: 时间线可视化
+  | "stats";  // C4: 写作统计仪表盘
 
 // A9: 每页上次活跃实体的 ID（用于视图切换后恢复上下文）。
 // writing 页不在此列——它有自己的 currentChapterId。

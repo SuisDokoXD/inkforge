@@ -81,7 +81,6 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 | Chapter Log | `ChapterLogEntryRecord`, `ChapterOriginTag` | `chapter-log-repo`, `chapter-origin-tag-repo` | `chapter-log-service` | `chapter-log.ts` | `log/` |
 | Snapshot | `ChapterSnapshotRecord` | `chapter-snapshot-repo` | `snapshot-service` | `snapshot.ts` | `snapshot/` |
 | Letter | `CharacterLetterRecord` | `character-letter-repo` | `letter-service` | `letter.ts` | `pages/LetterInboxPage.tsx` |
-| Achievement | `AchievementRecord` | `achievement-repo` | `achievement-service` | `achievement.ts` | `pages/AchievementHallPage.tsx`, `achievement/` |
 | Companion (桌宠) | (renderer-only state) | — | — | — | `companion/` + `stores/companion-store.ts` + `companion-festivals.ts`, `companion-lines.ts` |
 | Terminal | — | — | (uses `node-pty`) | `terminal.ts` | `TerminalPanel` (xterm.js) |
 | Export/Import | (in ipc.ts) | (uses fs-layout, `zip-reader`, `zip-writer`) | `export-service`, `chapter-import-service` | `project-export.ts` | `ExportDialog.tsx` |

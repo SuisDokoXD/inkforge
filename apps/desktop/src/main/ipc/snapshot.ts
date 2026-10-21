@@ -13,7 +13,6 @@ import {
   listSnapshots,
   restoreSnapshot,
 } from "../services/snapshot-service";
-import { checkAchievementsAndNotify } from "../services/achievement-service";
 import {
   parseSnapshotCreateInput,
   parseSnapshotDeleteInput,
@@ -44,13 +43,6 @@ export function registerSnapshotHandlers(): void {
         // 手动快照默认不去重，让用户每次点都留痕
         dedupe: input.kind && input.kind !== "manual" ? true : false,
       });
-      if ((input.kind ?? "manual") === "manual") {
-        try {
-          checkAchievementsAndNotify(input.projectId, "snapshot-create");
-        } catch {
-          /* do not block snapshot creation on achievement bookkeeping */
-        }
-      }
       return { snapshot: result.snapshot };
     },
   );

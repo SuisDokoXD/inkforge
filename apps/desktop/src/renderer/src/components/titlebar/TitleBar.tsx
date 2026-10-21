@@ -11,7 +11,6 @@ import {
   Mail,
   PenLine,
   Puzzle,
-  Trophy,
   Users,
 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
@@ -59,7 +58,6 @@ const VIEW_LABEL: Record<string, { Icon: LucideIcon; label: string }> = {
   bookshelf: { Icon: BookOpen, label: "书房" },
   outline: { Icon: ClipboardList, label: "大纲" },
   letters: { Icon: Mail, label: "来信" },
-  achievement: { Icon: Trophy, label: "成就" },
   "auto-writer": { Icon: Bot, label: "续写精修" },
   materials: { Icon: FolderOpen, label: "素材库" },
 };

@@ -25,7 +25,6 @@ import type {
   NovelCharacterUpdateInput,
 } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
-import { checkAchievementsAndNotify } from "./achievement-service";
 import {
   pickProviderKey,
   reportProviderKeyResult,
@@ -333,11 +332,6 @@ export function createNovelCharacter(input: NovelCharacterCreateInput): NovelCha
     relations: input.relations ?? [],
     linkedTavernCardId: input.linkedTavernCardId ?? null,
   });
-  try {
-    checkAchievementsAndNotify(record.projectId, "character-create");
-  } catch {
-    /* do not block character creation on achievement bookkeeping */
-  }
   return record;
 }
 
@@ -347,11 +341,6 @@ export function updateNovelCharacterRecord(
   const ctx = getAppContext();
   const { id, ...patch } = input;
   const record = updateNovelCharacter(ctx.db, { id, ...patch });
-  try {
-    checkAchievementsAndNotify(record.projectId, "character-update");
-  } catch {
-    /* do not block character updates on achievement bookkeeping */
-  }
   return record;
 }
 

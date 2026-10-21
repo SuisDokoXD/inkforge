@@ -353,14 +353,6 @@ export const autoWriterApi = {
   onSnapshot: (listener: (payload: import("@inkforge/shared").IpcEventMap["auto-writer:snapshot"]) => void) => api().autoWriter.onSnapshot(listener),
 };
 
-// ----- M8 · Achievements -----
-export const achievementApi = {
-  list: (input: import("@inkforge/shared").AchievementListInput): Promise<import("@inkforge/shared").AchievementUnlockedRecord[]> => api().achievement.list(input),
-  check: (input: import("@inkforge/shared").AchievementCheckInput): Promise<import("@inkforge/shared").AchievementCheckResponse> => api().achievement.check(input),
-  stats: (input: { projectId: string }): Promise<import("@inkforge/shared").AchievementStatsResponse> => api().achievement.stats(input),
-  onUnlocked: (listener: (payload: import("@inkforge/shared").IpcEventMap["achievement:unlocked"]) => void) => api().achievement.onUnlocked(listener),
-};
-
 // ----- M8 · Letters -----
 export const letterApi = {
   list: (input: import("@inkforge/shared").LetterListInput): Promise<import("@inkforge/shared").CharacterLetterRecord[]> => api().letter.list(input),
@@ -511,18 +503,4 @@ export const worldInfoTraceApi = {
     api().worldInfoTrace.get(input),
   clear: (input: import("@inkforge/shared").WorldInfoTraceClearInput) =>
     api().worldInfoTrace.clear(input),
-};
-
-// ===== C12: Timeline =====
-export const timelineApi = {
-  getView: (projectId: string): Promise<{ chapters: import("@inkforge/shared").TimelineChapterNode[]; events: import("@inkforge/shared").TimelineEventRecord[] }> =>
-    api().timeline.getView({ projectId }),
-  listEvents: (projectId: string): Promise<{ events: import("@inkforge/shared").TimelineEventRecord[] }> =>
-    api().timeline.listEvents({ projectId }),
-  upsertEvent: (input: import("@inkforge/shared").TimelineEventCreateInput): Promise<import("@inkforge/shared").TimelineEventRecord> =>
-    (api() as any).timeline.upsertEvent(input),
-  deleteEvent: (id: string): Promise<{ id: string }> =>
-    api().timeline.deleteEvent({ id }),
-  reorderEvents: (eventIds: string[]): Promise<{ ok: true }> =>
-    api().timeline.reorderEvents({ eventIds }),
 };

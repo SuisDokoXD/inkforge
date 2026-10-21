@@ -62,7 +62,6 @@ function main() {
     "Ctrl+7",
     "Ctrl+8",
     "Ctrl+Shift+L",
-    "Ctrl+Shift+H",
     "Ctrl+Shift+M",
   ];
   for (const r of required) {

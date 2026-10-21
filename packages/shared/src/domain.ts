@@ -883,65 +883,8 @@ export interface AutoWriterRunRecord {
 }
 
 // =====================================================================
-// M8 · 活人感套装：成就 + 角色来信
+// M8 · 活人感套装：角色来信
 // =====================================================================
-
-/**
- * 成就 ID。前端的徽章目录与该 ID 一一对应（catalog 在 shared/achievements.ts）。
- * 字符串列表保持开放式：未来追加只需扩 catalog，无需改表。
- */
-export type AchievementId =
-  // 字数里程碑
-  | "first_word"
-  | "words_1k"
-  | "words_5k"
-  | "words_10k"
-  | "words_50k"
-  | "words_100k"
-  | "words_300k"
-  // 章节
-  | "first_chapter"
-  | "chapters_5"
-  | "chapters_20"
-  | "chapters_50"
-  // 连续打卡
-  | "streak_3"
-  | "streak_7"
-  | "streak_30"
-  // 时段
-  | "night_owl" // 0-3 点写作
-  | "early_bird" // 5-7 点写作
-  | "weekend_warrior" // 周末写满日目标
-  // 角色 / 世界观
-  | "first_character"
-  | "characters_5"
-  | "characters_15"
-  | "character_breathes" // 有一张较完整的人物档案
-  | "first_world_entry"
-  | "worldbuilder" // 5 条世界观条目
-  | "lore_keeper" // 有一条较完整的世界观条目
-  // AI / 工具
-  | "first_auto_writer_run"
-  | "auto_writer_3"
-  | "first_letter_received"
-  | "letters_pen_pal" // 收 5 封信
-  | "first_review" // 第一次 Review
-  | "backup_charm" // 第一次手动快照
-  | "snapshot_keeper" // 创建 10 个手动快照
-  | "named_chapter" // 标题有戏的章节
-  | "short_blade" // 短章节
-  | "long_breath" // 单章 2000 字
-  | "rewrite_master"; // 单段重写 ≥3 次仍出稿
-
-export type AchievementRarity = "common" | "rare" | "epic" | "legendary";
-
-export interface AchievementUnlockedRecord {
-  id: string;
-  projectId: string;
-  achievementId: AchievementId;
-  unlockedAt: string;
-  metadata: Record<string, unknown>;
-}
 
 /**
  * 角色来信「语气」。AI 生成时强约束这一字段以保证多样性。
@@ -1001,65 +944,6 @@ export interface MaterialRecord {
   createdAt: string;
   updatedAt: string;
 }
-
-// ===== C12: Timeline Events =====
-export type TimelineEventCategory =
-  | "plot_point"
-  | "character_entrance"
-  | "reveal"
-  | "climax"
-  | "resolution"
-  | "flashback"
-  | "timeskip"
-  | "custom";
-
-export interface TimelineEventRecord {
-  id: string;
-  projectId: string;
-  chapterId: string | null;
-  title: string;
-  description: string;
-  eventOrder: number;
-  color: string | null;
-  category: TimelineEventCategory;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TimelineEventCreateInput {
-  id?: string;
-  projectId: string;
-  chapterId?: string | null;
-  title: string;
-  description?: string;
-  eventOrder?: number;
-  color?: string | null;
-  category?: TimelineEventCategory;
-}
-
-export interface TimelineView {
-  chapters: TimelineChapterNode[];
-  events: TimelineEventRecord[];
-}
-
-export interface TimelineChapterNode {
-  id: string;
-  order: number;
-  title: string;
-  wordCount: number;
-  status: string;
-  updatedAt: string | null;
-  summary: string | null;
-  outlineCards: TimelineOutlineCard[];
-  origin: "ai" | "manual" | "hybrid";
-}
-
-export interface TimelineOutlineCard {
-  id: string;
-  title: string;
-  sections: Array<{ label: string; body: string }>;
-}
-
 // ===== C13: Image Generation =====
 export type ImageGenBackend = "comfyui" | "sdwebui" | "none";
 

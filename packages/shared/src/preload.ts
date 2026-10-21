@@ -424,13 +424,9 @@ export interface InkforgeApi {
 }
 
 // =====================================================================
-// M8 · 活人感（Achievements + Letters）interface declaration merging
+// M8 · 活人感（角色来信）interface declaration merging
 // =====================================================================
 import type {
-  AchievementCheckInput,
-  AchievementCheckResponse,
-  AchievementListInput,
-  AchievementStatsResponse,
   LetterDeleteInput,
   LetterDismissInput,
   LetterGenerateInput,
@@ -438,20 +434,9 @@ import type {
   LetterMarkReadInput,
   LetterPinInput,
 } from "./ipc";
-import type {
-  AchievementUnlockedRecord,
-  CharacterLetterRecord,
-} from "./domain";
+import type { CharacterLetterRecord } from "./domain";
 
 export interface InkforgeApi {
-  achievement: {
-    list(input: AchievementListInput): Promise<AchievementUnlockedRecord[]>;
-    check(input: AchievementCheckInput): Promise<AchievementCheckResponse>;
-    stats(input: { projectId: string }): Promise<AchievementStatsResponse>;
-    onUnlocked(
-      listener: (payload: IpcEventMap["achievement:unlocked"]) => void,
-    ): Unsubscribe;
-  };
   letter: {
     list(input: LetterListInput): Promise<CharacterLetterRecord[]>;
     generate(input: LetterGenerateInput): Promise<CharacterLetterRecord>;
@@ -735,16 +720,5 @@ export interface InkforgeApi {
     ): Promise<WorldInfoTraceRecord[]>;
     get(input: WorldInfoTraceGetInput): Promise<WorldInfoTraceRecord | null>;
     clear(input: WorldInfoTraceClearInput): Promise<{ projectId: string }>;
-  };
-}
-
-// ===== C12: Timeline =====
-export interface InkforgeApi {
-  timeline: {
-    getView(input: { projectId: string }): Promise<{ chapters: import("./domain").TimelineChapterNode[]; events: import("./domain").TimelineEventRecord[] }>;
-    listEvents(input: { projectId: string }): Promise<{ events: import("./domain").TimelineEventRecord[] }>;
-    upsertEvent(input: import("./domain").TimelineEventCreateInput): Promise<import("./domain").TimelineEventRecord>;
-    deleteEvent(input: { id: string }): Promise<{ id: string }>;
-    reorderEvents(input: { eventIds: string[] }): Promise<{ ok: true }>;
   };
 }

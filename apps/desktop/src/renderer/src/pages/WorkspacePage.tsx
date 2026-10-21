@@ -421,12 +421,11 @@ export function WorkspacePage(): JSX.Element {
         {[
           ["writing", "正文"],
           ["outline", "大纲"],
-          ["timeline", "时间线"],
         ].map(([view, label]) => (
           <button
             key={view}
             type="button"
-            onClick={() => setMainView(view as "writing" | "outline" | "timeline")}
+            onClick={() => setMainView(view as "writing" | "outline")}
             className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] transition-colors ${view === "writing" ? "bg-accent-500/15 text-accent-200" : "text-ink-400 hover:bg-ink-800 hover:text-ink-100"}`}
             aria-current={view === "writing" ? "page" : undefined}
           >

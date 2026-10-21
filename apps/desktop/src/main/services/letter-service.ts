@@ -28,7 +28,6 @@ import {
 } from "./llm-runtime";
 import { resolveSceneBinding } from "./scene-binding-service";
 import { buildRagBlock } from "./rag-service";
-import { checkAchievementsAndNotify } from "./achievement-service";
 
 /* ============================================================
  * Prompt 拼装
@@ -272,12 +271,6 @@ export async function generateLetter(
     } catch {
       /* ignore */
     }
-  }
-  // 顺便检查成就（first_letter_received / letters_pen_pal）
-  try {
-    checkAchievementsAndNotify(input.projectId, "letter-generate");
-  } catch {
-    /* ignore */
   }
 
   return record;

@@ -1074,24 +1074,3 @@ declare module "./maps" {
     [ipcEventChannels.updateStatus]: UpdateStatus;
   }
 }
-
-
-// ===== C12: Timeline · IpcRequestMap extension =====
-export interface TimelineGetViewInput { projectId: string }
-export interface TimelineGetViewResponse { chapters: import("../domain").TimelineChapterNode[]; events: import("../domain").TimelineEventRecord[] }
-export interface TimelineListEventsInput { projectId: string }
-export interface TimelineListEventsResponse { events: import("../domain").TimelineEventRecord[] }
-export type TimelineUpsertEventInput = import("../domain").TimelineEventCreateInput
-export interface TimelineDeleteEventInput { id: string }
-export interface TimelineReorderEventsInput { eventIds: string[] }
-export interface TimelineReorderEventsResponse { ok: true }
-
-declare module "./maps" {
-  interface IpcRequestMap {
-    [ipcChannels.timelineGetView]: { req: TimelineGetViewInput; res: TimelineGetViewResponse }
-    [ipcChannels.timelineListEvents]: { req: TimelineListEventsInput; res: TimelineListEventsResponse }
-    [ipcChannels.timelineUpsertEvent]: { req: TimelineUpsertEventInput; res: import("../domain").TimelineEventRecord }
-    [ipcChannels.timelineDeleteEvent]: { req: TimelineDeleteEventInput; res: { id: string } }
-    [ipcChannels.timelineReorderEvents]: { req: TimelineReorderEventsInput; res: TimelineReorderEventsResponse }
-  }
-}

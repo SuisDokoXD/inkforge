@@ -1,9 +1,7 @@
 import type { BrowserWindow } from "electron";
-import { registerAchievementHandlers } from "./achievement";
 import { registerAutoWriterHandlers } from "./auto-writer";
 import { registerLetterHandlers } from "./letter";
 import { registerBookCoverHandlers } from "./book-cover";
-import { registerTimelineHandlers } from "./timeline";
 import { registerBookshelfHandlers } from "./bookshelf";
 import { registerCharacterHandlers } from "./character";
 import { registerChapterHandlers } from "./chapter";
@@ -71,7 +69,6 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerAutoWriterHandlers(getWindow);
   registerWindowControlHandlers(getWindow);
   // ----- M8 · 活人感 -----
-  registerAchievementHandlers(getWindow);
   registerLetterHandlers(getWindow);
   startDailyReminder(getWindow);
   // ----- Scene Bindings (ported from ainovel) -----
@@ -93,6 +90,4 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerAuthorNoteHandlers();
   // ----- v25/v26: Character Card 导入导出 + Voice Profile + World Info Trace -----
   registerCharacterCardHandlers();
-  // ----- C12: Timeline -----
-  registerTimelineHandlers();
 }

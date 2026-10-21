@@ -71,49 +71,6 @@
 
 import { ipcChannels, ipcEventChannels } from "./channels";
 
-export interface AchievementListInput {
-  projectId: string;
-}
-
-export interface AchievementCheckInput {
-  projectId: string;
-  /** 触发原因：用于在多个事件源里去重检查；可选。 */
-  trigger?:
-    | "chapter-update"
-    | "chapter-create"
-    | "character-create"
-    | "character-update"
-    | "world-create"
-    | "world-update"
-    | "auto-writer-done"
-    | "letter-generate"
-    | "snapshot-create"
-    | "review-done"
-    | "manual";
-}
-
-export interface AchievementCheckResponse {
-  newlyUnlocked: import("../domain").AchievementUnlockedRecord[];
-}
-
-export interface AchievementStatsResponse {
-  totalUnlocked: number;
-  totalCatalog: number;
-  /** 各 rarity 解锁数量。 */
-  byRarity: Record<import("../domain").AchievementRarity, number>;
-  /** 累计字数 / 章节数 / 角色数 / 世界观条目 / AutoWriter 次数等概要。 */
-  stats: {
-    totalWords: number;
-    totalChapters: number;
-    totalCharacters: number;
-    totalWorldEntries: number;
-    autoWriterRuns: number;
-    snapshotsManual: number;
-    streakDays: number;
-    longestStreak: number;
-  };
-}
-
 export interface LetterListInput {
   projectId: string;
   includeDismissed?: boolean;
@@ -150,29 +107,12 @@ export interface LetterDeleteInput {
   letterId: string;
 }
 
-export interface AchievementUnlockedEvent {
-  projectId: string;
-  achievement: import("../domain").AchievementUnlockedRecord;
-}
-
 export interface LetterArrivedEvent {
   projectId: string;
   letter: import("../domain").CharacterLetterRecord;
 }
 
 export interface IpcRequestMapM8 {
-  [ipcChannels.achievementList]: {
-    req: AchievementListInput;
-    res: import("../domain").AchievementUnlockedRecord[];
-  };
-  [ipcChannels.achievementCheck]: {
-    req: AchievementCheckInput;
-    res: AchievementCheckResponse;
-  };
-  [ipcChannels.achievementStats]: {
-    req: { projectId: string };
-    res: AchievementStatsResponse;
-  };
   [ipcChannels.letterList]: {
     req: LetterListInput;
     res: import("../domain").CharacterLetterRecord[];
@@ -203,18 +143,6 @@ export interface IpcRequestMapM8 {
 // （TS 同名 interface 自动合并）
 declare module "./maps" {
   interface IpcRequestMap {
-    [ipcChannels.achievementList]: {
-      req: AchievementListInput;
-      res: import("../domain").AchievementUnlockedRecord[];
-    };
-    [ipcChannels.achievementCheck]: {
-      req: AchievementCheckInput;
-      res: AchievementCheckResponse;
-    };
-    [ipcChannels.achievementStats]: {
-      req: { projectId: string };
-      res: AchievementStatsResponse;
-    };
     [ipcChannels.letterList]: {
       req: LetterListInput;
       res: import("../domain").CharacterLetterRecord[];
@@ -244,7 +172,6 @@ declare module "./maps" {
 
 declare module "./maps" {
   interface IpcEventMap {
-    [ipcEventChannels.achievementUnlocked]: AchievementUnlockedEvent;
     [ipcEventChannels.letterArrived]: LetterArrivedEvent;
   }
 }

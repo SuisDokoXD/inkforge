@@ -245,13 +245,6 @@ const api: InkforgeApi = {
     onMaximizedChanged: (listener) =>
       subscribe(ipcEventChannels.windowMaximizedChanged, listener),
   },
-  achievement: {
-    list: (input) => ipcRenderer.invoke(ipcChannels.achievementList, input),
-    check: (input) => ipcRenderer.invoke(ipcChannels.achievementCheck, input),
-    stats: (input) => ipcRenderer.invoke(ipcChannels.achievementStats, input),
-    onUnlocked: (listener) =>
-      subscribe(ipcEventChannels.achievementUnlocked, listener),
-  },
   letter: {
     list: (input) => ipcRenderer.invoke(ipcChannels.letterList, input),
     generate: (input) => ipcRenderer.invoke(ipcChannels.letterGenerate, input),
@@ -361,14 +354,6 @@ const api: InkforgeApi = {
       ipcRenderer.invoke(ipcChannels.worldInfoTraceListRecent, input),
     get: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceGet, input),
     clear: (input) => ipcRenderer.invoke(ipcChannels.worldInfoTraceClear, input),
-  },
-  // ===== C12: Timeline =====
-  timeline: {
-    getView: (input: { projectId: string }) => ipcRenderer.invoke("timeline:get-view", input),
-    listEvents: (input: { projectId: string }) => ipcRenderer.invoke("timeline:list-events", input),
-    upsertEvent: (input: unknown) => ipcRenderer.invoke("timeline:upsert-event", input),
-    deleteEvent: (input: { id: string }) => ipcRenderer.invoke("timeline:delete-event", input),
-    reorderEvents: (input: { eventIds: string[] }) => ipcRenderer.invoke("timeline:reorder-events", input),
   },
 };
 

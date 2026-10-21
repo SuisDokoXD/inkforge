@@ -26,8 +26,7 @@ export * from "./repositories/chapter-origin-tag-repo";
 export * from "./repositories/chapter-log-repo";
 export * from "./repositories/chapter-snapshot-repo";
 export * from "./repositories/auto-writer-run-repo";
-// ----- M8 · 活人感 -----
-export * from "./repositories/achievement-repo";
+// ----- M8 · 活人感（角色来信） -----
 export * from "./repositories/character-letter-repo";
 // ----- Scene Bindings (ported from ainovel) -----
 export * from "./repositories/scene-binding-repo";
@@ -52,5 +51,3 @@ export * from "./repositories/world-info-trace-repo";
 // ----- C1: Semantic Search (embeddings + n-gram similarity) -----
 export * from "./repositories/embedding-repo";
 export * from "./semantic-search";
-// ----- C12: Timeline Events -----
-export * from "./repositories/timeline-event-repo";

@@ -39,7 +39,7 @@ test.describe("M5-G 冒烟：6 条最小路径", () => {
     await app.close();
   });
 
-  test("3. 新建项目 + 章节 + 写 200 字触发 AI Timeline", async () => {
+  test("3. 新建项目 + 章节 + 写 200 字触发 AI 反馈", async () => {
     const { app, win } = await launch();
     // TODO: 用 data-testid 勾出项目 / 章节 / 编辑器
     expect(await win.title()).toBeTruthy();

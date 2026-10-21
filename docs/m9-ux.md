@@ -50,7 +50,7 @@
 
 ### Phase 5 反馈与可访问性
 - SettingsDialog：Esc 关闭、`aria-modal` + `aria-label`、点击背景关闭、内容区阻止冒泡
-- 仍未做：`ToastHost` 抽离（AchievementToast/ReminderToast 各自维持现状）、字号缩放、主题跟随系统、编辑器宽度（需扩 `AppSettings` 与 storage repo，留给 v0.2.x patch）
+- 仍未做：`ToastHost` 抽离（ReminderToast 维持现状）、字号缩放、主题跟随系统、编辑器宽度（需扩 `AppSettings` 与 storage repo，留给 v0.2.x patch）
 
 ## 基线数据
 

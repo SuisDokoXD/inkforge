@@ -131,10 +131,7 @@
   windowToggleMaximize: "window:toggle-maximize",
   windowClose: "window:close",
   windowIsMaximized: "window:is-maximized",
-  // ----- M8 · 活人感（Achievements + Letters） -----
-  achievementList: "achievement:list",
-  achievementCheck: "achievement:check",
-  achievementStats: "achievement:stats",
+  // ----- M8 · 活人感（角色来信） -----
   letterList: "letter:list",
   letterGenerate: "letter:generate",
   letterMarkRead: "letter:mark-read",
@@ -216,12 +213,6 @@
   worldInfoTraceListRecent: "world-info-trace:list-recent",
   worldInfoTraceGet: "world-info-trace:get",
   worldInfoTraceClear: "world-info-trace:clear",
-  // ===== C12: Timeline =====
-  timelineListEvents: "timeline:list-events",
-  timelineUpsertEvent: "timeline:upsert-event",
-  timelineDeleteEvent: "timeline:delete-event",
-  timelineReorderEvents: "timeline:reorder-events",
-  timelineGetView: "timeline:get-view",
   // ===== Mobile Sync =====
   mobileSyncStatus: "mobile-sync:status",
   mobileSyncStart: "mobile-sync:start",
@@ -252,7 +243,6 @@ export const ipcEventChannels = {
   chapterLogReminder: "chapter-log:daily-reminder",
   windowMaximizedChanged: "window:maximized-changed",
   // ----- M8 · 活人感 -----
-  achievementUnlocked: "achievement:unlocked",
   letterArrived: "letter:arrived",
 } as const;
 

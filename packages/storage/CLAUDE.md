@@ -42,6 +42,8 @@ Verify pattern: `apps/desktop/scripts/verify-migrations.cjs` validates table lis
 | v22 | `world_entries` triggers (`keys/position/probability`) for SillyTavern-style world-info activation |
 | v23-v26 | World Pack system (`world_pack`, `world_pack_entries`, `project_world_pack_slots`), `author_note`, `character_card_import` fingerprinting, `voice_profile`, `world_info_trace` |
 
+> Note: `achievements_unlocked` (v15) and `timeline_events` (v32) still exist in the schema and are still created by their migrations, but their feature code (page / service / IPC / repo) was removed in the "reduce to the writing core" pass. Keep the tables — project packages read and rewrite `achievements_unlocked` during export/import.
+
 ## Critical Schemas (verbatim — DO NOT GUESS)
 
 ### `projects` (v1 + v19 + v20)

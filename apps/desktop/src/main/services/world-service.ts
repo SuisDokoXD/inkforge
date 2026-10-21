@@ -18,7 +18,6 @@ import type {
   WorldUpdateInput,
 } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
-import { checkAchievementsAndNotify } from "./achievement-service";
 
 function normalizeStringArray(input: unknown): string[] | undefined {
   if (!input) return undefined;
@@ -56,11 +55,6 @@ export function createWorldEntry(input: WorldCreateInput): WorldEntryRecord {
     constant: input.constant,
     extensions: input.extensions,
   });
-  try {
-    checkAchievementsAndNotify(record.projectId, "world-create");
-  } catch {
-    /* do not block world entry creation on achievement bookkeeping */
-  }
   return record;
 }
 
@@ -85,11 +79,6 @@ export function updateWorldEntryRecord(
     constant: input.constant,
     extensions: input.extensions,
   });
-  try {
-    checkAchievementsAndNotify(record.projectId, "world-update");
-  } catch {
-    /* do not block world entry updates on achievement bookkeeping */
-  }
   return record;
 }
 

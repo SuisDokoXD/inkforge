@@ -42,10 +42,6 @@ import type {
   ProjectRecord,
 } from "@inkforge/shared";
 import { getAppContext } from "./app-state";
-import {
-  checkAchievementsAndNotify,
-  type AchievementTrigger,
-} from "./achievement-service";
 import { flushOnSave } from "./skill-trigger-service";
 import { logger } from "./logger";
 
@@ -72,14 +68,6 @@ function stripLeadingTitle(content: string): { title?: string; body: string } {
   return { body: content };
 }
 
-function checkChapterAchievements(projectId: string, trigger: AchievementTrigger): void {
-  try {
-    checkAchievementsAndNotify(projectId, trigger);
-  } catch (error) {
-    logger.warn("chapter achievement check failed", error);
-  }
-}
-
 export function createChapter(input: ChapterCreateInput): ChapterRecord {
   const ctx = getAppContext();
   const project = resolveProject(input.projectId);
@@ -95,7 +83,6 @@ export function createChapter(input: ChapterCreateInput): ChapterRecord {
     wordCount: input.wordCount,
     filePath,
   });
-  checkChapterAchievements(record.projectId, "chapter-create");
   return record;
 }
 
@@ -109,18 +96,12 @@ export function updateChapterRecord(input: ChapterUpdateInput): ChapterRecord {
   }
   const { content: _content, ...rest } = input;
   const updated = updateChapter(ctx.db, rest);
-  const shouldCheckAchievements =
-    typeof input.wordCount === "number" || typeof input.title === "string";
 
   if (typeof input.wordCount === "number") {
     const delta = input.wordCount - current.wordCount;
     if (delta !== 0) addDailyWords(ctx.db, current.projectId, delta);
     getDailyProgress(ctx.db, current.projectId, project.dailyGoal);
   }
-  if (shouldCheckAchievements) {
-    checkChapterAchievements(current.projectId, "chapter-update");
-  }
-
   if (typeof input.content === "string") {
     void flushOnSave({
       projectId: updated.projectId,
@@ -217,7 +198,6 @@ export function importMarkdownChapter(input: ChapterImportMdInput): ChapterRecor
     filePath,
   });
   if (wordCount > 0) addDailyWords(ctx.db, input.projectId, wordCount);
-  checkChapterAchievements(input.projectId, "chapter-create");
   return record;
 }
 

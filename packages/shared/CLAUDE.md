@@ -11,7 +11,6 @@
 | `src/preload.ts` | `InkforgeApi` interface (preload-injected `window.inkforge`) |
 | `src/i18n.ts` | UI translations (zh/en/ja) |
 | `src/provider-catalog.ts` | LLM model catalog (vendor + known models) |
-| `src/achievements.ts` | Achievement definitions |
 | `src/index.ts` | Barrel re-export |
 
 ## Adding a New IPC Channel

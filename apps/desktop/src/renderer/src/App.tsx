@@ -24,13 +24,10 @@ const ReviewPage = lazy(() => import("./pages/ReviewPage").then((m) => ({ defaul
 const AutoWriterPage = lazy(() => import("./pages/AutoWriterPage").then((m) => ({ default: m.AutoWriterPage })));
 const MaterialsPage = lazy(() => import("./pages/MaterialsPage").then((m) => ({ default: m.MaterialsPage })));
 const StatsPage = lazy(() => import("./pages/StatsPage").then((m) => ({ default: m.StatsPage })));  // C4
-const TimelinePage = lazy(() => import("./pages/TimelinePage").then((m) => ({ default: m.TimelinePage })));  // C12
-const AchievementHallPage = lazy(() => import("./pages/AchievementHallPage").then((m) => ({ default: m.AchievementHallPage })));
 const LetterInboxPage = lazy(() => import("./pages/LetterInboxPage").then((m) => ({ default: m.LetterInboxPage })));
 const BookshelfPage = lazy(() => import("./components/bookshelf").then((m) => ({ default: m.BookshelfPage })));
 
 import { ActivityBar } from "./components/ActivityBar";
-import { AchievementToast } from "./components/achievement";
 import { Companion } from "./components/companion";
 import { ReminderToast } from "./components/log";
 import { TitleBar } from "./components/titlebar";
@@ -77,8 +74,6 @@ function renderPage(mainView: MainView): JSX.Element | null {
       return <ReviewPage />;
     case "bookshelf":
       return <BookshelfPage />;
-    case "achievement":
-      return <AchievementHallPage />;
     case "letters":
       return <LetterInboxPage />;
     case "outline":
@@ -89,8 +84,6 @@ function renderPage(mainView: MainView): JSX.Element | null {
       return <MaterialsPage />;
     case "stats":  // C4
       return <StatsPage />;
-    case "timeline":  // C12
-      return <TimelinePage />;
     default:
       return null;
   }
@@ -355,7 +348,6 @@ export function App(): JSX.Element {
         <TitleBar />
         <CrashRecoveryBanner />
         <ReminderToast />
-        <AchievementToast />
         <LetterArrivalToast />
         <GlobalDropZone />
         <AnimatePresence initial={false}>

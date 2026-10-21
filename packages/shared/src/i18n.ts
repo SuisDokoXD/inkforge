@@ -453,7 +453,6 @@ export const i18nResources: Resources = {
   "nav.review":      { zh: "审查", en: "Review", ja: "レビュー" },
   "nav.bookshelf":   { zh: "书房", en: "Bookshelf", ja: "本棚" },
   "nav.letters":     { zh: "来信", en: "Letters", ja: "手紙" },
-  "nav.achievement": { zh: "成就", en: "Achievements", ja: "アチーブメント" },
   "nav.autoWriter":  { zh: "续写精修", en: "Continue & Polish", ja: "続きを整える" },
   "nav.materials":   { zh: "素材库", en: "Materials", ja: "素材ライブラリ" },
   // C4: 写作统计
@@ -510,14 +509,6 @@ export const i18nResources: Resources = {
   "settings.diag.show":    { zh: "查看", en: "Show", ja: "表示" },
   "settings.diag.refresh": { zh: "刷新", en: "Refresh", ja: "更新" },
   "settings.diag.hint":    { zh: "点右上「查看」生成排查摘要（含启动耗时 / 数据库大小 / 处理器 / 近期错误）。", en: "Click Show to generate a diagnostic snapshot (startup time, DB size, CPU, recent errors).", ja: "「表示」をクリックして診断スナップショットを生成。" },
-  // ===== C12: Timeline =====
-  "nav.timeline":      { zh: "时间线", en: "Timeline", ja: "タイムライン" },
-  "timeline.addEvent": { zh: "添加情节事件", en: "Add Plot Event", ja: "イベント追加" },
-  "timeline.editEvent":{ zh: "编辑事件", en: "Edit Event", ja: "編集" },
-  "timeline.deleteEvent":{ zh: "删除事件", en: "Delete Event", ja: "削除" },
-  "timeline.eventTitle":{ zh: "事件标题", en: "Event Title", ja: "タイトル" },
-  "timeline.chapters": { zh: "章节序列", en: "Chapter Sequence", ja: "章シーケンス" },
-  "timeline.noChapters":{ zh: "暂无章节，去写作页创建吧", en: "No chapters yet", ja: "章がありません" },
 };
 
 /**
