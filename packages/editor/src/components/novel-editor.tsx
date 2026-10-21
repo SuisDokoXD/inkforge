@@ -42,12 +42,17 @@ function scrollCursorToCenter(editor: Editor): void {
 
 function syncEditorDomState(editor: Editor): void {
   const dom = editor.view.dom;
-  dom.dataset.empty = editor.isEmpty ? "true" : "false";
+  const next = editor.isEmpty ? "true" : "false";
+  // 只在真的变化时写：每次按键无条件赋值会产生一次 DOM 属性变更，
+  // 进而触发样式失效（实测每键约 13 次样式重算）。
+  if (dom.dataset.empty !== next) dom.dataset.empty = next;
 }
 
 export interface NovelEditorProps {
   value: string;
-  onChange: (plainText: string, html: string) => void;
+  /** 只回传纯文本：曾经还回传整篇 HTML（ed.getHTML()），但唯一的调用方从不使用，
+   *  而 HTML 序列化每按一次键都要建 DOM fragment，实测约 0.3–0.4ms/键 + 大量 GC。 */
+  onChange: (plainText: string) => void;
   placeholder?: string;
   autofocus?: boolean;
   className?: string;
@@ -130,7 +135,7 @@ export function NovelEditor(props: NovelEditorProps): JSX.Element {
       syncEditorDomState(ed);
       const text = normalizeEditorText(ed.getText());
       lastEmittedRef.current = text;
-      onChange(text, ed.getHTML());
+      onChange(text);
       if (typewriterMode) scrollCursorToCenter(ed);
     },
   });

@@ -104,15 +104,38 @@ function stats(label, deltas, longTasks) {
   await page.waitForTimeout(1200);
   stats("空闲 1.2s", ...(await page.evaluate(collect)));
 
+  // 阶段拆分：CDP 的 Performance 计数器给出脚本/样式/布局各花了多少，
+  // 补上「帧率掉了，但掉在哪个阶段」这一层。计数器是累计值，取差即本次输入的开销。
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Performance.enable");
+  const metrics = async () => {
+    const { metrics: list } = await cdp.send("Performance.getMetrics");
+    return Object.fromEntries(list.map((m) => [m.name, m.value]));
+  };
+
+  const text = SAMPLE.repeat(TYPE_REPEAT);
   await page.click(".ProseMirror");
   await page.keyboard.press("Control+End");
-  const text = SAMPLE.repeat(TYPE_REPEAT);
+  await page.keyboard.type(text.slice(0, 40), { delay: 20 }); // 预热，排除首帧与 JIT
+  await page.waitForTimeout(600);
+
+  const before = await metrics();
   await page.evaluate(install);
   const t0 = Date.now();
   await page.keyboard.type(text, { delay: 0 });
   const elapsed = Date.now() - t0;
   await page.waitForTimeout(400);
   stats(`连续输入 ${text.length} 字（${elapsed}ms）`, ...(await page.evaluate(collect)));
+  const after = await metrics();
+
+  const d = (k) => ((after[k] ?? 0) - (before[k] ?? 0)) * 1000;
+  const perKey = (k) => (d(k) / text.length).toFixed(2);
+  console.log(
+    `\n阶段拆分：脚本 ${d("ScriptDuration").toFixed(0)}ms(${perKey("ScriptDuration")}ms/键) · ` +
+    `样式 ${d("RecalcStyleDuration").toFixed(0)}ms(${perKey("RecalcStyleDuration")}ms/键, ${Math.round((after.RecalcStyleCount ?? 0) - (before.RecalcStyleCount ?? 0))} 次) · ` +
+    `布局 ${d("LayoutDuration").toFixed(0)}ms(${perKey("LayoutDuration")}ms/键, ${Math.round((after.LayoutCount ?? 0) - (before.LayoutCount ?? 0))} 次) · ` +
+    `任务总计 ${d("TaskDuration").toFixed(0)}ms · 主线程占用 ${((d("TaskDuration") / elapsed) * 100).toFixed(0)}%`,
+  );
 
   await app.close();
   console.log("\n>25ms = 跌倒 1.5 帧以上；>50ms = 肉眼可见顿挫。同一构建建议跑 2–3 次看分布。");
