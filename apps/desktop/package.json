@@ -28,7 +28,7 @@
     "sqlite:status": "node scripts/swap-sqlite-abi.cjs status",
     "sqlite:node": "node scripts/swap-sqlite-abi.cjs node",
     "sqlite:electron": "node scripts/swap-sqlite-abi.cjs electron",
-    "verify:all": "pnpm run verify:migrations && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:project-package && pnpm run verify:outline-gen && pnpm run verify:skill && pnpm run verify:shortcuts",
+    "verify:all": "pnpm run verify:migrations && pnpm run verify:review-engine && pnpm run verify:provider && pnpm run verify:i18n && pnpm run verify:catalog && pnpm run verify:auto-writer && pnpm run verify:scene-binding && pnpm run verify:rag && pnpm run verify:world-relationship && pnpm run verify:export && pnpm run verify:project-package && pnpm run verify:outline-gen && pnpm run verify:skill && pnpm run verify:shortcuts && pnpm run verify:typing-path",
     "bench:storage": "node scripts/_run-in-electron.cjs scripts/bench-storage.cjs",
     "dist": "electron-vite build && electron-builder",
     "dist:dir": "electron-vite build && electron-builder --dir",
@@ -48,6 +48,7 @@
     "e2e:install": "playwright install chromium",
     "postinstall": "node -e \"if(process.env.CI){console.log('skip install-app-deps on CI');process.exit(0)};try{require('child_process').execSync('electron-builder install-app-deps',{stdio:'inherit'})}catch(e){console.log('skip install-app-deps');}\"",
     "verify:shortcuts": "node scripts/verify-shortcuts.cjs",
+    "verify:typing-path": "node scripts/verify-typing-path.cjs",
     "proof:real-model": "node scripts/run-real-model-proof-suite.cjs",
     "proof:report": "node scripts/summarize-real-model-proof.cjs",
     "bench:startup": "node scripts/_run-in-electron.cjs scripts/bench-startup.cjs"
