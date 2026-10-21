@@ -112,33 +112,6 @@ export interface LetterArrivedEvent {
   letter: import("../domain").CharacterLetterRecord;
 }
 
-export interface IpcRequestMapM8 {
-  [ipcChannels.letterList]: {
-    req: LetterListInput;
-    res: import("../domain").CharacterLetterRecord[];
-  };
-  [ipcChannels.letterGenerate]: {
-    req: LetterGenerateInput;
-    res: import("../domain").CharacterLetterRecord;
-  };
-  [ipcChannels.letterMarkRead]: {
-    req: LetterMarkReadInput;
-    res: { letterId: string };
-  };
-  [ipcChannels.letterPin]: {
-    req: LetterPinInput;
-    res: { letterId: string };
-  };
-  [ipcChannels.letterDismiss]: {
-    req: LetterDismissInput;
-    res: { letterId: string };
-  };
-  [ipcChannels.letterDelete]: {
-    req: LetterDeleteInput;
-    res: { letterId: string };
-  };
-}
-
 // 通过同文件 interface declaration merging 把 M8 接入主映射
 // （TS 同名 interface 自动合并）
 declare module "./maps" {

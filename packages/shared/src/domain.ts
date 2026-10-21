@@ -71,24 +71,6 @@ export interface DailyProgressRecord {
   goalHit: boolean;
 }
 
-export type AppSettingKey =
-  | "theme"
-  | "activeProviderId"
-  | "analysisEnabled"
-  | "analysisThreshold"
-  | "uiLanguage"
-  | "devModeEnabled"
-  | "onboardingCompleted"
-  | "sceneRoutingMode"
-  | "editorFontSize"
-  | "editorLineHeight"
-  | "editorWidth"
-  | "typewriterMode"
-  | "autoIndent"
-  | "spellcheck"
-  | "focusMode"
-  | "customAccent";
-
 export interface AppSettings {
   theme: "dark" | "light" | "paper" | "sepia" | "mint";
   activeProviderId: string | null;
@@ -249,10 +231,6 @@ export interface SkillDefinition {
   updatedAt: string;
 }
 
-export type TavernMode = "director" | "auto";
-
-export type TavernRole = "director" | "character" | "summary";
-
 export type SyncMode = "two-way" | "snapshot" | "detached";
 
 export interface TavernCardRecord {
@@ -300,30 +278,6 @@ export interface CharacterSyncLogRecord {
   at: string;
 }
 
-export interface TavernSessionRecord {
-  id: string;
-  projectId: string;
-  title: string;
-  topic: string;
-  mode: TavernMode;
-  budgetTokens: number;
-  summaryProviderId: string | null;
-  summaryModel: string | null;
-  lastK: number;
-  createdAt: string;
-}
-
-export interface TavernMessageRecord {
-  id: string;
-  sessionId: string;
-  characterId: string | null;
-  role: TavernRole;
-  content: string;
-  tokensIn: number;
-  tokensOut: number;
-  createdAt: string;
-}
-
 export interface SkillRunUsage {
   inputTokens: number;
   outputTokens: number;
@@ -357,24 +311,7 @@ export interface SyncDiffRow {
   conflict: boolean;
 }
 
-export interface TokenBudgetState {
-  sessionId: string;
-  budgetTokens: number;
-  usedTokens: number;
-  remainingTokens: number;
-  shouldWarn: boolean;
-  warnAt: string | null;
-}
-
-export interface CompactResult {
-  summaryMessageId: string;
-  replacedMessageCount: number;
-  usage: SkillRunUsage;
-}
-
 // ---------- M4 · World ----------
-
-export type WorldEntryCategory = string;
 
 // 世界观条目的注入位置（v22 起）。
 //   before：拼到 user prompt 之前（默认，最常见用法 —— 让 LLM 先看到设定再读任务）
@@ -545,37 +482,6 @@ export interface WorldInfoTraceRecord {
   charsUsed: number;
   charBudget: number;
   createdAt: string;
-}
-
-// ---------- M4 · Research ----------
-
-export type ResearchProvider =
-  | "tavily"
-  | "bing"
-  | "serpapi"
-  | "llm-fallback"
-  | "manual";
-
-export interface ResearchNoteRecord {
-  id: string;
-  projectId: string;
-  topic: string;
-  sourceUrl: string | null;
-  sourceTitle: string | null;
-  sourceProvider: ResearchProvider;
-  excerpt: string;
-  note: string;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ResearchSearchHit {
-  title: string;
-  url: string;
-  snippet: string;
-  provider: ResearchProvider;
-  score?: number;
 }
 
 // ---------- M4 · Review ----------
@@ -943,32 +849,4 @@ export interface MaterialRecord {
   tags: string[];
   createdAt: string;
   updatedAt: string;
-}
-// ===== C13: Image Generation =====
-export type ImageGenBackend = "comfyui" | "sdwebui" | "none";
-
-export interface ImageGenSettings {
-  backend: ImageGenBackend;
-  apiUrl: string;
-}
-
-export interface ImageGenRequest {
-  prompt: string;
-  negativePrompt?: string;
-  width: number;
-  height: number;
-  projectId: string;
-}
-
-export interface ImageGenProgress {
-  step: number;
-  totalSteps: number;
-  preview?: string;
-}
-
-export interface ImageGenResult {
-  success: boolean;
-  imagePath?: string;
-  dataUrl?: string;
-  error?: string;
 }
