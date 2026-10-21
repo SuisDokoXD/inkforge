@@ -1,9 +1,9 @@
-// C5: 写作冲刺 / Pomodoro 面板——利用已有的 companion-store 番茄钟状态机，
+// C5: 写作冲刺 / Pomodoro 面板——用 pomodoro-store 的状态机，
 // 提供一个可见的倒计时器、当前冲刺字数和历史记录。
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { Clock, Pause, Play, RotateCcw, Timer } from "lucide-react";
-import { useCompanionStore } from "../stores/companion-store";
+import { usePomodoroStore } from "../stores/pomodoro-store";
 import { useAppStore } from "../stores/app-store";
 import { DUR, EASE_STANDARD, fadeOnly, fadeSlideUp } from "../lib/motion-tokens";
 import { Button, IconButton } from "./ui";
@@ -29,11 +29,11 @@ export function PomodoroTimer({ onClose }: PomodoroTimerProps): JSX.Element {
   const reduce = useReducedMotion();
   const motionVariants = reduce ? fadeOnly : fadeSlideUp;
 
-  // 从 companion store 读取番茄钟状态
-  const pomodoro = useCompanionStore((s) => s.pomodoro);
-  const startPomodoro = useCompanionStore((s) => s.startPomodoro);
-  const stopPomodoro = useCompanionStore((s) => s.stopPomodoro);
-  const advancePomodoro = useCompanionStore((s) => s.advancePomodoro);
+  // 读取番茄钟状态
+  const pomodoro = usePomodoroStore((s) => s.pomodoro);
+  const startPomodoro = usePomodoroStore((s) => s.startPomodoro);
+  const stopPomodoro = usePomodoroStore((s) => s.stopPomodoro);
+  const advancePomodoro = usePomodoroStore((s) => s.advancePomodoro);
 
   // 读取当前字数（冲刺开始时记录基线，实时显示增量）
   const chapterStats = useAppStore((s) => s.currentChapterStats);

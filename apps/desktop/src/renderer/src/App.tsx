@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { dailyApi, providerApi, projectApi, settingsApi } from "./lib/api";
+import { providerApi, projectApi, settingsApi } from "./lib/api";
 import type { AppSettings } from "@inkforge/shared";
 import { useAppStore } from "./stores/app-store";
 import type { MainView } from "./stores/app-store";
@@ -28,7 +28,6 @@ const LetterInboxPage = lazy(() => import("./pages/LetterInboxPage").then((m) =>
 const BookshelfPage = lazy(() => import("./components/bookshelf").then((m) => ({ default: m.BookshelfPage })));
 
 import { ActivityBar } from "./components/ActivityBar";
-import { Companion } from "./components/companion";
 import { ReminderToast } from "./components/log";
 import { TitleBar } from "./components/titlebar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -390,7 +389,6 @@ export function App(): JSX.Element {
             </ErrorBoundary>
           </div>
         </div>
-        <CompanionMount projectId={currentProjectId ?? null} />
         <CommandPalette
           open={paletteOpen}
           onClose={() => setPaletteOpen(false)}
@@ -401,19 +399,4 @@ export function App(): JSX.Element {
       </div>
     </ErrorBoundary>
   );
-}
-
-function CompanionMount({ projectId }: { projectId: string | null }): JSX.Element {
-  const dailyQuery = useQuery({
-    queryKey: ["daily-progress", projectId],
-    queryFn: () => dailyApi.progress({ projectId: projectId ?? "" }),
-    enabled: !!projectId,
-    refetchInterval: 30_000,
-  });
-  const dailyAchieved = useCallback(() => {
-    const r = dailyQuery.data;
-    if (!r) return false;
-    return r.goalHit;
-  }, [dailyQuery.data])();
-  return <Companion dailyAchieved={dailyAchieved} />;
 }

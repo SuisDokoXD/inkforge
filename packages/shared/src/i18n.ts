@@ -96,8 +96,8 @@ export const i18nResources: Resources = {
   "app.name": { zh: "墨炉 · InkForge", en: "InkForge", ja: "InkForge" },
   "app.tagline": {
     zh: "小说创作工作台",
-    en: "A novel writing workbench with AI companions",
-    ja: "AI が静かに寄り添う小説創作ワークベンチ",
+    en: "A novel writing workbench",
+    ja: "小説創作ワークベンチ",
   },
 
   // ActivityBar / pages
