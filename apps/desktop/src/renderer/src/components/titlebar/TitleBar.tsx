@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useAppStore } from "../../stores/app-store";
 import {
-  EASE_IN_OUT,
   fadeOnly,
   fadeSlideUp,
   hoverLift,
@@ -225,15 +224,11 @@ function ActiveStatusPill(): JSX.Element {
           exit="exit"
         >
           <span className="relative flex h-1.5 w-1.5">
-            <motion.span
+            {/* 脉冲环用 CSS keyframes：这个指示器在写作视图里常驻，交给 motion
+                会让主线程每帧都跑一遍渲染管线。 */}
+            <span
               aria-hidden
-              className="absolute inline-flex h-full w-full rounded-full bg-emerald-400"
-              animate={
-                reduceMotion
-                  ? { opacity: 0.6, scale: 1 }
-                  : { opacity: [0.55, 0, 0.55], scale: [1, 1.9, 1] }
-              }
-              transition={{ duration: 1.8, ease: EASE_IN_OUT, repeat: Infinity }}
+              className={`absolute inline-flex h-full w-full rounded-full bg-emerald-400 ${reduceMotion ? "opacity-60" : "save-pulse-dot"}`}
             />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>

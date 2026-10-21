@@ -72,6 +72,27 @@ function main() {
   } else {
     ok("persistManualRhythmState 受限流守卫保护");
   }
+
+  // 5) 写作外壳里不得有 motion 的无限循环动画。
+  //
+  // 原因：常驻动画走 motion 时每帧都要过一遍 VisualElement 渲染管线（实测
+  // renderHTML 单项 0.3–0.5 ms/键），且帧循环在空闲时也占着主线程。保存状态
+  // 指示器在打字时几乎一直处于「等待保存/保存中」，所以这条动画等于常开。
+  // 纯视觉的循环动画应改用 styles.css 里的 CSS keyframes（合成器推进）。
+  const shellFiles = [
+    FILE,
+    path.join(__dirname, "../src/renderer/src/components/titlebar/TitleBar.tsx"),
+  ];
+  for (const file of shellFiles) {
+    const shellSrc = fs.readFileSync(file, "utf8");
+    const hits = shellSrc.match(/repeat:\s*Infinity/g) ?? [];
+    const name = path.basename(file);
+    if (hits.length > 0) {
+      fail(`${name} 里有 ${hits.length} 处 motion 的 repeat: Infinity，写作时常驻占用主线程（应改用 CSS keyframes）`);
+    } else {
+      ok(`${name} 没有 motion 无限循环动画`);
+    }
+  }
 }
 
 main();
