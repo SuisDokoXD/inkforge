@@ -93,6 +93,31 @@ function main() {
       ok(`${name} 没有 motion 无限循环动画`);
     }
   }
+
+  // 6) 上面那条要求「改用 CSS keyframes」，所以这些 keyframes 必须真的在。
+  //
+  // 否则删掉 styles.css 里的定义不会有任何报错，圆点只是静静地不再脉冲——
+  // 一个性能修复把功能悄悄弄丢，比原来的开销更难发现。
+  const CSS = path.join(__dirname, "../src/renderer/src/styles.css");
+  if (!fs.existsSync(CSS)) {
+    fail("styles.css not found at " + CSS);
+    return;
+  }
+  const css = fs.readFileSync(CSS, "utf8");
+  if (/@keyframes\s+save-pulse\s*\{/.test(css) && /\.save-pulse-dot\s*\{/.test(css)) {
+    ok("save-pulse 的 CSS keyframes 与工具类都存在");
+  } else {
+    fail("styles.css 缺少 @keyframes save-pulse 或 .save-pulse-dot，保存状态指示器会失去脉冲");
+  }
+  // 动画本身必须只动 transform/opacity：动 layout 属性会把逐帧开销从 JS 搬到样式重算，
+  // 而样式重算按每键 2 次乘以章节长度实测约 0.39ms/键——等于没修。
+  const pulseBlock = css.slice(css.indexOf("@keyframes save-pulse"));
+  const pulseBody = pulseBlock.slice(0, pulseBlock.indexOf("\n}"));
+  if (/^\s*(width|height|top|left|margin|padding|box-shadow)\s*:/m.test(pulseBody)) {
+    fail("@keyframes save-pulse 里出现会触发布局/重绘的属性，应只用 transform 与 opacity");
+  } else {
+    ok("@keyframes save-pulse 只动 transform / opacity");
+  }
 }
 
 main();
