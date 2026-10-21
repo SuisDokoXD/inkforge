@@ -61,7 +61,33 @@ function stats(label, deltas, longTasks) {
     cwd: DESKTOP,
     timeout: 90_000,
   });
-  const page = await app.firstWindow();
+
+  // 主进程的 stderr 是唯一能解释「窗口还没出来进程就没了」的地方：单实例锁、
+  // DB 打不开、启动迁移失败都只在这里留话，而 playwright 只会报一句
+  // "Target page, context or browser has been closed"。攒着，失败时打出来。
+  const mainLog = [];
+  app.process().stderr?.on("data", (chunk) => mainLog.push(String(chunk)));
+  app.process().stdout?.on("data", (chunk) => mainLog.push(String(chunk)));
+
+  let page;
+  try {
+    page = await app.firstWindow();
+  } catch (err) {
+    const tail = mainLog.join("").split("\n").filter(Boolean).slice(-25).join("\n");
+    console.error("拿不到窗口。主进程输出（最后 25 行）：\n" + (tail || "<主进程没有任何输出>"));
+    console.error(
+      [
+        "",
+        "常见原因：",
+        "  1) 已有 InkForge 实例在跑 —— 单实例锁让新进程立刻退出，先彻底关掉（含托盘/后台进程）；",
+        "  2) 用户档案里残留 session.lock（上次非正常退出）；",
+        "  3) 该档案的 SQLite 打不开（路径不存在 / 被别的实例占用）。",
+        "原始错误：" + (err && err.message ? err.message : String(err)),
+      ].join("\n"),
+    );
+    await app.close().catch(() => {});
+    process.exit(2);
+  }
 
   try {
     await page.waitForSelector(".ProseMirror", { timeout: 90_000 });
