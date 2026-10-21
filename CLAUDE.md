@@ -45,8 +45,8 @@ SQLite (.inkforge.db) + chapter .md files in project dir
    - Verify scripts use system Node (ABI 127 for Node 22)
    - Electron 32 uses ABI 128
    - Same prebuilt cannot serve both — need to swap via `prebuild-install --runtime=electron|node`.
-6. **Migrations are append-only**: **current head at v26** (46 tables). Never rewrite earlier versions; add a new migration object at the end of `packages/storage/src/migrations.ts` and bump `EXPECTED_MAX_VERSION` in `verify-migrations.cjs`.
-7. **RAG is keyword-based, not embeddings**: `rag-repo.ts` uses SQL LIKE over `world_entries / characters / research_notes / sample_chunks`. `rag-service.ts` extracts queries via 2-char Chinese sliding window. Don't claim "vector search" in commit messages.
+6. **Migrations are append-only**: **current head at v33** (38 tables). Never rewrite earlier versions; add a new migration object at the end of `packages/storage/src/migrations.ts` and bump `EXPECTED_MAX_VERSION` in `verify-migrations.cjs`. To retire a table, add a *new* migration that drops it (see v33 `drop_dormant_feature_tables`) and remove the name from the verifier's expected tables/indexes — dropping the `CREATE TABLE` from its original migration would break every existing database.
+7. **RAG is keyword-based, not embeddings**: `rag-repo.ts` uses SQL LIKE over `world_entries / characters / sample_chunks`. `rag-service.ts` extracts queries via 2-char Chinese sliding window. Don't claim "vector search" in commit messages.
 8. **AutoWriter agent roles** are `planner | writer | critic | reflector` (canonical in `packages/shared/src/domain.ts` `AutoWriterAgentRole`; system prompts in `packages/auto-writer-engine/src/agent-roles.ts`). `reflector` runs after the chapter is assembled to update long-term memory (chapter summary, character hints). Earlier doc drafts mistakenly named the last role "editor" — fix on sight.
 
 ## Key Conventions
@@ -81,14 +81,13 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 | Chapter Log | `ChapterLogEntryRecord`, `ChapterOriginTag` | `chapter-log-repo`, `chapter-origin-tag-repo` | `chapter-log-service` | `chapter-log.ts` | `log/` |
 | Snapshot | `ChapterSnapshotRecord` | `chapter-snapshot-repo` | `snapshot-service` | `snapshot.ts` | `snapshot/` |
 | Letter | `CharacterLetterRecord` | `character-letter-repo` | `letter-service` | `letter.ts` | `pages/LetterInboxPage.tsx` |
-| Companion (桌宠) | (renderer-only state) | — | — | — | `companion/` + `stores/companion-store.ts` + `companion-festivals.ts`, `companion-lines.ts` |
 | Terminal | — | — | (uses `node-pty`) | `terminal.ts` | `TerminalPanel` (xterm.js) |
 | Export/Import | (in ipc.ts) | (uses fs-layout, `zip-reader`, `zip-writer`) | `export-service`, `chapter-import-service` | `project-export.ts` | `ExportDialog.tsx` |
 
 ## Per-Package CLAUDE.md
 
 - [packages/shared/CLAUDE.md](packages/shared/CLAUDE.md) — types + IPC declaration merging
-- [packages/storage/CLAUDE.md](packages/storage/CLAUDE.md) — migrations (v1-v26) + repos + exact schemas
+- [packages/storage/CLAUDE.md](packages/storage/CLAUDE.md) — migrations (v1-v33) + repos + exact schemas
 - [apps/desktop/CLAUDE.md](apps/desktop/CLAUDE.md) — main IPC + service patterns + LLM streaming
 - [packages/auto-writer-engine/CLAUDE.md](packages/auto-writer-engine/CLAUDE.md) — 4-Agent pipeline (planner/writer/critic/reflector)
 

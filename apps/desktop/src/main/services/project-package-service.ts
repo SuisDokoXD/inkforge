@@ -243,16 +243,7 @@ function packageRows(db: DB, projectId: string): Record<string, RawRow[]> {
     outline_cards: allRows(db, `SELECT * FROM outline_cards WHERE project_id = ?`, projectId),
     daily_logs: allRows(db, `SELECT * FROM daily_logs WHERE project_id = ?`, projectId),
     characters: allRows(db, `SELECT * FROM characters WHERE project_id = ?`, projectId),
-    tavern_sessions: allRows(db, `SELECT * FROM tavern_sessions WHERE project_id = ?`, projectId),
-    tavern_messages: allRows(
-      db,
-      `SELECT m.* FROM tavern_messages m
-        INNER JOIN tavern_sessions s ON s.id = m.session_id
-       WHERE s.project_id = ?`,
-      projectId,
-    ),
     world_entries: allRows(db, `SELECT * FROM world_entries WHERE project_id = ?`, projectId),
-    research_notes: allRows(db, `SELECT * FROM research_notes WHERE project_id = ?`, projectId),
     review_dimensions: allRows(db, `SELECT * FROM review_dimensions WHERE project_id = ?`, projectId),
     review_reports: allRows(db, `SELECT * FROM review_reports WHERE project_id = ?`, projectId),
     review_findings: allRows(
@@ -280,7 +271,6 @@ function packageRows(db: DB, projectId: string): Record<string, RawRow[]> {
     ),
     chapter_snapshots: allRows(db, `SELECT * FROM chapter_snapshots WHERE project_id = ?`, projectId),
     auto_writer_runs: allRows(db, `SELECT * FROM auto_writer_runs WHERE project_id = ?`, projectId),
-    achievements_unlocked: allRows(db, `SELECT * FROM achievements_unlocked WHERE project_id = ?`, projectId),
     character_letters: allRows(db, `SELECT * FROM character_letters WHERE project_id = ?`, projectId),
     sample_libs: allRows(db, `SELECT * FROM sample_libs WHERE project_id = ?`, projectId),
     sample_chunks: allRows(
@@ -605,9 +595,6 @@ function transformRows(
       chapter_id: maps.get("chapters", row.chapter_id) ?? "",
     })),
     daily_logs: (rows.daily_logs ?? []).map((row) => ({ ...row, project_id: projectId })),
-    research_notes: (rows.research_notes ?? []).map((row) =>
-      baseRow(row, "research_notes", maps, projectId),
-    ),
     review_dimensions: (rows.review_dimensions ?? []).map((row) => ({
       ...baseRow(row, "review_dimensions", maps, projectId),
       skill_id: null,
@@ -685,22 +672,10 @@ function transformRows(
           ? maps.get("chapter_snapshots", row.last_snapshot_id)
           : null,
     })),
-    achievements_unlocked: (rows.achievements_unlocked ?? []).map((row) =>
-      baseRow(row, "achievements_unlocked", maps, projectId),
-    ),
     character_letters: (rows.character_letters ?? []).map((row) => ({
       ...baseRow(row, "character_letters", maps, projectId),
       character_id: maps.get("characters", row.character_id) ?? "",
       provider_id: null,
-    })),
-    tavern_sessions: (rows.tavern_sessions ?? []).map((row) => ({
-      ...baseRow(row, "tavern_sessions", maps, projectId),
-      summary_provider_id: null,
-    })),
-    tavern_messages: (rows.tavern_messages ?? []).map((row) => ({
-      ...baseRow(row, "tavern_messages", maps, projectId),
-      session_id: maps.get("tavern_sessions", row.session_id) ?? "",
-      character_id: null,
     })),
     world_packs: (rows.world_packs ?? []).map((row) => ({
       ...baseRow(row, "world_packs", maps, projectId),
@@ -847,7 +822,6 @@ export async function importProjectPackage(input: {
     insertRows(ctx.db, "outline_cards", transformed.outline_cards);
     insertRows(ctx.db, "ai_feedbacks", transformed.ai_feedbacks);
     insertRows(ctx.db, "daily_logs", transformed.daily_logs);
-    insertRows(ctx.db, "research_notes", transformed.research_notes);
     insertRows(ctx.db, "review_dimensions", transformed.review_dimensions);
     insertRows(ctx.db, "review_reports", transformed.review_reports);
     insertRows(ctx.db, "review_findings", transformed.review_findings);
@@ -859,10 +833,7 @@ export async function importProjectPackage(input: {
     insertRows(ctx.db, "chapter_summaries", transformed.chapter_summaries);
     insertRows(ctx.db, "chapter_snapshots", transformed.chapter_snapshots);
     insertRows(ctx.db, "auto_writer_runs", transformed.auto_writer_runs);
-    insertRows(ctx.db, "achievements_unlocked", transformed.achievements_unlocked);
     insertRows(ctx.db, "character_letters", transformed.character_letters);
-    insertRows(ctx.db, "tavern_sessions", transformed.tavern_sessions);
-    insertRows(ctx.db, "tavern_messages", transformed.tavern_messages);
     insertRows(ctx.db, "sample_libs", transformed.sample_libs);
     insertRows(ctx.db, "sample_chunks", transformed.sample_chunks);
     insertRows(ctx.db, "world_relationships", transformed.world_relationships);

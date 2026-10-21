@@ -41,8 +41,10 @@ Verify pattern: `apps/desktop/scripts/verify-migrations.cjs` validates table lis
 | v21 | `chapter_summaries` — cross-chapter memory for AutoWriter |
 | v22 | `world_entries` triggers (`keys/position/probability`) for SillyTavern-style world-info activation |
 | v23-v26 | World Pack system (`world_pack`, `world_pack_entries`, `project_world_pack_slots`), `author_note`, `character_card_import` fingerprinting, `voice_profile`, `world_info_trace` |
+| v27-v32 | `expanded_material_kinds`, `research_credentials`, `chapter_trash` (soft delete), `semantic_search_embeddings`, `prompt_versions`, `timeline_events` |
+| v33 | `drop_dormant_feature_tables` — drops the six tables of the removed tavern / research / image-gen / achievement / timeline features |
 
-> Note: `achievements_unlocked` (v15) and `timeline_events` (v32) still exist in the schema and are still created by their migrations, but their feature code (page / service / IPC / repo) was removed in the "reduce to the writing core" pass. Keep the tables — project packages read and rewrite `achievements_unlocked` during export/import.
+> Note: v33 (`drop_dormant_feature_tables`) physically drops the tables of the removed features — `tavern_sessions`, `tavern_messages`, `research_notes`, `research_credentials`, `achievements_unlocked`, `timeline_events`. Their earlier migrations still run (append-only), then v33 removes the tables, so a fresh replay and an in-place upgrade both end at the same schema. Keep `tavern_cards` — the CCv3 character-card import/export path uses it.
 
 ## Critical Schemas (verbatim — DO NOT GUESS)
 

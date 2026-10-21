@@ -14,7 +14,6 @@ export * from "./repositories/novel-character-repo";
 export * from "./repositories/character-sync-log-repo";
 export * from "./repositories/world-entry-repo";
 export * from "./repositories/provider-key-repo";
-export * from "./repositories/research-credential-repo";
 export * from "./repositories/review-dim-repo";
 export * from "./repositories/review-report-repo";
 export * from "./repositories/review-finding-repo";

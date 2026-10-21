@@ -22,12 +22,6 @@ export interface CharacterHit {
   backstory: string;
 }
 
-export interface ResearchHit {
-  topic: string;
-  excerpt: string;
-  note: string;
-}
-
 export interface SampleChunkHit {
   libId: string;
   libTitle: string;
@@ -87,25 +81,6 @@ export function ragSearchCharacters(
        ORDER BY updated_at DESC LIMIT ?`,
     )
     .all(projectId, ...where.params, limit) as CharacterHit[];
-}
-
-export function ragSearchResearchNotes(
-  db: DB,
-  projectId: string,
-  queries: string[],
-  limit: number,
-): ResearchHit[] {
-  const where = buildLikeWhere(
-    "(topic || ' ' || excerpt || ' ' || note)",
-    queries,
-  );
-  return db
-    .prepare(
-      `SELECT topic, excerpt, note FROM research_notes
-       WHERE project_id = ? AND (${where.clause})
-       ORDER BY updated_at DESC LIMIT ?`,
-    )
-    .all(projectId, ...where.params, limit) as ResearchHit[];
 }
 
 export function ragSearchSampleChunks(

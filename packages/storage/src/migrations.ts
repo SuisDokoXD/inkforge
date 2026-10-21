@@ -1265,6 +1265,27 @@ const migrations: Migration[] = [
       `);
     },
   },
+
+  // ===== v33: 清理已下线功能留下的空表 =====
+  // 酒馆、网页研究、成就、时间线四个功能的代码已删除（commit ab63a2d / 9e91ff3），
+  // 但这些表一直留在库里占位。功能入口已不存在，表里的数据无法再被读写，
+  // 所以这里一次性物理删除。DROP 不写回滚：本地单机库，删掉的只是不可达的历史。
+  // 顺序要求：tavern_messages 先于 tavern_sessions（前者有指向后者的外键，
+  // 且 db.ts 开了 foreign_keys = ON）。
+  {
+    version: 33,
+    name: "drop_dormant_feature_tables",
+    up: (db) => {
+      db.exec(`
+        DROP TABLE IF EXISTS tavern_messages;
+        DROP TABLE IF EXISTS tavern_sessions;
+        DROP TABLE IF EXISTS research_notes;
+        DROP TABLE IF EXISTS research_credentials;
+        DROP TABLE IF EXISTS achievements_unlocked;
+        DROP TABLE IF EXISTS timeline_events;
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: DB): number {

@@ -5,7 +5,7 @@
  *   1) 跑迁移到 v17，断言 sample_libs / sample_chunks 表存在
  *   2) 创建一个虚拟 project + 插入测试 lib + 多个 chunks
  *   3) ragSearchSampleChunks 用关键词召回 → 验证命中
- *   4) ragSearchWorldEntries / ragSearchCharacters / ragSearchResearchNotes 跨源召回
+ *   4) ragSearchWorldEntries / ragSearchCharacters 跨源召回
  *   5) 跨 project 隔离：另一个 project 不应召回前一个 project 的 chunks
  *   6) deleteSampleLib → CASCADE 清 chunks
  *
@@ -26,7 +26,6 @@ const {
   ragSearchSampleChunks,
   ragSearchWorldEntries,
   ragSearchCharacters,
-  ragSearchResearchNotes,
 } = require("@inkforge/storage");
 
 function fail(msg) {
@@ -64,15 +63,6 @@ function seedCharacter(db, projectId, name, persona, backstory) {
     `INSERT INTO characters (id, project_id, name, persona, traits, backstory, relations, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(id, projectId, name, persona, "{}", backstory, "[]", now, now);
-}
-
-function seedResearch(db, projectId, topic, note) {
-  const id = randomUUID();
-  const now = new Date().toISOString();
-  db.prepare(
-    `INSERT INTO research_notes (id, project_id, topic, source_url, source_title, source_provider, excerpt, note, tags, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, projectId, topic, null, null, "manual", "", note, "[]", now, now);
 }
 
 function main() {
@@ -118,7 +108,6 @@ function main() {
     // 4. seed cross-source data in p1
     seedWorldEntry(db, p1, "赤霄剑", "上古神兵，能斩魔。");
     seedCharacter(db, p1, "张三", "沉稳", "青云宗大弟子。");
-    seedResearch(db, p1, "唐代盔甲", "明光铠为主流，胸甲分两片。");
 
     // seed irrelevant in p2 (should NOT be returned for p1 queries)
     seedWorldEntry(db, p2, "苍冥剑", "another universe.");
@@ -143,13 +132,6 @@ function main() {
       fail("characters search returned no hits for '青云'");
     } else {
       ok(`characters hit '${charHits[0].name}'`);
-    }
-
-    const researchHits = ragSearchResearchNotes(db, p1, ["明光"], 5);
-    if (researchHits.length === 0) {
-      fail("research_notes search returned no hits for '明光'");
-    } else {
-      ok(`research_notes hit '${researchHits[0].topic}'`);
     }
 
     // 6. Cross-project isolation

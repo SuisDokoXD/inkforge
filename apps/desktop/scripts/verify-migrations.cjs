@@ -28,10 +28,7 @@ const EXPECTED_TABLES = [
   "tavern_cards",
   "characters",
   "character_sync_log",
-  "tavern_sessions",
-  "tavern_messages",
   "world_entries",
-  "research_notes",
   "review_dimensions",
   "review_reports",
   "review_findings",
@@ -45,7 +42,6 @@ const EXPECTED_TABLES = [
   "chapter_snapshots",
   "auto_writer_runs",
   // ----- M8 · 活人感 (v15) -----
-  "achievements_unlocked",
   "character_letters",
   // ----- Scene Bindings (v16, ported from ainovel) -----
   "scene_bindings_basic",
@@ -70,8 +66,9 @@ const EXPECTED_TABLES = [
   // ----- v26: Voice Profile + World Info Trace -----
   "voice_profiles",
   "world_info_traces",
-  // ----- v28: Research Credentials (research API key persistence) -----
-  "research_credentials",
+  // v33 删除了 tavern_sessions / tavern_messages / research_notes /
+  // research_credentials / achievements_unlocked / timeline_events 及其索引，
+  // 因此这些表名与索引名不再出现在期望清单里。
 ];
 
 const EXPECTED_INDEXES = [
@@ -85,14 +82,10 @@ const EXPECTED_INDEXES = [
   "idx_tavern_cards_name",
   "idx_characters_project_name",
   "idx_character_sync_log_novel_at",
-  "idx_tavern_sessions_project_created",
-  "idx_tavern_messages_session_created",
   "uidx_tavern_cards_linked_novel_character",
   "uidx_characters_linked_tavern_card",
   "idx_world_project",
   "idx_world_updated",
-  "idx_research_project_created",
-  "idx_research_topic",
   "idx_review_dim_project",
   "idx_review_reports_project_started",
   "idx_findings_report_severity",
@@ -107,8 +100,6 @@ const EXPECTED_INDEXES = [
   "idx_auto_writer_runs_chapter",
   "idx_auto_writer_runs_project",
   // ----- M8 · 活人感 (v15) -----
-  "uidx_achievements_project_aid",
-  "idx_achievements_project_unlocked",
   "idx_character_letters_project_generated",
   "idx_character_letters_character",
   // ----- Sample Library + RAG (v17, ported from ainovel) -----
@@ -133,9 +124,13 @@ const EXPECTED_INDEXES = [
   "idx_card_imports_hash",
   // ----- v26: World Info Trace 按项目+时间倒序查的复合索引 -----
   "idx_world_info_traces_project_time",
+
+// v33 删除了 tavern_sessions / tavern_messages / research_notes /
+// research_credentials / achievements_unlocked / timeline_events 及其索引。
+// 这些名字必须从表清单与索引清单里消失，否则 v33 之后播放会立刻失败。
 ];
 
-const EXPECTED_MAX_VERSION = 28;
+const EXPECTED_MAX_VERSION = 33;
 const EXPECTED_VERSIONS = Array.from(
   { length: EXPECTED_MAX_VERSION },
   (_, i) => i + 1,

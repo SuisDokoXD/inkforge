@@ -4,10 +4,8 @@ import {
   isOsProtectedSecret,
   listProviderKeyPersistenceRecords,
   listProviderPersistenceRecords,
-  listResearchCredentialPersistenceRecords,
   updateProviderKey,
   upsertProvider,
-  upsertResearchCredential,
   type DB,
   type Keystore,
 } from "@inkforge/storage";
@@ -38,7 +36,7 @@ async function migrateSecret(
 }
 
 function countLegacySecrets(db: DB): number {
-  const tables = ["providers", "provider_keys", "research_credentials"];
+  const tables = ["providers", "provider_keys"];
   return tables.reduce((total, table) => {
     const row = db
       .prepare(
@@ -96,23 +94,6 @@ export async function migrateLegacyCredentials(options: {
         failed += 1;
         logger?.warn("Provider key migration failed", { keyId: key.id, error });
       }
-    }
-  }
-
-  for (const credential of listResearchCredentialPersistenceRecords(db)) {
-    try {
-      const account = `research:${credential.provider}`;
-      const result = await migrateSecret(keystore, account, credential.encrypted);
-      if (result) {
-        upsertResearchCredential(db, credential.provider, result.encrypted ?? null, true);
-        migrated += 1;
-      }
-    } catch (error) {
-      failed += 1;
-      logger?.warn("Research credential migration failed", {
-        provider: credential.provider,
-        error,
-      });
     }
   }
 

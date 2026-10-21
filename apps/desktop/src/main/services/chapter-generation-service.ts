@@ -287,7 +287,7 @@ export async function generateChapterFromOutline(
   }
 
   // RAG: keep imported literature references in a separate block so they are not
-  // squeezed out by world/character/research hits.
+  // squeezed out by world/character hits.
   const ragQuery = [
     project.name,
     project.genre,

@@ -6,12 +6,10 @@ import {
   createKeystore,
   getProviderKeyPersistenceRecord,
   getProviderPersistenceRecord,
-  getResearchCredentialEncrypted,
   insertProviderKey,
   openDatabase,
   runMigrations,
   upsertProvider,
-  upsertResearchCredential,
 } from "@inkforge/storage";
 import { migrateLegacyCredentials } from "../credential-migration-service";
 
@@ -22,7 +20,7 @@ describe("credential migration", () => {
     if (workspace) rmSync(workspace, { recursive: true, force: true });
   });
 
-  it("migrates every legacy credential class and removes the unused master key", async () => {
+  it("migrates provider and provider-key credentials and removes the unused master key", async () => {
     workspace = mkdtempSync(join(tmpdir(), "inkforge-credential-migration-"));
     const db = openDatabase({ workspaceDir: workspace });
     runMigrations(db);
@@ -49,9 +47,6 @@ describe("credential migration", () => {
       storedInKeychain: false,
     });
 
-    const researchSecret = await legacy.setKey("research:tavily", "research-secret");
-    upsertResearchCredential(db, "tavily", researchSecret.encrypted ?? null, false);
-
     const protectedKeystore = createKeystore(workspace, {
       isAvailable: () => true,
       encrypt: (plaintext) => Buffer.from(`protected:${plaintext}`, "utf8"),
@@ -63,14 +58,11 @@ describe("credential migration", () => {
       workspaceDir: workspace,
     });
 
-    expect(result).toEqual({ migrated: 3, failed: 0, masterKeyRemoved: true });
+    expect(result).toEqual({ migrated: 2, failed: 0, masterKeyRemoved: true });
     expect(getProviderPersistenceRecord(db, "provider-1")?.encrypted?.iv).toBe(
       "electron-safe-storage",
     );
     expect(getProviderKeyPersistenceRecord(db, "key-1")?.encrypted?.iv).toBe(
-      "electron-safe-storage",
-    );
-    expect(getResearchCredentialEncrypted(db, "tavily")?.iv).toBe(
       "electron-safe-storage",
     );
     expect(existsSync(join(workspace, "keystore.master"))).toBe(false);

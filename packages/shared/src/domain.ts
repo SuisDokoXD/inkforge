@@ -747,7 +747,7 @@ export interface ChapterSnapshotRecord {
   runId: string | null;
   /** 关联到具体的 Agent；手动快照为 null。 */
   agentRole: AutoWriterAgentRole | null;
-  /** 关联到 ai_feedbacks.id 或 tavern_messages.id（若适用）。 */
+  /** 关联到 ai_feedbacks.id（若适用）。 */
   sourceMessageId: string | null;
   createdAt: string;
 }
@@ -826,8 +826,8 @@ export interface CharacterLetterRecord {
 
 // =====================================================================
 // v20 · Materials (素材库) — independent top-level inspiration store.
-// Orthogonal to sample_libs (style references), world_entries (lore graph),
-// research_notes (web clippings). Backs the standalone "素材库" page.
+// Orthogonal to sample_libs (style references) and world_entries (lore graph).
+// Backs the standalone "素材库" page.
 // =====================================================================
 
 export type MaterialKind =

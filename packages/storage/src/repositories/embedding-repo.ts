@@ -92,7 +92,7 @@ export function listEmbeddings(db: DB, projectId: string): EmbeddingEntry[] {
 export interface SemanticSearchInput {
   projectId: string;
   query: string;
-  /** 限制实体类型（"world_entry" | "character" | "research_note"），不传则搜所有 */
+  /** 限制实体类型（"world_entry" | "character"），不传则搜所有 */
   entityTypes?: string[];
   topK?: number;
   minScore?: number;
@@ -157,12 +157,12 @@ export function deleteEmbedding(db: DB, entityType: string, entityId: string): v
   );
 }
 
-/** 重索引：为某项目下所有 world_entries + characters + research_notes 建立指纹。
+/** 重索引：为某项目下所有 world_entries + characters 建立指纹。
  *  用于首次迁移后批量建索引。 */
 export function reindexProject(
   db: DB,
   projectId: string,
-  opts: { worldEntries?: boolean; characters?: boolean; researchNotes?: boolean },
+  opts: { worldEntries?: boolean; characters?: boolean },
 ): { indexed: number } {
   let count = 0;
   const now = new Date().toISOString();
@@ -211,27 +211,6 @@ export function reindexProject(
     }
   }
 
-  if (opts.researchNotes !== false) {
-    const rows = db
-      .prepare(`SELECT id, topic, COALESCE(note, '') AS note, COALESCE(excerpt, '') AS excerpt FROM research_notes WHERE project_id = ?`)
-      .all(projectId) as Array<{ id: string; topic: string; note: string; excerpt: string }>;
-    for (const row of rows) {
-      const text = `${row.topic} ${row.note} ${row.excerpt}`.trim();
-      if (!text) continue;
-      const fp = buildFingerprint(text);
-      db.prepare(
-        `INSERT OR REPLACE INTO entity_embeddings (entity_type, entity_id, project_id, fingerprint_json, source_text_hash, updated_at)
-         VALUES ('research_note', @eid, @pid, @json, @hash, @now)`,
-      ).run({
-        eid: row.id,
-        pid: projectId,
-        json: serializeFingerprint(fp),
-        hash: hashText(text),
-        now,
-      });
-      count++;
-    }
-  }
 
   return { indexed: count };
 }

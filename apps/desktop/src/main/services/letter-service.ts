@@ -205,7 +205,7 @@ export async function generateLetter(
     recentChapterExcerpt,
     toneHint: TONE_HINT[tone],
   });
-  // letter 自带 character 信息，避免 RAG 重复人物；只查 world + research + samples
+  // letter 自带 character 信息，避免 RAG 重复人物；只查 world + samples
   const ragBlock = buildRagBlock(input.projectId, recentChapterExcerpt, {
     characters: false,
   });

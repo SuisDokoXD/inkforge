@@ -2,13 +2,11 @@ import {
   listSampleChunks,
   listSampleLibs,
   ragSearchCharacters,
-  ragSearchResearchNotes,
   ragSearchSampleChunks,
   ragSearchWorldEntries,
   semanticSearch,
   upsertEmbedding,
   type CharacterHit,
-  type ResearchHit,
   type SampleChunkHit,
   type WorldEntryHit,
 } from "@inkforge/storage";
@@ -28,7 +26,6 @@ export interface BuildRagBlockOptions {
   /** Toggle each source individually; defaults: all true. */
   worldEntries?: boolean;
   characters?: boolean;
-  researchNotes?: boolean;
   sampleChunks?: boolean;
   /** Override caps. */
   maxPerEntry?: number;
@@ -107,16 +104,6 @@ function renderCharacters(hits: CharacterHit[], maxPer: number): RenderedSection
       if (h.backstory) parts.push(`背景：${clip(h.backstory, maxPer - 200)}`);
       const summary = parts.length ? parts.join("；") : "(无资料)";
       return `${h.name}：${summary}`;
-    }),
-  };
-}
-
-function renderResearch(hits: ResearchHit[], maxPer: number): RenderedSection {
-  return {
-    header: "=== 网搜资料 ===",
-    lines: hits.map((h) => {
-      const body = h.note || h.excerpt || "";
-      return `${h.topic}：${clip(body || "(无内容)", maxPer)}`;
     }),
   };
 }
@@ -322,7 +309,6 @@ export function buildRagBlock(
 
   const enableWorld = opts.worldEntries !== false;
   const enableChar = opts.characters !== false;
-  const enableResearch = opts.researchNotes !== false;
   const enableSamples = opts.sampleChunks !== false;
   const maxPer = opts.maxPerEntry ?? MAX_PER_ENTRY;
   const maxTotal = opts.maxTotalChars ?? MAX_TOTAL_CHARS;
@@ -341,10 +327,6 @@ export function buildRagBlock(
   if (enableChar) {
     const hits = hybridSearchCharacters(projectId, query, queries, maxHits);
     if (hits.length) sections.push(renderCharacters(hits, maxPer));
-  }
-  if (enableResearch) {
-    const hits = hybridSearchResearch(projectId, query, queries, maxHits);
-    if (hits.length) sections.push(renderResearch(hits, maxPer));
   }
   if (enableSamples) {
     const hits = ragSearchSampleChunks(ctx.db, projectId, queries, maxHits);
@@ -408,24 +390,8 @@ function hybridSearchCharacters(pId: string, query: string, queries: string[], m
   return kwHits.slice(0, maxHits + SEMANTIC_TOP_K);
 }
 
-function hybridSearchResearch(pId: string, query: string, queries: string[], maxHits: number): ResearchHit[] {
-  const ctx = getAppContext();
-  const kwHits = ragSearchResearchNotes(ctx.db, pId, queries, maxHits);
-  const seen = new Set(kwHits.map((h: ResearchHit) => h.topic));
-  try {
-    const sem = semanticSearch(ctx.db, { projectId: pId, query, entityTypes: ["research_note"], topK: SEMANTIC_TOP_K, minScore: SEMANTIC_MIN_SCORE });
-    if (sem.length > 0) {
-      const ids = sem.map((s) => s.entityId);
-      const ph = ids.map(() => "?").join(",");
-      const rows = ctx.db.prepare('SELECT topic, excerpt, note FROM research_notes WHERE project_id = ? AND id IN (' + ph + ') LIMIT ?').all(pId, ...ids, SEMANTIC_TOP_K) as ResearchHit[];
-      for (const hit of rows) { if (!seen.has(hit.topic)) { kwHits.push(hit); seen.add(hit.topic); } }
-    }
-  } catch { /* fallback */ }
-  return kwHits.slice(0, maxHits + SEMANTIC_TOP_K);
-}
-
 /** C1: 实体更新时自动索引语义指纹。fire-and-forget，失败不影响主流程。 */
-export function maybeIndexEntity(projectId: string, entityType: "world_entry" | "character" | "research_note", entityId: string, sourceText: string): void {
+export function maybeIndexEntity(projectId: string, entityType: "world_entry" | "character", entityId: string, sourceText: string): void {
   if (!projectId || !entityId || !sourceText.trim()) return;
   try { upsertEmbedding(getAppContext().db, { entityType, entityId, projectId, sourceText }); } catch { /* ignore */ }
 }
