@@ -21,7 +21,6 @@ export type MainView =
   | "outline"
   | "auto-writer"
   | "materials"
-  | "stats"  // C4: 写作统计仪表盘
   | "stats";  // C4: 写作统计仪表盘
 
 // A9: 每页上次活跃实体的 ID（用于视图切换后恢复上下文）。
