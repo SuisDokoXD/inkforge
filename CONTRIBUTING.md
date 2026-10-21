@@ -60,10 +60,9 @@ PR 提交前自查清单：
 | 类型 | 位置 | 说明 |
 |---|---|---|
 | 新 Skill 预设 | `packages/skill-engine/presets/*.json` | 字段参考 [docs/skill-authoring.md](docs/skill-authoring.md) |
-| Skill registry 条目 | `inkforge-skills` 仓库（外置） | 通过应用内市场 → 发布向导生成 PR |
+| Skill registry 条目 | `inkforge-skills` 仓库（外置） | 应用内市场已移除；如需共享技能，手动提交 skill JSON 的 PR |
 | Provider 适配器 | `packages/llm-core/src/<name>-provider.ts` | 实现 `LLMProvider`；在 `apps/desktop/src/main/services/llm-runtime.ts` 加分支；`shared.ProviderVendor` 加枚举 |
 | Review 维度 (builtin) | `packages/review-engine/src/index.ts` | 扩 `BUILTIN_DIMENSION_SPECS` + `ReviewBuiltinId` |
-| 资料检索 Adapter | `packages/research-core/src/<name>-adapter.ts` | 实现 `ResearchProviderAdapter`；`research-service.adapterFor` 加 case |
 | 新 IPC channel | 4 处同改 | `shared/ipc.ts` 加类型 → `shared/preload.ts` 加方法 → `apps/desktop/src/preload/index.ts` 加 invoke → `apps/desktop/src/main/ipc/<name>.ts` 写 handler |
 | 翻译 | `packages/shared/src/i18n/*.json` | 三语保持占位符一致；`verify:i18n` 会校验 |
 

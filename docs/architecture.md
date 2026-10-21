@@ -35,7 +35,7 @@
 
 - **Renderer 零直接 FS/DB**：通过 `preload` 暴露的类型化 API（`InkforgeApi`）调 IPC；`contextIsolation` 打开
 - **主进程是唯一的 API Key 持有者**：读 keystore → 打到 Provider SDK，Renderer 永远只收到脱敏 `ProviderRecord`
-- **流式事件**：分析 / Skill / 酒馆 / 审查 / 每日总结都通过 `window.webContents.send(channel, payload)` 向 Renderer 推流
+- **流式事件**：分析 / Skill / 审查 / 每日总结都通过 `window.webContents.send(channel, payload)` 向 Renderer 推流
 
 ---
 
@@ -48,8 +48,6 @@ apps/desktop
   ├─ @inkforge/llm-core      (LLMProvider 抽象 + AnthropicProvider)
   ├─ @inkforge/editor        (TipTap 扩展 + 200 字分析 hook + word count)
   ├─ @inkforge/skill-engine  (validate + template render + TriggerScheduler + SkillRunner + pack IO)
-  ├─ @inkforge/tavern-engine (ContextBuilder + BudgetTracker + SummaryCompactor + RoundOrchestrator)
-  ├─ @inkforge/research-core (ResearchProviderAdapter + 4 adapter)
   └─ @inkforge/review-engine (5 builtin prompt + JSON parse + summary + excerpt range)
 ```
 
@@ -116,26 +114,7 @@ chapter:update IPC
           └→ 调度所有 on-save 维度 Skill
 ```
 
-### 4.3 酒馆回合（M3-D）
-
-```
-ipc tavern-round:run
-  └→ tavern-round-service.startTavernRound
-      └→ RoundOrchestrator.run
-          for each round 0..autoRounds:
-            for each participant card:
-              ├─ ContextBuilder.build (speaker persona + 摘要 + lastK + director)
-              ├─ BudgetTracker.estimateTokens
-              ├─ streamText → emit tavern:chunk
-              └─ recordUsage
-          shouldCompactBeforeNextRound? → emit tavern:budget-warning
-
-ipc tavern-summary:compact
-  └→ tavern-summary-service.compactTavernHistory
-      └→ SummaryCompactor.compact (事务内删旧 + 插 summary message)
-```
-
-### 4.4 全文审查（M4-B）
+### 4.3 全文审查（M4-B）
 
 ```
 ipc review:run
@@ -150,17 +129,6 @@ ipc review:run
           └─ emit review:done
 
 前端 findings → onJumpChapter(id) → setChapter + setMainView('writing')
-```
-
-### 4.5 资料检索（M4-D）
-
-```
-ipc research:search
-  └→ research-service.searchResearch
-      ├─ adapter = tavily / bing / serpapi / llm-fallback
-      ├─ apiKey ← keystore "research:${provider}"
-      ├─ adapter.search → hits
-      └─ 失败 → 回退 llm-fallback (调当前 LLM 走 JSON 综述)
 ```
 
 ---
@@ -189,16 +157,12 @@ ipc research:search
 2. 在 `apps/desktop/src/main/services/llm-runtime.ts` 的 `instantiateProvider` switch 里加分支
 3. shared 类型 `ProviderVendor` 增加枚举
 
-### 6.2 新增 Research Adapter
-
-在 `packages/research-core/src/` 加 `<name>-adapter.ts`，实现 `ResearchProviderAdapter`；在 `research-service.adapterFor` 加 case。
-
-### 6.3 新增 Review 维度
+### 6.2 新增 Review 维度
 
 - **builtin**：扩展 `packages/review-engine/src/index.ts` 的 `BUILTIN_DIMENSION_SPECS`；`ReviewBuiltinId` 加枚举值
 - **skill**：任何 Skill 都可作为维度挂载：`review-dim:upsert { kind: "skill", skillId }`（M4-B 当前版先记录不执行，执行计划在 M5+）
 
-### 6.4 新增 IPC Channel
+### 6.3 新增 IPC Channel
 
 1. `@inkforge/shared/src/ipc.ts`：加 channel + input/output type + 扩展 `IpcRequestMap/EventMap`
 2. `@inkforge/shared/src/preload.ts`：加 namespace 方法
