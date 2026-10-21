@@ -4,7 +4,6 @@ import { registerAutoWriterHandlers } from "./auto-writer";
 import { registerLetterHandlers } from "./letter";
 import { registerBookCoverHandlers } from "./book-cover";
 import { registerTimelineHandlers } from "./timeline";
-import { registerImageGenHandlers } from "./image-gen";
 import { registerBookshelfHandlers } from "./bookshelf";
 import { registerCharacterHandlers } from "./character";
 import { registerChapterHandlers } from "./chapter";
@@ -16,18 +15,15 @@ import { registerFeedbackHandlers } from "./feedback";
 import { registerExternalHandlers } from "./external";
 import { registerFsHandlers } from "./fs";
 import { registerLLMHandlers } from "./llm";
-import { registerMarketHandlers } from "./market";
 import { registerOriginTagHandlers } from "./origin-tag";
 import { registerOutlineHandlers } from "./outline";
 import { registerProjectHandlers } from "./project";
 import { registerProviderHandlers } from "./provider";
 import { registerProviderKeyHandlers } from "./provider-key";
-import { registerResearchHandlers } from "./research";
 import { registerReviewHandlers } from "./review";
 import { registerSettingsHandlers } from "./settings";
 import { registerSkillHandlers } from "./skill";
 import { registerSnapshotHandlers } from "./snapshot";
-import { registerTavernHandlers } from "./tavern";
 import { registerTerminalHandlers } from "./terminal";
 import { registerUpdateHandlers } from "./update";
 import { registerWindowControlHandlers } from "./window-control";
@@ -58,9 +54,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerMobileSyncHandlers(getWindow);
   registerSkillHandlers(getWindow);
   registerCharacterHandlers();
-  registerTavernHandlers(getWindow);
   registerWorldHandlers();
-  registerResearchHandlers();
   registerReviewHandlers(getWindow);
   registerDailySummaryHandlers(getWindow);
   registerProviderKeyHandlers();
@@ -68,7 +62,6 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerTerminalHandlers(getWindow);
   registerDiagHandlers();
   registerUpdateHandlers(process.env.INKFORGE_UPDATE_FEED);
-  registerMarketHandlers();
   // ----- M7 · Bookshelf -----
   registerSnapshotHandlers();
   registerBookshelfHandlers();
@@ -94,13 +87,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   registerOutlineGenerationHandlers();
   // ----- v20: Materials (素材库) -----
   registerMaterialHandlers();
-  // ----- v23: Worldview Cards (世界观卡牌库 + 插槽 + 融合) -----
+  // ----- v23: Worldview Cards (世界观卡牌库 + 插槽) -----
   registerWorldPackHandlers();
   // ----- v24: Author's Note (项目级全局风格批注) -----
   registerAuthorNoteHandlers();
   // ----- v25/v26: Character Card 导入导出 + Voice Profile + World Info Trace -----
   registerCharacterCardHandlers();
-  // ----- C12 + C13: Timeline & Image Gen -----
+  // ----- C12: Timeline -----
   registerTimelineHandlers();
-  registerImageGenHandlers();
 }

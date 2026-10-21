@@ -67,17 +67,6 @@ import type {
   ProviderSaveInput,
   ProviderTestInput,
   ProviderTestResponse,
-  ResearchDeleteInput,
-  ResearchCredentialDeleteInput,
-  ResearchCredentialStatus,
-  ResearchCredentialStatusInput,
-  ResearchCredentialUpsertInput,
-  ResearchGetInput,
-  ResearchListInput,
-  ResearchSaveInput,
-  ResearchSearchInput,
-  ResearchSearchResponse,
-  ResearchUpdateInput,
   ReviewCancelInput,
   ReviewCancelResponse,
   ReviewDimDeleteInput,
@@ -101,12 +90,6 @@ import type {
   DiagSnapshotResponse,
   DiagCrashStatusResponse,
   UpdateStatus,
-  MarketFetchRegistryInput,
-  MarketRegistryDTO,
-  MarketInstallSkillInput,
-  MarketInstallSkillResponse,
-  MarketBuildPublishBundleInput,
-  MarketBuildPublishBundleResponse,
   SkillCreateInput,
   SkillDeleteInput,
   SkillExportJsonInput,
@@ -122,18 +105,6 @@ import type {
   TavernCardGetInput,
   TavernCardListInput,
   TavernCardUpdateInput,
-  TavernDirectorPostInput,
-  TavernDirectorPostResponse,
-  TavernMessageListInput,
-  TavernRoundRunInput,
-  TavernRoundRunResponse,
-  TavernRoundStopInput,
-  TavernRoundStopResponse,
-  TavernSessionCreateInput,
-  TavernSessionDeleteInput,
-  TavernSessionGetInput,
-  TavernSessionListInput,
-  TavernSummaryCompactInput,
   TerminalDisposePayload,
   TerminalInputPayload,
   TerminalResizePayload,
@@ -151,7 +122,6 @@ import type {
   AppSettings,
   ChapterRecord,
   CharacterSyncLogRecord,
-  CompactResult,
   DailyProgressRecord,
   DailySummaryRecord,
   NovelCharacterRecord,
@@ -160,14 +130,11 @@ import type {
   ProviderHealthSnapshot,
   ProviderKeyRecord,
   ProviderRecord,
-  ResearchNoteRecord,
   ReviewDimensionRecord,
   ReviewReportRecord,
   SkillDefinition,
   SkillImportReport,
   TavernCardRecord,
-  TavernMessageRecord,
-  TavernSessionRecord,
   WorldEntryRecord,
 } from "./domain";
 import type { MobileSyncCompletedEvent, MobileSyncStatus } from "./mobile-sync";
@@ -259,13 +226,6 @@ export interface InkforgeApi {
   external: {
     openUrl(input: ExternalOpenUrlInput): Promise<{ ok: true }>;
   };
-  market: {
-    fetchRegistry(input?: MarketFetchRegistryInput): Promise<MarketRegistryDTO>;
-    installSkill(input: MarketInstallSkillInput): Promise<MarketInstallSkillResponse>;
-    buildPublishBundle(
-      input: MarketBuildPublishBundleInput,
-    ): Promise<MarketBuildPublishBundleResponse>;
-  };
   fs: {
     pickFile(input: FsPickFileInput): Promise<FsPickFileResponse>;
     saveFile(input: FsSaveFileInput): Promise<FsSaveFileResponse>;
@@ -316,26 +276,6 @@ export interface InkforgeApi {
     apply(input: CharacterSyncApplyInput): Promise<CharacterSyncApplyResponse>;
     history(input?: CharacterSyncHistoryInput): Promise<CharacterSyncLogRecord[]>;
   };
-  tavernSession: {
-    create(input: TavernSessionCreateInput): Promise<TavernSessionRecord>;
-    get(input: TavernSessionGetInput): Promise<TavernSessionRecord | null>;
-    list(input: TavernSessionListInput): Promise<TavernSessionRecord[]>;
-    delete(input: TavernSessionDeleteInput): Promise<{ sessionId: string }>;
-  };
-  tavernMessage: {
-    list(input: TavernMessageListInput): Promise<TavernMessageRecord[]>;
-  };
-  tavernRound: {
-    run(input: TavernRoundRunInput): Promise<TavernRoundRunResponse>;
-    stop(input: TavernRoundStopInput): Promise<TavernRoundStopResponse>;
-    directorPost(input: TavernDirectorPostInput): Promise<TavernDirectorPostResponse>;
-    onChunk(listener: (payload: IpcEventMap["tavern:chunk"]) => void): Unsubscribe;
-    onDone(listener: (payload: IpcEventMap["tavern:done"]) => void): Unsubscribe;
-    onBudgetWarning(listener: (payload: IpcEventMap["tavern:budget-warning"]) => void): Unsubscribe;
-  };
-  tavernSummary: {
-    compact(input: TavernSummaryCompactInput): Promise<CompactResult>;
-  };
   world: {
     list(input: WorldListInput): Promise<WorldEntryRecord[]>;
     get(input: WorldGetInput): Promise<WorldEntryRecord | null>;
@@ -343,23 +283,6 @@ export interface InkforgeApi {
     update(input: WorldUpdateInput): Promise<WorldEntryRecord>;
     delete(input: WorldDeleteInput): Promise<{ id: string }>;
     search(input: WorldSearchInput): Promise<WorldEntryRecord[]>;
-  };
-  research: {
-    search(input: ResearchSearchInput): Promise<ResearchSearchResponse>;
-    list(input: ResearchListInput): Promise<ResearchNoteRecord[]>;
-    get(input: ResearchGetInput): Promise<ResearchNoteRecord | null>;
-    save(input: ResearchSaveInput): Promise<ResearchNoteRecord>;
-    update(input: ResearchUpdateInput): Promise<ResearchNoteRecord>;
-    delete(input: ResearchDeleteInput): Promise<{ id: string }>;
-    credentialStatus(
-      input: ResearchCredentialStatusInput,
-    ): Promise<ResearchCredentialStatus[]>;
-    credentialUpsert(
-      input: ResearchCredentialUpsertInput,
-    ): Promise<ResearchCredentialStatus>;
-    credentialDelete(
-      input: ResearchCredentialDeleteInput,
-    ): Promise<ResearchCredentialStatus>;
   };
   reviewDim: {
     list(input: ReviewDimListInput): Promise<ReviewDimensionRecord[]>;
@@ -731,8 +654,6 @@ import type {
   WorldPackCoverWriteResponse,
   WorldPackCoverReadInput,
   WorldPackCoverReadResponse,
-  WorldPackFuseInput,
-  WorldPackFuseResponse,
   AuthorNoteGetInput,
   AuthorNoteUpsertInput,
   AuthorNoteDeleteInput,
@@ -784,7 +705,6 @@ export interface InkforgeApi {
     slotReorder(input: WorldPackSlotReorderInput): Promise<{ ok: true }>;
     coverWrite(input: WorldPackCoverWriteInput): Promise<WorldPackCoverWriteResponse>;
     coverRead(input: WorldPackCoverReadInput): Promise<WorldPackCoverReadResponse>;
-    fuse(input: WorldPackFuseInput): Promise<WorldPackFuseResponse>;
   };
   authorNote: {
     get(input: AuthorNoteGetInput): Promise<AuthorNoteRecord | null>;
@@ -826,14 +746,5 @@ export interface InkforgeApi {
     upsertEvent(input: import("./domain").TimelineEventCreateInput): Promise<import("./domain").TimelineEventRecord>;
     deleteEvent(input: { id: string }): Promise<{ id: string }>;
     reorderEvents(input: { eventIds: string[] }): Promise<{ ok: true }>;
-  };
-}
-
-// ===== C13: Image Generation =====
-export interface InkforgeApi {
-  imageGen: {
-    generate(input: import("./domain").ImageGenRequest): Promise<import("./domain").ImageGenResult>;
-    getSettings(): Promise<import("./domain").ImageGenSettings>;
-    saveSettings(input: import("./domain").ImageGenSettings): Promise<{ ok: true }>;
   };
 }

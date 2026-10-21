@@ -104,9 +104,7 @@ export const i18nResources: Resources = {
   "page.workspace": { zh: "写作", en: "Write", ja: "執筆" },
   "page.skill": { zh: "写作指令", en: "Writing Instructions", ja: "執筆指示" },
   "page.character": { zh: "角色", en: "Characters", ja: "キャラ" },
-  "page.tavern": { zh: "酒馆", en: "Tavern", ja: "酒場" },
   "page.world": { zh: "世界观", en: "Worldbuilding", ja: "世界設定" },
-  "page.research": { zh: "资料", en: "Research", ja: "資料" },
   "page.review": { zh: "审查", en: "Review", ja: "レビュー" },
 
   // Editor
@@ -451,9 +449,7 @@ export const i18nResources: Resources = {
   "nav.outline":     { zh: "大纲", en: "Outline", ja: "アウトライン" },
   "nav.skill":       { zh: "写作指令", en: "Writing Instructions", ja: "執筆指示" },
   "nav.character":   { zh: "人物", en: "Characters", ja: "キャラクター" },
-  "nav.tavern":      { zh: "酒馆", en: "Tavern", ja: "酒場" },
   "nav.world":       { zh: "世界观", en: "World", ja: "世界観" },
-  "nav.research":    { zh: "资料", en: "Research", ja: "資料" },
   "nav.review":      { zh: "审查", en: "Review", ja: "レビュー" },
   "nav.bookshelf":   { zh: "书房", en: "Bookshelf", ja: "本棚" },
   "nav.letters":     { zh: "来信", en: "Letters", ja: "手紙" },
@@ -522,15 +518,6 @@ export const i18nResources: Resources = {
   "timeline.eventTitle":{ zh: "事件标题", en: "Event Title", ja: "タイトル" },
   "timeline.chapters": { zh: "章节序列", en: "Chapter Sequence", ja: "章シーケンス" },
   "timeline.noChapters":{ zh: "暂无章节，去写作页创建吧", en: "No chapters yet", ja: "章がありません" },
-  // ===== C13: Image Gen =====
-  "imageGen.title":    { zh: "AI 图片生成", en: "AI Image Generation", ja: "AI画像生成" },
-  "imageGen.prompt":   { zh: "提示词", en: "Prompt", ja: "プロンプト" },
-  "imageGen.generate": { zh: "生成", en: "Generate", ja: "生成" },
-  "imageGen.setAsCover":{ zh: "设为封面", en: "Set as Cover", ja: "表紙に設定" },
-  "imageGen.generating":{ zh: "生成中…", en: "Generating...", ja: "生成中…" },
-  "imageGen.settings": { zh: "AI 图片生成", en: "AI Image Gen", ja: "AI画像生成" },
-  "imageGen.backend":  { zh: "后端类型", en: "Backend", ja: "バックエンド" },
-  "imageGen.apiUrl":   { zh: "API 地址", en: "API URL", ja: "API URL" },
 };
 
 /**

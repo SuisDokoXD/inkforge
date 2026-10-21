@@ -108,14 +108,6 @@ const api: InkforgeApi = {
   external: {
     openUrl: (input) => ipcRenderer.invoke(ipcChannels.externalOpenUrl, input),
   },
-  market: {
-    fetchRegistry: (input) =>
-      ipcRenderer.invoke(ipcChannels.marketFetchRegistry, input ?? {}),
-    installSkill: (input) =>
-      ipcRenderer.invoke(ipcChannels.marketInstallSkill, input),
-    buildPublishBundle: (input) =>
-      ipcRenderer.invoke(ipcChannels.marketBuildPublishBundle, input),
-  },
   fs: {
     pickFile: (input) => ipcRenderer.invoke(ipcChannels.fsPickFile, input),
     saveFile: (input) => ipcRenderer.invoke(ipcChannels.fsSaveFile, input),
@@ -164,26 +156,6 @@ const api: InkforgeApi = {
     apply: (input) => ipcRenderer.invoke(ipcChannels.characterSyncApply, input),
     history: (input = {}) => ipcRenderer.invoke(ipcChannels.characterSyncHistory, input),
   },
-  tavernSession: {
-    create: (input) => ipcRenderer.invoke(ipcChannels.tavernSessionCreate, input),
-    get: (input) => ipcRenderer.invoke(ipcChannels.tavernSessionGet, input),
-    list: (input) => ipcRenderer.invoke(ipcChannels.tavernSessionList, input),
-    delete: (input) => ipcRenderer.invoke(ipcChannels.tavernSessionDelete, input),
-  },
-  tavernMessage: {
-    list: (input) => ipcRenderer.invoke(ipcChannels.tavernMessageList, input),
-  },
-  tavernRound: {
-    run: (input) => ipcRenderer.invoke(ipcChannels.tavernRoundRun, input),
-    stop: (input) => ipcRenderer.invoke(ipcChannels.tavernRoundStop, input),
-    directorPost: (input) => ipcRenderer.invoke(ipcChannels.tavernDirectorPost, input),
-    onChunk: (listener) => subscribe(ipcEventChannels.tavernChunk, listener),
-    onDone: (listener) => subscribe(ipcEventChannels.tavernDone, listener),
-    onBudgetWarning: (listener) => subscribe(ipcEventChannels.tavernBudgetWarning, listener),
-  },
-  tavernSummary: {
-    compact: (input) => ipcRenderer.invoke(ipcChannels.tavernSummaryCompact, input),
-  },
   world: {
     list: (input) => ipcRenderer.invoke(ipcChannels.worldList, input),
     get: (input) => ipcRenderer.invoke(ipcChannels.worldGet, input),
@@ -191,20 +163,6 @@ const api: InkforgeApi = {
     update: (input) => ipcRenderer.invoke(ipcChannels.worldUpdate, input),
     delete: (input) => ipcRenderer.invoke(ipcChannels.worldDelete, input),
     search: (input) => ipcRenderer.invoke(ipcChannels.worldSearch, input),
-  },
-  research: {
-    search: (input) => ipcRenderer.invoke(ipcChannels.researchSearch, input),
-    list: (input) => ipcRenderer.invoke(ipcChannels.researchList, input),
-    get: (input) => ipcRenderer.invoke(ipcChannels.researchGet, input),
-    save: (input) => ipcRenderer.invoke(ipcChannels.researchSave, input),
-    update: (input) => ipcRenderer.invoke(ipcChannels.researchUpdate, input),
-    delete: (input) => ipcRenderer.invoke(ipcChannels.researchDelete, input),
-    credentialStatus: (input) =>
-      ipcRenderer.invoke(ipcChannels.researchCredentialStatus, input),
-    credentialUpsert: (input) =>
-      ipcRenderer.invoke(ipcChannels.researchCredentialUpsert, input),
-    credentialDelete: (input) =>
-      ipcRenderer.invoke(ipcChannels.researchCredentialDelete, input),
   },
   reviewDim: {
     list: (input) => ipcRenderer.invoke(ipcChannels.reviewDimList, input),
@@ -376,7 +334,6 @@ const api: InkforgeApi = {
     slotReorder: (input) => ipcRenderer.invoke(ipcChannels.worldPackSlotReorder, input),
     coverWrite: (input) => ipcRenderer.invoke(ipcChannels.worldPackCoverWrite, input),
     coverRead: (input) => ipcRenderer.invoke(ipcChannels.worldPackCoverRead, input),
-    fuse: (input) => ipcRenderer.invoke(ipcChannels.worldPackFuse, input),
   },
   authorNote: {
     get: (input) => ipcRenderer.invoke(ipcChannels.authorNoteGet, input),
@@ -412,12 +369,6 @@ const api: InkforgeApi = {
     upsertEvent: (input: unknown) => ipcRenderer.invoke("timeline:upsert-event", input),
     deleteEvent: (input: { id: string }) => ipcRenderer.invoke("timeline:delete-event", input),
     reorderEvents: (input: { eventIds: string[] }) => ipcRenderer.invoke("timeline:reorder-events", input),
-  },
-  // ===== C13: Image Generation =====
-  imageGen: {
-    generate: (input: unknown) => ipcRenderer.invoke("image-gen:generate", input),
-    getSettings: () => ipcRenderer.invoke("image-gen:get-settings"),
-    saveSettings: (input: unknown) => ipcRenderer.invoke("image-gen:save-settings", input),
   },
 };
 

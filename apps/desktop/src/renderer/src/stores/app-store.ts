@@ -5,10 +5,7 @@ import type {
   AppSettings,
   ChapterRecord,
   ProjectRecord,
-  ResearchProvider,
-  ResearchSearchHit,
   SyncDiffRow,
-  TokenBudgetState,
 } from "@inkforge/shared";
 
 export type SplitMode = null | "2col" | "3col";  // A7: 分屏编辑模式
@@ -17,9 +14,7 @@ export type MainView =
   | "writing"
   | "skill"
   | "character"
-  | "tavern"
   | "world"
-  | "research"
   | "review"
   | "bookshelf"
   | "achievement"
@@ -71,20 +66,6 @@ export interface AutoWriterRemembered {
   sampleLibIds?: string[];
 }
 
-/**
- * 资料检索搜索结果 —— 从 ResearchPage useState 上提到 store，跨视图切换保持。
- */
-export interface ResearchSearchState {
-  topic: string;
-  hits: ResearchSearchHit[];
-  usedProvider: ResearchProvider | null;
-  fellBackToLlm: boolean;
-  error?: string;
-  expandedQueries?: string[];
-  attemptedProviders?: ResearchProvider[];
-  queriedAt: string; // ISO timestamp
-}
-
 export interface AppState {
   currentProjectId: string | null;
   currentChapterId: string | null;
@@ -99,9 +80,6 @@ export interface AppState {
   providerPanelOpen: boolean;
   mainView: MainView;
   outlineFocusCardId: string | null;
-  researchDraftQuery: string | null;
-  researchSearchState: ResearchSearchState | null;
-  researchSearchHistory: ResearchSearchState[];
   rightPanel: "timeline" | "chat";
   terminalOpen: boolean;
   terminalHeight: number;
@@ -113,9 +91,6 @@ export interface AppState {
   activeNovelCharacterId: string | null;
   activeTavernCardId: string | null;
   syncDiffData: { previewData: SyncDiffRow[]; novelCharId: string; tavernCardId: string } | null;
-  activeTavernSessionId: string | null;
-  tavernBudgetState: Record<string, TokenBudgetState>;
-  tavernStreamBuffers: Record<string, { roundId: string; speakerCardId: string; speakerName: string; text: string }>;
 
   // World
   activeWorldCategory: string | null;
@@ -146,9 +121,6 @@ export interface AppState {
   // setMainView 离开 writing 前先同步触发，确保不丢字。
   registerBeforeLeaveView: (fn: (() => void) | null) => void;
   setOutlineFocusCard: (cardId: string | null) => void;
-  setResearchDraftQuery: (query: string | null) => void;
-  setResearchSearchState: (state: ResearchSearchState | null) => void;
-  clearResearchSearchHistory: () => void;
   setRightPanel: (panel: "timeline" | "chat") => void;
   toggleTerminal: (open?: boolean) => void;
   setTerminalHeight: (h: number) => void;
@@ -166,12 +138,6 @@ export interface AppState {
   setActiveNovelCharacterId: (id: string | null) => void;
   setActiveTavernCardId: (id: string | null) => void;
   setSyncDiffData: (data: { previewData: SyncDiffRow[]; novelCharId: string; tavernCardId: string } | null) => void;
-  setActiveTavernSessionId: (id: string | null) => void;
-  setTavernBudgetState: (sessionId: string, state: TokenBudgetState) => void;
-  updateTavernStreamBuffer: (
-    sessionId: string,
-    patch: { roundId: string; speakerCardId: string; speakerName: string; text: string } | null,
-  ) => void;
 
   // World
   setActiveWorldCategory: (category: string | null) => void;
@@ -232,9 +198,6 @@ export const useAppStore = create<AppState>()(
       providerPanelOpen: false,
       mainView: "writing",
       outlineFocusCardId: null,
-      researchDraftQuery: null,
-      researchSearchState: null,
-      researchSearchHistory: [],
       rightPanel: "timeline",
       terminalOpen: false,
       terminalHeight: 240,
@@ -245,9 +208,6 @@ export const useAppStore = create<AppState>()(
       activeNovelCharacterId: null,
       activeTavernCardId: null,
       syncDiffData: null,
-      activeTavernSessionId: null,
-      tavernBudgetState: {},
-      tavernStreamBuffers: {},
 
       activeWorldCategory: null,
       activeWorldEntryId: null,
@@ -345,24 +305,6 @@ export const useAppStore = create<AppState>()(
             ? { ...s.lastActivePerPage, outline: cardId }
             : s.lastActivePerPage,
         })),
-      setResearchDraftQuery: (query) => set(() => ({ researchDraftQuery: query })),
-      setResearchSearchState: (state) =>
-        set((s) => {
-          if (!state) return { researchSearchState: null };
-          // 同名查询替换旧条目，避免历史记录膨胀
-          // 空结果不进入历史记录
-          const filtered = state.hits.length === 0
-            ? s.researchSearchHistory
-            : s.researchSearchHistory.filter(
-                (entry) => entry.topic !== state.topic,
-              );
-          const history = state.hits.length === 0
-            ? filtered
-            : [state, ...filtered].slice(0, 30);
-          return { researchSearchState: state, researchSearchHistory: history };
-        }),
-      clearResearchSearchHistory: () =>
-        set(() => ({ researchSearchHistory: [], researchSearchState: null })),
       setRightPanel: (panel) => set(() => ({ rightPanel: panel })),
       toggleTerminal: (open) =>
         set((state) => ({ terminalOpen: typeof open === "boolean" ? open : !state.terminalOpen })),
@@ -415,27 +357,6 @@ export const useAppStore = create<AppState>()(
             : s.lastActivePerPage,
         })),
       setSyncDiffData: (data) => set(() => ({ syncDiffData: data })),
-      setActiveTavernSessionId: (id) =>
-        set((s) => ({
-          activeTavernSessionId: id,
-          lastActivePerPage: id
-            ? { ...s.lastActivePerPage, tavern: id }
-            : s.lastActivePerPage,
-        })),
-      setTavernBudgetState: (sessionId, state) =>
-        set((s) => ({ tavernBudgetState: { ...s.tavernBudgetState, [sessionId]: state } })),
-      updateTavernStreamBuffer: (sessionId, patch) =>
-        set((s) => {
-          const newBuffers = { ...s.tavernStreamBuffers };
-          if (patch === null) {
-            // Clear buffer
-            delete newBuffers[sessionId];
-          } else {
-            newBuffers[sessionId] = patch;
-          }
-          return { tavernStreamBuffers: newBuffers };
-        }),
-
       setActiveWorldCategory: (category) =>
         set((s) => ({
           activeWorldCategory: category,

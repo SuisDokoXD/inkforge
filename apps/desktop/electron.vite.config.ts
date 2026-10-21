@@ -7,10 +7,8 @@ const workspaceExcludes = [
   "@inkforge/llm-core",
   "@inkforge/storage",
   "@inkforge/editor",
-  "@inkforge/research-core",
   "@inkforge/review-engine",
   "@inkforge/skill-engine",
-  "@inkforge/tavern-engine",
   "@inkforge/auto-writer-engine",
 ];
 
@@ -30,10 +28,8 @@ export default defineConfig({
         "@inkforge/shared": resolve(__dirname, "../../packages/shared/src/index.ts"),
         "@inkforge/llm-core": resolve(__dirname, "../../packages/llm-core/src/index.ts"),
         "@inkforge/storage": resolve(__dirname, "../../packages/storage/src/index.ts"),
-        "@inkforge/research-core": resolve(__dirname, "../../packages/research-core/src/index.ts"),
         "@inkforge/review-engine": resolve(__dirname, "../../packages/review-engine/src/index.ts"),
         "@inkforge/skill-engine": resolve(__dirname, "../../packages/skill-engine/src/index.ts"),
-        "@inkforge/tavern-engine": resolve(__dirname, "../../packages/tavern-engine/src/index.ts"),
         "@inkforge/auto-writer-engine": resolve(
           __dirname,
           "../../packages/auto-writer-engine/src/index.ts",

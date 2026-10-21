@@ -61,8 +61,6 @@ function main() {
     "Ctrl+6",
     "Ctrl+7",
     "Ctrl+8",
-    "Ctrl+9",
-    "Ctrl+0",
     "Ctrl+Shift+L",
     "Ctrl+Shift+H",
     "Ctrl+Shift+M",

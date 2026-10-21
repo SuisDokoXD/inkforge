@@ -1,7 +1,7 @@
 // =============================================================================
 // Worldview Cards IPC handlers
 // =============================================================================
-// 单文件注册所有 world-pack:* + fusion 通道。
+// 单文件注册所有 world-pack:* 通道。
 // 模式与 ipc/world.ts 一致：thin handler，业务在 service 层。
 // =============================================================================
 
@@ -11,7 +11,6 @@ import type {
   WorldPackCoverReadResponse,
   WorldPackCoverWriteResponse,
   WorldPackEntryRecord,
-  WorldPackFuseResponse,
   WorldPackRecord,
 } from "@inkforge/shared";
 import {
@@ -32,7 +31,6 @@ import {
   updateWorldPackRecord,
   writeWorldPackCover,
 } from "../services/world-pack-service";
-import { fuseWorldPacks } from "../services/world-pack-fusion-service";
 import {
   parseWorldPackCoverReadInput,
   parseWorldPackCoverWriteInput,
@@ -42,7 +40,6 @@ import {
   parseWorldPackEntryDeleteInput,
   parseWorldPackEntryListInput,
   parseWorldPackEntryUpdateInput,
-  parseWorldPackFuseInput,
   parseWorldPackGetInput,
   parseWorldPackListInput,
   parseWorldPackSlotAddInput,
@@ -145,10 +142,5 @@ export function registerWorldPackHandlers(): void {
       input: unknown,
     ): Promise<WorldPackCoverReadResponse> =>
       readWorldPackCover(parseWorldPackCoverReadInput(input)),
-  );
-  ipcMain.handle(
-    "world-pack:fuse",
-    async (_e, input: unknown): Promise<WorldPackFuseResponse> =>
-      fuseWorldPacks(parseWorldPackFuseInput(input)),
   );
 }

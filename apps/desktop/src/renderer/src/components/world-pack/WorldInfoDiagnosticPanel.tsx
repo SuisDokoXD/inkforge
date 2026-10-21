@@ -54,8 +54,6 @@ function sceneLabel(scene: string): string {
     review: "正文审查",
     quick: "快捷改写",
     letter: "人物来信",
-    tavern: "酒馆对话",
-    "world-pack-fusion": "卡牌融合",
     "chapter-generation": "章节生成",
     outline: "大纲生成",
     analysis: "正文分析",

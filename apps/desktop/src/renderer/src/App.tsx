@@ -18,10 +18,8 @@ import { WorkspacePage } from "./pages/WorkspacePage";
 
 const SkillPage = lazy(() => import("./pages/SkillPage").then((m) => ({ default: m.SkillPage })));
 const CharacterPage = lazy(() => import("./pages/CharacterPage").then((m) => ({ default: m.CharacterPage })));
-const TavernPage = lazy(() => import("./pages/TavernPage").then((m) => ({ default: m.TavernPage })));
 const WorldPage = lazy(() => import("./pages/WorldPage").then((m) => ({ default: m.WorldPage })));
 const OutlinePage = lazy(() => import("./pages/OutlinePage").then((m) => ({ default: m.OutlinePage })));
-const ResearchPage = lazy(() => import("./pages/ResearchPage").then((m) => ({ default: m.ResearchPage })));
 const ReviewPage = lazy(() => import("./pages/ReviewPage").then((m) => ({ default: m.ReviewPage })));
 const AutoWriterPage = lazy(() => import("./pages/AutoWriterPage").then((m) => ({ default: m.AutoWriterPage })));
 const MaterialsPage = lazy(() => import("./pages/MaterialsPage").then((m) => ({ default: m.MaterialsPage })));
@@ -73,12 +71,8 @@ function renderPage(mainView: MainView): JSX.Element | null {
       return <SkillPage />;
     case "character":
       return <CharacterPage />;
-    case "tavern":
-      return <TavernPage />;
     case "world":
       return <WorldPage />;
-    case "research":
-      return <ResearchPage />;
     case "review":
       return <ReviewPage />;
     case "bookshelf":

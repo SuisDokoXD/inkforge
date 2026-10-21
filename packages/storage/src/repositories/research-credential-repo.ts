@@ -30,7 +30,7 @@ function rowToEncrypted(row: Row): EncryptedSecret | null {
 
 /**
  * Insert or replace the encrypted credential for a research provider (tavily/bing/serpapi).
- * Called by research-service after keystore.setKey() returns the encrypted blob.
+ * Called by credential-migration-service after keystore.setKey() returns the encrypted blob.
  */
 export function upsertResearchCredential(
   db: DB,
@@ -89,7 +89,7 @@ export function listResearchCredentialPersistenceRecords(
 
 /**
  * Delete the credential row for a research provider.
- * Called by research-service after keystore.deleteKey().
+ * Called after keystore.deleteKey() when clearing a provider credential.
  */
 export function deleteResearchCredential(db: DB, provider: string): void {
   db.prepare(`DELETE FROM research_credentials WHERE provider = ?`).run(provider);

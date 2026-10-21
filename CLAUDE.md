@@ -12,9 +12,7 @@ inkforge-src/
 ├── packages/storage/             better-sqlite3 + migrations + repos
 ├── packages/llm-core/            provider abstractions (anthropic/openai/gemini/openai-compat)
 ├── packages/skill-engine/        programmable Skills runtime
-├── packages/tavern-engine/       multi-agent character chat
 ├── packages/auto-writer-engine/  4-Agent novel writing pipeline
-├── packages/research-core/       web research
 ├── packages/review-engine/       chapter review dimensions
 └── packages/editor/              TipTap extensions
 ```
@@ -57,7 +55,7 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 - **Service layer**: thin wrapper, throws on invalid input, returns serializable JSON. Long-running ops use `streamText` async iterator + `BrowserWindow.webContents.send` for chunks.
 - **Renderer state**: zustand `useAppStore` (`apps/desktop/src/renderer/src/stores/app-store.ts`). React-Query for server state.
 - **i18n**: `packages/shared/src/i18n.ts` (zh / en / ja).
-- **UI primitives**: reusable presentational atoms live in `apps/desktop/src/renderer/src/components/ui/` (`Button`/`IconButton`/`Badge`/`TextField`/`Textarea`/`Select`/`Card`/`Tabs`/`Divider`/`Tooltip`), built with `cva` + `cn()` (`lib/cn.ts` = clsx + tailwind-merge). They bake in the design tokens, `motion-tokens` hover/tap + `useReducedMotion` gating, and `focus-visible` rings. **Prefer these over hand-written button/input className strings.** The pre-existing wrappers `AnimatedDialog`/`EmptyState`/`MotionSpinner`/`AnimatedPage`/`PageSkeleton` stay canonical for their domains. Migration to primitives is incremental — the workspace line (`WorkspacePage`/`ChapterTree`/`EditorPane`/`StatusBar`/`ActivityBar`/`ProviderSwitcher`/`SettingsDialog`) and most dialogs' standard actions (Export/DailySummary/SkillMarket/NewSession/VoiceProfile/etc.) are done; remaining feature pages/panels still carry inline classes.
+- **UI primitives**: reusable presentational atoms live in `apps/desktop/src/renderer/src/components/ui/` (`Button`/`IconButton`/`Badge`/`TextField`/`Textarea`/`Select`/`Card`/`Tabs`/`Divider`/`Tooltip`), built with `cva` + `cn()` (`lib/cn.ts` = clsx + tailwind-merge). They bake in the design tokens, `motion-tokens` hover/tap + `useReducedMotion` gating, and `focus-visible` rings. **Prefer these over hand-written button/input className strings.** The pre-existing wrappers `AnimatedDialog`/`EmptyState`/`MotionSpinner`/`AnimatedPage`/`PageSkeleton` stay canonical for their domains. Migration to primitives is incremental — the workspace line (`WorkspacePage`/`ChapterTree`/`EditorPane`/`StatusBar`/`ActivityBar`/`ProviderSwitcher`/`SettingsDialog`) and most dialogs' standard actions (Export/DailySummary/VoiceProfile/etc.) are done; remaining feature pages/panels still carry inline classes.
 
 ## Module Map (where stuff lives)
 
@@ -71,13 +69,11 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 | Auto-Writer | `AutoWriterRunRecord` | `auto-writer-run-repo` | `auto-writer-service` | `auto-writer.ts` | `pages/AutoWriterPage.tsx`, `auto-writer/` |
 | Character (novel) | `NovelCharacterRecord` | `novel-character-repo` | `novel-character-service`, `character-sync-service` | `character.ts` | `pages/CharacterPage.tsx`, `character/` |
 | Character Card | `TavernCardRecord`, `CharacterCardImportRecord` | `tavern-card-repo`, `character-card-import-repo` | `character-card-service` (+ `ccv3-codec`, `png-text`) | `character-card.ts` | `character/` |
-| Tavern | `TavernSessionRecord`, `TavernMessageRecord`, `CharacterSyncLogRecord` | `tavern-session-repo`, `tavern-message-repo`, `character-sync-log-repo` | `tavern-round-service` | `tavern.ts` | `pages/TavernPage.tsx` |
 | World | `WorldEntryRecord`, `WorldRelationshipRecord` | `world-entry-repo`, `world-relationship-repo` | `world-service`, `world-info-trace-repo` | `world.ts`, `world-relationship.ts` | `pages/WorldPage.tsx` + `world/WorldGraph.tsx` |
-| World Pack | `WorldPackRecord`, `WorldPackEntryRecord`, `WorldPackSlotRecord` | `world-pack-repo` | `world-pack-service`, `world-pack-fusion-service` (`build-fusion-prompt`, `parse-fusion-output`) | `world-pack.ts` | `world-pack/` |
+| World Pack | `WorldPackRecord`, `WorldPackEntryRecord`, `WorldPackSlotRecord` | `world-pack-repo` | `world-pack-service` | `world-pack.ts` | `world-pack/` |
 | Author Note | `AuthorNoteRecord` | `author-note-repo` | `author-note-service` + `prompt-context/author-note-context.ts` | `author-note.ts` | `AuthorNotePanel.tsx` |
 | Voice Profile | `VoiceProfileRecord` | `voice-profile-repo` | `voice-profile-service` + `prompt-context/voice-profile-context.ts` | (inline in voice IPC) | `voice-profile/VoiceProfileDialog.tsx` |
 | Review | `ReviewDimensionRecord`, `ReviewReportRecord`, `ReviewFindingRecord` | `review-dimension-repo`, `review-report-repo`, `review-finding-repo` | `review-service` | `review.ts` | `pages/ReviewPage.tsx`, `review/ReviewReportPanel.tsx` |
-| Research | `ResearchNoteRecord` | `research-note-repo` | `research-service` (+ `packages/research-core`) | `research.ts` | `pages/ResearchPage.tsx` |
 | Scene Bindings | `SceneBindingRecord`, `SceneRoutingMode` | `scene-binding-repo` | `scene-binding-service` | `scene-binding.ts` | `SceneRoutingPanel.tsx` (in SettingsDialog) |
 | RAG / Sample Lib | `SampleLibRecord`, `SampleChunkRecord` | `sample-lib-repo`, `rag-repo` | `rag-service`, `rag-smart-router`, `sample-lib-service` | `sample-lib.ts` | `SampleLibPanel.tsx` (in SettingsDialog) |
 | Materials | `MaterialRecord` | `material-repo` | `material-service` | `material.ts` | `pages/MaterialsPage.tsx` |
@@ -87,7 +83,6 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 | Letter | `CharacterLetterRecord` | `character-letter-repo` | `letter-service` | `letter.ts` | `pages/LetterInboxPage.tsx` |
 | Achievement | `AchievementRecord` | `achievement-repo` | `achievement-service` | `achievement.ts` | `pages/AchievementHallPage.tsx`, `achievement/` |
 | Companion (桌宠) | (renderer-only state) | — | — | — | `companion/` + `stores/companion-store.ts` + `companion-festivals.ts`, `companion-lines.ts` |
-| Market | `MarketItemRecord` (planned) | — | `market-service` | `market.ts` | (panels TBD) |
 | Terminal | — | — | (uses `node-pty`) | `terminal.ts` | `TerminalPanel` (xterm.js) |
 | Export/Import | (in ipc.ts) | (uses fs-layout, `zip-reader`, `zip-writer`) | `export-service`, `chapter-import-service` | `project-export.ts` | `ExportDialog.tsx` |
 
@@ -98,4 +93,4 @@ SQLite (.inkforge.db) + chapter .md files in project dir
 - [apps/desktop/CLAUDE.md](apps/desktop/CLAUDE.md) — main IPC + service patterns + LLM streaming
 - [packages/auto-writer-engine/CLAUDE.md](packages/auto-writer-engine/CLAUDE.md) — 4-Agent pipeline (planner/writer/critic/reflector)
 
-Packages without dedicated CLAUDE.md (read source directly): `llm-core`, `skill-engine`, `tavern-engine`, `research-core`, `review-engine`, `editor`.
+Packages without dedicated CLAUDE.md (read source directly): `llm-core`, `skill-engine`, `review-engine`, `editor`.

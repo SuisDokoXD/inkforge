@@ -1,5 +1,5 @@
 import type { OutlineCardRecord } from "@inkforge/shared";
-import { ClipboardList, FileSearch, PenLine, Search } from "lucide-react";
+import { ClipboardList, FileSearch, PenLine } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   fadeOnly,
@@ -16,7 +16,6 @@ interface ChapterWorkflowBarProps {
   linkedOutlineCard: OutlineCardRecord | null;
   onReviewChapter: () => void;
   onAutoWriteChapter: () => void;
-  onResearchChapter: () => void;
   onOpenOutlineCard: () => void;
 }
 
@@ -26,7 +25,6 @@ export function ChapterWorkflowBar({
   linkedOutlineCard,
   onReviewChapter,
   onAutoWriteChapter,
-  onResearchChapter,
   onOpenOutlineCard,
 }: ChapterWorkflowBarProps): JSX.Element {
   const reduceMotion = useReducedMotion() === true;
@@ -103,17 +101,6 @@ export function ChapterWorkflowBar({
         >
           <PenLine className="h-3.5 w-3.5" />
           续写精修
-        </motion.button>
-        <motion.button
-          type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-ink-600 px-2.5 text-xs text-ink-200 transition-colors hover:bg-ink-700"
-          onClick={onResearchChapter}
-          title="打开资料检索，并带入本章关键词"
-          variants={itemMotion}
-          {...buttonMotion}
-        >
-          <Search className="h-3.5 w-3.5" />
-          查本章资料
         </motion.button>
         <AnimatePresence initial={false}>
           {linkedOutlineCard ? (

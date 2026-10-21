@@ -1799,19 +1799,6 @@ export function EditorPane({
     () => (outlineCardsQuery.data ?? []).find((card) => card.chapterId === chapter?.id) ?? null,
     [chapter?.id, outlineCardsQuery.data],
   );
-  const chapterResearchQuery = useMemo(() => {
-    const seed = [
-      linkedOutlineCard?.title,
-      linkedOutlineCard?.content,
-      chapter?.title,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    return seed ? `${seed.slice(0, 120)} 资料 背景` : "本章资料 背景";
-  }, [chapter?.title, linkedOutlineCard?.content, linkedOutlineCard?.title]);
-
   useEffect(() => {
     if (!skillMenuOpen) return;
     const handler = (event: MouseEvent) => {
@@ -2325,7 +2312,6 @@ export function EditorPane({
         linkedOutlineCard={linkedOutlineCard}
         onReviewChapter={() => flowActions.reviewChapter(chapter.id)}
         onAutoWriteChapter={() => flowActions.autoWriteChapter(chapter.id)}
-        onResearchChapter={() => flowActions.researchChapter(chapter.id, chapterResearchQuery)}
         onOpenOutlineCard={() => {
           if (linkedOutlineCard) flowActions.openOutline(linkedOutlineCard.id);
         }}

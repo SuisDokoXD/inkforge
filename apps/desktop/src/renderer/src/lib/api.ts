@@ -63,20 +63,6 @@ import type {
   SkillRunInput,
   SkillRunResponse,
   SkillUpdateInput,
-  TavernDirectorPostInput,
-  TavernDirectorPostResponse,
-  TavernMessageListInput,
-  TavernMessageRecord,
-  TavernRoundRunInput,
-  TavernRoundRunResponse,
-  TavernRoundStopInput,
-  TavernRoundStopResponse,
-  TavernSessionCreateInput,
-  TavernSessionDeleteInput,
-  TavernSessionGetInput,
-  TavernSessionListInput,
-  TavernSessionRecord,
-  TavernSummaryCompactInput,
   TerminalDataEvent,
   TerminalDisposePayload,
   TerminalExitEvent,
@@ -274,30 +260,6 @@ export const characterSyncApi = {
   history: (input?: import("@inkforge/shared").CharacterSyncHistoryInput): Promise<import("@inkforge/shared").CharacterSyncLogRecord[]> => api().characterSync.history(input),
 };
 
-export const tavernSessionApi = {
-  list: (input: TavernSessionListInput): Promise<TavernSessionRecord[]> => api().tavernSession.list(input),
-  get: (input: TavernSessionGetInput): Promise<TavernSessionRecord | null> => api().tavernSession.get(input),
-  create: (input: TavernSessionCreateInput): Promise<TavernSessionRecord> => api().tavernSession.create(input),
-  delete: (input: TavernSessionDeleteInput): Promise<{ sessionId: string }> => api().tavernSession.delete(input),
-  listMessages: (input: TavernMessageListInput): Promise<TavernMessageRecord[]> => api().tavernMessage.list(input),
-  postDirector: (input: TavernDirectorPostInput): Promise<TavernDirectorPostResponse> => api().tavernRound.directorPost(input),
-};
-
-export const tavernRoundApi = {
-  run: (input: TavernRoundRunInput): Promise<TavernRoundRunResponse> => api().tavernRound.run(input),
-  stop: (input: TavernRoundStopInput): Promise<TavernRoundStopResponse> => api().tavernRound.stop(input),
-};
-
-export const tavernSummaryApi = {
-  compact: (input: TavernSummaryCompactInput) => api().tavernSummary.compact(input),
-};
-
-export const tavernEventsApi = {
-  onChunk: (listener: (payload: import("@inkforge/shared").IpcEventMap["tavern:chunk"]) => void) => api().tavernRound.onChunk(listener),
-  onDone: (listener: (payload: import("@inkforge/shared").IpcEventMap["tavern:done"]) => void) => api().tavernRound.onDone(listener),
-  onBudgetWarning: (listener: (payload: import("@inkforge/shared").IpcEventMap["tavern:budget-warning"]) => void) => api().tavernRound.onBudgetWarning(listener),
-};
-
 export const worldApi = {
   list: (input: import("@inkforge/shared").WorldListInput): Promise<import("@inkforge/shared").WorldEntryRecord[]> => api().world.list(input),
   get: (input: import("@inkforge/shared").WorldGetInput): Promise<import("@inkforge/shared").WorldEntryRecord | null> => api().world.get(input),
@@ -321,18 +283,6 @@ export const dailySummaryApi = {
   list: (input: import("@inkforge/shared").DailySummaryListInput): Promise<import("@inkforge/shared").DailySummaryRecord[]> => api().dailySummary.list(input),
   onChunk: (listener: (payload: import("@inkforge/shared").IpcEventMap["daily:summary-chunk"]) => void) => api().dailySummary.onChunk(listener),
   onDone: (listener: (payload: import("@inkforge/shared").IpcEventMap["daily:summary-done"]) => void) => api().dailySummary.onDone(listener),
-};
-
-export const researchApi = {
-  search: (input: import("@inkforge/shared").ResearchSearchInput): Promise<import("@inkforge/shared").ResearchSearchResponse> => api().research.search(input),
-  list: (input: import("@inkforge/shared").ResearchListInput): Promise<import("@inkforge/shared").ResearchNoteRecord[]> => api().research.list(input),
-  get: (input: import("@inkforge/shared").ResearchGetInput): Promise<import("@inkforge/shared").ResearchNoteRecord | null> => api().research.get(input),
-  save: (input: import("@inkforge/shared").ResearchSaveInput): Promise<import("@inkforge/shared").ResearchNoteRecord> => api().research.save(input),
-  update: (input: import("@inkforge/shared").ResearchUpdateInput): Promise<import("@inkforge/shared").ResearchNoteRecord> => api().research.update(input),
-  delete: (input: import("@inkforge/shared").ResearchDeleteInput): Promise<{ id: string }> => api().research.delete(input),
-  credentialStatus: (input: import("@inkforge/shared").ResearchCredentialStatusInput = {}): Promise<import("@inkforge/shared").ResearchCredentialStatus[]> => api().research.credentialStatus(input),
-  credentialUpsert: (input: import("@inkforge/shared").ResearchCredentialUpsertInput): Promise<import("@inkforge/shared").ResearchCredentialStatus> => api().research.credentialUpsert(input),
-  credentialDelete: (input: import("@inkforge/shared").ResearchCredentialDeleteInput): Promise<import("@inkforge/shared").ResearchCredentialStatus> => api().research.credentialDelete(input),
 };
 
 export const reviewDimApi = {
@@ -522,7 +472,6 @@ export const worldPackApi = {
   slotReorder: (input: import("@inkforge/shared").WorldPackSlotReorderInput) => api().worldPack.slotReorder(input),
   coverWrite: (input: import("@inkforge/shared").WorldPackCoverWriteInput) => api().worldPack.coverWrite(input),
   coverRead: (input: import("@inkforge/shared").WorldPackCoverReadInput) => api().worldPack.coverRead(input),
-  fuse: (input: import("@inkforge/shared").WorldPackFuseInput) => api().worldPack.fuse(input),
 };
 
 // ----- v24: Author's Note (项目级全局风格批注) -----
@@ -576,14 +525,4 @@ export const timelineApi = {
     api().timeline.deleteEvent({ id }),
   reorderEvents: (eventIds: string[]): Promise<{ ok: true }> =>
     api().timeline.reorderEvents({ eventIds }),
-};
-
-// ===== C13: Image Generation =====
-export const imageGenApi = {
-  generate: (input: { prompt: string; negativePrompt?: string; width: number; height: number; projectId: string }): Promise<import("@inkforge/shared").ImageGenResult> =>
-    (api() as any).imageGen.generate(input),
-  getSettings: (): Promise<import("@inkforge/shared").ImageGenSettings> =>
-    api().imageGen.getSettings(),
-  saveSettings: (input: import("@inkforge/shared").ImageGenSettings): Promise<{ ok: true }> =>
-    (api() as any).imageGen.saveSettings(input),
 };

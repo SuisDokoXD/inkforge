@@ -3,7 +3,6 @@
   AppSettings,
   ChapterRecord,
   CharacterSyncLogRecord,
-  CompactResult,
   DailyProgressRecord,
   DailySummaryRecord,
   NovelCharacterRecord,
@@ -14,9 +13,6 @@
   ProviderKeyStrategy,
   ProviderRecord,
   ProviderVendor,
-  ResearchNoteRecord,
-  ResearchProvider,
-  ResearchSearchHit,
   ReviewBuiltinId,
   ReviewDimensionKind,
   ReviewDimensionRecord,
@@ -34,10 +30,6 @@
   SkillTriggerType,
   SyncDiffRow,
   TavernCardRecord,
-  TavernMessageRecord,
-  TavernMode,
-  TavernSessionRecord,
-  TokenBudgetState,
   WorldEntryRecord,
   WorldEntryPosition,
   WorldEntrySelectiveLogic,
@@ -396,49 +388,6 @@ export type UpdateStatus =
   | { state: "downloaded"; version: string }
   | { state: "error"; message: string };
 
-export interface MarketSkillMetaDTO {
-  id: string;
-  title: string;
-  description: string;
-  author: string;
-  version: string;
-  tags: string[];
-  scope: SkillScope;
-  url: string;
-  license?: string;
-  homepage?: string;
-}
-
-export interface MarketRegistryDTO {
-  format: "inkforge-market.v1";
-  updatedAt: string;
-  skills: MarketSkillMetaDTO[];
-}
-
-export interface MarketFetchRegistryInput {
-  registryUrl?: string;
-}
-
-export interface MarketInstallSkillInput {
-  url: string;
-  scope?: SkillScope;
-  projectId?: string | null;
-}
-
-export interface MarketInstallSkillResponse {
-  installed: boolean;
-  skillId: string;
-}
-
-export interface MarketBuildPublishBundleInput {
-  skillId: string;
-}
-
-export interface MarketBuildPublishBundleResponse {
-  skillJson: string;
-  prInstructions: string;
-}
-
 export interface FsPickFileInput {
   title?: string;
   filters?: { name: string; extensions: string[] }[];
@@ -762,106 +711,6 @@ export interface CharacterSyncHistoryInput {
   limit?: number;
 }
 
-export interface TavernSessionCreateInput {
-  projectId: string;
-  title: string;
-  topic: string;
-  mode: TavernMode;
-  budgetTokens: number;
-  summaryProviderId?: string;
-  summaryModel?: string;
-  lastK?: number;
-}
-
-export interface TavernSessionGetInput {
-  sessionId: string;
-}
-
-export interface TavernSessionListInput {
-  projectId: string;
-  limit?: number;
-}
-
-export interface TavernSessionDeleteInput {
-  sessionId: string;
-}
-
-export interface TavernMessageListInput {
-  sessionId: string;
-  limit?: number;
-  beforeCreatedAt?: string;
-  order?: "asc" | "desc";
-}
-
-export interface TavernDirectorPostInput {
-  sessionId: string;
-  content: string;
-}
-
-export interface TavernDirectorPostResponse {
-  messageId: string;
-}
-
-export interface TavernRoundRunInput {
-  sessionId: string;
-  mode?: TavernMode;
-  participants: string[];
-  lastK?: number;
-  autoRounds?: number;
-  directorMessage?: string;
-}
-
-export interface TavernRoundRunResponse {
-  roundId: string;
-  status: "started";
-}
-
-export interface TavernRoundStopInput {
-  roundId: string;
-}
-
-export interface TavernRoundStopResponse {
-  roundId: string;
-  stopped: true;
-}
-
-export interface TavernSummaryCompactInput {
-  sessionId: string;
-  keepLastK: number;
-}
-
-export interface TavernChunkEvent {
-  roundId: string;
-  sessionId: string;
-  speakerCardId: string;
-  speakerName: string;
-  delta: string;
-  accumulatedText: string;
-  providerId: string;
-  model: string;
-  emittedAt: string;
-}
-
-export interface TavernDoneEvent {
-  roundId: string;
-  sessionId: string;
-  speakerCardId: string;
-  messageId?: string;
-  status: "completed" | "failed" | "stopped";
-  usage?: SkillRunUsage;
-  error?: string;
-  finishedAt: string;
-}
-
-export interface TavernBudgetWarningEvent {
-  sessionId: string;
-  remainingTokens: number;
-  estimatedNextRoundTokens: number;
-  threshold: number;
-  emittedAt: string;
-  state?: TokenBudgetState;
-}
-
 // ---------- M4 · World ----------
 export interface WorldListInput {
   projectId: string;
@@ -914,65 +763,6 @@ export interface WorldSearchInput {
   projectId: string;
   query: string;
   limit?: number;
-}
-
-// ---------- M4 · Research ----------
-export interface ResearchSearchInput {
-  projectId: string;
-  query: string;
-  provider?: ResearchProvider;
-  topK?: number;
-  apiKey?: string;
-}
-export interface ResearchSearchResponse {
-  hits: ResearchSearchHit[];
-  usedProvider: ResearchProvider;
-  fellBackToLlm?: boolean;
-  error?: string;
-  expandedQueries?: string[];
-  attemptedProviders?: ResearchProvider[];
-}
-export interface ResearchListInput {
-  projectId: string;
-  topic?: string;
-  limit?: number;
-}
-export interface ResearchGetInput {
-  id: string;
-}
-export interface ResearchSaveInput {
-  projectId: string;
-  topic: string;
-  sourceUrl?: string | null;
-  sourceTitle?: string | null;
-  sourceProvider: ResearchProvider;
-  excerpt: string;
-  note?: string;
-  tags?: string[];
-}
-export interface ResearchUpdateInput {
-  id: string;
-  topic?: string;
-  note?: string;
-  tags?: string[];
-}
-export interface ResearchDeleteInput {
-  id: string;
-}
-
-export interface ResearchCredentialStatus {
-  provider: ResearchProvider;
-  configured: boolean;
-}
-export interface ResearchCredentialStatusInput {
-  providers?: ResearchProvider[];
-}
-export interface ResearchCredentialUpsertInput {
-  provider: ResearchProvider;
-  apiKey: string;
-}
-export interface ResearchCredentialDeleteInput {
-  provider: ResearchProvider;
 }
 
 // ---------- M4 · Review ----------
@@ -1204,39 +994,12 @@ declare module "./maps" {
     [ipcChannels.characterSyncPreview]: { req: CharacterSyncPreviewInput; res: CharacterSyncPreviewResponse };
     [ipcChannels.characterSyncApply]: { req: CharacterSyncApplyInput; res: CharacterSyncApplyResponse };
     [ipcChannels.characterSyncHistory]: { req: CharacterSyncHistoryInput; res: CharacterSyncLogRecord[] };
-    [ipcChannels.tavernSessionCreate]: { req: TavernSessionCreateInput; res: TavernSessionRecord };
-    [ipcChannels.tavernSessionGet]: { req: TavernSessionGetInput; res: TavernSessionRecord | null };
-    [ipcChannels.tavernSessionList]: { req: TavernSessionListInput; res: TavernSessionRecord[] };
-    [ipcChannels.tavernSessionDelete]: { req: TavernSessionDeleteInput; res: { sessionId: string } };
-    [ipcChannels.tavernMessageList]: { req: TavernMessageListInput; res: TavernMessageRecord[] };
-    [ipcChannels.tavernDirectorPost]: { req: TavernDirectorPostInput; res: TavernDirectorPostResponse };
-    [ipcChannels.tavernRoundRun]: { req: TavernRoundRunInput; res: TavernRoundRunResponse };
-    [ipcChannels.tavernRoundStop]: { req: TavernRoundStopInput; res: TavernRoundStopResponse };
-    [ipcChannels.tavernSummaryCompact]: { req: TavernSummaryCompactInput; res: CompactResult };
     [ipcChannels.worldList]: { req: WorldListInput; res: WorldEntryRecord[] };
     [ipcChannels.worldGet]: { req: WorldGetInput; res: WorldEntryRecord | null };
     [ipcChannels.worldCreate]: { req: WorldCreateInput; res: WorldEntryRecord };
     [ipcChannels.worldUpdate]: { req: WorldUpdateInput; res: WorldEntryRecord };
     [ipcChannels.worldDelete]: { req: WorldDeleteInput; res: { id: string } };
     [ipcChannels.worldSearch]: { req: WorldSearchInput; res: WorldEntryRecord[] };
-    [ipcChannels.researchSearch]: { req: ResearchSearchInput; res: ResearchSearchResponse };
-    [ipcChannels.researchList]: { req: ResearchListInput; res: ResearchNoteRecord[] };
-    [ipcChannels.researchGet]: { req: ResearchGetInput; res: ResearchNoteRecord | null };
-    [ipcChannels.researchSave]: { req: ResearchSaveInput; res: ResearchNoteRecord };
-    [ipcChannels.researchUpdate]: { req: ResearchUpdateInput; res: ResearchNoteRecord };
-    [ipcChannels.researchDelete]: { req: ResearchDeleteInput; res: { id: string } };
-    [ipcChannels.researchCredentialStatus]: {
-      req: ResearchCredentialStatusInput;
-      res: ResearchCredentialStatus[];
-    };
-    [ipcChannels.researchCredentialUpsert]: {
-      req: ResearchCredentialUpsertInput;
-      res: ResearchCredentialStatus;
-    };
-    [ipcChannels.researchCredentialDelete]: {
-      req: ResearchCredentialDeleteInput;
-      res: ResearchCredentialStatus;
-    };
     [ipcChannels.reviewDimList]: { req: ReviewDimListInput; res: ReviewDimensionRecord[] };
     [ipcChannels.reviewDimUpsert]: { req: ReviewDimUpsertInput; res: ReviewDimensionRecord };
     [ipcChannels.reviewDimDelete]: { req: ReviewDimDeleteInput; res: { id: string } };
@@ -1293,18 +1056,6 @@ declare module "./maps" {
     [ipcChannels.updateInstall]: { req: void; res: { ok: true } };
     [ipcChannels.updateStatus]: { req: void; res: UpdateStatus };
     [ipcChannels.updateOpenDownloadPage]: { req: void; res: { ok: true } };
-    [ipcChannels.marketFetchRegistry]: {
-      req: MarketFetchRegistryInput;
-      res: MarketRegistryDTO;
-    };
-    [ipcChannels.marketInstallSkill]: {
-      req: MarketInstallSkillInput;
-      res: MarketInstallSkillResponse;
-    };
-    [ipcChannels.marketBuildPublishBundle]: {
-      req: MarketBuildPublishBundleInput;
-      res: MarketBuildPublishBundleResponse;
-    };
   }
 }
 
@@ -1316,9 +1067,6 @@ declare module "./maps" {
     [ipcEventChannels.terminalExit]: TerminalExitEvent;
     [ipcEventChannels.skillChunk]: SkillChunkEvent;
     [ipcEventChannels.skillDone]: SkillDoneEvent;
-    [ipcEventChannels.tavernChunk]: TavernChunkEvent;
-    [ipcEventChannels.tavernDone]: TavernDoneEvent;
-    [ipcEventChannels.tavernBudgetWarning]: TavernBudgetWarningEvent;
     [ipcEventChannels.reviewProgress]: ReviewProgressEvent;
     [ipcEventChannels.reviewDone]: ReviewDoneEvent;
     [ipcEventChannels.dailySummaryChunk]: DailySummaryChunkEvent;
@@ -1345,28 +1093,5 @@ declare module "./maps" {
     [ipcChannels.timelineUpsertEvent]: { req: TimelineUpsertEventInput; res: import("../domain").TimelineEventRecord }
     [ipcChannels.timelineDeleteEvent]: { req: TimelineDeleteEventInput; res: { id: string } }
     [ipcChannels.timelineReorderEvents]: { req: TimelineReorderEventsInput; res: TimelineReorderEventsResponse }
-  }
-}
-
-// ===== C13: Image Generation · IpcRequestMap extension =====
-export interface ImageGenGenerateInput {
-  prompt: string
-  negativePrompt?: string
-  width: number
-  height: number
-  projectId: string
-}
-export interface ImageGenGenerateResponse {
-  success: boolean
-  imagePath?: string
-  dataUrl?: string
-  error?: string
-}
-
-declare module "./maps" {
-  interface IpcRequestMap {
-    [ipcChannels.imageGenGenerate]: { req: ImageGenGenerateInput; res: ImageGenGenerateResponse }
-    [ipcChannels.imageGenGetSettings]: { req: {}; res: { backend: string; apiUrl: string } }
-    [ipcChannels.imageGenSaveSettings]: { req: { backend: string; apiUrl: string }; res: { ok: true } }
   }
 }

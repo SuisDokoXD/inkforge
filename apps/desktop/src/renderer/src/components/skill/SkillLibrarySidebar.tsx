@@ -1,4 +1,4 @@
-import { Library, Plus, ShoppingCart, Upload } from "lucide-react";
+import { Library, Plus, Upload } from "lucide-react";
 import type { SkillDefinition, SkillScope } from "@inkforge/shared";
 import {
   OUTPUT_EFFECTS,
@@ -16,7 +16,6 @@ interface SkillLibrarySidebarProps {
   importPending: boolean;
   onCreateNew: () => void;
   onImport: () => void;
-  onOpenMarket: () => void;
   onSelectSkill: (id: string) => void;
   onFilterScopeChange: (scope: SkillScope | "all") => void;
 }
@@ -29,7 +28,6 @@ export function SkillLibrarySidebar({
   importPending,
   onCreateNew,
   onImport,
-  onOpenMarket,
   onSelectSkill,
   onFilterScopeChange,
 }: SkillLibrarySidebarProps): JSX.Element {
@@ -61,13 +59,6 @@ export function SkillLibrarySidebar({
             title="导入写作指令配置"
           >
             <Upload size={14} />
-          </button>
-          <button
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-ink-600 text-xs hover:bg-ink-700"
-            onClick={onOpenMarket}
-            title="写作指令市场"
-          >
-            <ShoppingCart size={14} />
           </button>
         </div>
       </div>

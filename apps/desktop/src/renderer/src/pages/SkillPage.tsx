@@ -8,7 +8,6 @@ import {
   Download,
   FlaskConical,
   Save,
-  Send,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -17,8 +16,6 @@ import { renderSkillTemplate } from "@inkforge/skill-engine";
 import { fsApi, skillApi } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import { friendlyErrorMessage } from "../lib/friendly-error";
-import { SkillMarketDialog } from "../components/SkillMarketDialog";
-import { SkillPublishDialog } from "../components/SkillPublishDialog";
 import { SkillLibrarySidebar } from "../components/skill/SkillLibrarySidebar";
 import { Badge, Button, Select, TextField, Textarea } from "../components/ui";
 import { fadeOnly } from "../lib/motion-tokens";
@@ -58,8 +55,6 @@ export function SkillPage(): JSX.Element {
   const [testRunning, setTestRunning] = useState(false);
   const [testSample, setTestSample] = useState("");
   const [previewText, setPreviewText] = useState<string>("");
-  const [marketOpen, setMarketOpen] = useState(false);
-  const [publishOpen, setPublishOpen] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const skillsQuery = useQuery({
@@ -338,7 +333,6 @@ export function SkillPage(): JSX.Element {
           setEditor(emptyEditorState());
         }}
         onImport={() => importMut.mutate()}
-        onOpenMarket={() => setMarketOpen(true)}
         onSelectSkill={(skillId) => {
           showStatus(null);
           setActiveSkillId(skillId);
@@ -408,16 +402,6 @@ export function SkillPage(): JSX.Element {
             >
               <Download size={13} />
               导出
-            </Button>
-            <Button
-              className="h-8"
-              size="sm"
-              onClick={() => setPublishOpen(true)}
-              disabled={!editor.id}
-              title="生成发布用配置和说明"
-            >
-              <Send size={13} />
-              发布
             </Button>
             {!isNew && (
               <AnimatePresence initial={false} mode="wait">
@@ -927,12 +911,6 @@ export function SkillPage(): JSX.Element {
           </div>
         </div>
       </section>
-      <SkillMarketDialog open={marketOpen} onClose={() => setMarketOpen(false)} />
-      <SkillPublishDialog
-        open={publishOpen}
-        onClose={() => setPublishOpen(false)}
-        skillId={editor.id}
-      />
     </div>
   );
 }

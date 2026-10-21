@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import {
   BarChart3,
   BookOpen,
-  Bot,
   ClipboardCheck,
-  FileText,
   GitBranch,
   Globe2,
   LibraryBig,
@@ -23,12 +21,10 @@ const PAGE_META: Record<Exclude<MainView, "writing">, { title: string; descripti
   outline: { title: "大纲", description: "把故事结构拆成可执行的章节计划。", section: "写作", Icon: ListTree },
   bookshelf: { title: "书架", description: "管理作品、项目设定和最近写作。", section: "项目", Icon: LibraryBig },
   skill: { title: "写作技能", description: "创建可重复使用的写作指令。", section: "AI 工具", Icon: Puzzle },
-  tavern: { title: "酒馆", description: "让多个角色围绕当前问题协作。", section: "AI 工具", Icon: Bot },
   review: { title: "正文审查", description: "集中处理结构、节奏和连续性问题。", section: "AI 工具", Icon: ClipboardCheck },
   "auto-writer": { title: "续写精修", description: "从当前正文继续生成和整理草稿。", section: "AI 工具", Icon: Sparkles },
   character: { title: "人物", description: "维护人物卡、关系和出场信息。", section: "世界", Icon: Users },
   world: { title: "世界观", description: "整理地点、规则、组织和关系网络。", section: "世界", Icon: Globe2 },
-  research: { title: "资料", description: "收集写作所需的背景资料和来源。", section: "世界", Icon: FileText },
   letters: { title: "来信", description: "查看来自角色和世界的写作提示。", section: "项目", Icon: Mail },
   achievement: { title: "成就", description: "回看持续写作留下的里程碑。", section: "统计", Icon: Trophy },
   materials: { title: "素材库", description: "保存可复用的片段、灵感和参考。", section: "项目", Icon: LibraryBig },
@@ -38,8 +34,8 @@ const PAGE_META: Record<Exclude<MainView, "writing">, { title: string; descripti
 
 const SECTION_ITEMS: Record<string, Array<{ view: MainView; label: string }>> = {
   写作: [{ view: "writing", label: "正文" }, { view: "outline", label: "大纲" }, { view: "timeline", label: "时间线" }],
-  世界: [{ view: "character", label: "人物" }, { view: "world", label: "世界观" }, { view: "research", label: "资料" }],
-  "AI 工具": [{ view: "skill", label: "写作技能" }, { view: "review", label: "正文审查" }, { view: "auto-writer", label: "续写精修" }, { view: "tavern", label: "酒馆" }],
+  世界: [{ view: "character", label: "人物" }, { view: "world", label: "世界观" }],
+  "AI 工具": [{ view: "skill", label: "写作技能" }, { view: "review", label: "正文审查" }, { view: "auto-writer", label: "续写精修" }],
   项目: [{ view: "bookshelf", label: "书架" }, { view: "materials", label: "素材库" }, { view: "letters", label: "来信" }],
   统计: [{ view: "stats", label: "数据统计" }, { view: "achievement", label: "成就" }],
 };

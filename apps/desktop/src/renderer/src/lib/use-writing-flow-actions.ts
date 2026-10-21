@@ -7,7 +7,6 @@ export interface WritingFlowActions {
   reviewChapter: (chapterId: string) => void;
   autoWriteChapter: (chapterId: string) => void;
   autoWriteOutlineCard: (projectId: string, outlineCardId: string) => Promise<void>;
-  researchChapter: (chapterId: string, query?: string | null) => void;
   openOutline: (cardId?: string | null) => void;
 }
 
@@ -15,7 +14,6 @@ export function useWritingFlowActions(): WritingFlowActions {
   const setChapter = useAppStore((state) => state.setChapter);
   const setMainView = useAppStore((state) => state.setMainView);
   const setOutlineFocusCard = useAppStore((state) => state.setOutlineFocusCard);
-  const setResearchDraftQuery = useAppStore((state) => state.setResearchDraftQuery);
 
   const openChapter = useCallback(
     (chapterId: string) => {
@@ -50,16 +48,6 @@ export function useWritingFlowActions(): WritingFlowActions {
     [setChapter, setMainView],
   );
 
-  const researchChapter = useCallback(
-    (chapterId: string, query?: string | null) => {
-      setChapter(chapterId);
-      const trimmed = query?.trim();
-      setResearchDraftQuery(trimmed ? trimmed : null);
-      setMainView("research");
-    },
-    [setChapter, setMainView, setResearchDraftQuery],
-  );
-
   const openOutline = useCallback(
     (cardId?: string | null) => {
       setOutlineFocusCard(cardId ?? null);
@@ -73,7 +61,6 @@ export function useWritingFlowActions(): WritingFlowActions {
     reviewChapter,
     autoWriteChapter,
     autoWriteOutlineCard,
-    researchChapter,
     openOutline,
   };
 }

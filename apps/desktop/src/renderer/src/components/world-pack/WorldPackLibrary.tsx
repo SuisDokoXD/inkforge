@@ -5,7 +5,6 @@
 //   - sticky 顶栏 + backdrop-blur，滚动时浮在内容上
 //   - 加载状态用骨架屏网格（不是单行 spinner）
 //   - 空状态加大视觉 + 提供 quick-start CTA
-//   - 融合模式 banner 用 ring + glow 强调
 //   - "已插槽 N" 数字徽章在按钮上叠加
 // =============================================================================
 
@@ -17,7 +16,6 @@ import { worldPackApi } from "../../lib/api";
 import type { WorldPackOrigin, WorldPackRecord } from "@inkforge/shared";
 import { WorldPackCard, WorldPackCardSkeleton } from "./WorldPackCard";
 import { WorldPackEditDialog } from "./WorldPackEditDialog";
-import { FusionDialog } from "./FusionDialog";
 import { PackSlotPanel } from "./PackSlotPanel";
 import { Badge } from "../ui";
 
@@ -36,9 +34,6 @@ export function WorldPackLibrary(): JSX.Element {
   const [search, setSearch] = useState("");
   const [originFilter, setOriginFilter] = useState<FilterOrigin>("all");
   const [editingPackId, setEditingPackId] = useState<string | null>(null);
-  const [fusionMode, setFusionMode] = useState(false);
-  const [fusionSourceIds, setFusionSourceIds] = useState<string[]>([]);
-  const [showFusionDialog, setShowFusionDialog] = useState(false);
   const [showSlotPanel, setShowSlotPanel] = useState(false);
 
   const packsQuery = useQuery({
@@ -82,22 +77,11 @@ export function WorldPackLibrary(): JSX.Element {
     onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["world-packs"] });
       queryClient.invalidateQueries({ queryKey: ["world-pack-slots"] });
-      setFusionSourceIds((cur) => cur.filter((packId) => packId !== id));
       if (editingPackId === id) setEditingPackId(null);
     },
   });
 
   function handleCardClick(pack: WorldPackRecord): void {
-    if (fusionMode) {
-      setFusionSourceIds((cur) =>
-        cur.includes(pack.id)
-          ? cur.filter((x) => x !== pack.id)
-          : cur.length < 4
-            ? [...cur, pack.id]
-            : cur,
-      );
-      return;
-    }
     setEditingPackId(pack.id);
   }
 
@@ -109,7 +93,7 @@ export function WorldPackLibrary(): JSX.Element {
     },
   });
   function handleCardDoubleClick(pack: WorldPackRecord): void {
-    if (fusionMode || !currentProjectId) return;
+    if (!currentProjectId) return;
     if (slottedIds.has(pack.id)) return;
     slotMutation.mutate({ packId: pack.id });
   }
@@ -179,30 +163,6 @@ export function WorldPackLibrary(): JSX.Element {
               </button>
             )}
             <button
-              onClick={() => {
-                setFusionMode((v) => !v);
-                setFusionSourceIds([]);
-              }}
-              aria-label={fusionMode ? "取消卡牌融合" : "融合多张世界观卡牌"}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-[color,background-color,border-color,box-shadow,opacity] duration-200 ${
-                fusionMode
-                  ? "bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/30"
-                  : "border border-ink-700 bg-ink-800/60 text-ink-200 hover:border-fuchsia-400/40 hover:bg-ink-800"
-              }`}
-            >
-              <Sparkles className="h-4 w-4" />
-              {fusionMode ? "取消融合" : "融合"}
-            </button>
-            {fusionMode && fusionSourceIds.length >= 2 && (
-              <button
-                onClick={() => setShowFusionDialog(true)}
-                aria-label={`融合已选择的 ${fusionSourceIds.length} 张世界观卡牌`}
-                className="rounded-lg bg-fuchsia-500 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-fuchsia-500/40 transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:bg-fuchsia-400 hover:shadow-fuchsia-500/55 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-300/70"
-              >
-                融合 {fusionSourceIds.length} 张 →
-              </button>
-            )}
-            <button
               onClick={() => createMutation.mutate()}
               disabled={createMutation.isPending}
               aria-label="新建世界观卡牌"
@@ -240,19 +200,6 @@ export function WorldPackLibrary(): JSX.Element {
         </div>
       </div>
 
-      {/* ===== 融合模式横幅 ===== */}
-      {fusionMode && (
-        <div className="border-b border-fuchsia-500/40 bg-gradient-to-r from-fuchsia-500/10 via-fuchsia-500/20 to-fuchsia-500/10 px-4 py-2 text-xs text-fuchsia-100 ring-1 ring-fuchsia-400/20">
-          <span className="font-medium">融合模式</span>　点选 2-4 张源卡，会按你的融合要求生成一张新卡。已选{" "}
-          <Badge
-            tone="accent"
-            className="rounded bg-fuchsia-500/30 px-1.5 font-bold text-fuchsia-100 ring-fuchsia-400/30"
-          >
-            {fusionSourceIds.length} / 4
-          </Badge>
-        </div>
-      )}
-
       {/* ===== 主体 ===== */}
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4">
@@ -267,13 +214,11 @@ export function WorldPackLibrary(): JSX.Element {
           ) : (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
               {packs.map((pack) => {
-                const idx = fusionSourceIds.indexOf(pack.id);
                 return (
                   <WorldPackCard
                     key={pack.id}
                     pack={pack}
                     selected={slottedIds.has(pack.id)}
-                    selectionIndex={fusionMode && idx >= 0 ? idx : undefined}
                     onClick={handleCardClick}
                     onDoubleClick={handleCardDoubleClick}
                     onDelete={handleCardDelete}
@@ -305,17 +250,6 @@ export function WorldPackLibrary(): JSX.Element {
           onClose={() => setEditingPackId(null)}
         />
       )}
-      <FusionDialog
-        open={showFusionDialog}
-        sourcePackIds={fusionSourceIds}
-        onClose={() => setShowFusionDialog(false)}
-        onFused={() => {
-          setShowFusionDialog(false);
-          setFusionMode(false);
-          setFusionSourceIds([]);
-          queryClient.invalidateQueries({ queryKey: ["world-packs"] });
-        }}
-      />
     </div>
   );
 }

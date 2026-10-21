@@ -84,9 +84,6 @@ importers:
       '@inkforge/llm-core':
         specifier: workspace:*
         version: link:../../packages/llm-core
-      '@inkforge/research-core':
-        specifier: workspace:*
-        version: link:../../packages/research-core
       '@inkforge/review-engine':
         specifier: workspace:*
         version: link:../../packages/review-engine
@@ -99,9 +96,6 @@ importers:
       '@inkforge/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-      '@inkforge/tavern-engine':
-        specifier: workspace:*
-        version: link:../../packages/tavern-engine
       '@playwright/test':
         specifier: ^1.48.0
         version: 1.59.1
@@ -299,16 +293,6 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.17)(terser@5.51.2)
 
-  packages/research-core:
-    dependencies:
-      '@inkforge/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
-      vitest:
-        specifier: ^2.1.8
-        version: 2.1.9(@types/node@22.19.17)(terser@5.51.2)
-
   packages/review-engine:
     dependencies:
       '@inkforge/shared':
@@ -343,16 +327,6 @@ importers:
       '@types/better-sqlite3':
         specifier: ^7.6.12
         version: 7.6.13
-      vitest:
-        specifier: ^2.1.8
-        version: 2.1.9(@types/node@22.19.17)(terser@5.51.2)
-
-  packages/tavern-engine:
-    dependencies:
-      '@inkforge/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.17)(terser@5.51.2)
