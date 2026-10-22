@@ -486,8 +486,20 @@ button:disabled {
 .workspace-context-bar select { min-height: 2rem; }
 
 .editor-command-bar { min-height: 2.5rem; }
-.editor-command-bar { overflow: visible; }
-.editor-command-actions { overflow: visible; scrollbar-width: none; }
+.editor-command-bar { overflow: visible; height: auto; }
+/*
+ * 工具栏内部换行，而不是溢出到右侧检查器上。
+ *
+ * 这个工具栏有近二十个 32px 按钮，加上撤回组、朗读器和保存状态，内容实测宽 840px，
+ * 而编辑器一栏在 1410 宽窗口、右侧检查器展开时只有 681px。原先 .editor-command-actions
+ * 是 overflow: visible（为的是让内嵌的下拉面板透出，面板不能裁），于是超出的 159px
+ * 直接画到了右侧「辅助」面板的表头上 —— 保存状态就压在「辅助」两个字上面。
+ *
+ * 改 overflow 会连下拉面板一起裁掉，改收缩会把保存状态挤成 0 宽，都会丢东西。
+ * 允许换行两者都不牺牲：装不下时尾部整组（朗读 + 保存状态）落到第二行并右对齐，
+ * 工具栏高度从 56px 变成 90px。
+ */
+.editor-command-actions { overflow: visible; scrollbar-width: none; flex-wrap: wrap; row-gap: 0.125rem; }
 .editor-command-actions::-webkit-scrollbar { display: none; }
 .editor-command-bar .icon-button,
 .editor-command-bar button { min-height: 1.875rem; }
