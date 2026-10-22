@@ -242,6 +242,24 @@ const DEFAULT_CURSOR_STATE: EditorCursorState = {
  * 与字数统计的去抖同为 120ms —— 这两个数字属于同一类信息，滞后一档看起来一致。
  */
 const CURSOR_STATE_THROTTLE_MS = 120;
+
+/**
+ * 脏数据最长允许停留多久就强制落一次盘。
+ *
+ * 主保存和崩溃恢复 sidecar 原本都是纯尾部去抖：每次内容变化都 clearTimeout 重来，
+ * 所以只要手不停，保存就永不触发。实测连续输入 32 字期间「今日目标」一直停在旧值，
+ * 也就是说这期间数据库一次都没有落盘——连续写几分钟，崩一次就是整段丢失。
+ *
+ * 这里给两者加上限：静默时仍按各自窗口（500ms / 5s）保存，但距上次落盘超过这个
+ * 时间就强制保存一次。效果是连续写作时每 5 秒左右落一次盘，进度条也随之前进。
+ */
+const MAX_UNSAVED_MS = 5_000;
+
+/** 主保存的静默窗口：停笔 500ms 即存。 */
+const SAVE_DEBOUNCE_MS = 500;
+
+/** 崩溃恢复 sidecar 的静默窗口。 */
+const AUTOSAVE_SIDECAR_MS = 5_000;
 function editorPositionStorageKey(projectId: string, chapterId: string): string {
   return `inkforge:editor-position:${projectId}:${chapterId}`;
 }
@@ -373,6 +391,9 @@ export function EditorPane({
   const contentCacheRef = useRef<Map<string, string>>(new Map());
   const lastSavedRef = useRef<string>("");
   const lastAutosavedRef = useRef<string>("");
+  // 上一次保存 / sidecar 落盘的时刻，用于给两个去抖加"脏数据上限"（见 MAX_UNSAVED_MS）。
+  const lastQueuedSaveAtRef = useRef(0);
+  const lastSidecarWriteAtRef = useRef(0);
   const loadedChapterIdRef = useRef<string | null>(null);
   const activeAnalysisChapterRef = useRef<string | null>(null);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
@@ -739,14 +760,19 @@ export function EditorPane({
     if (content === lastSavedRef.current) return;
     setSavePhase("queued");
     const snapshot = content;
+    // 停笔 SAVE_DEBOUNCE_MS 即存；但距上次落盘超过 MAX_UNSAVED_MS 就立刻存一次，
+    // 否则连续写作期间保存永不触发——进度不动，且这期间没有任何落盘。
+    const sinceLastSave = Date.now() - lastQueuedSaveAtRef.current;
+    const delay = Math.max(0, Math.min(SAVE_DEBOUNCE_MS, MAX_UNSAVED_MS - sinceLastSave));
     const handle = setTimeout(() => {
+      lastQueuedSaveAtRef.current = Date.now();
       void queueSave({
         chapterId: chapter.id,
         projectId: chapter.projectId,
         content: snapshot,
         wordCount: computeWordCount(snapshot).graphemes,
       }).catch(() => {});
-    }, 500);  // 修复：降低防抖到 500ms，提升写作手感
+    }, delay);
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, queueSave]);
 
@@ -1692,13 +1718,21 @@ export function EditorPane({
   const writeAutosaveSidecar = useCallback(() => {
     if (!chapter || !loaded) return;
     const snapshot = contentRef.current;
-    if (snapshot === lastSavedRef.current || snapshot === lastAutosavedRef.current) return;
+    // 只与"上次 sidecar 写入的内容"比较。
+    //
+    // 这里原来还有一条 `snapshot === lastSavedRef.current`：主保存成功后会把 lastAutosavedRef
+    // 一并设为已保存内容（见 drainSaveQueue），于是"刚存过"被当成"sidecar 已写过"。
+    // 但 sidecar 要防的恰恰是"数据库还没落盘就崩了"，判据只能是它自己的上次写入。
+    if (snapshot === lastAutosavedRef.current) return;
     void chapterApi
       .autosaveWrite({ id: chapter.id, content: snapshot })
       .then(() => {
         lastAutosavedRef.current = snapshot;
       })
-      .catch(() => {});
+      .catch((error) => {
+        // 不能静默吞掉：写失败时"崩溃恢复副本"就悄悄不存在了，界面上看不出任何异常。
+        console.warn("[inkforge] autosave sidecar 写入失败", error);
+      });
   }, [chapter, loaded]);
 
   useEffect(() => {
@@ -1714,14 +1748,18 @@ export function EditorPane({
     };
   }, [writeAutosaveSidecar]);
 
-  // Disk-autosave sidecar every ~5s while typing. Runs in parallel to the 1.2s
-  // DB save so that a crash between DB saves still leaves a recoverable copy.
+  // Disk-autosave sidecar：停笔 AUTOSAVE_SIDECAR_MS 后写一次，另外脏数据超过
+  // MAX_UNSAVED_MS 时强制写一次。原来只靠尾部去抖，连续打字期间永不触发——
+  // 注释曾声称「打字期间每 5 秒」，与实现不符。
   useEffect(() => {
     if (!chapter || !loaded) return;
     if (content === lastAutosavedRef.current) return;
+    const sinceLastWrite = Date.now() - lastSidecarWriteAtRef.current;
+    const delay = Math.max(0, Math.min(AUTOSAVE_SIDECAR_MS, MAX_UNSAVED_MS - sinceLastWrite));
     const handle = setTimeout(() => {
+      lastSidecarWriteAtRef.current = Date.now();
       writeAutosaveSidecar();
-    }, 5000);
+    }, delay);
     return () => clearTimeout(handle);
   }, [content, chapter, loaded, writeAutosaveSidecar]);
 
