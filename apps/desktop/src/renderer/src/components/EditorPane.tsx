@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type {
@@ -54,7 +54,7 @@ import {
 } from "../lib/manual-submission-check";
 import { buildManualChapterStructureOverview } from "../lib/manual-chapter-structure";
 import { matchManualWritingShortcut, type ManualWritingCommandId } from "../lib/manual-writing-commands";
-import { DUR, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
+import { DUR, EASE_IN_OUT, EASE_STANDARD, fadeOnly } from "../lib/motion-tokens";
 import { useTimedStatus } from "../lib/use-timed-status";
 import { useDebouncedValue } from "../lib/use-debounced-value";
 import {
@@ -161,42 +161,6 @@ type EditorCommandDetail =
   | { action: "insert-todo" }
   | { action: "jump-heading"; direction: "previous" | "next" };
 
-interface SavePulseDotProps {
-  tone: StatusTone;
-  active: boolean;
-}
-
-/**
- * 保存状态的圆点：静止底点 + 忙碌时的脉冲环。
- *
- * 脉冲用 CSS keyframes（`.save-pulse-dot`）而不是 motion。原因是这条动画在打字时
- * 几乎全程在跑——`savePhase` 在 queued / saving 之间来回切，脉冲一直在转。
- * 走 motion 意味着每帧都要过一遍 VisualElement 渲染管线（实测 renderHTML 一项
- * 0.3–0.5 ms/键，且帧循环空闲时也在占主线程）；交给合成器推进则主线程零成本。
- */
-const SavePulseDot = memo(function SavePulseDot({ tone, active }: SavePulseDotProps): JSX.Element {
-  const dotClass =
-    tone === "error"
-      ? "bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.45)]"
-      : tone === "success"
-        ? "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.4)]"
-        : tone === "busy"
-          ? "bg-accent-300 shadow-[0_0_10px_rgba(125,211,252,0.45)]"
-          : "bg-ink-500";
-
-  return (
-    <span className="relative flex h-1.5 w-1.5 shrink-0">
-      {active ? (
-        <span
-          aria-hidden
-          className={`save-pulse-dot absolute inline-flex h-full w-full rounded-full ${dotClass}`}
-        />
-      ) : null}
-      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dotClass}`} />
-    </span>
-  );
-});
-
 interface SaveStatusIndicatorProps {
   phase: SavePhase;
   label: string;
@@ -206,7 +170,7 @@ interface SaveStatusIndicatorProps {
   reduceMotion: boolean;
 }
 
-const SaveStatusIndicator = memo(function SaveStatusIndicator({
+function SaveStatusIndicator({
   phase,
   label,
   className,
@@ -214,13 +178,22 @@ const SaveStatusIndicator = memo(function SaveStatusIndicator({
   tone,
   reduceMotion,
 }: SaveStatusIndicatorProps): JSX.Element {
-  const resolvedTone: StatusTone =
+  const resolvedTone =
     tone ??
     (phase === "error"
       ? "error"
       : phase === "saving" || phase === "queued"
         ? "busy"
         : "neutral");
+  const dotClass =
+    resolvedTone === "error"
+      ? "bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.45)]"
+      : resolvedTone === "success"
+        ? "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,0.4)]"
+      : resolvedTone === "busy"
+        ? "bg-accent-300 shadow-[0_0_10px_rgba(125,211,252,0.45)]"
+        : "bg-ink-500";
+  const isBusy = resolvedTone === "busy";
 
   return (
     <span
@@ -229,7 +202,19 @@ const SaveStatusIndicator = memo(function SaveStatusIndicator({
       role={resolvedTone === "error" ? "alert" : "status"}
       aria-live={resolvedTone === "error" ? "assertive" : "polite"}
     >
-      <SavePulseDot tone={resolvedTone} active={!reduceMotion && resolvedTone === "busy"} />
+      <motion.span
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotClass}`}
+        animate={
+          !reduceMotion && isBusy
+            ? { opacity: [0.55, 1, 0.55], scale: [1, 1.35, 1] }
+            : { opacity: 1, scale: 1 }
+        }
+        transition={
+          !reduceMotion && isBusy
+            ? { duration: 0.9, ease: EASE_IN_OUT, repeat: Infinity }
+            : { duration: DUR.fast, ease: EASE_STANDARD }
+        }
+      />
       <AnimatePresence initial={false} mode="wait">
         <motion.span
           key={`${phase}:${label}`}
@@ -244,7 +229,7 @@ const SaveStatusIndicator = memo(function SaveStatusIndicator({
       </AnimatePresence>
     </span>
   );
-});
+}
 
 const DEFAULT_CURSOR_STATE: EditorCursorState = {
   lineNumber: 1,

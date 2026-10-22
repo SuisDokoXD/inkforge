@@ -395,29 +395,6 @@ html.theme-paper .ProseMirror {
   border-radius: 0.5rem;
 }
 
-/* 保存状态指示器的脉冲环。
- *
- * 为什么不是 motion：这条动画在打字时几乎全程在跑——savePhase 在 queued / saving
- * 之间反复切换，脉冲其实一直在转。用 motion 驱动意味着每一帧都要走一遍
- * VisualElement 的渲染管线（实测 renderHTML 一项就 0.3–0.5 ms/键，且帧循环
- * 在没打字时也占着主线程）。纯 transform/opacity 的 CSS keyframes 由合成器
- * 推进，主线程零成本，视觉完全一致。 */
-@keyframes save-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.35);
-  }
-}
-.save-pulse-dot {
-  animation: save-pulse 0.9s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
 /* B4: 专注模式——编辑器背景暗角（微弱的径向渐变，引导视线到中央） */
 .editor-focus-vignette {
   background:
