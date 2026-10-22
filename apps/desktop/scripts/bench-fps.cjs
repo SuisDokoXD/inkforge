@@ -89,11 +89,27 @@ function stats(label, deltas, longTasks) {
     process.exit(2);
   }
 
+  // 启动后不一定是编辑器：档案里「上次打开的书」可能为空（换过机器、清过状态、
+  // 或刚复制档案），那时写作页是空的——0 章、没有 .ProseMirror。先在书籍下拉里
+  // 选一本，再等编辑器出现，否则 bench 会把这些情况都误报成「档案停在引导页」。
+  const editorCount = async () => page.locator(".ProseMirror").count();
   try {
+    if ((await editorCount()) === 0) {
+      const books = await page.evaluate(() => {
+        const sel = document.querySelector("select");
+        return sel ? [...sel.options].map((o) => ({ value: o.value, text: o.text })) : [];
+      });
+      const book = books.find((item) => item.value);
+      if (book) {
+        console.log(`未打开任何书，选用「${book.text}」`);
+        await page.selectOption("select", book.value);
+        await page.waitForTimeout(2500);
+      }
+    }
     await page.waitForSelector(".ProseMirror", { timeout: 90_000 });
   } catch {
     const snippet = await page.evaluate(() => document.body.innerText.slice(0, 300)).catch(() => "<unavailable>");
-    console.error("没找到编辑器（档案可能停在引导页）：\n" + snippet);
+    console.error("没找到编辑器（档案可能停在引导页，或选中的书没有章节）：\n" + snippet);
     await app.close();
     process.exit(2);
   }
