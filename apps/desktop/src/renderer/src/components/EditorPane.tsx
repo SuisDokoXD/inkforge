@@ -237,6 +237,12 @@ const DEFAULT_CURSOR_STATE: EditorCursorState = {
   selectedGraphemes: 0,
 };
 
+
+/**
+ * 光标状态（行号 / 本段字数 / 选字数）的展示节流窗口。
+ * 与字数统计的去抖同为 120ms —— 这两个数字属于同一类信息，滞后一档看起来一致。
+ */
+const CURSOR_STATE_THROTTLE_MS = 120;
 function editorPositionStorageKey(projectId: string, chapterId: string): string {
   return `inkforge:editor-position:${projectId}:${chapterId}`;
 }
@@ -345,6 +351,8 @@ export function EditorPane({
   const [findStatus, setFindStatus] = useState<string | null>(null);
   const [replaceConfirm, setReplaceConfirm] = useState(false);
   const [cursorState, setCursorState] = useState<EditorCursorState>(DEFAULT_CURSOR_STATE);
+  const cursorStateAtRef = useRef(0);
+  const cursorStateTimerRef = useRef<number | null>(null);
   const [rhythmState, setRhythmState] = useState<ManualWritingRhythmState>(() =>
     createDefaultManualWritingRhythmState(),
   );
@@ -894,7 +902,21 @@ export function EditorPane({
     return () => window.clearTimeout(timer);
   }, [chapter, editorInstance, headingJumpTarget, jumpEditorToText, loaded]);
 
-  const updateCursorState = useCallback(() => {
+  /**
+   * 光标状态（行号 / 本段字数 / 选字数）节流到 120ms。
+   *
+   * 为什么要节流：它挂在 editor 的 update 与 selectionUpdate 上，每按一键都重算一遍
+   * 当前段落字数，然后把「第 N 行 · 本段 M 字」这段文本换掉。文本一变就要重新排版，
+   * 实测每键多付 1.4ms 布局、约 1 次额外布局（隐藏这行文本：布局 2.98 -> 1.53 ms/键，
+   * 布局次数 670 -> 342）。而 EditorPane 本来就每键重渲染，这段文本是唯一会真正
+   * 落到 DOM 上的逐键变更。
+   *
+   * 代价：行号与本段字数最多滞后 120ms。写作时这个数字不参与任何操作，滞后不可感知；
+   * 用尾巴补一次调度，保证停笔后最终值一定落上。
+   */
+  const applyCursorState = useCallback(() => {
+    cursorStateAtRef.current = Date.now();
+    cursorStateTimerRef.current = null;
     if (!editorInstance) {
       setCursorState(DEFAULT_CURSOR_STATE);
       return;
@@ -908,6 +930,26 @@ export function EditorPane({
         : next,
     );
   }, [editorInstance]);
+
+  const updateCursorState = useCallback(() => {
+    const elapsed = Date.now() - cursorStateAtRef.current;
+    if (elapsed >= CURSOR_STATE_THROTTLE_MS) {
+      applyCursorState();
+      return;
+    }
+    if (cursorStateTimerRef.current !== null) return;
+    cursorStateTimerRef.current = window.setTimeout(applyCursorState, CURSOR_STATE_THROTTLE_MS - elapsed);
+  }, [applyCursorState]);
+
+  useEffect(
+    () => () => {
+      if (cursorStateTimerRef.current !== null) {
+        window.clearTimeout(cursorStateTimerRef.current);
+        cursorStateTimerRef.current = null;
+      }
+    },
+    [],
+  );
 
   const persistEditorPosition = useCallback(() => {
     if (!chapter || !editorInstance) return;

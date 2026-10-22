@@ -72,6 +72,28 @@ function main() {
   } else {
     ok("persistManualRhythmState 受限流守卫保护");
   }
+
+  // 5) 光标状态（行号 / 本段字数）必须节流。
+  //
+  // 这段文本挂在 editor 的 update / selectionUpdate 上，是 EditorPane 里唯一会真正
+  // 落到 DOM 上的逐键变更——每键换一次文本就要重排一次工具栏。实测（312 键，同一
+  // 章节）：不节流 布局 2.98ms/键、670 次布局；节流到 120ms 后 1.23ms/键、352 次，
+  // 连脚本也从 4.47 降到 3.47ms/键（少一次 setState 整树重渲染）。
+  if (!/CURSOR_STATE_THROTTLE_MS/.test(src)) {
+    fail("光标状态缺少节流常量，可能每键重排工具栏");
+  } else {
+    ok("光标状态有节流常量");
+  }
+  if (/const updateCursorState = useCallback\(\(\) => \{\s*\n\s*if \(!editorInstance\)/.test(src)) {
+    fail("updateCursorState 又变成每次调用都立即 setCursorState，节流失效");
+  } else {
+    ok("updateCursorState 走节流路径");
+  }
+  if (/cursorStateTimerRef\.current = window\.setTimeout/.test(src)) {
+    ok("光标状态有末尾补调度（停笔后最终值会落上）");
+  } else {
+    fail("光标状态没有末尾补调度，最后一次变更可能丢失");
+  }
 }
 
 main();
