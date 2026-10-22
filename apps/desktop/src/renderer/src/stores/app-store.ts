@@ -98,6 +98,18 @@ export interface AppState {
   // Editor live stats (for StatusBar three-column display)
   currentChapterStats: ChapterLiveStats | null;
 
+  /**
+   * 编辑器光标读数：行号 / 本段字数 / 选字数。
+   *
+   * 原先显示在编辑器工具栏里，但那排按钮本身已放不下（内容 840px、可用 681px），
+   * 而这属于状态信息，底部状态栏才是它该在的位置。由 EditorPane 节流后写入（120ms）。
+   */
+  currentCursor: {
+    lineNumber: number;
+    paragraphGraphemes: number;
+    selectedGraphemes: number;
+  } | null;
+
   // AutoWriter remembered config (v22+)
   autoWriterConfig: AutoWriterRemembered | null;
 
@@ -144,6 +156,9 @@ export interface AppState {
 
   // Editor live stats
   setCurrentChapterStats: (stats: ChapterLiveStats | null) => void;
+  setCurrentCursor: (
+    cursor: { lineNumber: number; paragraphGraphemes: number; selectedGraphemes: number } | null,
+  ) => void;
 
   // A2: Review→Editor 跳转——存原文字符串，EditorPane 检测到后自动滚动到对应位置
   reviewJumpExcerpt: string | null;
@@ -212,6 +227,9 @@ export const useAppStore = create<AppState>()(
       worldSearchQuery: "",
 
       currentChapterStats: null,
+
+      // 编辑器光标读数（行号 / 本段字数 / 选字数）——底部状态栏显示用
+      currentCursor: null,
 
       // A2: Review→Editor 跳转用摘录文本
       reviewJumpExcerpt: null,
@@ -385,6 +403,8 @@ export const useAppStore = create<AppState>()(
         })),
 
       setCurrentChapterStats: (stats) => set(() => ({ currentChapterStats: stats })),
+
+      setCurrentCursor: (cursor) => set(() => ({ currentCursor: cursor })),
 
       // A2: Review→Editor 跳转——ReviewPage 设置摘录文本，
       // EditorPane 检测后调用 jumpEditorToText 滚动定位。

@@ -31,6 +31,7 @@ export function StatusBar(): JSX.Element {
   const analysisError = useAppStore((s) => s.analyses[0]?.error);
   const projectId = useAppStore((s) => s.currentProjectId);
   const chapterStats = useAppStore((s) => s.currentChapterStats);
+  const cursor = useAppStore((s) => s.currentCursor);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const reduceMotion = useReducedMotion() === true;
   const t = useT();
@@ -122,6 +123,15 @@ export function StatusBar(): JSX.Element {
               {progress.goalHit && ` · ${t("common.finish")}`}
             </span>
           </motion.div>
+        )}
+        {/* 光标读数：原在编辑器工具栏，工具栏放不下（内容 840px / 可用 681px），
+            而且它是状态信息，状态栏才是它的位置。EditorPane 节流 120ms 后写入 store。 */}
+        {cursor && (
+          <span className="text-ink-500" title="光标位置 · 本段字数">
+            {cursor.selectedGraphemes > 0
+              ? `已选 ${cursor.selectedGraphemes} 字`
+              : `第 ${cursor.lineNumber} 行 · 本段 ${cursor.paragraphGraphemes} 字`}
+          </span>
         )}
         {chapterStats && (
           <span

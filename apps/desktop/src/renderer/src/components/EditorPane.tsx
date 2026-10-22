@@ -27,12 +27,10 @@ import {
   Archive,
   ChevronDown,
   ChevronUp,
-  Download,
   Ellipsis,
   Focus,
   PenLine,
   Puzzle,
-  RefreshCw,
   RotateCcw,
   RotateCw,
   Save,
@@ -453,6 +451,7 @@ export function EditorPane({
       setSaveError(null);
       setLastSavedAt(null);
       setCursorState(DEFAULT_CURSOR_STATE);
+      setCurrentCursor(null);
       lastRestoredPositionChapterRef.current = null;
       setRhythmState(createDefaultManualWritingRhythmState());
       resetManualRhythmSession("", null);
@@ -622,6 +621,7 @@ export function EditorPane({
   const sessionAddedGraphemes = Math.max(0, currentGraphemes - sessionBaseGraphemes);
   const resumeCue = useMemo(() => buildManualWritingResumeCue(rhythmState, rhythmNow), [rhythmNow, rhythmState]);
   const setCurrentChapterStats = useAppStore((s) => s.setCurrentChapterStats);
+  const setCurrentCursor = useAppStore((s) => s.setCurrentCursor);
 
   useEffect(() => {
     if (!chapter) {
@@ -637,7 +637,10 @@ export function EditorPane({
     });
   }, [statsText, chapter, stats.graphemes, setCurrentChapterStats]);
 
-  useEffect(() => () => setCurrentChapterStats(null), [setCurrentChapterStats]);
+  useEffect(() => () => {
+    setCurrentChapterStats(null);
+    setCurrentCursor(null);
+  }, [setCurrentChapterStats, setCurrentCursor]);
 
   const invalidateDailyProgress = useCallback(
     (projectId: string) => {
@@ -922,6 +925,7 @@ export function EditorPane({
     cursorStateTimerRef.current = null;
     if (!editorInstance) {
       setCursorState(DEFAULT_CURSOR_STATE);
+      setCurrentCursor(null);
       return;
     }
     const next = readEditorCursorState(editorInstance);
@@ -932,7 +936,9 @@ export function EditorPane({
         ? current
         : next,
     );
-  }, [editorInstance]);
+    // 底部状态栏的读数；与本地 state 同步写入，节流对它同样生效。
+    setCurrentCursor(next);
+  }, [editorInstance, setCurrentCursor]);
 
   const updateCursorState = useCallback(() => {
     const elapsed = Date.now() - cursorStateAtRef.current;
@@ -2065,9 +2071,6 @@ export function EditorPane({
         ? "text-accent-300"
         : "text-ink-500";
   const displayedStatusLabel = displayedTransientStatus?.text ?? saveStatusLabel;
-  const cursorStatusLabel = cursorState.selectedGraphemes > 0
-    ? `已选 ${cursorState.selectedGraphemes} 字`
-    : `第 ${cursorState.lineNumber} 行 · 本段 ${cursorState.paragraphGraphemes} 字`;
 
   const manualWritingCommandAvailability = useMemo(() => ({
     hasEditor: editorInstance !== null,
@@ -2115,11 +2118,17 @@ export function EditorPane({
         disabled: false,
         open: () => setChapterHealthMenuOpen(true),
       },
+      // 两个低频动作也一并收进来。它们原本是工具栏里两个纯图标按钮，
+      // 加上这两项正好把 1366 宽也压回单行。
+      { label: "分析本章", hint: "", disabled: false, open: () => void handleManualAnalyze() },
+      { label: "导出为 Markdown", hint: "", disabled: false, open: () => void handleExport() },
     ],
     [
       chapterHealthReport.issues.length,
       chapterMapItems.length,
       chapterStructureOverview.counts.total,
+      handleExport,
+      handleManualAnalyze,
       paragraphFocusOverview.current?.startLine,
       revisionQueueItems.length,
     ],
@@ -2178,7 +2187,8 @@ export function EditorPane({
           <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>
         <div className="editor-command-actions relative flex min-w-0 flex-1 flex-nowrap items-center justify-start gap-0.5 text-xs text-ink-300">
-          <span className="hidden max-w-40 truncate text-ink-500 min-[1700px]:inline" title={cursorStatusLabel}>{cursorStatusLabel}</span>
+          {/* 行号 / 本段字数读数已移到底部状态栏（见 StatusBar）：它是状态信息，
+              而这排按钮本身已经放不下，占着 108px 会让工具栏多出一行。 */}
           {/* 工具栏改纯图标 + 原生悬浮提示(title)，按功能分组用竖线分隔：整体更轻、窄窗也放得下。 */}
           {/* v20: 显式撤回/重做（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
           <div className="flex items-center gap-0.5">
@@ -2414,25 +2424,6 @@ export function EditorPane({
               )}
             </AnimatePresence>
           </div>
-          <IconButton
-            size="sm"
-            variant="ghost"
-            aria-label="导出为 Markdown 文件"
-            title="导出为 Markdown"
-            onClick={handleExport}
-          >
-            <Download className="h-4 w-4" />
-          </IconButton>
-          <Divider orientation="vertical" className="mx-0.5 h-5 self-center" />
-          <IconButton
-            size="sm"
-            variant="ghost"
-            aria-label="分析本章"
-            title="分析本章"
-            onClick={handleManualAnalyze}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </IconButton>
           <IconButton
             size="sm"
             variant="ghost"
