@@ -15,6 +15,8 @@ interface ManualSubmissionCheckMenuProps {
   onJumpIssue: (issue: ManualSubmissionCheckIssue) => void;
   onCreateBeat: (text: string) => void;
   onMarkChecked: () => void;
+  /** 由工具栏「更多」菜单承载时隐藏自身触发按钮。 */
+  hideTrigger?: boolean;
 }
 
 export function ManualSubmissionCheckMenu({
@@ -27,6 +29,7 @@ export function ManualSubmissionCheckMenu({
   onJumpIssue,
   onCreateBeat,
   onMarkChecked,
+  hideTrigger = false,
 }: ManualSubmissionCheckMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -62,6 +65,7 @@ export function ManualSubmissionCheckMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : "ghost"}
         aria-label={title}
         title={title}

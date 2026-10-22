@@ -11,6 +11,8 @@ interface ManualChapterHealthMenuProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onJumpIssue: (issue: ManualChapterHealthIssue) => void;
+  /** 由工具栏「更多」菜单承载时隐藏自身触发按钮。 */
+  hideTrigger?: boolean;
 }
 
 export function ManualChapterHealthMenu({
@@ -19,6 +21,7 @@ export function ManualChapterHealthMenu({
   open: controlledOpen,
   onOpenChange,
   onJumpIssue,
+  hideTrigger = false,
 }: ManualChapterHealthMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -53,6 +56,7 @@ export function ManualChapterHealthMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : issueCount > 0 ? "ghost" : "ghost"}
         aria-label={hasContent ? `章节体检，${issueCount} 个提醒` : "章节体检，当前章节为空"}
         title={hasContent ? `章节体检 · ${issueCount} 个提醒` : "章节体检"}

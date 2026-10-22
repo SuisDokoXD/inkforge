@@ -18,6 +18,11 @@ interface ManualChapterMapMenuProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onJumpItem: (item: ManualChapterMapItem) => boolean;
+  /**
+   * 由工具栏的「更多」菜单承载时置为 true：隐藏自身触发按钮，
+   * 面板仍由本组件内部的 relative 容器定位。工具栏因此省下 32px。
+   */
+  hideTrigger?: boolean;
 }
 
 const FILTERS: Array<{ key: ManualChapterMapFilter; label: string }> = [
@@ -46,6 +51,7 @@ export function ManualChapterMapMenu({
   open: controlledOpen,
   onOpenChange,
   onJumpItem,
+  hideTrigger = false,
 }: ManualChapterMapMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -92,6 +98,7 @@ export function ManualChapterMapMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : "ghost"}
         aria-label={disabled ? "当前章节暂无导航标记" : `章节导航，共 ${items.length} 处`}
         title={disabled ? "当前章节暂无导航标记" : `章节导航 · ${items.length} 处`}

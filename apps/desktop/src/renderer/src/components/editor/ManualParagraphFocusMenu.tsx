@@ -12,6 +12,8 @@ interface ManualParagraphFocusMenuProps {
   onOpenChange?: (open: boolean) => void;
   onCreateBeat: (text: string) => void;
   onUseHandoff: (value: string) => void;
+  /** 由工具栏「更多」菜单承载时隐藏自身触发按钮。 */
+  hideTrigger?: boolean;
 }
 
 export function ManualParagraphFocusMenu({
@@ -21,6 +23,7 @@ export function ManualParagraphFocusMenu({
   onOpenChange,
   onCreateBeat,
   onUseHandoff,
+  hideTrigger = false,
 }: ManualParagraphFocusMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -60,6 +63,7 @@ export function ManualParagraphFocusMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : "ghost"}
         aria-label={disabled ? "当前没有可聚焦段落" : `段落焦点，第 ${current.startLine} 行起`}
         title={disabled ? "当前没有可聚焦段落" : `段落焦点 · ${current.graphemes} 字`}

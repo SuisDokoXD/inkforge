@@ -13,6 +13,8 @@ interface ManualRevisionQueueMenuProps {
   onJumpItem: (item: ManualRevisionQueueItem) => void;
   onResolveItem: (item: ManualRevisionQueueItem) => void;
   onCreateBeat: (item: ManualRevisionQueueItem) => void;
+  /** 由工具栏「更多」菜单承载时隐藏自身触发按钮。 */
+  hideTrigger?: boolean;
 }
 
 export function ManualRevisionQueueMenu({
@@ -23,6 +25,7 @@ export function ManualRevisionQueueMenu({
   onJumpItem,
   onResolveItem,
   onCreateBeat,
+  hideTrigger = false,
 }: ManualRevisionQueueMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -60,6 +63,7 @@ export function ManualRevisionQueueMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : "ghost"}
         aria-label={disabled ? "当前章节暂无待补" : `修订队列，共 ${items.length} 条待补`}
         title={disabled ? "当前章节暂无待补" : `修订队列 · ${items.length} 条`}

@@ -13,6 +13,8 @@ interface ManualChapterStructureMenuProps {
   onOpenChange?: (open: boolean) => void;
   onJumpItem: (item: ManualChapterMapItem) => boolean;
   onCreateBeat: (text: string) => void;
+  /** 由工具栏「更多」菜单承载时隐藏自身触发按钮。 */
+  hideTrigger?: boolean;
 }
 
 function itemIcon(kind: ManualChapterMapItemKind): JSX.Element {
@@ -34,6 +36,7 @@ export function ManualChapterStructureMenu({
   onOpenChange,
   onJumpItem,
   onCreateBeat,
+  hideTrigger = false,
 }: ManualChapterStructureMenuProps): JSX.Element {
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
@@ -76,6 +79,7 @@ export function ManualChapterStructureMenu({
     <div ref={rootRef} className="relative">
       <IconButton
         size="sm"
+        className={hideTrigger ? "hidden" : undefined}
         variant={open ? "accentSoft" : "ghost"}
         aria-label={disabled ? "当前章节暂无结构标记" : `章节结构，共 ${overview.counts.total} 处标记`}
         title={disabled ? "当前章节暂无结构标记" : `章节结构 · ${overview.counts.total} 处`}

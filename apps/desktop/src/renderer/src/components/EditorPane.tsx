@@ -28,6 +28,7 @@ import {
   ChevronDown,
   ChevronUp,
   Download,
+  Ellipsis,
   Focus,
   PenLine,
   Puzzle,
@@ -340,6 +341,7 @@ export function EditorPane({
   const [submissionCheckMenuOpen, setSubmissionCheckMenuOpen] = useState(false);
   const [revisionQueueMenuOpen, setRevisionQueueMenuOpen] = useState(false);
   const [chapterHealthMenuOpen, setChapterHealthMenuOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -377,6 +379,7 @@ export function EditorPane({
   const activeAnalysisChapterRef = useRef<string | null>(null);
   const skillMenuRef = useRef<HTMLDivElement | null>(null);
   const snapshotMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const findInputRef = useRef<HTMLInputElement | null>(null);
   const saveQueueRef = useRef<SaveRequest | null>(null);
   const saveLoopPromiseRef = useRef<Promise<void> | null>(null);
@@ -1920,6 +1923,25 @@ export function EditorPane({
   }, [snapshotMenuOpen]);
 
   useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handler = (event: MouseEvent) => {
+      if (!moreMenuRef.current) return;
+      if (!moreMenuRef.current.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreMenuOpen(false);
+    };
+    window.addEventListener("mousedown", handler);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", handler);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [moreMenuOpen]);
+
+  useEffect(() => {
     const offDone = skillApi.onDone((payload) => {
       const active = activeSkillRunRef.current;
       if (!active || payload.runId !== active.runId) return;
@@ -2053,6 +2075,56 @@ export function EditorPane({
     revisionCount: revisionQueueItems.length,
     healthIssueCount: chapterHealthReport.issues.length,
   }), [chapterHealthReport.issues.length, chapterMapItems.length, editorInstance, revisionQueueItems.length]);
+  /**
+   * 工具栏里放不下的六项分析工具，收进「更多」菜单。
+   *
+   * 实测这一排内容宽 840px 而可用只有 681px（1410 宽窗口、右侧检查器展开时），
+   * 溢出会画到检查器上；把 6 个 32px 按钮收起来正好补上缺口，工具栏回到单行。
+   * 每项仍复用原来的菜单组件与状态，只是隐藏了它们各自的触发按钮。
+   */
+  const moreMenuEntries = useMemo(
+    () => [
+      {
+        label: "章节导航",
+        hint: chapterMapItems.length ? `${chapterMapItems.length} 处` : "暂无标记",
+        disabled: chapterMapItems.length === 0,
+        open: () => setChapterMapMenuOpen(true),
+      },
+      {
+        label: "章节结构",
+        hint: `${chapterStructureOverview.counts.total} 处`,
+        disabled: false,
+        open: () => setChapterStructureMenuOpen(true),
+      },
+      {
+        label: "段落焦点",
+        hint: paragraphFocusOverview.current ? `第 ${paragraphFocusOverview.current.startLine} 行` : "",
+        disabled: false,
+        open: () => setParagraphFocusMenuOpen(true),
+      },
+      { label: "交稿检查", hint: "", disabled: false, open: () => setSubmissionCheckMenuOpen(true) },
+      {
+        label: "待补清单",
+        hint: revisionQueueItems.length ? `${revisionQueueItems.length} 条` : "暂无",
+        disabled: revisionQueueItems.length === 0,
+        open: () => setRevisionQueueMenuOpen(true),
+      },
+      {
+        label: "章节体检",
+        hint: `${chapterHealthReport.issues.length} 个提醒`,
+        disabled: false,
+        open: () => setChapterHealthMenuOpen(true),
+      },
+    ],
+    [
+      chapterHealthReport.issues.length,
+      chapterMapItems.length,
+      chapterStructureOverview.counts.total,
+      paragraphFocusOverview.current?.startLine,
+      revisionQueueItems.length,
+    ],
+  );
+
   const handleSnapshotRestored = useCallback(
     (response: SnapshotRestoreResponse) => {
       if (!chapter) return;
@@ -2105,8 +2177,8 @@ export function EditorPane({
         <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-hidden">
           <span className="min-w-0 truncate font-semibold" title={chapter.title}>{chapter.title}</span>
         </div>
-        <div className="editor-command-actions flex min-w-0 flex-1 flex-nowrap items-center justify-start gap-1 text-xs text-ink-300">
-          <span className="hidden max-w-40 truncate text-ink-500 xl:inline" title={cursorStatusLabel}>{cursorStatusLabel}</span>
+        <div className="editor-command-actions relative flex min-w-0 flex-1 flex-nowrap items-center justify-start gap-0.5 text-xs text-ink-300">
+          <span className="hidden max-w-40 truncate text-ink-500 min-[1700px]:inline" title={cursorStatusLabel}>{cursorStatusLabel}</span>
           {/* 工具栏改纯图标 + 原生悬浮提示(title)，按功能分组用竖线分隔：整体更轻、窄窗也放得下。 */}
           {/* v20: 显式撤回/重做（覆盖手输 / 黏贴 / AI 润色，所有 TipTap 事务都计入 history） */}
           <div className="flex items-center gap-0.5">
@@ -2159,6 +2231,12 @@ export function EditorPane({
             onNormalizeSelection={normalizeCurrentSelection}
           />
           <EditorAppearanceMenu settings={settings} onChange={persistEditorSettings} />
+          {/*
+            这六个分析菜单的触发按钮已隐藏（hideTrigger），收进右侧「更多」菜单。
+            用一个零尺寸的绝对容器托管它们，避免六个空 wrapper 各自吃掉 4px 间距。
+            面板本身仍由各组件内部的 relative 容器定位，从这个容器下方展开。
+          */}
+          <div className="absolute right-0 top-full h-0 w-0">
           <ManualChapterMapMenu
             items={chapterMapItems}
             currentLine={cursorState.lineNumber || currentEditorLine()}
@@ -2166,6 +2244,7 @@ export function EditorPane({
             open={chapterMapMenuOpen}
             onOpenChange={setChapterMapMenuOpen}
             onJumpItem={jumpToChapterMapItem}
+            hideTrigger
           />
           <ManualChapterStructureMenu
             overview={chapterStructureOverview}
@@ -2183,6 +2262,7 @@ export function EditorPane({
             }}
             onJumpItem={jumpToChapterMapItem}
             onCreateBeat={createBeatFromStructureSuggestion}
+            hideTrigger
           />
           <ManualParagraphFocusMenu
             overview={paragraphFocusOverview}
@@ -2200,6 +2280,7 @@ export function EditorPane({
             }}
             onCreateBeat={createBeatFromStructureSuggestion}
             onUseHandoff={handleUseParagraphHandoff}
+            hideTrigger
           />
           <ManualSubmissionCheckMenu
             report={submissionCheckReport}
@@ -2220,6 +2301,7 @@ export function EditorPane({
             onJumpIssue={jumpToSubmissionCheckIssue}
             onCreateBeat={createBeatFromStructureSuggestion}
             onMarkChecked={markSubmissionCheckDone}
+            hideTrigger
           />
           <ManualRevisionQueueMenu
             items={revisionQueueItems}
@@ -2229,6 +2311,7 @@ export function EditorPane({
             onJumpItem={jumpToRevisionQueueItem}
             onResolveItem={resolveRevisionQueueItem}
             onCreateBeat={createBeatFromRevisionQueueItem}
+            hideTrigger
           />
           <ManualChapterHealthMenu
             report={chapterHealthReport}
@@ -2236,7 +2319,54 @@ export function EditorPane({
             open={chapterHealthMenuOpen}
             onOpenChange={setChapterHealthMenuOpen}
             onJumpIssue={jumpToChapterHealthIssue}
+            hideTrigger
           />
+          </div>
+          <div ref={moreMenuRef} className="relative">
+            <IconButton
+              size="sm"
+              variant={moreMenuOpen ? "accentSoft" : "ghost"}
+              aria-label="更多写作工具：章节导航、章节结构、段落焦点、交稿检查、待补清单、章节体检"
+              title="更多工具"
+              aria-pressed={moreMenuOpen}
+              aria-haspopup="menu"
+              aria-expanded={moreMenuOpen}
+              onClick={() => setMoreMenuOpen((value) => !value)}
+            >
+              <Ellipsis className="h-4 w-4" />
+            </IconButton>
+            <AnimatePresence initial={false}>
+              {moreMenuOpen && (
+                <motion.div
+                  className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-lg border border-ink-700 bg-ink-900 py-1 text-xs shadow-xl backdrop-blur"
+                  role="menu"
+                  {...slimDropIn}
+                >
+                  {moreMenuEntries.map((entry) => (
+                    <button
+                      key={entry.label}
+                      role="menuitem"
+                      className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-ink-700/60 disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={entry.disabled}
+                      onClick={() => {
+                        setChapterMapMenuOpen(false);
+                        setChapterStructureMenuOpen(false);
+                        setParagraphFocusMenuOpen(false);
+                        setSubmissionCheckMenuOpen(false);
+                        setRevisionQueueMenuOpen(false);
+                        setChapterHealthMenuOpen(false);
+                        setMoreMenuOpen(false);
+                        entry.open();
+                      }}
+                    >
+                      <span>{entry.label}</span>
+                      <span className="text-[10px] text-ink-500">{entry.hint}</span>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           <IconButton
             size="sm"
             variant={findOpen ? "accentSoft" : "ghost"}
